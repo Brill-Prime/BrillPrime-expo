@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -10,6 +10,8 @@ export default function ResetPassword() {
     newPassword: "",
     confirmPassword: ""
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -18,19 +20,42 @@ export default function ResetPassword() {
     }));
   };
 
+  const isValidPassword = (password: string) => {
+    // At least 8 characters, one uppercase, one lowercase, one numeric, one special character
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    return regex.test(password);
+  };
+
+  const getPasswordBorderColor = () => {
+    const password = formData.newPassword;
+    if (password.length === 0) return "rgb(70, 130, 180)";
+    if (isValidPassword(password)) return "#10b981"; // Green for strong
+    if (password.length >= 8) return "#f59e0b"; // Yellow for medium
+    return "#ff6b6b"; // Red for weak
+  };
+
+  const getConfirmPasswordBorderColor = () => {
+    const { newPassword, confirmPassword } = formData;
+    if (confirmPassword.length === 0) return "rgb(70, 130, 180)";
+    if (confirmPassword && newPassword !== confirmPassword) return "#ff6b6b";
+    return "rgb(70, 130, 180)";
+  };
+
   const handleResetPassword = async () => {
-    if (!formData.newPassword.trim() || !formData.confirmPassword.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+    const { newPassword, confirmPassword } = formData;
+
+    if (newPassword.trim().length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long");
       return;
     }
 
-    if (formData.newPassword.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+    if (!isValidPassword(newPassword)) {
+      Alert.alert("Error", "Password must contain at least one uppercase letter, one lowercase letter, one numeric digit, and one special character.");
       return;
     }
 
-    if (formData.newPassword !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match. Please try again.");
       return;
     }
 
@@ -46,8 +71,8 @@ export default function ResetPassword() {
       await AsyncStorage.removeItem("resetEmail");
       
       Alert.alert(
-        "Password Reset Successful!",
-        "Your password has been updated successfully. You are now signed in.",
+        "Success!",
+        "Password reset successfully! You can now log in with your new password.",
         [
           {
             text: "OK",
@@ -63,79 +88,99 @@ export default function ResetPassword() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.wrapper} 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <LinearGradient
-        colors={['#a8e6cf', '#88d8c0']}
-        style={styles.container}
-      >
-        <View style={styles.header}>
-          <Image
-            source={require('../../assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
+    <View style={styles.container}>
+      {/* Header with Logo */}
+      <View style={styles.header}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Set New Password</Text>
+      </View>
+
+      {/* Password Field */}
+      <View style={styles.inputContainer}>
+        <View style={[styles.inputWrapper, { borderColor: getPasswordBorderColor() }]}>
+          <Ionicons 
+            name="lock-closed-outline" 
+            size={20} 
+            color="rgb(182, 182, 182)" 
+            style={styles.leftIcon} 
           />
-          <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>
-            Enter your new password below
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>New Password</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.newPassword}
-              onChangeText={(value) => handleInputChange("newPassword", value)}
-              placeholder="Enter new password"
-              placeholderTextColor="rgba(0, 0, 0, 0.5)"
-              secureTextEntry
+          <TextInput
+            style={styles.input}
+            value={formData.newPassword}
+            onChangeText={(value) => handleInputChange("newPassword", value)}
+            placeholder="Password"
+            placeholderTextColor="rgb(182, 182, 182)"
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.rightIcon}
+          >
+            <Ionicons 
+              name={showPassword ? "eye-off-outline" : "eye-outline"} 
+              size={20} 
+              color="rgb(182, 182, 182)" 
             />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm New Password</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.confirmPassword}
-              onChangeText={(value) => handleInputChange("confirmPassword", value)}
-              placeholder="Confirm new password"
-              placeholderTextColor="rgba(0, 0, 0, 0.5)"
-              secureTextEntry
-            />
-          </View>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        <TouchableOpacity style={styles.resetButton} onPress={handleResetPassword}>
-          <Text style={styles.resetButtonText}>Update Password</Text>
-        </TouchableOpacity>
+      {/* Confirm Password Field */}
+      <View style={styles.inputContainer}>
+        <View style={[styles.inputWrapper, { borderColor: getConfirmPasswordBorderColor() }]}>
+          <Ionicons 
+            name="lock-closed-outline" 
+            size={20} 
+            color="rgb(182, 182, 182)" 
+            style={styles.leftIcon} 
+          />
+          <TextInput
+            style={styles.input}
+            value={formData.confirmPassword}
+            onChangeText={(value) => handleInputChange("confirmPassword", value)}
+            placeholder="Confirm Password"
+            placeholderTextColor="rgb(182, 182, 182)"
+            secureTextEntry={!showConfirmPassword}
+          />
+          <TouchableOpacity
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            style={styles.rightIcon}
+          >
+            <Ionicons 
+              name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
+              size={20} 
+              color="rgb(182, 182, 182)" 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.push("/auth/signin")}
-        >
-          <Text style={styles.backButtonText}>Back to Sign In</Text>
-        </TouchableOpacity>
-      </LinearGradient>
-    </KeyboardAvoidingView>
+      {/* Reset Password Button */}
+      <TouchableOpacity 
+        style={styles.resetButton} 
+        onPress={handleResetPassword}
+      >
+        <Text style={styles.resetButtonText}>Reset password</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
   header: {
     alignItems: "center",
-    marginBottom: 60,
+    marginTop: 60,
+    marginBottom: 48,
   },
   logo: {
     width: 64,
@@ -143,57 +188,45 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#2d5a27",
-    marginBottom: 15,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#2d5a27",
+    fontSize: 20,
+    fontWeight: "800",
+    color: "rgb(11, 26, 81)",
     textAlign: "center",
-    opacity: 0.8,
-  },
-  form: {
-    gap: 20,
-    marginBottom: 40,
   },
   inputContainer: {
-    gap: 5,
+    marginBottom: 24,
   },
-  label: {
-    color: "#2d5a27",
-    fontSize: 14,
-    fontWeight: "500",
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 30,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "white",
+  },
+  leftIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    color: "#2d5a27",
+    flex: 1,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.5)",
+    color: "rgb(182, 182, 182)",
+    fontWeight: "500",
+  },
+  rightIcon: {
+    marginLeft: 12,
   },
   resetButton: {
-    backgroundColor: "#2d5a27",
-    paddingVertical: 15,
-    borderRadius: 25,
+    backgroundColor: "rgb(70, 130, 180)",
+    borderRadius: 30,
+    paddingVertical: 16,
     alignItems: "center",
-    marginBottom: 20,
+    marginTop: 24,
   },
   resetButtonText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  backButton: {
-    alignItems: "center",
-  },
-  backButtonText: {
-    color: "#2d5a27",
-    fontSize: 14,
-    opacity: 0.8,
+    fontSize: 18,
+    fontWeight: "500",
   },
 });
