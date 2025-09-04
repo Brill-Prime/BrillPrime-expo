@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 8,
-    paddingBottom: 60,
+    paddingBottom: 16,
   },
   getStartedButton: {
     backgroundColor: "rgb(70, 130, 180)",
