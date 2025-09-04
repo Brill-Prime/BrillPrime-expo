@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SignUp() {
@@ -13,6 +13,8 @@ export default function SignUp() {
     password: "",
     confirmPassword: ""
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -57,176 +59,310 @@ export default function SignUp() {
     }
   };
 
+  const handleSocialLogin = (provider: string) => {
+    Alert.alert("Coming Soon", `${provider} login will be available soon!`);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.gradient}
-      >
-        <View style={styles.header}>
-          <Image
-            source={require('../../assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join Brill Prime today</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Logo and Title */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Sign Up</Text>
+          </View>
+
+          {/* Full Name Field */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <TextInput
+                style={styles.input}
+                value={formData.fullName}
+                onChangeText={(value) => handleInputChange("fullName", value)}
+                placeholder="Full Name"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
+
+          {/* Email Field */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <TextInput
+                style={styles.input}
+                value={formData.email}
+                onChangeText={(value) => handleInputChange("email", value)}
+                placeholder="Email"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          {/* Phone Number Field */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="call-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={(value) => handleInputChange("phone", value)}
+                placeholder="Phone number"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+                maxLength={11}
+              />
+            </View>
+          </View>
+
+          {/* Password Field */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <TextInput
+                style={styles.input}
+                value={formData.password}
+                onChangeText={(value) => handleInputChange("password", value)}
+                placeholder="Password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.rightIcon}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Confirm Password Field */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <TextInput
+                style={styles.input}
+                value={formData.confirmPassword}
+                onChangeText={(value) => handleInputChange("confirmPassword", value)}
+                placeholder="Confirm Password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showConfirmPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.rightIcon}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Sign Up Button */}
+          <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
+            <Text style={styles.signUpButtonText}>Sign Up</Text>
+          </TouchableOpacity>
+
+          {/* Terms of Service */}
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsText}>
+              By clicking the button above you agree to the Brill Prime{" "}
+              <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
+            </Text>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social Login Buttons */}
+          <View style={styles.socialContainer}>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Google")}
+            >
+              <Ionicons name="logo-google" size={24} color="#DB4437" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Apple")}
+            >
+              <Ionicons name="logo-apple" size={24} color="#000" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Facebook")}
+            >
+              <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Sign In Link */}
+          <View style={styles.signInContainer}>
+            <Text style={styles.signInText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push("/auth/signin")}>
+              <Text style={styles.signInLink}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.fullName}
-              onChangeText={(value) => handleInputChange("fullName", value)}
-              placeholder="Enter your full name"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.email}
-              onChangeText={(value) => handleInputChange("email", value)}
-              placeholder="Enter your email"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone Number</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.phone}
-              onChangeText={(value) => handleInputChange("phone", value)}
-              placeholder="Enter your phone number"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.password}
-              onChangeText={(value) => handleInputChange("password", value)}
-              placeholder="Create a password"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              secureTextEntry
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.confirmPassword}
-              onChangeText={(value) => handleInputChange("confirmPassword", value)}
-              placeholder="Confirm your password"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              secureTextEntry
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-          <Text style={styles.signUpButtonText}>Sign Up</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.signInLink}
-          onPress={() => router.push("/auth/signin")}
-        >
-          <Text style={styles.signInLinkText}>
-            Already have an account? <Text style={styles.linkText}>Sign In</Text>
-          </Text>
-        </TouchableOpacity>
-      </LinearGradient>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+const PRIMARY_COLOR = "rgb(11, 26, 81)";
+const GRAY_400 = "#9CA3AF";
+const GRAY_600 = "#6B7280";
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  gradient: {
+  scrollView: {
     flex: 1,
-    padding: 20,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    maxWidth: 400,
+    alignSelf: "center",
+    width: "100%",
   },
   header: {
     alignItems: "center",
-    marginTop: 60,
-    marginBottom: 40,
+    marginBottom: 24,
   },
   logo: {
-    width: 64,
-    height: 52,
-    marginBottom: 20,
+    width: 80,
+    height: 64,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
-  },
-  form: {
-    flex: 1,
-    gap: 20,
+    fontSize: 24,
+    fontWeight: "800",
+    color: PRIMARY_COLOR,
+    textAlign: "center",
   },
   inputContainer: {
-    gap: 5,
+    marginBottom: 16,
   },
-  label: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "500",
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 25,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  leftIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    color: "white",
+    flex: 1,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    color: "#111827",
+  },
+  rightIcon: {
+    marginLeft: 12,
   },
   signUpButton: {
-    backgroundColor: "white",
-    paddingVertical: 15,
+    backgroundColor: PRIMARY_COLOR,
     borderRadius: 25,
+    paddingVertical: 16,
     alignItems: "center",
-    marginTop: 20,
+    marginBottom: 16,
   },
   signUpButtonText: {
-    color: "#667eea",
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
+  },
+  termsContainer: {
+    alignItems: "center",
+    marginBottom: 32,
+    paddingHorizontal: 16,
+  },
+  termsText: {
+    fontSize: 14,
+    color: GRAY_600,
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 256,
+  },
+  termsLink: {
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#000000",
+  },
+  dividerText: {
+    paddingHorizontal: 8,
+    fontSize: 14,
+    color: "rgb(19, 19, 19)",
+    fontWeight: "300",
+  },
+  socialContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
+    marginBottom: 20,
+  },
+  socialButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  signInContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  signInText: {
+    fontSize: 14,
+    color: "rgb(19, 19, 19)",
+    fontWeight: "300",
   },
   signInLink: {
-    alignItems: "center",
-    marginTop: 20,
-  },
-  signInLinkText: {
-    color: "rgba(255, 255, 255, 0.8)",
     fontSize: 14,
-  },
-  linkText: {
-    color: "white",
-    fontWeight: "600",
+    color: PRIMARY_COLOR,
+    fontWeight: "700",
   },
 });
