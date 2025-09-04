@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -85,6 +85,11 @@ export default function OTPVerification() {
       style={styles.container}
     >
       <View style={styles.header}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Verify Your Phone</Text>
         <Text style={styles.subtitle}>
           Enter the 6-digit code sent to your phone number
@@ -136,6 +141,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 60,
+  },
+  logo: {
+    width: 64,
+    height: 52,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,

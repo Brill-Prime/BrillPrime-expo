@@ -58,10 +58,9 @@ export default function SignIn() {
         {/* Logo + Title */}
         <View style={styles.header}>
           <Image
-            source={{
-              uri: "https://pfst.cf2.poecdn.net/base/image/9a83454921377de2340ada1aa779b76e53091705f05837fa1104ac78525a8a32?w=122&h=101",
-            }}
+            source={require('../../assets/images/logo.png')}
             style={styles.logo}
+            resizeMode="contain"
           />
           <Text style={styles.title}>Sign In</Text>
         </View>

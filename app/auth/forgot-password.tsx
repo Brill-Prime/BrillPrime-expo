@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -58,6 +58,11 @@ export default function ForgotPassword() {
       style={styles.container}
     >
       <View style={styles.header}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Forgot Password?</Text>
         <Text style={styles.subtitle}>
           No worries! Enter your email address and we'll send you a link to reset your password.
@@ -111,6 +116,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 60,
+  },
+  logo: {
+    width: 64,
+    height: 52,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,

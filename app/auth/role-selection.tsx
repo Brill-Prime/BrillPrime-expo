@@ -41,10 +41,9 @@ export default function RoleSelection() {
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-          source={{
-            uri: "https://pfst.cf2.poecdn.net/base/image/97e36df65af51bb6e962b1571c9c2a0e918d0c70034c6583c3c5057fea0f737b?w=548&h=533",
-          }}
+          source={require('../../assets/images/logo.png')}
           style={styles.logo}
+          resizeMode="contain"
         />
       </View>
 
