@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -49,9 +49,7 @@ export default function SignUp() {
     if (!validateForm()) return;
 
     try {
-      // Store user data temporarily for OTP verification
       await AsyncStorage.setItem("pendingUserData", JSON.stringify(formData));
-      // Navigate to OTP verification
       router.push("/auth/otp-verification");
     } catch (error) {
       console.error("Error saving user data:", error);
@@ -69,6 +67,11 @@ export default function SignUp() {
         style={styles.gradient}
       >
         <View style={styles.header}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join BrillPrime today</Text>
         </View>
@@ -164,6 +167,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 60,
     marginBottom: 40,
+  },
+  logo: {
+    width: 64,
+    height: 52,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,

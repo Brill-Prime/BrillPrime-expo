@@ -1,21 +1,26 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons, FontAwesome } from "@expo/vector-icons";
 
 export default function SignIn() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSignIn = async () => {
@@ -30,19 +35,13 @@ export default function SignIn() {
     }
 
     try {
-      // For demo purposes, simulate successful sign in
-      // In a real app, you would authenticate with your backend
-      
-      // Generate a mock token and save user session
       const mockToken = "user_token_" + Date.now();
       await AsyncStorage.setItem("userToken", mockToken);
       await AsyncStorage.setItem("userEmail", formData.email);
-      
-      // Get the selected role and navigate to appropriate dashboard
+
       const selectedRole = await AsyncStorage.getItem("selectedRole");
       await AsyncStorage.setItem("userRole", selectedRole || "consumer");
-      
-      // Navigate to dashboard
+
       router.replace(`/dashboard/${selectedRole || "consumer"}`);
     } catch (error) {
       console.error("Error signing in:", error);
@@ -51,146 +50,150 @@ export default function SignIn() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <LinearGradient
-        colors={['#f093fb', '#f5576c']}
-        style={styles.gradient}
-      >
+      <View style={styles.inner}>
+        {/* Logo + Title */}
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+          <Image
+            source={{
+              uri: "https://pfst.cf2.poecdn.net/base/image/9a83454921377de2340ada1aa779b76e53091705f05837fa1104ac78525a8a32?w=122&h=101",
+            }}
+            style={styles.logo}
+          />
+          <Text style={styles.title}>Sign In</Text>
         </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.email}
-              onChangeText={(value) => handleInputChange("email", value)}
-              placeholder="Enter your email"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
+        {/* Email */}
+        <View style={styles.inputWrapper}>
+          <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.email}
+            onChangeText={(value) => handleInputChange("email", value)}
+            placeholder="Email or phone number"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.password}
-              onChangeText={(value) => handleInputChange("password", value)}
-              placeholder="Enter your password"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity 
-            style={styles.forgotPasswordLink}
-            onPress={() => router.push("/auth/forgot-password")}
+        {/* Password */}
+        <View style={styles.inputWrapper}>
+          <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            value={formData.password}
+            onChangeText={(value) => handleInputChange("password", value)}
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.iconRight}
           >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#666"
+            />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-          <Text style={styles.signInButtonText}>Sign In</Text>
+        {/* Forgot Password */}
+        <TouchableOpacity
+          style={styles.forgotPassword}
+          onPress={() => router.push("/auth/forgot-password")}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot password? Reset</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.signUpLink}
+        {/* Sign In Button */}
+        <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
+          <Text style={styles.signInText}>Sign In</Text>
+        </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={styles.divider}>
+          <View style={styles.line} />
+          <Text style={styles.dividerText}>or continue with</Text>
+          <View style={styles.line} />
+        </View>
+
+        {/* Social Buttons */}
+        <View style={styles.socialRow}>
+          <TouchableOpacity style={styles.socialButton}>
+            <FontAwesome name="google" size={20} color="#DB4437" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.socialButton}>
+            <FontAwesome name="apple" size={20} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.socialButton}>
+            <FontAwesome name="facebook" size={20} color="#1877F2" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Up Link */}
+        <TouchableOpacity
+          style={styles.signupLink}
           onPress={() => router.push("/auth/signup")}
         >
-          <Text style={styles.signUpLinkText}>
-            Don't have an account? <Text style={styles.linkText}>Sign Up</Text>
+          <Text style={styles.signupText}>
+            Don’t have an account? <Text style={styles.signupBold}>Sign Up</Text>
           </Text>
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
+const PRIMARY_COLOR = "rgb(11, 26, 81)";
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-    padding: 20,
-  },
-  header: {
+  container: { flex: 1, backgroundColor: "#fff" },
+  inner: { flex: 1, padding: 20, justifyContent: "center" },
+  header: { alignItems: "center", marginBottom: 30 },
+  logo: { width: 80, height: 60, resizeMode: "contain", marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: "bold", color: PRIMARY_COLOR },
+  inputWrapper: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 60,
-    marginBottom: 60,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
-  },
-  form: {
-    flex: 1,
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 5,
-  },
-  label: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  input: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    color: "white",
-    fontSize: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-  },
-  forgotPasswordLink: {
-    alignSelf: "flex-end",
-    marginTop: -5,
-  },
-  forgotPasswordText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  signInButton: {
-    backgroundColor: "white",
-    paddingVertical: 15,
+    borderColor: "#ccc",
     borderRadius: 25,
+    marginBottom: 15,
+    paddingHorizontal: 15,
+    backgroundColor: "#f9f9f9",
+  },
+  icon: { marginRight: 10 },
+  input: { flex: 1, paddingVertical: 12, fontSize: 16 },
+  iconRight: { paddingHorizontal: 5 },
+  forgotPassword: { alignSelf: "flex-end", marginBottom: 20 },
+  forgotPasswordText: { fontSize: 14, color: PRIMARY_COLOR },
+  signInButton: {
+    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 25,
+    paddingVertical: 15,
     alignItems: "center",
-    marginTop: 40,
+    marginBottom: 30,
   },
-  signInButtonText: {
-    color: "#f093fb",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  signUpLink: {
+  signInText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  divider: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
+  line: { flex: 1, height: 1, backgroundColor: "#000" },
+  dividerText: { marginHorizontal: 10, fontSize: 12, color: "#333" },
+  socialRow: { flexDirection: "row", justifyContent: "center", marginBottom: 20 },
+  socialButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: "#ccc",
     alignItems: "center",
-    marginTop: 20,
+    justifyContent: "center",
+    marginHorizontal: 8,
   },
-  signUpLinkText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 14,
-  },
-  linkText: {
-    color: "white",
-    fontWeight: "600",
-  },
+  signupLink: { alignItems: "center" },
+  signupText: { fontSize: 14, color: "#333" },
+  signupBold: { color: PRIMARY_COLOR, fontWeight: "bold" },
 });

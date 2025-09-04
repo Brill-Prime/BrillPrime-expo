@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -35,20 +35,14 @@ export default function ResetPassword() {
     }
 
     try {
-      // For demo purposes, simulate password reset
-      // In a real app, you would call your backend API to reset the password
-      
-      // Get user info and simulate successful reset
       const resetEmail = await AsyncStorage.getItem("resetEmail");
       const selectedRole = await AsyncStorage.getItem("selectedRole");
       
-      // Generate new token for automatic sign in
       const token = "user_token_" + Date.now();
       await AsyncStorage.setItem("userToken", token);
       await AsyncStorage.setItem("userEmail", resetEmail || "user@brillprime.com");
       await AsyncStorage.setItem("userRole", selectedRole || "consumer");
       
-      // Clean up reset process data
       await AsyncStorage.removeItem("resetEmail");
       
       Alert.alert(
@@ -78,6 +72,11 @@ export default function ResetPassword() {
         style={styles.container}
       >
         <View style={styles.header}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>
             Enter your new password below
@@ -137,6 +136,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 60,
+  },
+  logo: {
+    width: 64,
+    height: 52,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
