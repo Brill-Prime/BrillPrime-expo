@@ -55,5 +55,23 @@ mode = "sequential"
 task = "shell.exec"
 args = "npx eas build --platform android --profile preview"
 
+[[workflows.workflow]]
+name = "Main App"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "APP_VARIANT=main EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx expo start"
+
+[[workflows.workflow]]
+name = "Admin Panel Web"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "APP_VARIANT=admin EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx expo start --web"
+
 [agent]
 expertMode = true
