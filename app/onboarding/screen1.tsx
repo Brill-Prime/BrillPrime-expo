@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 8,
-    paddingBottom: 32,
+    paddingBottom: 60,
   },
   nextButton: {
     width: 56,
