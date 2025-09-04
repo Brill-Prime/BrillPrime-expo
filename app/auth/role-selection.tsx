@@ -41,7 +41,7 @@ export default function RoleSelection() {
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('../../assets/images/logo.png')}
+          source={require('../../assets/images/role_selection_logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
