@@ -7,10 +7,34 @@ export default ({ config }) => {
     ...config,
     name: variant === "admin" ? "Brill Prime Admin" : "Brill Prime",
     slug: variant === "admin" ? "brill-prime-admin" : "brill-prime",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/logo.png",
+    userInterfaceStyle: "light",
+    splash: {
+      image: "./assets/images/logo.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    assetBundlePatterns: [
+      "**/*"
+    ],
+    ios: {
+      supportsTablet: true
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/logo.png",
+        backgroundColor: "#FFFFFF"
+      }
+    },
+    web: {
+      favicon: "./assets/images/logo.png"
+    },
     entryPoint:
       variant === "admin"
-        ? "./apps/admin-panel/App.tsx"
-        : "./apps/main-app/App.tsx",
+        ? "./app/admin-panel.tsx"
+        : "./app/main-app.tsx",
     platforms: variant === "admin" ? ["web"] : ["ios", "android", "web"],
   };
 };
