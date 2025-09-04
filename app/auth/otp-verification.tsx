@@ -1,41 +1,47 @@
 import React, { useState, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function OTPVerification() {
   const router = useRouter();
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", ""]);
   const inputRefs = useRef<TextInput[]>([]);
 
   const handleOTPChange = (value: string, index: number) => {
+    // Only allow numeric input
+    const numericValue = value.replace(/[^0-9]/g, '');
+    
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = numericValue;
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value && index < 5) {
+    if (numericValue && index < 4) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleBackspace = (index: number) => {
-    if (otp[index] === "" && index > 0) {
+  const handleKeyPress = (nativeEvent: any, index: number) => {
+    if (nativeEvent.key === "Backspace" && otp[index] === "" && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
+  };
+
+  const isCodeComplete = () => {
+    return otp.every(digit => digit !== "");
   };
 
   const handleVerifyOTP = async () => {
     const otpString = otp.join("");
     
-    if (otpString.length !== 6) {
-      Alert.alert("Error", "Please enter the complete 6-digit code");
+    if (otpString.length !== 5) {
+      Alert.alert("Error", "Please enter all 5 digits of the verification code.");
       return;
     }
 
     try {
-      // For demo purposes, accept any 6-digit code
+      // For demo purposes, accept any 5-digit code
       // In a real app, you would verify this with your backend
       
       // Get pending user data
@@ -57,7 +63,7 @@ export default function OTPVerification() {
         
         Alert.alert(
           "Success!", 
-          "Your account has been created successfully",
+          "Verification successful!",
           [
             {
               text: "OK",
@@ -74,28 +80,24 @@ export default function OTPVerification() {
 
   const handleResendOTP = () => {
     // In a real app, you would resend the OTP here
-    Alert.alert("OTP Resent", "A new verification code has been sent to your phone");
-    setOtp(["", "", "", "", "", ""]);
+    Alert.alert("Code Resent", "A new verification code has been sent to username@email.com");
+    setOtp(["", "", "", "", ""]);
     inputRefs.current[0]?.focus();
   };
 
   return (
-    <LinearGradient
-      colors={['#4facfe', '#00f2fe']}
-      style={styles.container}
-    >
+    <View style={styles.container}>
+      {/* Logo and Header */}
       <View style={styles.header}>
         <Image
           source={require('../../assets/images/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Verify Your Phone</Text>
-        <Text style={styles.subtitle}>
-          Enter the 6-digit code sent to your phone number
-        </Text>
+        <Text style={styles.title}>Verify it's you</Text>
       </View>
 
+      {/* OTP Input Fields */}
       <View style={styles.otpContainer}>
         {otp.map((digit, index) => (
           <TextInput
@@ -103,14 +105,13 @@ export default function OTPVerification() {
             ref={(ref) => {
               if (ref) inputRefs.current[index] = ref;
             }}
-            style={styles.otpInput}
+            style={[
+              styles.otpInput,
+              digit ? styles.otpInputFilled : null
+            ]}
             value={digit}
             onChangeText={(value) => handleOTPChange(value, index)}
-            onKeyPress={({ nativeEvent }) => {
-              if (nativeEvent.key === "Backspace") {
-                handleBackspace(index);
-              }
-            }}
+            onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent, index)}
             keyboardType="numeric"
             maxLength={1}
             selectTextOnFocus
@@ -118,29 +119,51 @@ export default function OTPVerification() {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyOTP}>
-        <Text style={styles.verifyButtonText}>Verify Code</Text>
+      {/* Email Info */}
+      <View style={styles.emailInfo}>
+        <Text style={styles.emailText}>A verification code has been sent to</Text>
+        <Text style={styles.emailAddress}>username@email.com</Text>
+      </View>
+
+      {/* Submit Button */}
+      <TouchableOpacity 
+        style={[
+          styles.submitButton,
+          !isCodeComplete() && styles.submitButtonDisabled
+        ]} 
+        onPress={handleVerifyOTP}
+        disabled={!isCodeComplete()}
+      >
+        <Text style={[
+          styles.submitButtonText,
+          !isCodeComplete() && styles.submitButtonTextDisabled
+        ]}>
+          Submit
+        </Text>
       </TouchableOpacity>
 
+      {/* Resend Code */}
       <View style={styles.resendContainer}>
-        <Text style={styles.resendText}>Didn't receive the code?</Text>
+        <Text style={styles.resendText}>Didn't get code? </Text>
         <TouchableOpacity onPress={handleResendOTP}>
-          <Text style={styles.resendLink}>Resend OTP</Text>
+          <Text style={styles.resendLink}>Resend</Text>
         </TouchableOpacity>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
   header: {
     alignItems: "center",
-    marginBottom: 60,
+    marginTop: 60,
+    marginBottom: 48,
   },
   logo: {
     width: 64,
@@ -148,56 +171,84 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 20,
+    fontWeight: "800",
+    color: "rgb(11, 26, 81)",
     textAlign: "center",
-    lineHeight: 24,
   },
   otpContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 40,
-    paddingHorizontal: 20,
+    justifyContent: "center",
+    gap: 16,
+    marginBottom: 32,
   },
   otpInput: {
-    width: 45,
-    height: 55,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 10,
+    width: 58,
+    height: 58,
+    borderWidth: 1,
+    borderColor: "rgb(70, 130, 180)",
+    borderRadius: 29,
     textAlign: "center",
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#4facfe",
-  },
-  verifyButton: {
-    backgroundColor: "white",
-    paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  verifyButtonText: {
-    color: "#4facfe",
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "600",
+    color: "rgb(11, 26, 81)",
+    backgroundColor: "white",
+  },
+  otpInputFilled: {
+    borderColor: "rgb(11, 26, 81)",
+    borderWidth: 2,
+    shadowColor: "rgba(70, 130, 180, 0.1)",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  emailInfo: {
+    alignItems: "center",
+    marginBottom: 48,
+  },
+  emailText: {
+    fontSize: 12,
+    fontWeight: "300",
+    color: "rgb(19, 19, 19)",
+    marginBottom: 4,
+  },
+  emailAddress: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgb(11, 26, 81)",
+  },
+  submitButton: {
+    backgroundColor: "rgb(70, 130, 180)",
+    borderRadius: 30,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  submitButtonDisabled: {
+    backgroundColor: "rgba(70, 130, 180, 0.5)",
+  },
+  submitButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  submitButtonTextDisabled: {
+    color: "rgba(255, 255, 255, 0.7)",
   },
   resendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    gap: 5,
   },
   resendText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: "300",
+    color: "rgb(19, 19, 19)",
   },
   resendLink: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgb(11, 26, 81)",
   },
 });
