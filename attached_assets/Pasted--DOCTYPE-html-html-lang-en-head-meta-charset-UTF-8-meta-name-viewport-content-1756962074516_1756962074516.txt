@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Password</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        .primary-blue { color: rgb(11, 26, 81); }
+        .secondary-blue { color: rgb(70, 130, 180); }
+        .neutral-grey { color: rgb(182, 182, 182); }
+        .primary-text { color: rgb(19, 19, 19); }
+        .bg-secondary { background-color: rgb(70, 130, 180); }
+        
+        .curved-input {
+            border-radius: 30px;
+            border: 1px solid rgb(70, 130, 180);
+        }
+        
+        .curved-button {
+            border-radius: 30px;
+        }
+        
+        .montserrat {
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .modal-overlay {
+            background-color: rgba(19, 19, 19, 0.7);
+        }
+        
+        .modal-container {
+            border-radius: 30px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="min-h-screen bg-white relative">
+        <div class="px-6 py-8 max-w-md mx-auto">
+            <!-- Back Button -->
+            <div class="mb-8">
+                <button onclick="goBack()" class="w-6 h-6 bg-gray-300 hover:bg-gray-400 transition duration-200">
+                    <svg class="w-4 h-4 m-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Title -->
+            <div class="text-center mb-12">
+                <h1 class="primary-blue text-xl font-extrabold montserrat">Reset Password</h1>
+            </div>
+
+            <!-- Email Input -->
+            <div class="mb-4">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-8 flex items-center pointer-events-none">
+                        <svg class="w-6 h-6 neutral-grey" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                        </svg>
+                    </div>
+                    <input 
+                        type="email" 
+                        id="email"
+                        class="w-full pl-16 pr-4 py-4 curved-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg montserrat neutral-grey placeholder-gray-400"
+                        placeholder="Email"
+                    >
+                </div>
+            </div>
+
+            <!-- Info Text -->
+            <div class="text-center mb-8">
+                <p class="primary-text text-xs font-light montserrat">A link would be sent to your email</p>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                onclick="showEmailSentModal()"
+                class="w-full bg-secondary text-white py-4 px-4 curved-button font-medium hover:bg-blue-600 transition duration-200 montserrat text-lg"
+            >
+                Send Reset Link
+            </button>
+        </div>
+
+        <!-- Modal Overlay -->
+        <div id="modalOverlay" class="fixed inset-0 modal-overlay flex items-center justify-center z-50 hidden">
+            <div class="bg-white modal-container shadow-lg max-w-sm w-full mx-4 p-8 relative" style="width: 339px; height: 328px;">
+                <!-- Close Button -->
+                <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+
+                <!-- Modal Content -->
+                <div class="text-center flex flex-col items-center justify-center h-full">
+                    <!-- Mailbox Image -->
+                    <div class="mb-6">
+                        <img src="https://pfst.cf2.poecdn.net/base/image/d9f588250467c1e83417ce32245e36081636ee9675f266d7e0f11e6d19e3accf?w=320&h=320" alt="Mailbox" class="w-20 h-20 object-contain">
+                    </div>
+
+                    <!-- Title -->
+                    <h2 class="primary-blue text-xl font-extrabold montserrat mb-4">Check Your Email</h2>
+
+                    <!-- Description -->
+                    <p class="primary-text text-xs font-light montserrat text-center mb-6 leading-relaxed">
+                        We've sent a password reset link to your email.<br>
+                        It's valid for 24 hours.
+                    </p>
+
+                    <!-- Check Email Button -->
+                    <button 
+                        onclick="openEmailApp()"
+                        class="bg-secondary text-white py-2 px-8 curved-button font-medium hover:bg-blue-600 transition duration-200 montserrat text-sm"
+                    >
+                        Check email
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function goBack() {
+            console.log('Going back to previous screen...');
+            // In a real app, this would navigate back
+        }
+
+        function showEmailSentModal() {
+            const email = document.getElementById('email').value;
+            
+            if (!email || email.length < 4) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            // Show the modal
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+        function openEmailApp() {
+            console.log('Opening email app...');
+            // In a real app, this might open the default email app
+            // or provide instructions for checking email
+            closeModal();
+        }
+
+        // Close modal when clicking outside of it
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Allow only valid email format
+        document.getElementById('email').addEventListener('input', function(e) {
+            const email = this.value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (email && !emailRegex.test(email)) {
+                this.style.borderColor = '#ff6b6b';
+            } else {
+                this.style.borderColor = 'rgb(70, 130, 180)';
+            }
+        });
+    </script>
+</body>
+</html>

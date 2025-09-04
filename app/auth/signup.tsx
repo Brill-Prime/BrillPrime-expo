@@ -73,7 +73,7 @@ export default function SignUp() {
             resizeMode="contain"
           />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join BrillPrime today</Text>
+          <Text style={styles.subtitle}>Join Brill Prime today</Text>
         </View>
 
         <View style={styles.form}>

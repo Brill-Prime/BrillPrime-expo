@@ -1,91 +1,88 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function OnboardingScreen1() {
   const router = useRouter();
 
   return (
-    <LinearGradient
-      colors={['#667eea', '#764ba2']}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.imageContainer}>
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.imageText}>📱</Text>
-          </View>
+          <Image
+            source={require('../../assets/images/onboarding_img1.png')}
+            style={styles.image}
+            resizeMode="contain"
+          />
         </View>
         
-        <Text style={styles.title}>Welcome to BrillPrime</Text>
+        <Text style={styles.title}>Welcome to{"\n"}Brill Prime</Text>
         <Text style={styles.description}>
-          Your all-in-one platform connecting consumers, merchants, and drivers in one seamless experience.
+          Your trusted financial partner for secure transactions and seamless money management
         </Text>
         
+      </View>
+      
+      <View style={styles.footer}>
         <View style={styles.pagination}>
           <View style={[styles.dot, styles.activeDot]} />
           <View style={styles.dot} />
           <View style={styles.dot} />
         </View>
-      </View>
-      
-      <View style={styles.footer}>
+        
         <TouchableOpacity 
           style={styles.nextButton}
           onPress={() => router.push("/onboarding/screen2")}
         >
-          <Text style={styles.nextButtonText}>Next</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.skipButton}
-          onPress={() => router.replace("/auth/role-selection")}
-        >
-          <Text style={styles.skipButtonText}>Skip</Text>
+          <Ionicons name="arrow-forward" size={20} color="white" />
         </TouchableOpacity>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "white",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
   content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 30,
+    paddingHorizontal: 8,
   },
   imageContainer: {
-    marginBottom: 40,
-  },
-  imagePlaceholder: {
-    width: 200,
-    height: 200,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 100,
-    justifyContent: "center",
+    width: 240,
+    height: 280,
+    marginBottom: 32,
     alignItems: "center",
+    justifyContent: "center",
   },
-  imageText: {
-    fontSize: 80,
+  image: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "rgb(11, 26, 81)",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 16,
+    lineHeight: 32,
   },
   description: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    color: "rgb(136, 136, 136)",
     textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 50,
+    lineHeight: 20,
+    marginBottom: 32,
+    maxWidth: 280,
+    fontWeight: "300",
   },
   pagination: {
     flexDirection: "row",
@@ -95,31 +92,32 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgb(224, 224, 224)",
   },
   activeDot: {
-    backgroundColor: "white",
+    backgroundColor: "rgb(11, 26, 81)",
   },
   footer: {
-    padding: 30,
-    gap: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingBottom: 32,
   },
   nextButton: {
-    backgroundColor: "white",
-    paddingVertical: 15,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgb(70, 130, 180)",
     alignItems: "center",
-  },
-  nextButtonText: {
-    color: "#667eea",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  skipButton: {
-    alignItems: "center",
-  },
-  skipButtonText: {
-    color: "rgba(255, 255, 255, 0.7)",
-    fontSize: 14,
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

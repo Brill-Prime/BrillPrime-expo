@@ -1,6 +1,6 @@
 # Overview
 
-BrillPrime is a cross-platform mobile application built with Expo and React Native that serves as a multi-role marketplace ecosystem. The app supports three distinct user types: consumers (shoppers), merchants (sellers), and drivers (delivery partners). The application features a comprehensive onboarding flow, role-based authentication, and dedicated dashboards for each user type. Additionally, it includes a separate admin panel variant that can be deployed independently for administrative management.
+Brill Prime is a cross-platform mobile application built with Expo and React Native that serves as a multi-role marketplace ecosystem. The app supports three distinct user types: consumers (shoppers), merchants (sellers), and drivers (delivery partners). The application features a comprehensive onboarding flow, role-based authentication, and dedicated dashboards for each user type. Additionally, it includes a separate admin panel variant that can be deployed independently for administrative management.
 
 # User Preferences
 
