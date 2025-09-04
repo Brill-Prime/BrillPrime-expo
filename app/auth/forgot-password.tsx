@@ -23,30 +23,27 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // For demo purposes, simulate sending reset link
-      // In a real app, you would call your backend API to send reset email
-      
       // Store email for reset process
       await AsyncStorage.setItem("resetEmail", email);
       
       // Simulate API delay
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsLoading(false);
+        
+        // Show success alert and navigate immediately
         Alert.alert(
           "Reset Link Sent!",
-          `A password reset link has been sent to ${email}. Please check your email and follow the instructions.`,
+          `A password reset link has been sent to ${email}. You'll be redirected to reset your password.`,
           [
             {
-              text: "OK",
+              text: "Continue",
               onPress: () => {
-                // In a real app, user would click the link in their email
-                // For demo, we'll simulate this by navigating to reset screen
                 router.push("/auth/reset-password");
               }
             }
           ]
         );
-      }, 2000);
+      }, 1000);
       
     } catch (error) {
       console.error("Error sending reset link:", error);
