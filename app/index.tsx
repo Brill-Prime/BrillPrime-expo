@@ -66,6 +66,7 @@ export default function SplashScreen() {
 
         console.log('hasSeenOnboarding:', hasSeenOnboarding);
         console.log('userToken:', userToken ? 'exists' : 'null');
+        console.log('Navigation condition check: hasSeenOnboarding is', hasSeenOnboarding === null ? 'null' : hasSeenOnboarding);
 
         if (!hasSeenOnboarding) {
           // First time user - go to onboarding
