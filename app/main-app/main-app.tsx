@@ -5,7 +5,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>BrillPrime Main App</Text>
+      <Text style={styles.title}>Brill Prime Main App</Text>
       <Text style={styles.subtitle}>Welcome to the main application</Text>
     </View>
   );
