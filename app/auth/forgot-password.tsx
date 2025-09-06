@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ForgotPassword() {
@@ -53,132 +53,159 @@ export default function ForgotPassword() {
   };
 
   return (
-    <LinearGradient
-      colors={['#ff7e5f', '#feb47b']}
+    <KeyboardAvoidingView
       style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.header}>
-        <Image
-          source={require('../../assets/images/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Forgot Password?</Text>
-        <Text style={styles.subtitle}>
-          No worries! Enter your email address and we'll send you a link to reset your password.
-        </Text>
-      </View>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.subtitle}>
+              No worries! Enter your email address and we'll send you a link to reset your password.
+            </Text>
+          </View>
 
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Enter your email"
-            placeholderTextColor="rgba(255, 255, 255, 0.5)"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!isLoading}
-          />
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter your email"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!isLoading}
+              />
+            </View>
+          </View>
+
+          {/* Send Reset Link Button */}
+          <TouchableOpacity 
+            style={[styles.sendButton, isLoading && styles.disabledButton]} 
+            onPress={handleSendResetLink}
+            disabled={isLoading}
+          >
+            <Text style={styles.sendButtonText}>
+              {isLoading ? "Sending..." : "Send Reset Link"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Back to Sign In Link */}
+          <View style={styles.backToSignInContainer}>
+            <Text style={styles.backToSignInText}>Remember your password? </Text>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Text style={styles.linkText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.sendButton, isLoading && styles.disabledButton]} 
-        onPress={handleSendResetLink}
-        disabled={isLoading}
-      >
-        <Text style={styles.sendButtonText}>
-          {isLoading ? "Sending..." : "Send Reset Link"}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.backToSignInLink}
-        onPress={() => router.back()}
-      >
-        <Text style={styles.backToSignInText}>
-          Remember your password? <Text style={styles.linkText}>Sign In</Text>
-        </Text>
-      </TouchableOpacity>
-    </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const PRIMARY_COLOR = "rgb(11, 26, 81)";
+const GRAY_400 = "#9CA3AF";
+const GRAY_600 = "#6B7280";
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: "#FFFFFF",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    maxWidth: 400,
+    alignSelf: "center",
+    width: "100%",
     justifyContent: "center",
+    minHeight: "100%",
   },
   header: {
     alignItems: "center",
-    marginBottom: 60,
+    marginBottom: 48,
   },
   logo: {
-    width: 64,
-    height: 52,
+    width: 80,
+    height: 64,
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 15,
+    fontSize: 24,
+    fontWeight: "800",
+    color: PRIMARY_COLOR,
+    textAlign: "center",
+    marginBottom: 16,
   },
   subtitle: {
     fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: GRAY_600,
     textAlign: "center",
     lineHeight: 24,
-  },
-  form: {
-    marginBottom: 40,
+    paddingHorizontal: 16,
   },
   inputContainer: {
-    gap: 5,
+    marginBottom: 32,
   },
-  label: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "500",
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 25,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  leftIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    color: "white",
+    flex: 1,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    color: "#111827",
   },
   sendButton: {
-    backgroundColor: "white",
-    paddingVertical: 15,
+    backgroundColor: PRIMARY_COLOR,
     borderRadius: 25,
+    paddingVertical: 16,
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 32,
   },
   disabledButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    backgroundColor: "rgba(11, 26, 81, 0.5)",
   },
   sendButtonText: {
-    color: "#ff7e5f",
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
   },
-  backToSignInLink: {
+  backToSignInContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
   },
   backToSignInText: {
-    color: "rgba(255, 255, 255, 0.8)",
     fontSize: 14,
+    color: "rgb(19, 19, 19)",
+    fontWeight: "300",
   },
   linkText: {
-    color: "white",
-    fontWeight: "600",
+    fontSize: 14,
+    color: PRIMARY_COLOR,
+    fontWeight: "700",
   },
 });

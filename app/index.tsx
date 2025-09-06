@@ -50,8 +50,8 @@ export default function SplashScreen() {
 
     const checkUserStatus = async () => {
       try {
-        // Wait for 3 seconds (splash screen duration)
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Wait for 5 seconds (splash screen duration)
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
         if (variant === "admin") {
           router.replace("/admin-panel");
