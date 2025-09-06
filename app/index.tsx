@@ -50,38 +50,46 @@ export default function SplashScreen() {
 
     const checkUserStatus = async () => {
       try {
-        // Wait for 3 seconds (splash screen duration like in HTML)
-        setTimeout(async () => {
-          if (variant === "admin") {
-            router.replace("/admin-panel");
-            return;
-          }
+        // Wait for 3 seconds (splash screen duration)
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        if (variant === "admin") {
+          router.replace("/admin-panel");
+          return;
+        }
 
-          console.log('SPLASH SCREEN NAVIGATION STARTED');
+        console.log('SPLASH SCREEN NAVIGATION STARTED');
 
-          // Check if user is first time visitor
-          const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-          const userToken = await AsyncStorage.getItem("userToken");
+        // Check if user is first time visitor
+        const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
+        const userToken = await AsyncStorage.getItem("userToken");
 
-          if (!hasSeenOnboarding) {
-            // First time user - go to onboarding
-            router.replace("/onboarding/screen1");
-          } else if (userToken) {
-            // Returning user with valid token - go to role selection then dashboard
-            const userRole = await AsyncStorage.getItem("userRole");
-            if (userRole) {
-              router.replace(`/dashboard/${userRole}`);
-            } else {
-              router.replace("/auth/role-selection");
-            }
+        console.log('hasSeenOnboarding:', hasSeenOnboarding);
+        console.log('userToken:', userToken ? 'exists' : 'null');
+
+        if (!hasSeenOnboarding) {
+          // First time user - go to onboarding
+          console.log('Navigating to onboarding screen 1');
+          router.replace("/onboarding/screen1");
+        } else if (userToken) {
+          // Returning user with valid token - go to role selection then dashboard
+          const userRole = await AsyncStorage.getItem("userRole");
+          if (userRole) {
+            console.log('Navigating to dashboard:', userRole);
+            router.replace(`/dashboard/${userRole}`);
           } else {
-            // Returning user without token - go to sign in
+            console.log('Navigating to role selection');
             router.replace("/auth/role-selection");
           }
-        }, 3000);
+        } else {
+          // Returning user without token - go to sign in
+          console.log('Navigating to role selection');
+          router.replace("/auth/role-selection");
+        }
       } catch (error) {
         console.error("Error checking user status:", error);
         // On error, default to onboarding
+        console.log('Error occurred, navigating to onboarding');
         router.replace("/onboarding/screen1");
       }
     };
