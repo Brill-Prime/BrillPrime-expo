@@ -104,3 +104,6 @@ waitForPort = 5000
 
 [agent]
 expertMode = true
+
+[deployment]
+run = ["sh", "-c", "npx expo start --web --port 5000"]
