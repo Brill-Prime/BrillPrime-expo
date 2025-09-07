@@ -30,7 +30,7 @@ export default ({ config }) => {
     },
     web: {
       favicon: "./assets/images/logo.png",
-      bundler: "webpack"
+      bundler: "metro"
     },
     plugins: [
       "expo-router",
