@@ -98,4 +98,6 @@ outputType = "webview"
 expertMode = true
 
 [deployment]
-run = ["sh", "-c", "npx expo start --web --port 5000"]
+run = ["npx", "serve", "-s", "dist", "-l", "5000"]
+deploymentTarget = "autoscale"
+build = ["npx", "expo", "export", "-p", "web"]

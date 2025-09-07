@@ -2,6 +2,14 @@
 
 Brill Prime is a cross-platform mobile application built with Expo and React Native that serves as a multi-role marketplace ecosystem. The app supports three distinct user types: consumers (shoppers), merchants (sellers), and drivers (delivery partners). The application features a comprehensive onboarding flow, role-based authentication, and dedicated dashboards for each user type. Additionally, it includes a separate admin panel variant that can be deployed independently for administrative management.
 
+## Recent Changes - September 2025
+
+- **Development Setup**: Configured the project for Replit environment with proper port 5000 binding
+- **Web Configuration**: Set up Metro bundler for web development instead of webpack due to version compatibility issues
+- **Dependencies**: Updated Expo SDK and resolved package compatibility issues
+- **Deployment**: Configured for autoscale deployment with proper build and serve commands
+- **Host Configuration**: Set up the development server to use LAN host to work with Replit's proxy system
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
