@@ -29,8 +29,13 @@ export default ({ config }) => {
       }
     },
     web: {
-      favicon: "./assets/images/logo.png"
+      favicon: "./assets/images/logo.png",
+      bundler: "webpack"
     },
+    plugins: [
+      "expo-router",
+      "expo-web-browser"
+    ],
     entryPoint:
       variant === "admin"
         ? "./app/admin-panel.tsx"
