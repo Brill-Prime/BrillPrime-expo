@@ -74,24 +74,9 @@ export default function SplashScreen() {
           // First time user - go to onboarding
           console.log('Navigating to onboarding screen 1');
           router.replace("/onboarding/screen1");
-        } else if (userToken) {
-          // Returning user with valid token - go to role selection then dashboard
-          const userRole = await AsyncStorage.getItem("userRole");
-          if (userRole) {
-            console.log('Navigating to home/dashboard:', userRole);
-            // Route consumers to home page, others to dashboard
-            if (userRole === "consumer") {
-              router.replace("/home/consumer");
-            } else {
-              router.replace(`/dashboard/${userRole}`);
-            }
-          } else {
-            console.log('Navigating to role selection');
-            router.replace("/auth/role-selection");
-          }
         } else {
-          // Returning user without token - go to sign in
-          console.log('Navigating to role selection');
+          // Returning user - must authenticate regardless of token
+          console.log('Returning user - navigating to role selection for authentication');
           router.replace("/auth/role-selection");
         }
       } catch (error) {
