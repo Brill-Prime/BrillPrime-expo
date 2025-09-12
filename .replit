@@ -6,19 +6,11 @@ channel = "stable-24_05"
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 5001
-externalPort = 3001
-
-[[ports]]
-localPort = 8081
 externalPort = 80
 
 [[ports]]
-localPort = 8082
-externalPort = 3000
+localPort = 19006
+externalPort = 3002
 
 [workflows]
 runButton = "Project"
@@ -94,16 +86,18 @@ args = "Expo Dev Server"
 name = "Expo Dev Server"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --web --port 5000"
+args = "npx expo start --web --port 5000 --host lan"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 expertMode = true
 
 [deployment]
-run = ["sh", "-c", "npx expo start --web --port 5000"]
+run = ["npx", "serve", "-s", "dist", "-l", "5000"]
+deploymentTarget = "autoscale"
+build = ["npx", "expo", "export", "-p", "web"]
