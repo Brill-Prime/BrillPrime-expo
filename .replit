@@ -30,12 +30,8 @@ waitForPort = 5000
 outputType = "webview"
 
 [[ports]]
-localPort = 5000
+localPort = 8082
 externalPort = 80
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
 
 [deployment]
 deploymentTarget = "autoscale"
