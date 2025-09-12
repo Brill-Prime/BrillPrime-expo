@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ const { width, height } = Dimensions.get('window');
 export default function ConsumerHome() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const slideAnim = useState(new Animated.Value(-250))[0];
 
   useEffect(() => {
     loadUserData();
@@ -62,6 +64,21 @@ export default function ConsumerHome() {
     );
   };
 
+  const toggleMenu = () => {
+    const toValue = isMenuOpen ? -250 : 0;
+    Animated.timing(slideAnim, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleMenuItemPress = (item: string) => {
+    toggleMenu();
+    Alert.alert("Navigation", `Navigating to ${item}`);
+  };
+
   return (
     <View style={styles.container}>
       {/* Map Background */}
@@ -81,7 +98,87 @@ export default function ConsumerHome() {
           <Ionicons name="chevron-back" size={24} color="#666" />
         </TouchableOpacity>
       </View>
+
+      {/* Hamburger Menu Button */}
+      <View style={styles.hamburgerButtonContainer}>
+        <TouchableOpacity 
+          style={styles.hamburgerButton} 
+          onPress={toggleMenu}
+          activeOpacity={0.8}
+        >
+          <Ionicons name={isMenuOpen ? "close" : "menu"} size={24} color="#666" />
+        </TouchableOpacity>
+      </View>
       
+      {/* Navigation Sidebar */}
+      <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
+        <View style={styles.sidebarContent}>
+          <View style={styles.sidebarHeader}>
+            <Text style={styles.sidebarTitle}>Navigation</Text>
+            <Text style={styles.sidebarEmail}>{userEmail}</Text>
+          </View>
+          
+          <View style={styles.sidebarMenuItems}>
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Dashboard")}
+            >
+              <Ionicons name="home-outline" size={20} color="#4682B4" />
+              <Text style={styles.menuItemText}>Dashboard</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Orders")}
+            >
+              <Ionicons name="receipt-outline" size={20} color="#4682B4" />
+              <Text style={styles.menuItemText}>My Orders</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Favorites")}
+            >
+              <Ionicons name="heart-outline" size={20} color="#4682B4" />
+              <Text style={styles.menuItemText}>Favorites</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Profile")}
+            >
+              <Ionicons name="person-outline" size={20} color="#4682B4" />
+              <Text style={styles.menuItemText}>Profile</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Settings")}
+            >
+              <Ionicons name="settings-outline" size={20} color="#4682B4" />
+              <Text style={styles.menuItemText}>Settings</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Support")}
+            >
+              <Ionicons name="help-circle-outline" size={20} color="#4682B4" />
+              <Text style={styles.menuItemText}>Support</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Menu Overlay */}
+      {isMenuOpen && (
+        <TouchableOpacity 
+          style={styles.menuOverlay} 
+          onPress={toggleMenu}
+          activeOpacity={1}
+        />
+      )}
+
       {/* Location Setup Modal */}
       <View style={styles.locationModal}>
         {/* Location Icon */}
@@ -155,6 +252,87 @@ const styles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  hamburgerButtonContainer: {
+    width: 60,
+    height: 60,
+    position: 'absolute',
+    right: 30,
+    top: 60,
+    zIndex: 10,
+  },
+  hamburgerButton: {
+    width: 60,
+    height: 60,
+    backgroundColor: 'white',
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    width: 250,
+    height: height,
+    backgroundColor: 'white',
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 15,
+  },
+  sidebarContent: {
+    flex: 1,
+    paddingTop: 80,
+    paddingHorizontal: 20,
+  },
+  sidebarHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingBottom: 20,
+    marginBottom: 30,
+  },
+  sidebarTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4682B4',
+    marginBottom: 5,
+  },
+  sidebarEmail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  sidebarMenuItems: {
+    flex: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 5,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 15,
+    fontWeight: '500',
+  },
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 15,
   },
   locationModal: {
     position: 'absolute',
