@@ -2,7 +2,10 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Enable web support
-config.resolver.platforms = ['web', 'ios', 'android', 'native'];
+// Configure for web and enable proper hosting
+config.server = {
+  ...config.server,
+  host: '0.0.0.0',
+};
 
 module.exports = config;
