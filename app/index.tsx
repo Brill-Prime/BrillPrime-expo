@@ -78,8 +78,13 @@ export default function SplashScreen() {
           // Returning user with valid token - go to role selection then dashboard
           const userRole = await AsyncStorage.getItem("userRole");
           if (userRole) {
-            console.log('Navigating to dashboard:', userRole);
-            router.replace(`/dashboard/${userRole}`);
+            console.log('Navigating to home/dashboard:', userRole);
+            // Route consumers to home page, others to dashboard
+            if (userRole === "consumer") {
+              router.replace("/home/consumer");
+            } else {
+              router.replace(`/dashboard/${userRole}`);
+            }
           } else {
             console.log('Navigating to role selection');
             router.replace("/auth/role-selection");

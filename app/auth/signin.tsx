@@ -43,7 +43,12 @@ export default function SignIn() {
       const selectedRole = await AsyncStorage.getItem("selectedRole");
       await AsyncStorage.setItem("userRole", selectedRole || "consumer");
 
-      router.replace(`/dashboard/${selectedRole || "consumer"}`);
+      // Route consumers to home page, others to dashboard
+      if (selectedRole === "consumer") {
+        router.replace("/home/consumer");
+      } else {
+        router.replace(`/dashboard/${selectedRole || "consumer"}`);
+      }
     } catch (error) {
       console.error("Error signing in:", error);
       Alert.alert("Error", "Sign in failed. Please try again.");

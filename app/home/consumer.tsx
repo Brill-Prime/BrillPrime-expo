@@ -2,35 +2,27 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image'; // Use expo-image for better image handling
-import * as Location from 'expo-location';
-pop
+import { LinearGradient } from "expo-linear-gradient";
+
 const { width } = Dimensions.get('window');
 
 type Merchant = {
   name: string;
   commodity: string;
   distance: string;
+  rating: number;
 };
 
-export default function ConsumerDashboard() {
+export default function ConsumerHome() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [region, setRegion] = useState({
-    latitude: 6.5244,
-    longitude: 3.3792,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
   const [searchQuery, setSearchQuery] = useState("");
   const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     loadUserData();
+    loadMerchants();
   }, []);
 
   const loadUserData = async () => {
@@ -40,6 +32,18 @@ export default function ConsumerDashboard() {
     } catch (error) {
       console.error("Error loading user data:", error);
     }
+  };
+
+  const loadMerchants = () => {
+    // Sample merchant data
+    setMerchants([
+      { name: 'FreshMart Store', commodity: 'Groceries', distance: '0.5km', rating: 4.8 },
+      { name: 'Tech Hub Electronics', commodity: 'Electronics', distance: '1.2km', rating: 4.6 },
+      { name: 'Fashion Plaza', commodity: 'Clothing', distance: '0.8km', rating: 4.7 },
+      { name: 'QuickBite Restaurant', commodity: 'Food & Dining', distance: '0.3km', rating: 4.9 },
+      { name: 'Wellness Pharmacy', commodity: 'Healthcare', distance: '1.5km', rating: 4.5 },
+      { name: 'AutoCare Services', commodity: 'Automotive', distance: '2.0km', rating: 4.4 },
+    ]);
   };
 
   const handleSignOut = async () => {
@@ -64,137 +68,104 @@ export default function ConsumerDashboard() {
     );
   };
 
-  const handleMenuPress = () => {
+  const handleMerchantPress = (merchant: Merchant) => {
     Alert.alert(
-      "Menu",
-      "What would you like to do?",
+      merchant.name,
+      `Category: ${merchant.commodity}\nDistance: ${merchant.distance}\nRating: ${merchant.rating}/5.0`,
       [
-        { text: "Profile", onPress: () => console.log("Navigating to Profile...") },
-        { text: "Settings", onPress: () => console.log("Navigating to Settings...") },
-        { text: "Sign Out", onPress: handleSignOut, style: "destructive" },
+        { text: "View Details", onPress: () => console.log("View merchant details") },
         { text: "Cancel", style: "cancel" }
       ]
     );
   };
 
-  const handleSetAutomatically = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission denied', 'Location permission is required to set your location automatically.');
-      return;
-    }
-    let location = await Location.getCurrentPositionAsync({});
-    setUserLocation({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    });
-    setRegion({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
-    setShowMap(true);
-  };
-
-  // Dummy merchant data for demonstration
-  useEffect(() => {
-    setMerchants([
-      { name: 'Merchant A', commodity: 'Fuel', distance: '1.2km' },
-      { name: 'Merchant B', commodity: 'Food', distance: '2.5km' },
-      { name: 'Merchant C', commodity: 'Water', distance: '0.8km' },
-    ]);
-  }, []);
+  const filteredMerchants = merchants.filter(merchant =>
+    merchant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    merchant.commodity.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
-      {/* Background Map - Use MapView if possible, else fallback to static image */}
-      {showMap ? (
-        <View style={{ flex: 1 }}>
-          <MapView
-            style={styles.mapImage}
-            region={region}
-            showsUserLocation={true}
-          >
-            {userLocation && (
-              <Marker
-                coordinate={userLocation}
-                title="Your Location"
-              />
-            )}
-          </MapView>
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search for a commodity..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+      {/* Header */}
+      <LinearGradient
+        colors={['#667eea', '#764ba2']}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.greeting}>Welcome Back! 👋</Text>
+            <Text style={styles.email}>{userEmail}</Text>
           </View>
-          <ScrollView style={styles.merchantList}>
-            {merchants
-              .filter(m => m.commodity.toLowerCase().includes(searchQuery.toLowerCase()))
-              .map((m, idx) => (
-                <View key={idx} style={styles.merchantItem}>
-                  <Text style={styles.merchantName}>{m.name}</Text>
-                  <Text style={styles.merchantCommodity}>{m.commodity}</Text>
-                  <Text style={styles.merchantDistance}>{m.distance}</Text>
-                </View>
-              ))}
-          </ScrollView>
+          <TouchableOpacity style={styles.menuButton} onPress={handleSignOut}>
+            <Ionicons name="menu-outline" size={24} color="white" />
+          </TouchableOpacity>
         </View>
-      ) : (
-        // Fallback static image
-        <Image
-          style={styles.mapImage}
-          source={require('../../assets/images/map_background.png')}
-          contentFit="cover"
-          transition={1000}
-        />
-      )}
+      </LinearGradient>
 
-      {/* Content Area */}
-      <View style={styles.content}>
-        <Image
-          style={styles.locationIcon}
-          source={require('../../assets/images/globe_img.png')}
-        />
-        <Text style={styles.title}>Where are you?</Text>
-        <Text style={styles.description}>Set your location so you can see merchants available around you</Text>
-
-        <TouchableOpacity style={styles.autoButton} onPress={handleSetAutomatically}>
-          <Text style={styles.autoButtonText}>Set automatically</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.laterButton} onPress={() => router.push('/search')}>
-          <Text style={styles.laterButtonText}>Set later</Text>
-        </TouchableOpacity>
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <Text style={styles.sectionTitle}>Find Nearby Merchants</Text>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search merchants or categories..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
       </View>
 
-      {/* Header Overlay */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backButtonIcon}>&lt;</Text>
-        </TouchableOpacity>
-        <View style={styles.userInfo}>
-          {/* Removed greeting text as requested */}
-          <Text style={styles.email}>{userEmail}</Text>
-        </View>
-        {/* Functional Menu Bar */}
-        <View style={styles.menuBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
-            <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/profile')}>
-              <Ionicons name="person" size={24} color="white" />
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.actionScroll}>
+          {[
+            { icon: "storefront-outline", label: "All Stores", color: "#667eea" },
+            { icon: "restaurant-outline", label: "Food", color: "#f093fb" },
+            { icon: "car-outline", label: "Transport", color: "#4facfe" },
+            { icon: "medical-outline", label: "Health", color: "#a8e6cf" },
+            { icon: "shirt-outline", label: "Fashion", color: "#ffd93d" },
+            { icon: "phone-portrait-outline", label: "Tech", color: "#ff7e5f" },
+          ].map((action, index) => (
+            <TouchableOpacity key={index} style={styles.actionButton}>
+              <View style={[styles.actionIcon, { backgroundColor: action.color }]}>
+                <Ionicons name={action.icon as any} size={24} color="white" />
+              </View>
+              <Text style={styles.actionLabel}>{action.label}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/settings')}>
-              <Ionicons name="settings" size={24} color="white" />
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Merchants List */}
+      <View style={styles.merchantsSection}>
+        <Text style={styles.sectionTitle}>Nearby Merchants</Text>
+        <ScrollView style={styles.merchantsList} showsVerticalScrollIndicator={false}>
+          {filteredMerchants.map((merchant, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.merchantCard}
+              onPress={() => handleMerchantPress(merchant)}
+            >
+              <View style={styles.merchantInfo}>
+                <Text style={styles.merchantName}>{merchant.name}</Text>
+                <Text style={styles.merchantCategory}>{merchant.commodity}</Text>
+                <View style={styles.merchantDetails}>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="location-outline" size={14} color="#6B7280" />
+                    <Text style={styles.detailText}>{merchant.distance}</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.detailText}>{merchant.rating}</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuButton} onPress={handleSignOut}>
-              <Ionicons name="log-out" size={24} color="white" />
-            </TouchableOpacity>
-            {/* Add more menu buttons here as needed */}
-          </ScrollView>
-        </View>
+          ))}
+        </ScrollView>
       </View>
     </View>
   );
@@ -203,175 +174,139 @@ export default function ConsumerDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  mapImage: {
-    ...StyleSheet.absoluteFillObject,
-    height: 474,
-  },
-  content: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    height: 483,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
-    paddingHorizontal: 30,
-    paddingTop: 80,
-    alignItems: 'center',
-  },
-  locationIcon: {
-    position: 'absolute',
-    top: -50,
-    width: 100,
-    height: 100,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2c3e50',
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: 16,
-    fontWeight: '300',
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  autoButton: {
-    width: 256,
-    height: 48,
-    backgroundColor: '#667eea',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  autoButtonText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '500',
-  },
-  laterButton: {
-    width: 256,
-    height: 48,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: '#7f8c8d',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  laterButtonText: {
-    color: '#2c3e50',
-    fontSize: 20,
-    fontWeight: '500',
+    backgroundColor: "#F9FAFB",
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    paddingTop: 60,
   },
-  backButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  backButtonIcon: {
+  greeting: {
     fontSize: 24,
-    color: '#000',
-    top: -2,
-  },
-  userInfo: {
-    alignItems: 'flex-start',
-    flex: 1,
-    marginLeft: 10,
+    fontWeight: "bold",
+    color: "white",
+    marginBottom: 4,
   },
   email: {
     fontSize: 14,
     color: "rgba(255, 255, 255, 0.8)",
   },
-  menuBar: {
+  menuButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  searchSection: {
+    padding: 20,
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: -10,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    width: 200, // Increased width for better fit
-    justifyContent: 'flex-end',
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  menuButton: {
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1F2937",
+  },
+  quickActions: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  actionScroll: {
+    paddingVertical: 8,
+  },
+  actionButton: {
+    alignItems: "center",
+    marginRight: 16,
+    width: 70,
+  },
+  actionIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  searchContainer: {
-    position: 'absolute',
-    top: 480,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    zIndex: 2,
+  actionLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#6B7280",
+    textAlign: "center",
   },
-  searchInput: {
-    height: 48,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  merchantList: {
-    position: 'absolute',
-    top: 540,
-    left: 0,
-    right: 0,
-    maxHeight: 200,
-    paddingHorizontal: 20,
-  },
-  merchantItem: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
+  merchantsSection: {
+    flex: 1,
     padding: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  },
+  merchantsList: {
+    flex: 1,
+  },
+  merchantCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  merchantInfo: {
+    flex: 1,
   },
   merchantName: {
-    fontWeight: '700',
     fontSize: 16,
-    color: '#333',
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 4,
   },
-  merchantCommodity: {
+  merchantCategory: {
     fontSize: 14,
-    color: '#555',
+    color: "#6B7280",
+    marginBottom: 8,
   },
-  merchantDistance: {
+  merchantDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  detailText: {
     fontSize: 12,
-    color: '#888',
+    color: "#6B7280",
+    marginLeft: 4,
   },
 });
