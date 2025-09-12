@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Brill Prime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        .primary-blue { color: rgb(1, 14, 66); }
+        .secondary-blue { color: rgb(70, 130, 180); }
+        .active-indicator { color: rgb(101, 116, 255); }
+        .bg-secondary { background-color: rgb(70, 130, 180); }
+        
+        .montserrat {
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .page-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .page-indicator.active {
+            background-color: rgb(101, 116, 255);
+        }
+        
+        .page-indicator.inactive {
+            background-color: rgb(217, 217, 217);
+        }
+        
+        .next-button {
+            width: 67px;
+            height: 67px;
+            background-color: rgb(70, 130, 180);
+            border-radius: 50%;
+            box-shadow: 1px 2px 4.5px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .next-button:hover {
+            background-color: rgb(60, 120, 170);
+            transform: translateY(-1px);
+            box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .fade-in {
+            animation: fadeIn 1s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Custom Modal for navigation -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-3xl shadow-lg max-w-sm w-full mx-4">
+            <p id="modal-message" class="text-gray-700 mb-4 text-center montserrat"></p>
+            <div class="flex justify-center">
+                <button id="modal-close" class="px-6 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-full transition duration-200 montserrat">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="min-h-screen bg-white flex flex-col">
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col items-center justify-center px-8 py-12">
+            <!-- Illustration -->
+            <div class="mb-8 fade-in">
+                <img 
+                    src="https://pfst.cf2.poecdn.net/base/image/5b2fe9d7f53a82cfed54fa74671c29871b0d6a59ea31901b498d00ce4872362d?w=1000&h=1000" 
+                    alt="Welcome Illustration" 
+                    class="w-64 h-64 object-contain"
+                >
+            </div>
+
+            <!-- Title -->
+            <div class="text-center mb-6 fade-in">
+                <h1 class="primary-blue text-xl font-extrabold montserrat">Welcome to Brill Prime</h1>
+            </div>
+
+            <!-- Description -->
+            <div class="text-center mb-12 max-w-sm fade-in">
+                <p class="text-black text-base font-extralight montserrat leading-relaxed">
+                    Get started with Brill Prime! Manage your finances, make secure payments, and enjoy hassle-free transactions
+                </p>
+            </div>
+        </div>
+
+        <!-- Bottom Section -->
+        <div class="flex justify-between items-center px-12 pb-12">
+            <!-- Page Indicators -->
+            <div class="flex space-x-3">
+                <div class="page-indicator active"></div>
+                <div class="page-indicator inactive"></div>
+                <div class="page-indicator inactive"></div>
+            </div>
+
+            <!-- Next Button -->
+            <button onclick="goToNextScreen()" class="next-button">
+                <svg width="34" height="21" viewBox="0 0 34 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20.8661 20.9124L19.6577 19.8916L29.9286 11.2145H0.807739V9.78532H29.9286L19.6577 1.10824L20.8661 0.0874023L33.1911 10.4999L20.8661 20.9124Z" fill="white" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function showModal(message) {
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        document.getElementById('modal-close').addEventListener('click', function() {
+            document.getElementById('modal').classList.add('hidden');
+        });
+
+        function goToNextScreen() {
+            // Add a simple animation to the button
+            const button = document.querySelector('.next-button');
+            button.style.transform = 'scale(0.95)';
+            
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+                showModal('Moving to next onboarding screen...');
+            }, 150);
+            
+            // In a real app, this would navigate to the next onboarding screen
+            // or to the login options if this is the last screen
+        }
+
+        // Add touch feedback for mobile
+        document.querySelector('.next-button').addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+
+        document.querySelector('.next-button').addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+
+        // Simulate page progression (for demo purposes)
+        let currentPage = 0;
+        const totalPages = 3;
+
+        function updatePageIndicators() {
+            const indicators = document.querySelectorAll('.page-indicator');
+            indicators.forEach((indicator, index) => {
+                if (index === currentPage) {
+                    indicator.classList.add('active');
+                    indicator.classList.remove('inactive');
+                } else {
+                    indicator.classList.add('inactive');
+                    indicator.classList.remove('active');
+                }
+            });
+        }
+
+        // For demo: simulate advancing through pages
+        function simulatePageAdvancement() {
+            currentPage = (currentPage + 1) % totalPages;
+            updatePageIndicators();
+            
+            if (currentPage === 0) {
+                // Last page reached, would normally go to login options
+                showModal('Onboarding complete! Navigating to login options...');
+            }
+        }
+
+        // Optional: Auto-advance demo (remove in real app)
+        // setInterval(simulatePageAdvancement, 5000);
+    </script>
+</body>
+</html>
