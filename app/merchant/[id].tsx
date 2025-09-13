@@ -239,6 +239,7 @@ export default function MerchantDetailScreen() {
       case "fuel": return "car";
       case "market": return "basket";
       case "shopping": return "storefront";
+      case "electronics": return "phone-portrait";
       default: return "business";
     }
   };
@@ -426,6 +427,23 @@ export default function MerchantDetailScreen() {
               <Text style={styles.noReviewsText}>No reviews yet</Text>
               <Text style={styles.noReviewsSubtext}>Be the first to leave a review!</Text>
             </View>
+          )}
+          {merchant.reviews && merchant.reviews.length > 0 && (
+            <TouchableOpacity style={styles.viewAllReviewsButton} onPress={() => {
+              Alert.alert(
+                "All Reviews",
+                `View all ${merchant.reviewCount || merchant.reviews.length} reviews for ${merchant.name}`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "View All", onPress: () => {
+                    Alert.alert("Coming Soon", "Full reviews screen will be available in the next update!");
+                  }}
+                ]
+              );
+            }}>
+              <Text style={styles.viewAllReviewsText}>View All {merchant.reviewCount || merchant.reviews.length} Reviews</Text>
+              <Ionicons name="chevron-forward" size={16} color="#4682B4" />
+            </TouchableOpacity>
           )}
         </View>
 
@@ -763,5 +781,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 5,
+  },
+  viewAllReviewsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  viewAllReviewsText: {
+    fontSize: 14,
+    color: '#4682B4',
+    fontWeight: '500',
+    marginRight: 6,
   },
 });
