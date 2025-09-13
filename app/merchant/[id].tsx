@@ -46,6 +46,11 @@ const MERCHANT_DATA = {
       { name: "Diesel", price: "₦750/L", availability: "In Stock" },
       { name: "Engine Oil", price: "₦3,500", availability: "Limited Stock" }
     ],
+    reviews: [
+      { name: "John Doe", rating: 5, comment: "Excellent service and competitive prices. Highly recommended!", date: "2 days ago" },
+      { name: "Sarah Johnson", rating: 4, comment: "Good fuel quality but sometimes busy during peak hours.", date: "1 week ago" },
+      { name: "Mike Chen", rating: 5, comment: "Clean facility and friendly staff. Always my go-to station.", date: "2 weeks ago" }
+    ],
     images: [
       "https://images.unsplash.com/photo-1545262810-77515befe149?w=400",
       "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400"
@@ -78,6 +83,10 @@ const MERCHANT_DATA = {
       { name: "Rice (50kg)", price: "₦45,000", availability: "In Stock" },
       { name: "Onions", price: "₦600/kg", availability: "In Stock" }
     ],
+    reviews: [
+      { name: "Adaora Okafor", rating: 4, comment: "Fresh produce and reasonable prices. Love shopping here.", date: "3 days ago" },
+      { name: "David Williams", rating: 5, comment: "Great selection of local ingredients. Very authentic!", date: "1 week ago" }
+    ],
     images: [
       "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400",
       "https://images.unsplash.com/photo-1543083115-a0b5a0b7b16a?w=400"
@@ -109,6 +118,11 @@ const MERCHANT_DATA = {
       { name: "Samsung TV 55\"", price: "₦650,000", availability: "In Stock" },
       { name: "iPhone 15", price: "₦1,200,000", availability: "Limited Stock" },
       { name: "Nike Sneakers", price: "₦85,000", availability: "In Stock" }
+    ],
+    reviews: [
+      { name: "Grace Okoro", rating: 5, comment: "Amazing shopping experience! Great variety of stores and excellent customer service.", date: "1 day ago" },
+      { name: "James Smith", rating: 4, comment: "Good mall with lots of options. Parking can be challenging during weekends.", date: "4 days ago" },
+      { name: "Fatima Abdul", rating: 5, comment: "Love the food court and the electronics section. Always find what I need.", date: "1 week ago" }
     ],
     images: [
       "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400",
@@ -388,6 +402,31 @@ export default function MerchantDetailScreen() {
               </View>
             </View>
           ))}
+        </View>
+
+        {/* Customer Reviews */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Customer Reviews</Text>
+          {merchant.reviews && merchant.reviews.length > 0 ? (
+            merchant.reviews.map((review: any, index: number) => (
+              <View key={index} style={styles.reviewRow}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewerName}>{review.name}</Text>
+                  <View style={styles.reviewStars}>
+                    {renderStars(review.rating)}
+                  </View>
+                </View>
+                <Text style={styles.reviewText}>{review.comment}</Text>
+                <Text style={styles.reviewDate}>{review.date}</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.noReviewsContainer}>
+              <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
+              <Text style={styles.noReviewsText}>No reviews yet</Text>
+              <Text style={styles.noReviewsSubtext}>Be the first to leave a review!</Text>
+            </View>
+          )}
         </View>
 
         {/* Spacer for bottom actions */}
@@ -680,5 +719,49 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  reviewRow: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  reviewStars: {
+    flexDirection: 'row',
+  },
+  reviewText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  noReviewsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noReviewsText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+    marginTop: 15,
+  },
+  noReviewsSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 5,
   },
 });
