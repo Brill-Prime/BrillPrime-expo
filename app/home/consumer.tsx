@@ -15,6 +15,9 @@ export default function ConsumerHome() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(getScreenDimensions());
   const slideAnim = useState(new Animated.Value(-280))[0];
+  const [isLocationSet, setIsLocationSet] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [userAddress, setUserAddress] = useState("");
   const [region, setRegion] = useState({
     latitude: 6.5244, // Default to Lagos, Nigeria coordinates
     longitude: 3.3792,
@@ -29,6 +32,7 @@ export default function ConsumerHome() {
 
   useEffect(() => {
     loadUserData();
+    checkSavedLocation();
     
     // Listen for screen dimension changes (orientation, window resize)
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -47,6 +51,27 @@ export default function ConsumerHome() {
       setUserEmail(email || "user@brillprime.com");
     } catch (error) {
       console.error("Error loading user data:", error);
+    }
+  };
+
+  const checkSavedLocation = async () => {
+    try {
+      const savedLocation = await AsyncStorage.getItem("userLocation");
+      const savedAddress = await AsyncStorage.getItem("userAddress");
+      
+      if (savedLocation) {
+        const location = JSON.parse(savedLocation);
+        setRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
+        setIsLocationSet(true);
+        setUserAddress(savedAddress || "Your Location");
+      }
+    } catch (error) {
+      console.error("Error loading saved location:", error);
     }
   };
 
@@ -73,11 +98,13 @@ export default function ConsumerHome() {
         {
           text: "Allow",
           onPress: async () => {
+            setIsLoadingLocation(true);
             try {
               // Request location permissions
               let { status } = await Location.requestForegroundPermissionsAsync();
               if (status !== 'granted') {
                 Alert.alert("Permission Denied", "Location permission is required to find nearby merchants.");
+                setIsLoadingLocation(false);
                 return;
               }
 
@@ -87,17 +114,53 @@ export default function ConsumerHome() {
               });
               
               const { latitude, longitude } = location.coords;
-              setRegion({
+              const newRegion = {
                 latitude,
                 longitude,
                 latitudeDelta: 0.0922,
                 longitudeDelta: 0.0421,
-              });
+              };
               
-              Alert.alert("Success!", "Location has been set automatically. You can now discover merchants near you.");
+              setRegion(newRegion);
+              
+              // Get address from coordinates
+              let addressInfo = "Your Current Location";
+              try {
+                let reverseGeocode = await Location.reverseGeocodeAsync({
+                  latitude,
+                  longitude,
+                });
+                
+                if (reverseGeocode.length > 0) {
+                  const address = reverseGeocode[0];
+                  addressInfo = `${address.city || address.subregion || address.region}, ${address.country}`;
+                }
+              } catch (geoError) {
+                console.log("Geocoding failed, using default address");
+              }
+              
+              setUserAddress(addressInfo);
+              setIsLocationSet(true);
+              
+              // Save location to storage
+              await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
+              await AsyncStorage.setItem("userAddress", addressInfo);
+              
+              setIsLoadingLocation(false);
+              Alert.alert("Success!", `Location set to ${addressInfo}. You can now discover merchants near you.`);
             } catch (error) {
               console.error("Error getting location:", error);
-              Alert.alert("Error", "Unable to get your location. Please try again or set manually.");
+              setIsLoadingLocation(false);
+              
+              let errorMessage = "Unable to get your location. Please try again or set manually.";
+              const err = error as any;
+              if (err.code === 'E_LOCATION_TIMEOUT') {
+                errorMessage = "Location request timed out. Please check your GPS and try again.";
+              } else if (err.code === 'E_LOCATION_UNAVAILABLE') {
+                errorMessage = "Location services are not available. Please enable GPS and try again.";
+              }
+              
+              Alert.alert("Error", errorMessage);
             }
           }
         }
@@ -326,6 +389,7 @@ export default function ConsumerHome() {
       )}
 
       {/* Location Setup Modal */}
+      {!isLocationSet && (
       <View style={styles.locationModal}>
         {/* Location Icon */}
         <View style={styles.locationIcon}>
@@ -361,6 +425,17 @@ export default function ConsumerHome() {
           </View>
         </View>
       </View>
+      )}
+
+      {/* Loading Overlay */}
+      {isLoadingLocation && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Getting your location...</Text>
+            <Text style={styles.loadingSubtext}>This may take a few seconds</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -616,5 +691,36 @@ const styles = StyleSheet.create({
     color: '#131313',
     fontSize: 20,
     fontWeight: '500',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  loadingContainer: {
+    backgroundColor: 'white',
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    maxWidth: 280,
+    marginHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
