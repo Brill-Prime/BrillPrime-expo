@@ -6,13 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 
-const { width, height } = Dimensions.get('window');
+// Get initial screen dimensions
+const getScreenDimensions = () => Dimensions.get('window');
 
 export default function ConsumerHome() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const slideAnim = useState(new Animated.Value(-250))[0];
+  const [screenDimensions, setScreenDimensions] = useState(getScreenDimensions());
+  const slideAnim = useState(new Animated.Value(-280))[0];
   const [region, setRegion] = useState({
     latitude: 6.5244, // Default to Lagos, Nigeria coordinates
     longitude: 3.3792,
@@ -27,6 +29,16 @@ export default function ConsumerHome() {
 
   useEffect(() => {
     loadUserData();
+    
+    // Listen for screen dimension changes (orientation, window resize)
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+      // Adjust sidebar animation value based on new screen width
+      const sidebarWidth = Math.min(280, window.width * 0.8);
+      slideAnim.setValue(isMenuOpen ? 0 : -sidebarWidth);
+    });
+
+    return () => subscription?.remove();
   }, []);
 
   const loadUserData = async () => {
@@ -102,7 +114,8 @@ export default function ConsumerHome() {
   };
 
   const toggleMenu = () => {
-    const toValue = isMenuOpen ? -250 : 0;
+    const sidebarWidth = Math.min(280, screenDimensions.width * 0.8);
+    const toValue = isMenuOpen ? -sidebarWidth : 0;
     Animated.timing(slideAnim, {
       toValue,
       duration: 300,
@@ -347,8 +360,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mapBackground: {
-    width: width,
-    height: height * 0.53,
+    width: '100%',
+    height: '53%',
     position: 'absolute',
     left: 0,
     top: 0,
@@ -398,8 +411,8 @@ const styles = StyleSheet.create({
   sidebar: {
     position: 'absolute',
     top: 0,
-    width: 280,
-    height: height,
+    width: Math.min(280, Dimensions.get('window').width * 0.8),
+    height: '100%',
     backgroundColor: 'white',
     zIndex: 20,
     shadowColor: '#000',
@@ -495,7 +508,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 0.54,
+    height: '47%',
     backgroundColor: 'white',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -504,7 +517,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 10,
-    paddingHorizontal: 30,
+    paddingHorizontal: '8%',
     paddingTop: 80,
     paddingBottom: 40,
     alignItems: 'center',
@@ -555,11 +568,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   buttonContainer: {
-    width: 268,
+    width: '100%',
+    maxWidth: 300,
     gap: 20,
   },
   setAutomaticallyBtn: {
-    width: 268,
+    width: '100%',
     height: 52,
     backgroundColor: '#4682B4',
     borderRadius: 30,
@@ -577,7 +591,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   setLaterBtn: {
-    width: 268,
+    width: '100%',
     height: 52,
     borderRadius: 30,
     borderWidth: 1,
