@@ -113,7 +113,34 @@ export default function ConsumerHome() {
 
   const handleMenuItemPress = (item: string) => {
     toggleMenu();
-    Alert.alert("Navigation", `Navigating to ${item}`);
+    
+    switch (item) {
+      case "Dashboard":
+        router.push("/dashboard/consumer");
+        break;
+      case "Orders":
+        // Future implementation
+        Alert.alert("Coming Soon", "Orders feature will be available soon!");
+        break;
+      case "Favorites":
+        // Future implementation
+        Alert.alert("Coming Soon", "Favorites feature will be available soon!");
+        break;
+      case "Profile":
+        // Future implementation
+        Alert.alert("Coming Soon", "Profile feature will be available soon!");
+        break;
+      case "Settings":
+        // Future implementation
+        Alert.alert("Coming Soon", "Settings feature will be available soon!");
+        break;
+      case "Support":
+        // Future implementation
+        Alert.alert("Coming Soon", "Support feature will be available soon!");
+        break;
+      default:
+        Alert.alert("Navigation", `Navigating to ${item}`);
+    }
   };
 
   return (
