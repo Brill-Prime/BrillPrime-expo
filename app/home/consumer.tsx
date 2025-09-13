@@ -132,6 +132,10 @@ export default function ConsumerHome() {
         // Future implementation
         Alert.alert("Coming Soon", "Account management feature will be available soon!");
         break;
+      case "Notifications":
+        // Future implementation
+        Alert.alert("Coming Soon", "Notifications feature will be available soon!");
+        break;
       case "Transaction History":
         // Future implementation
         Alert.alert("Coming Soon", "Transaction history feature will be available soon!");
@@ -249,6 +253,14 @@ export default function ConsumerHome() {
               onPress={() => handleMenuItemPress("Account")}
             >
               <Text style={styles.menuItemText}>Account</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("Notifications")}
+            >
+              <Text style={styles.menuItemText}>Notifications</Text>
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
             
