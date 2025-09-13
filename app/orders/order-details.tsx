@@ -56,6 +56,18 @@ export default function OrderDetails() {
     return () => subscription?.remove();
   }, [id]);
 
+  // Calculate responsive dimensions
+  const isSmallScreen = screenDimensions.width < 400;
+  const isMediumScreen = screenDimensions.width >= 400 && screenDimensions.width < 600;
+  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+  const responsiveFontSize = {
+    title: isSmallScreen ? 18 : 22,
+    orderTitle: isSmallScreen ? 18 : 20,
+    regular: isSmallScreen ? 14 : 15,
+    small: isSmallScreen ? 12 : 13,
+    price: isSmallScreen ? 16 : 18,
+  };
+
   const loadOrderDetails = async () => {
     try {
       // Mock data - replace with actual API call
@@ -173,85 +185,126 @@ export default function OrderDetails() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
+          <Ionicons name="chevron-back" size={isSmallScreen ? 20 : 24} color="#1b1b1b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order History Detail</Text>
+        <Text style={[styles.headerTitle, { fontSize: responsiveFontSize.title }]}>Order History Detail</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Detail Section */}
-        <View style={styles.orderDetail}>
-          <View style={styles.itemIcon}>
-            <Text style={styles.itemIconText}>{getItemIcon(order.itemType)}</Text>
+        <View style={[styles.orderDetail, { paddingHorizontal: responsivePadding }]}>
+          <View style={[styles.itemIcon, { 
+            width: isSmallScreen ? 60 : 80, 
+            height: isSmallScreen ? 60 : 80 
+          }]}>
+            <Text style={[styles.itemIconText, { fontSize: isSmallScreen ? 30 : 40 }]}>
+              {getItemIcon(order.itemType)}
+            </Text>
           </View>
-          <Text style={styles.orderTitle}>{order.items[0].name}</Text>
+          <Text style={[styles.orderTitle, { fontSize: responsiveFontSize.orderTitle }]}>
+            {order.items[0].name}
+          </Text>
           <View style={styles.orderQtyBadge}>
-            <Text style={styles.orderQtyText}>{order.quantity}</Text>
+            <Text style={[styles.orderQtyText, { fontSize: responsiveFontSize.small }]}>
+              {order.quantity}
+            </Text>
           </View>
-          <Text style={styles.orderPrice}>₦{order.totalAmount.toLocaleString()}.00</Text>
+          <Text style={[styles.orderPrice, { fontSize: responsiveFontSize.price }]}>
+            ₦{order.totalAmount.toLocaleString()}.00
+          </Text>
         </View>
 
         {/* Details Section */}
-        <View style={[styles.details, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+        <View style={[styles.details, { paddingHorizontal: responsivePadding }]}>
           <View style={styles.locationContainer}>
-            <Text style={styles.locationIcon}>📍</Text>
-            <Text style={styles.locationText}>{order.location}</Text>
+            <Text style={[styles.locationIcon, { fontSize: responsiveFontSize.regular }]}>📍</Text>
+            <Text style={[styles.locationText, { fontSize: responsiveFontSize.regular }]}>
+              {order.location}
+            </Text>
           </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Time taken</Text>
-            <Text style={styles.detailValue}>{order.timeTaken || 'N/A'}</Text>
+            <Text style={[styles.detailLabel, { fontSize: responsiveFontSize.regular }]}>Time taken</Text>
+            <Text style={[styles.detailValue, { fontSize: responsiveFontSize.regular }]}>
+              {order.timeTaken || 'N/A'}
+            </Text>
           </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date</Text>
-            <Text style={styles.detailValue}>{formatDate(order.orderDate)}</Text>
+            <Text style={[styles.detailLabel, { fontSize: responsiveFontSize.regular }]}>Date</Text>
+            <Text style={[styles.detailValue, { fontSize: responsiveFontSize.regular }]}>
+              {formatDate(order.orderDate)}
+            </Text>
           </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Time of Delivery</Text>
-            <Text style={styles.detailValue}>{order.deliveryTime || 'N/A'}</Text>
+            <Text style={[styles.detailLabel, { fontSize: responsiveFontSize.regular }]}>Time of Delivery</Text>
+            <Text style={[styles.detailValue, { fontSize: responsiveFontSize.regular }]}>
+              {order.deliveryTime || 'N/A'}
+            </Text>
           </View>
         </View>
 
         {/* Purchase Summary */}
-        <View style={[styles.summary, { marginHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
-          <Text style={styles.summaryTitle}>Purchase Summary</Text>
+        <View style={[styles.summary, { 
+          marginHorizontal: responsivePadding,
+          padding: isSmallScreen ? 15 : 20 
+        }]}>
+          <Text style={[styles.summaryTitle, { fontSize: isSmallScreen ? 16 : 18 }]}>
+            Purchase Summary
+          </Text>
           
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₦{order.subtotal.toLocaleString()}.00</Text>
+            <Text style={[styles.summaryLabel, { fontSize: responsiveFontSize.regular }]}>Subtotal</Text>
+            <Text style={[styles.summaryValue, { fontSize: responsiveFontSize.regular }]}>
+              ₦{order.subtotal.toLocaleString()}.00
+            </Text>
           </View>
           
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery fee</Text>
-            <Text style={styles.summaryValue}>₦{order.deliveryFee.toLocaleString()}.00</Text>
+            <Text style={[styles.summaryLabel, { fontSize: responsiveFontSize.regular }]}>Delivery fee</Text>
+            <Text style={[styles.summaryValue, { fontSize: responsiveFontSize.regular }]}>
+              ₦{order.deliveryFee.toLocaleString()}.00
+            </Text>
           </View>
           
           <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₦{order.totalAmount.toLocaleString()}.00</Text>
+            <Text style={[styles.totalLabel, { fontSize: responsiveFontSize.regular }]}>Total</Text>
+            <Text style={[styles.totalValue, { fontSize: responsiveFontSize.regular }]}>
+              ₦{order.totalAmount.toLocaleString()}.00
+            </Text>
           </View>
         </View>
 
         {/* Contact Driver */}
-        <View style={[styles.contactDriver, { marginHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+        <View style={[styles.contactDriver, { 
+          marginHorizontal: responsivePadding,
+          padding: isSmallScreen ? 10 : 12 
+        }]}>
           <View style={styles.driverInfo}>
-            <Text style={styles.contactText}>Contact driver</Text>
-            <View style={styles.driverAvatar}>
-              <Text style={styles.driverAvatarText}>M</Text>
+            <Text style={[styles.contactText, { fontSize: responsiveFontSize.small }]}>
+              Contact driver
+            </Text>
+            <View style={[styles.driverAvatar, { 
+              width: isSmallScreen ? 25 : 30, 
+              height: isSmallScreen ? 25 : 30,
+              borderRadius: isSmallScreen ? 12.5 : 15 
+            }]}>
+              <Text style={[styles.driverAvatarText, { fontSize: responsiveFontSize.small }]}>M</Text>
             </View>
-            <Text style={styles.driverName}>{order.driverName || 'Mike'}</Text>
+            <Text style={[styles.driverName, { fontSize: responsiveFontSize.small }]}>
+              {order.driverName || 'Mike'}
+            </Text>
           </View>
           <View style={styles.driverActions}>
             <TouchableOpacity onPress={() => handleContactDriver('message')}>
-              <Text style={styles.actionIcon}>💬</Text>
+              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>💬</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleContactDriver('call')}>
-              <Text style={styles.actionIcon}>📞</Text>
+              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>📞</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -269,12 +322,26 @@ export default function OrderDetails() {
         </View>
 
         {/* Action Buttons */}
-        <View style={[styles.actions, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
-          <TouchableOpacity style={styles.reportButton} onPress={handleReportIssue}>
-            <Text style={styles.reportButtonText}>Report Issue</Text>
+        <View style={[styles.actions, { 
+          paddingHorizontal: responsivePadding,
+          flexDirection: isSmallScreen ? 'column' : 'row',
+          gap: isSmallScreen ? 15 : 20 
+        }]}>
+          <TouchableOpacity style={[styles.reportButton, { 
+            flex: isSmallScreen ? 0 : 1,
+            paddingVertical: isSmallScreen ? 10 : 12 
+          }]} onPress={handleReportIssue}>
+            <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
+              Report Issue
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShareReceipt}>
-            <Text style={styles.shareButtonText}>Share Receipt</Text>
+          <TouchableOpacity style={[styles.shareButton, { 
+            flex: isSmallScreen ? 0 : 1,
+            paddingVertical: isSmallScreen ? 10 : 12 
+          }]} onPress={handleShareReceipt}>
+            <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
+              Share Receipt
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -299,12 +366,12 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 15,
     backgroundColor: '#fff',
+    minHeight: 80,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 22,
     fontWeight: 'bold',
     color: '#1b1b1b',
     textAlign: 'center',
@@ -321,8 +388,6 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   itemIcon: {
-    width: 80,
-    height: 80,
     backgroundColor: '#2f75c2',
     borderRadius: 12,
     justifyContent: 'center',
@@ -330,13 +395,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   itemIconText: {
-    fontSize: 40,
+    // fontSize handled dynamically
   },
   orderTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
     color: '#1b1b1b',
     marginBottom: 5,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   orderQtyBadge: {
     borderWidth: 1,
@@ -492,31 +558,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   actions: {
-    flexDirection: 'row',
-    gap: 20,
     paddingBottom: 30,
   },
   reportButton: {
-    flex: 1,
     backgroundColor: '#f2f4f8',
-    paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
   },
   reportButtonText: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#2f75c2',
   },
   shareButton: {
-    flex: 1,
     backgroundColor: '#0b1437',
-    paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
   },
   shareButtonText: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
   },
