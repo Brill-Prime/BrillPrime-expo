@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,16 +22,26 @@ interface Order {
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   orderDate: string;
   estimatedDelivery?: string;
+  location: string;
+  quantity: string;
+  itemType: string;
 }
 
 export default function ConsumerOrders() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
     loadOrders();
+    
+    // Listen for screen dimension changes
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+
+    return () => subscription?.remove();
   }, []);
 
   const loadOrders = async () => {
@@ -40,36 +51,46 @@ export default function ConsumerOrders() {
         {
           id: '1001',
           merchantName: 'Lagos Fuel Station',
-          items: ['Premium Petrol - 20L'],
-          totalAmount: 3400,
-          status: 'preparing',
-          orderDate: '2024-01-15T10:30:00',
-          estimatedDelivery: '2024-01-15T11:00:00',
+          items: ['Premium Petrol'],
+          totalAmount: 30000,
+          status: 'delivered',
+          orderDate: '2024-01-15T17:00:00',
+          location: 'Rayfield, Jos',
+          quantity: '1 litre',
+          itemType: 'petrol',
         },
         {
           id: '1002',
           merchantName: 'Victoria Island Market',
-          items: ['Rice - 5kg', 'Beans - 2kg', 'Palm Oil - 1L'],
-          totalAmount: 8500,
-          status: 'confirmed',
-          orderDate: '2024-01-15T09:15:00',
-          estimatedDelivery: '2024-01-15T12:00:00',
+          items: ['Premium Petrol'],
+          totalAmount: 30000,
+          status: 'cancelled',
+          orderDate: '2024-01-15T17:00:00',
+          location: 'Rayfield, Jos',
+          quantity: '1 litre',
+          itemType: 'petrol',
         },
         {
           id: '1003',
           merchantName: 'Ikeja Shopping Mall',
-          items: ['Groceries Bundle'],
-          totalAmount: 12000,
+          items: ['Diesel'],
+          totalAmount: 25000,
           status: 'delivered',
           orderDate: '2024-01-14T14:20:00',
+          location: 'Victoria Island, Lagos',
+          quantity: '2 litres',
+          itemType: 'diesel',
         },
         {
           id: '1004',
           merchantName: 'Lagos Fuel Station',
-          items: ['Diesel - 15L'],
-          totalAmount: 4500,
-          status: 'cancelled',
+          items: ['Premium Petrol'],
+          totalAmount: 45000,
+          status: 'preparing',
           orderDate: '2024-01-13T16:45:00',
+          location: 'Ikeja, Lagos',
+          quantity: '1.5 litres',
+          itemType: 'petrol',
         },
       ];
       setOrders(mockOrders);
@@ -91,133 +112,130 @@ export default function ConsumerOrders() {
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return '#f39c12';
-      case 'confirmed': return '#3498db';
-      case 'preparing': return '#e67e22';
-      case 'ready': return '#2ecc71';
-      case 'delivered': return '#27ae60';
-      case 'cancelled': return '#e74c3c';
-      default: return '#95a5a6';
+      case 'delivered': return { bg: '#e8f8ec', text: '#2ecc71', border: '#2ecc71' };
+      case 'cancelled': return { bg: '#fdeaea', text: '#e74c3c', border: '#e74c3c' };
+      case 'preparing': return { bg: '#fff3cd', text: '#f39c12', border: '#f39c12' };
+      case 'confirmed': return { bg: '#d1ecf1', text: '#3498db', border: '#3498db' };
+      case 'pending': return { bg: '#f8f9fa', text: '#6c757d', border: '#6c757d' };
+      default: return { bg: '#f8f9fa', text: '#95a5a6', border: '#95a5a6' };
     }
   };
 
   const getStatusText = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return 'Pending';
-      case 'confirmed': return 'Confirmed';
-      case 'preparing': return 'Preparing';
-      case 'ready': return 'Ready';
-      case 'delivered': return 'Delivered';
+      case 'delivered': return 'Completed';
       case 'cancelled': return 'Cancelled';
+      case 'preparing': return 'Preparing';
+      case 'confirmed': return 'Confirmed';
+      case 'pending': return 'Pending';
       default: return status;
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    if (activeTab === 'active') {
-      return ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status);
-    } else {
-      return ['delivered', 'cancelled'].includes(order.status);
+  const getItemIcon = (itemType: string) => {
+    switch (itemType) {
+      case 'petrol':
+      case 'diesel':
+        return '⛽';
+      case 'food':
+        return '🍽️';
+      case 'groceries':
+        return '🛒';
+      default:
+        return '📦';
     }
-  });
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
       day: 'numeric',
+      month: 'long',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    });
+      hour12: true,
+    };
+    const formatted = date.toLocaleDateString('en-US', options);
+    return formatted.replace(' at ', ' — ');
   };
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#2c3e50" />
+          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Orders</Text>
+        <Text style={styles.headerTitle}>Order History</Text>
         <View style={styles.placeholder} />
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'active' && styles.activeTab]}
-          onPress={() => setActiveTab('active')}
-        >
-          <Text style={[styles.tabText, activeTab === 'active' && styles.activeTabText]}>
-            Active Orders
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'completed' && styles.activeTab]}
-          onPress={() => setActiveTab('completed')}
-        >
-          <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>
-            Completed
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {/* Orders List */}
       <ScrollView
-        style={styles.ordersList}
+        style={[styles.ordersList, { paddingHorizontal: Math.max(15, screenDimensions.width * 0.04) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        {filteredOrders.length === 0 ? (
+        {orders.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="receipt-outline" size={64} color="#bdc3c7" />
-            <Text style={styles.emptyStateText}>
-              {activeTab === 'active' ? 'No active orders' : 'No completed orders'}
-            </Text>
+            <Text style={styles.emptyStateText}>No orders found</Text>
             <Text style={styles.emptyStateSubtext}>
-              {activeTab === 'active' 
-                ? 'Start shopping to see your orders here' 
-                : 'Your order history will appear here'
-              }
+              Your order history will appear here
             </Text>
           </View>
         ) : (
-          filteredOrders.map((order) => (
-            <TouchableOpacity
-              key={order.id}
-              style={styles.orderCard}
-              onPress={() => handleOrderPress(order.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.orderHeader}>
-                <View>
-                  <Text style={styles.merchantName}>{order.merchantName}</Text>
-                  <Text style={styles.orderId}>Order #{order.id}</Text>
+          orders.map((order) => {
+            const statusColors = getStatusColor(order.status);
+            return (
+              <TouchableOpacity
+                key={order.id}
+                style={styles.orderCard}
+                onPress={() => handleOrderPress(order.id)}
+                activeOpacity={0.7}
+              >
+                {/* Order Top */}
+                <View style={styles.orderTop}>
+                  <View style={styles.orderInfo}>
+                    <View style={styles.itemIcon}>
+                      <Text style={styles.itemIconText}>{getItemIcon(order.itemType)}</Text>
+                    </View>
+                    <View style={styles.orderTitleContainer}>
+                      <Text style={styles.orderTitle}>
+                        {order.items[0]}
+                        <Text style={styles.orderQty}> {order.quantity}</Text>
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.orderPrice}>₦{order.totalAmount.toLocaleString()}.00</Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-                  <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
-                </View>
-              </View>
 
-              <View style={styles.orderItems}>
-                {order.items.map((item, index) => (
-                  <Text key={index} style={styles.itemText}>• {item}</Text>
-                ))}
-              </View>
+                {/* Divider */}
+                <View style={styles.divider} />
 
-              <View style={styles.orderFooter}>
-                <View>
-                  <Text style={styles.orderDate}>{formatDate(order.orderDate)}</Text>
-                  {order.estimatedDelivery && (
-                    <Text style={styles.estimatedDelivery}>
-                      Est. delivery: {formatDate(order.estimatedDelivery)}
-                    </Text>
-                  )}
+                {/* Order Bottom */}
+                <View style={styles.orderBottom}>
+                  <View style={styles.locationContainer}>
+                    <Text style={styles.locationIcon}>📍</Text>
+                    <Text style={styles.location}>{order.location}</Text>
+                  </View>
+                  <View style={styles.statusDateContainer}>
+                    <View style={[styles.statusBadge, { 
+                      backgroundColor: statusColors.bg, 
+                      borderColor: statusColors.border 
+                    }]}>
+                      <Text style={[styles.statusText, { color: statusColors.text }]}>
+                        {getStatusText(order.status)}
+                      </Text>
+                    </View>
+                    <Text style={styles.datetime}>{formatDate(order.orderDate)}</Text>
+                  </View>
                 </View>
-                <Text style={styles.totalAmount}>₦{order.totalAmount.toLocaleString()}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -227,56 +245,31 @@ export default function ConsumerOrders() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: 'white',
+    paddingBottom: 15,
+    backgroundColor: '#f5f5f5',
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#1b1b1b',
+    textAlign: 'center',
+    flex: 1,
   },
   placeholder: {
     width: 40,
   },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  activeTab: {
-    backgroundColor: '#4682B4',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#7f8c8d',
-  },
-  activeTabText: {
-    color: 'white',
-  },
   ordersList: {
     flex: 1,
-    paddingHorizontal: 20,
   },
   emptyState: {
     alignItems: 'center',
@@ -297,67 +290,102 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#dcdcdc',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 15,
+    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
-  orderHeader: {
+  orderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  merchantName: {
+  orderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  itemIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#2f75c2',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  itemIconText: {
+    fontSize: 20,
+  },
+  orderTitleContainer: {
+    flex: 1,
+  },
+  orderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
+  },
+  orderQty: {
+    fontSize: 13,
+    color: '#2f75c2',
+    borderWidth: 1,
+    borderColor: '#2f75c2',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 5,
+  },
+  orderPrice: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: 'bold',
+    color: '#1b1b1b',
   },
-  orderId: {
-    fontSize: 12,
-    color: '#7f8c8d',
-    marginTop: 2,
+  divider: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    marginVertical: 10,
+  },
+  orderBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  locationIcon: {
+    fontSize: 14,
+    marginRight: 5,
+  },
+  location: {
+    fontSize: 14,
+    color: '#555',
+  },
+  statusDateContainer: {
+    alignItems: 'flex-end',
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'white',
-    textTransform: 'uppercase',
-  },
-  orderItems: {
-    marginBottom: 12,
-  },
-  itemText: {
-    fontSize: 14,
-    color: '#34495e',
+    borderWidth: 1,
     marginBottom: 2,
   },
-  orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  orderDate: {
-    fontSize: 12,
-    color: '#7f8c8d',
-  },
-  estimatedDelivery: {
-    fontSize: 11,
-    color: '#e67e22',
-    marginTop: 2,
-  },
-  totalAmount: {
-    fontSize: 16,
+  statusText: {
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#2c3e50',
+  },
+  datetime: {
+    fontSize: 14,
+    color: '#777',
   },
 });
