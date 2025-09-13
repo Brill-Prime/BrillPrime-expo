@@ -94,15 +94,8 @@ export default function SearchScreen() {
   };
 
   const handleMerchantPress = (merchant: any) => {
-    Alert.alert(
-      merchant.name,
-      `Location: ${merchant.location}\nDistance: ${merchant.distance}\nRating: ${merchant.rating}/5.0\n\nWould you like to view details or get directions?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "View Details", onPress: () => Alert.alert("Coming Soon", "Merchant details coming soon!") },
-        { text: "Get Directions", onPress: () => Alert.alert("Coming Soon", "Navigation coming soon!") }
-      ]
-    );
+    // Navigate to merchant detail page
+    router.push(`/merchant/${merchant.id}`);
   };
 
   const handleCommodityPress = (commodity: any) => {
