@@ -7,108 +7,157 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-interface OrderDetails {
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface Order {
   id: string;
   merchantName: string;
   merchantContact: string;
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-  }>;
+  items: OrderItem[];
+  totalAmount: number;
   subtotal: number;
   deliveryFee: number;
-  totalAmount: number;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   orderDate: string;
   estimatedDelivery?: string;
   deliveryAddress: string;
   paymentMethod: string;
   orderNotes?: string;
+  location: string;
+  quantity: string;
+  itemType: string;
+  timeTaken?: string;
+  deliveryTime?: string;
+  driverName?: string;
 }
 
 export default function OrderDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
     loadOrderDetails();
+    
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+
+    return () => subscription?.remove();
   }, [id]);
 
-  const loadOrderDetails = () => {
-    // Mock data - replace with actual API call
-    const mockOrder: OrderDetails = {
-      id: id as string,
-      merchantName: 'Lagos Fuel Station',
-      merchantContact: '+234 801 234 5678',
-      items: [
-        { name: 'Premium Petrol', quantity: 20, price: 170 },
-      ],
-      subtotal: 3400,
-      deliveryFee: 0,
-      totalAmount: 3400,
-      status: 'preparing',
-      orderDate: '2024-01-15T10:30:00',
-      estimatedDelivery: '2024-01-15T11:00:00',
-      deliveryAddress: '123 Victoria Island, Lagos',
-      paymentMethod: 'Credit Card ****1234',
-      orderNotes: 'Please call when you arrive',
-    };
-    setOrder(mockOrder);
+  const loadOrderDetails = async () => {
+    try {
+      // Mock data - replace with actual API call
+      const mockOrder: Order = {
+        id: id as string,
+        merchantName: 'Lagos Fuel Station',
+        merchantContact: '+234 803 123 4567',
+        items: [{ name: 'Petrol', quantity: 1, price: 30000 }],
+        totalAmount: 30500,
+        subtotal: 30000,
+        deliveryFee: 500,
+        status: id === '1002' ? 'cancelled' : id === '1004' ? 'pending' : 'delivered',
+        orderDate: '2024-01-15T17:00:00',
+        deliveryAddress: 'Rayfield, Jos',
+        paymentMethod: 'Card Payment',
+        location: 'Rayfield, Jos',
+        quantity: '1 litre',
+        itemType: 'petrol',
+        timeTaken: '15 mins',
+        deliveryTime: '05:00pm',
+        driverName: 'Mike',
+      };
+      setOrder(mockOrder);
+    } catch (error) {
+      console.error('Error loading order details:', error);
+      Alert.alert('Error', 'Failed to load order details');
+    }
   };
 
-  const handleCancelOrder = () => {
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Order Cancelled', 'Your order has been cancelled successfully.');
-            router.back();
-          },
-        },
-      ]
-    );
+  const handleReportIssue = () => {
+    Alert.alert('Report Issue', 'This feature will be available soon.');
   };
 
-  const handleContactMerchant = () => {
-    Alert.alert('Contact Merchant', `Call ${order?.merchantContact}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Call', onPress: () => console.log('Calling merchant...') },
-    ]);
+  const handleShareReceipt = () => {
+    Alert.alert('Share Receipt', 'Receipt sharing feature coming soon.');
   };
 
-  const getStatusColor = (status: string) => {
+  const handleContactDriver = (type: 'call' | 'message') => {
+    if (type === 'call') {
+      Alert.alert('Call Driver', `Call ${order?.driverName}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call', onPress: () => console.log('Calling driver...') },
+      ]);
+    } else {
+      Alert.alert('Message Driver', `Send message to ${order?.driverName}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Send', onPress: () => console.log('Messaging driver...') },
+      ]);
+    }
+  };
+
+  const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return '#f39c12';
-      case 'confirmed': return '#3498db';
-      case 'preparing': return '#e67e22';
-      case 'ready': return '#2ecc71';
-      case 'delivered': return '#27ae60';
-      case 'cancelled': return '#e74c3c';
-      default: return '#95a5a6';
+      case 'delivered': return { bg: 'transparent', text: '#2ecc71', border: '#2ecc71' };
+      case 'cancelled': return { bg: 'transparent', text: '#e74c3c', border: '#e74c3c' };
+      case 'pending': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
+      case 'preparing': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
+      case 'confirmed': return { bg: 'transparent', text: '#3498db', border: '#3498db' };
+      default: return { bg: 'transparent', text: '#95a5a6', border: '#95a5a6' };
+    }
+  };
+
+  const getStatusText = (status: Order['status']) => {
+    switch (status) {
+      case 'delivered': return 'Completed';
+      case 'cancelled': return 'Cancelled';
+      case 'pending': return 'Pending';
+      case 'preparing': return 'Preparing';
+      case 'confirmed': return 'Confirmed';
+      default: return status;
+    }
+  };
+
+  const getItemIcon = (itemType: string) => {
+    switch (itemType) {
+      case 'petrol':
+      case 'diesel':
+        return '⛽';
+      case 'food':
+        return '🍽️';
+      case 'groceries':
+        return '🛒';
+      default:
+        return '📦';
     }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
-      year: 'numeric',
-      month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+      month: 'long',
+      year: 'numeric',
+    };
+    
+    const day = date.getDate();
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
+                  day === 2 || day === 22 ? 'nd' :
+                  day === 3 || day === 23 ? 'rd' : 'th';
+    
+    return date.toLocaleDateString('en-US', options).replace(/\d+/, `${day}${suffix}`);
   };
 
   if (!order) {
@@ -119,115 +168,115 @@ export default function OrderDetails() {
     );
   }
 
+  const statusColors = getStatusColor(order.status);
+
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#2c3e50" />
+          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order Details</Text>
+        <Text style={styles.headerTitle}>Order History Detail</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Order Status */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-            <Text style={styles.statusText}>{order.status.toUpperCase()}</Text>
+        {/* Order Detail Section */}
+        <View style={styles.orderDetail}>
+          <View style={styles.itemIcon}>
+            <Text style={styles.itemIconText}>{getItemIcon(order.itemType)}</Text>
           </View>
-          <Text style={styles.orderId}>Order #{order.id}</Text>
+          <Text style={styles.orderTitle}>{order.items[0].name}</Text>
+          <View style={styles.orderQtyBadge}>
+            <Text style={styles.orderQtyText}>{order.quantity}</Text>
+          </View>
+          <Text style={styles.orderPrice}>₦{order.totalAmount.toLocaleString()}.00</Text>
         </View>
 
-        {/* Merchant Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Merchant</Text>
-          <View style={styles.merchantInfo}>
-            <View style={styles.merchantDetails}>
-              <Text style={styles.merchantName}>{order.merchantName}</Text>
-              <Text style={styles.merchantContact}>{order.merchantContact}</Text>
+        {/* Details Section */}
+        <View style={[styles.details, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+          <View style={styles.locationContainer}>
+            <Text style={styles.locationIcon}>📍</Text>
+            <Text style={styles.locationText}>{order.location}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Time taken</Text>
+            <Text style={styles.detailValue}>{order.timeTaken || 'N/A'}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Date</Text>
+            <Text style={styles.detailValue}>{formatDate(order.orderDate)}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Time of Delivery</Text>
+            <Text style={styles.detailValue}>{order.deliveryTime || 'N/A'}</Text>
+          </View>
+        </View>
+
+        {/* Purchase Summary */}
+        <View style={[styles.summary, { marginHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+          <Text style={styles.summaryTitle}>Purchase Summary</Text>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>₦{order.subtotal.toLocaleString()}.00</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Delivery fee</Text>
+            <Text style={styles.summaryValue}>₦{order.deliveryFee.toLocaleString()}.00</Text>
+          </View>
+          
+          <View style={[styles.summaryRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>₦{order.totalAmount.toLocaleString()}.00</Text>
+          </View>
+        </View>
+
+        {/* Contact Driver */}
+        <View style={[styles.contactDriver, { marginHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+          <View style={styles.driverInfo}>
+            <Text style={styles.contactText}>Contact driver</Text>
+            <View style={styles.driverAvatar}>
+              <Text style={styles.driverAvatarText}>M</Text>
             </View>
-            <TouchableOpacity style={styles.contactButton} onPress={handleContactMerchant}>
-              <Ionicons name="call" size={20} color="#4682B4" />
+            <Text style={styles.driverName}>{order.driverName || 'Mike'}</Text>
+          </View>
+          <View style={styles.driverActions}>
+            <TouchableOpacity onPress={() => handleContactDriver('message')}>
+              <Text style={styles.actionIcon}>💬</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleContactDriver('call')}>
+              <Text style={styles.actionIcon}>📞</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Order Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Items</Text>
-          {order.items.map((item, index) => (
-            <View key={index} style={styles.itemRow}>
-              <View style={styles.itemDetails}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemPrice}>₦{item.price} × {item.quantity}</Text>
-              </View>
-              <Text style={styles.itemTotal}>₦{(item.price * item.quantity).toLocaleString()}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Order Summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₦{order.subtotal.toLocaleString()}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>
-              {order.deliveryFee === 0 ? 'Free' : `₦${order.deliveryFee.toLocaleString()}`}
+        {/* Status */}
+        <View style={styles.statusContainer}>
+          <View style={[styles.statusBadge, { 
+            backgroundColor: statusColors.bg, 
+            borderColor: statusColors.border 
+          }]}>
+            <Text style={[styles.statusText, { color: statusColors.text }]}>
+              {getStatusText(order.status)}
             </Text>
           </View>
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₦{order.totalAmount.toLocaleString()}</Text>
-          </View>
-        </View>
-
-        {/* Order Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Information</Text>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color="#7f8c8d" />
-            <Text style={styles.infoLabel}>Order Date</Text>
-            <Text style={styles.infoValue}>{formatDate(order.orderDate)}</Text>
-          </View>
-          {order.estimatedDelivery && (
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={16} color="#7f8c8d" />
-              <Text style={styles.infoLabel}>Est. Delivery</Text>
-              <Text style={styles.infoValue}>{formatDate(order.estimatedDelivery)}</Text>
-            </View>
-          )}
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={16} color="#7f8c8d" />
-            <Text style={styles.infoLabel}>Delivery Address</Text>
-            <Text style={styles.infoValue}>{order.deliveryAddress}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="card-outline" size={16} color="#7f8c8d" />
-            <Text style={styles.infoLabel}>Payment Method</Text>
-            <Text style={styles.infoValue}>{order.paymentMethod}</Text>
-          </View>
-          {order.orderNotes && (
-            <View style={styles.infoRow}>
-              <Ionicons name="document-text-outline" size={16} color="#7f8c8d" />
-              <Text style={styles.infoLabel}>Notes</Text>
-              <Text style={styles.infoValue}>{order.orderNotes}</Text>
-            </View>
-          )}
         </View>
 
         {/* Action Buttons */}
-        {['pending', 'confirmed'].includes(order.status) && (
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelOrder}>
-              <Text style={styles.cancelButtonText}>Cancel Order</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={[styles.actions, { paddingHorizontal: Math.max(20, screenDimensions.width * 0.05) }]}>
+          <TouchableOpacity style={styles.reportButton} onPress={handleReportIssue}>
+            <Text style={styles.reportButtonText}>Report Issue</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShareReceipt}>
+            <Text style={styles.shareButtonText}>Share Receipt</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -236,7 +285,7 @@ export default function OrderDetails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
   },
   loadingContainer: {
     flex: 1,
@@ -247,160 +296,228 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: 'white',
+    paddingBottom: 15,
+    backgroundColor: '#fff',
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#1b1b1b',
+    textAlign: 'center',
+    flex: 1,
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  statusContainer: {
+  orderDetail: {
     alignItems: 'center',
     paddingVertical: 20,
   },
-  statusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  orderId: {
-    fontSize: 16,
-    color: '#7f8c8d',
-  },
-  section: {
-    backgroundColor: 'white',
+  itemIcon: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#2f75c2',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  sectionTitle: {
+  itemIconText: {
+    fontSize: 40,
+  },
+  orderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
+    marginBottom: 5,
+  },
+  orderQtyBadge: {
+    borderWidth: 1,
+    borderColor: '#2f75c2',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 10,
+  },
+  orderQtyText: {
+    fontSize: 13,
+    color: '#2f75c2',
+  },
+  orderPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 12,
+    color: '#1b1b1b',
+    marginTop: 5,
   },
-  merchantInfo: {
+  details: {
+    marginTop: 20,
+  },
+  locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    fontWeight: 'bold',
+    marginBottom: 15,
   },
-  merchantDetails: {
-    flex: 1,
-  },
-  merchantName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-  },
-  merchantContact: {
+  locationIcon: {
     fontSize: 14,
-    color: '#7f8c8d',
-    marginTop: 2,
+    marginRight: 6,
   },
-  contactButton: {
-    padding: 8,
+  locationText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
   },
-  itemRow: {
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
+    marginVertical: 8,
   },
-  itemDetails: {
-    flex: 1,
+  detailLabel: {
+    fontSize: 15,
+    color: '#1b1b1b',
   },
-  itemName: {
-    fontSize: 16,
-    color: '#2c3e50',
+  detailValue: {
+    fontSize: 15,
+    color: '#1b1b1b',
   },
-  itemPrice: {
-    fontSize: 14,
-    color: '#7f8c8d',
+  summary: {
+    marginTop: 25,
+    marginBottom: 25,
+    padding: 20,
+    backgroundColor: '#2f75c2',
+    borderRadius: 12,
   },
-  itemTotal: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 15,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    alignItems: 'center',
+    marginVertical: 6,
   },
   summaryLabel: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontSize: 15,
+    color: '#fff',
   },
   summaryValue: {
-    fontSize: 16,
-    color: '#2c3e50',
+    fontSize: 15,
+    color: '#fff',
   },
   totalRow: {
+    marginTop: 5,
+    paddingTop: 5,
     borderTopWidth: 1,
-    borderTopColor: '#f8f9fa',
-    marginTop: 8,
-    paddingTop: 12,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
   },
   totalLabel: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#fff',
   },
   totalValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#fff',
   },
-  infoRow: {
+  contactDriver: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 25,
+    padding: 12,
+    marginBottom: 20,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginLeft: 8,
-    marginRight: 16,
-    minWidth: 80,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#2c3e50',
-    flex: 1,
-  },
-  actionButtons: {
-    paddingVertical: 20,
-  },
-  cancelButton: {
-    backgroundColor: '#e74c3c',
-    paddingVertical: 12,
-    borderRadius: 8,
+  driverInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  cancelButtonText: {
+  contactText: {
+    fontSize: 14,
+    color: '#1b1b1b',
+    marginRight: 8,
+  },
+  driverAvatar: {
+    width: 30,
+    height: 30,
+    backgroundColor: '#2f75c2',
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  driverAvatarText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  driverName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
+  },
+  driverActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionIcon: {
+    fontSize: 18,
+  },
+  statusContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  statusBadge: {
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 20,
+    paddingBottom: 30,
+  },
+  reportButton: {
+    flex: 1,
+    backgroundColor: '#f2f4f8',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  reportButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: 'bold',
+    color: '#2f75c2',
+  },
+  shareButton: {
+    flex: 1,
+    backgroundColor: '#0b1437',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  shareButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 });
