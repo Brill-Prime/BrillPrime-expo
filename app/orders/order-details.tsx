@@ -105,6 +105,44 @@ export default function OrderDetails() {
     Alert.alert('Share Receipt', 'Receipt sharing feature coming soon.');
   };
 
+  const handleCancelOrder = () => {
+    if (order.status === 'delivered' || order.status === 'cancelled') {
+      Alert.alert('Cannot Cancel', 'This order cannot be cancelled.');
+      return;
+    }
+
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order? This action cannot be undone.',
+      [
+        { text: 'Keep Order', style: 'cancel' },
+        {
+          text: 'Cancel Order',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Update order status to cancelled (in real app, call API)
+              const updatedOrder = { ...order, status: 'cancelled' as const };
+              setOrder(updatedOrder);
+              Alert.alert('Order Cancelled', 'Your order has been successfully cancelled.');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to cancel order. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleModifyOrder = () => {
+    if (order.status !== 'pending' && order.status !== 'confirmed') {
+      Alert.alert('Cannot Modify', 'This order cannot be modified at this stage.');
+      return;
+    }
+    
+    Alert.alert('Modify Order', 'Order modification feature coming soon.');
+  };
+
   const handleContactDriver = (type: 'call' | 'message') => {
     if (type === 'call') {
       Alert.alert('Call Driver', `Call ${order?.driverName}?`, [
@@ -139,6 +177,38 @@ export default function OrderDetails() {
       case 'confirmed': return 'Confirmed';
       default: return status;
     }
+  };
+
+  const getOrderSteps = () => {
+    const steps = [
+      { status: 'pending', title: 'Order Placed', time: formatDate(order.orderDate), completed: false, current: false },
+      { status: 'confirmed', title: 'Order Confirmed', time: 'Pending...', completed: false, current: false },
+      { status: 'preparing', title: 'Preparing Order', time: 'Pending...', completed: false, current: false },
+      { status: 'ready', title: 'Ready for Pickup/Delivery', time: 'Pending...', completed: false, current: false },
+      { status: 'delivered', title: 'Order Completed', time: order.deliveryTime || 'Pending...', completed: false, current: false }
+    ];
+
+    const statusOrder = ['pending', 'confirmed', 'preparing', 'ready', 'delivered'];
+    const currentIndex = statusOrder.indexOf(order.status);
+    
+    if (order.status === 'cancelled') {
+      return [{
+        status: 'cancelled',
+        title: 'Order Cancelled',
+        time: formatDate(order.orderDate),
+        completed: false,
+        current: true
+      }];
+    }
+
+    return steps.map((step, index) => ({
+      ...step,
+      completed: index < currentIndex,
+      current: index === currentIndex,
+      time: index === 0 ? formatDate(order.orderDate) : 
+            index === currentIndex ? 'In Progress...' :
+            index < currentIndex ? 'Completed' : 'Pending...'
+    }));
   };
 
   const getItemIcon = (itemType: string) => {
@@ -309,40 +379,101 @@ export default function OrderDetails() {
           </View>
         </View>
 
-        {/* Status */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, { 
-            backgroundColor: statusColors.bg, 
-            borderColor: statusColors.border 
-          }]}>
-            <Text style={[styles.statusText, { color: statusColors.text }]}>
-              {getStatusText(order.status)}
-            </Text>
+        {/* Order Status Timeline */}
+        <View style={[styles.timelineSection, { paddingHorizontal: responsivePadding }]}>
+          <Text style={[styles.sectionTitle, { fontSize: isSmallScreen ? 16 : 18 }]}>
+            Order Status
+          </Text>
+          <View style={styles.timeline}>
+            {getOrderSteps().map((step, index) => (
+              <View key={step.status} style={styles.timelineItem}>
+                <View style={styles.timelineLeft}>
+                  <View style={[
+                    styles.timelineIcon,
+                    step.completed && styles.completedIcon,
+                    step.current && styles.currentIcon
+                  ]}>
+                    <Ionicons 
+                      name={step.completed ? "checkmark" : step.current ? "time" : "ellipse-outline"} 
+                      size={16} 
+                      color={step.completed ? "#fff" : step.current ? "#2f75c2" : "#ccc"} 
+                    />
+                  </View>
+                  {index < getOrderSteps().length - 1 && (
+                    <View style={[
+                      styles.timelineLine,
+                      step.completed && styles.completedLine
+                    ]} />
+                  )}
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={[
+                    styles.timelineTitle,
+                    { fontSize: responsiveFontSize.regular },
+                    step.current && styles.currentStepTitle
+                  ]}>
+                    {step.title}
+                  </Text>
+                  <Text style={[
+                    styles.timelineTime,
+                    { fontSize: responsiveFontSize.small }
+                  ]}>
+                    {step.time}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
         </View>
 
         {/* Action Buttons */}
         <View style={[styles.actions, { 
           paddingHorizontal: responsivePadding,
-          flexDirection: isSmallScreen ? 'column' : 'row',
-          gap: isSmallScreen ? 15 : 20 
+          flexDirection: 'column',
+          gap: 15
         }]}>
-          <TouchableOpacity style={[styles.reportButton, { 
-            flex: isSmallScreen ? 0 : 1,
-            paddingVertical: isSmallScreen ? 10 : 12 
-          }]} onPress={handleReportIssue}>
-            <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
-              Report Issue
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.shareButton, { 
-            flex: isSmallScreen ? 0 : 1,
-            paddingVertical: isSmallScreen ? 10 : 12 
-          }]} onPress={handleShareReceipt}>
-            <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
-              Share Receipt
-            </Text>
-          </TouchableOpacity>
+          {/* Primary Actions Row */}
+          {(order.status === 'pending' || order.status === 'confirmed') && (
+            <View style={styles.primaryActions}>
+              <TouchableOpacity 
+                style={[styles.modifyButton, { flex: 1, marginRight: 10 }]} 
+                onPress={handleModifyOrder}
+              >
+                <Ionicons name="create-outline" size={18} color="#2f75c2" />
+                <Text style={styles.modifyButtonText}>Modify Order</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { flex: 1 }]} 
+                onPress={handleCancelOrder}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#e74c3c" />
+                <Text style={styles.cancelButtonText}>Cancel Order</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Secondary Actions Row */}
+          <View style={[styles.secondaryActions, {
+            flexDirection: isSmallScreen ? 'column' : 'row',
+            gap: isSmallScreen ? 15 : 20
+          }]}>
+            <TouchableOpacity style={[styles.reportButton, { 
+              flex: isSmallScreen ? 0 : 1,
+              paddingVertical: isSmallScreen ? 10 : 12 
+            }]} onPress={handleReportIssue}>
+              <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
+                Report Issue
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.shareButton, { 
+              flex: isSmallScreen ? 0 : 1,
+              paddingVertical: isSmallScreen ? 10 : 12 
+            }]} onPress={handleShareReceipt}>
+              <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
+                Share Receipt
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -560,6 +691,44 @@ const styles = StyleSheet.create({
   actions: {
     paddingBottom: 30,
   },
+  primaryActions: {
+    flexDirection: 'row',
+  },
+  secondaryActions: {
+    // Styles handled inline
+  },
+  modifyButton: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#2f75c2',
+    borderRadius: 25,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modifyButtonText: {
+    color: '#2f75c2',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#fff5f5',
+    borderWidth: 1,
+    borderColor: '#e74c3c',
+    borderRadius: 25,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  cancelButtonText: {
+    color: '#e74c3c',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   reportButton: {
     backgroundColor: '#f2f4f8',
     borderRadius: 25,
@@ -577,5 +746,68 @@ const styles = StyleSheet.create({
   shareButtonText: {
     fontWeight: 'bold',
     color: '#fff',
+  },
+  timelineSection: {
+    backgroundColor: '#fff',
+    padding: 20,
+    marginTop: 10,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  timeline: {
+    paddingLeft: 10,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  timelineLeft: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  timelineIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  completedIcon: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  currentIcon: {
+    backgroundColor: '#fff',
+    borderColor: '#2f75c2',
+    borderWidth: 3,
+  },
+  timelineLine: {
+    width: 2,
+    height: 40,
+    backgroundColor: '#e0e0e0',
+    marginTop: 5,
+  },
+  completedLine: {
+    backgroundColor: '#4CAF50',
+  },
+  timelineContent: {
+    flex: 1,
+    paddingTop: 4,
+  },
+  timelineTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1b1b1b',
+    marginBottom: 2,
+  },
+  currentStepTitle: {
+    color: '#2f75c2',
+  },
+  timelineTime: {
+    fontSize: 12,
+    color: '#666',
   },
 });
