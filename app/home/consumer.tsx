@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Animated }
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,6 +19,11 @@ export default function ConsumerHome() {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
+  const [nearbyMerchants] = useState([
+    { id: 1, name: "Lagos Fuel Station", latitude: 6.5244, longitude: 3.3792, type: "fuel" },
+    { id: 2, name: "Victoria Island Market", latitude: 6.4281, longitude: 3.4219, type: "market" },
+    { id: 3, name: "Ikeja Shopping Mall", latitude: 6.5927, longitude: 3.3615, type: "shopping" },
+  ]);
 
   useEffect(() => {
     loadUserData();
@@ -54,25 +60,33 @@ export default function ConsumerHome() {
         { text: "Not Now", style: "cancel" },
         {
           text: "Allow",
-          onPress: () => {
-            // Get user's current location
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                const { latitude, longitude } = position.coords;
-                setRegion({
-                  latitude,
-                  longitude,
-                  latitudeDelta: 0.0922,
-                  longitudeDelta: 0.0421,
-                });
-                Alert.alert("Success!", "Location has been set automatically. You can now discover merchants near you.");
-              },
-              (error) => {
-                console.error("Error getting location:", error);
-                Alert.alert("Error", "Unable to get your location. Please try again or set manually.");
-              },
-              { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-            );
+          onPress: async () => {
+            try {
+              // Request location permissions
+              let { status } = await Location.requestForegroundPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert("Permission Denied", "Location permission is required to find nearby merchants.");
+                return;
+              }
+
+              // Get current location
+              let location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+              });
+              
+              const { latitude, longitude } = location.coords;
+              setRegion({
+                latitude,
+                longitude,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              });
+              
+              Alert.alert("Success!", "Location has been set automatically. You can now discover merchants near you.");
+            } catch (error) {
+              console.error("Error getting location:", error);
+              Alert.alert("Error", "Unable to get your location. Please try again or set manually.");
+            }
           }
         }
       ]
@@ -114,7 +128,25 @@ export default function ConsumerHome() {
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}
-      />
+        mapType="standard"
+        pitchEnabled={false}
+        rotateEnabled={false}
+        scrollEnabled={true}
+        zoomEnabled={true}
+      >
+        {nearbyMerchants.map((merchant) => (
+          <Marker
+            key={merchant.id}
+            coordinate={{
+              latitude: merchant.latitude,
+              longitude: merchant.longitude,
+            }}
+            title={merchant.name}
+            description={`${merchant.type} location`}
+            pinColor={merchant.type === 'fuel' ? 'red' : merchant.type === 'market' ? 'green' : 'blue'}
+          />
+        ))}
+      </MapView>
       
       {/* Back Button */}
       <View style={styles.backButtonContainer}>
