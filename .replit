@@ -1,6 +1,7 @@
 modules = ["nodejs-20"]
 [agent]
 expertMode = true
+integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -36,10 +37,6 @@ externalPort = 80
 [[ports]]
 localPort = 8082
 externalPort = 80
-
-[[ports]]
-localPort = 35877
-externalPort = 3001
 
 [[ports]]
 localPort = 37237
