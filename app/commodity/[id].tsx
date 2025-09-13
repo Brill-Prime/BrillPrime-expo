@@ -1,18 +1,20 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  Alert,
+  TouchableOpacity,
   Image,
   Dimensions,
-} from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+  Alert,
+  Modal,
+  TextInput,
+} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Svg, Path } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -114,9 +116,23 @@ export default function CommodityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [commodity, setCommodity] = useState<any>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [quantity, setQuantity] = useState(1);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [cartItems, setCartItems] = useState<any[]>([]);
 
   useEffect(() => {
+    loadCommodityDetails();
+    loadCartItems();
+
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, [id]);
+
+  const loadCommodityDetails = () => {
     if (id && COMMODITY_DATA[id as keyof typeof COMMODITY_DATA]) {
       const commodityData = COMMODITY_DATA[id as keyof typeof COMMODITY_DATA];
       setCommodity(commodityData);
@@ -131,42 +147,64 @@ export default function CommodityDetailScreen() {
         setSelectedMerchant(commodityData.merchants[0]);
       }
     }
-  }, [id]);
+  };
 
-  const handleGoBack = () => {
-    router.back();
+  const loadCartItems = async () => {
+    try {
+      const cartData = await AsyncStorage.getItem('cartItems');
+      if (cartData) {
+        setCartItems(JSON.parse(cartData));
+      }
+    } catch (error) {
+      console.error('Error loading cart items:', error);
+    }
+  };
+
+  const addToCart = async () => {
+    if (!selectedMerchant || !commodity) {
+      Alert.alert('Error', 'Please select a merchant first');
+      return;
+    }
+
+    const cartItem = {
+      id: `${commodity.id}_${selectedMerchant.id}_${Date.now()}`,
+      commodityId: commodity.id,
+      commodityName: commodity.name,
+      merchantId: selectedMerchant.id,
+      merchantName: selectedMerchant.name,
+      price: parseFloat(selectedMerchant.price.replace('₦', '').replace(',', '')),
+      quantity: quantity,
+      unit: commodity.unit,
+      image: commodity.image,
+      category: commodity.category,
+    };
+
+    try {
+      const updatedCart = [...cartItems, cartItem];
+      await AsyncStorage.setItem('cartItems', JSON.stringify(updatedCart));
+      setCartItems(updatedCart);
+      setShowQuantityModal(false);
+
+      Alert.alert(
+        'Added to Cart', 
+        `${quantity} ${commodity.unit} of ${commodity.name} added to cart`,
+        [
+          { text: 'Continue Shopping', style: 'cancel' },
+          { text: 'View Cart', onPress: () => router.push('/cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      Alert.alert('Error', 'Failed to add item to cart');
+    }
   };
 
   const handleAddToCart = () => {
-    if (!selectedMerchant) {
-      Alert.alert("Error", "Please select a merchant first.");
-      return;
-    }
+    setShowQuantityModal(true);
+  };
 
-    if (!selectedMerchant.isOpen) {
-      Alert.alert("Merchant Closed", `${selectedMerchant.name} is currently closed. Please select another merchant or try again later.`);
-      return;
-    }
-
-    const totalPrice = parseInt(selectedMerchant.price.replace(/[^\d]/g, '')) * quantity;
-    
-    Alert.alert(
-      "Add to Cart",
-      `${commodity.name}\nQuantity: ${quantity} ${commodity.unit}\nMerchant: ${selectedMerchant.name}\nTotal: ₦${totalPrice.toLocaleString()}\n\nAdd this item to your cart?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Add to Cart", 
-          onPress: () => {
-            // In a real app, add to cart storage/context
-            Alert.alert("Success", "Item added to cart successfully!", [
-              { text: "Continue Shopping", onPress: () => router.back() },
-              { text: "View Cart", onPress: () => Alert.alert("Coming Soon", "Shopping cart coming soon!") }
-            ]);
-          }
-        }
-      ]
-    );
+  const handleGoBack = () => {
+    router.back();
   };
 
   const handleMerchantSelect = (merchant: any) => {
@@ -230,7 +268,7 @@ export default function CommodityDetailScreen() {
           )}
         </View>
       </View>
-      
+
       <View style={styles.merchantDetails}>
         <View style={styles.priceContainer}>
           <Text style={[styles.currentPrice, !merchant.isOpen && styles.closedText]}>
@@ -240,7 +278,7 @@ export default function CommodityDetailScreen() {
             <Text style={styles.originalPrice}>₦{merchant.originalPrice}</Text>
           )}
         </View>
-        
+
         <View style={styles.merchantMeta}>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={14} color="#FFD700" />
@@ -262,6 +300,16 @@ export default function CommodityDetailScreen() {
       )}
     </TouchableOpacity>
   );
+
+  // Responsive styles
+  const isSmallScreen = width < 768;
+  const responsivePadding = isSmallScreen ? 15 : 20;
+  const responsiveFontSize = {
+    small: isSmallScreen ? 12 : 14,
+    regular: isSmallScreen ? 14 : 16,
+    large: isSmallScreen ? 18 : 20,
+    xlarge: isSmallScreen ? 24 : 28,
+  };
 
   return (
     <View style={styles.container}>
@@ -292,7 +340,7 @@ export default function CommodityDetailScreen() {
           <Text style={styles.productName}>{commodity.name}</Text>
           <Text style={styles.productCategory}>{commodity.category.toUpperCase()}</Text>
           <Text style={styles.productDescription}>{commodity.description}</Text>
-          
+
           <View style={styles.priceHighlight}>
             <Text style={styles.bestPriceLabel}>Best Price:</Text>
             <Text style={styles.bestPriceValue}>₦{getBestPrice()}/{commodity.unit.split(' ')[1]}</Text>
@@ -747,5 +795,129 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  favoriteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#2f75c2',
+    borderRadius: 25,
+    flex: 1,
+    marginRight: 8,
+    justifyContent: 'center',
+  },
+  favoriteText: {
+    color: '#2f75c2',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  cartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f39c12',
+    borderRadius: 25,
+    flex: 1,
+    marginRight: 8,
+    justifyContent: 'center',
+  },
+  cartText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  orderButton: {
+    backgroundColor: '#2f75c2',
+    borderRadius: 25,
+    flex: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    minWidth: 300,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#1b1b1b',
+  },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  quantityButton: {
+    backgroundColor: '#2f75c2',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  quantityInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    width: 80,
+    height: 40,
+    textAlign: 'center',
+    fontSize: 16,
+    marginHorizontal: 15,
+  },
+  quantityUnit: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  modalCancelButton: {
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelText: {
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#2f75c2',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+  modalConfirmText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
