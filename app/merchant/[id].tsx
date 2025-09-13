@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
+import { Svg, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
@@ -254,7 +255,12 @@ export default function MerchantDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M20 11H7.414L13.707 4.707L12.293 3.293L4.586 11L4 11.586L4.586 12.172L12.293 19.879L13.707 18.465L7.414 12.172H20V11Z"
+              fill="#333"
+            />
+          </Svg>
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>{merchant.name}</Text>
