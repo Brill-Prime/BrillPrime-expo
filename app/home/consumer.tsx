@@ -119,8 +119,7 @@ export default function ConsumerHome() {
         router.push("/dashboard/consumer");
         break;
       case "Orders":
-        // Future implementation
-        Alert.alert("Coming Soon", "Orders feature will be available soon!");
+        router.push("/orders/consumer-orders");
         break;
       case "Favorites":
         // Future implementation

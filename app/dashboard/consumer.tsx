@@ -43,13 +43,21 @@ export default function ConsumerDashboard() {
     );
   };
 
+  const handleFeaturePress = (feature: any) => {
+    if (feature.route) {
+      router.push(feature.route);
+    } else {
+      Alert.alert("Coming Soon", `${feature.title} feature will be available soon!`);
+    }
+  };
+
   const features = [
-    { title: "Browse Products", description: "Discover amazing products", emoji: "🛍️", color: "#667eea" },
-    { title: "My Orders", description: "Track your orders", emoji: "📦", color: "#f093fb" },
-    { title: "Favorites", description: "Your saved items", emoji: "❤️", color: "#4facfe" },
-    { title: "Offers", description: "Special deals for you", emoji: "🎁", color: "#ff7e5f" },
-    { title: "Profile", description: "Manage your account", emoji: "👤", color: "#a8e6cf" },
-    { title: "Support", description: "Get help anytime", emoji: "💬", color: "#ffd93d" }
+    { title: "Browse Products", description: "Discover amazing products", emoji: "🛍️", color: "#667eea", route: null },
+    { title: "My Orders", description: "Track your orders", emoji: "📦", color: "#f093fb", route: "/orders/consumer-orders" },
+    { title: "Favorites", description: "Your saved items", emoji: "❤️", color: "#4facfe", route: null },
+    { title: "Offers", description: "Special deals for you", emoji: "🎁", color: "#ff7e5f", route: null },
+    { title: "Profile", description: "Manage your account", emoji: "👤", color: "#a8e6cf", route: null },
+    { title: "Support", description: "Get help anytime", emoji: "💬", color: "#ffd93d", route: null }
   ];
 
   return (
@@ -72,7 +80,12 @@ export default function ConsumerDashboard() {
         
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
-            <TouchableOpacity key={index} style={styles.featureCard}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.featureCard}
+              onPress={() => handleFeaturePress(feature)}
+              activeOpacity={0.8}
+            >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
                 <Text style={styles.featureEmoji}>{feature.emoji}</Text>
               </View>
