@@ -169,11 +169,8 @@ export default function ConsumerHome() {
   };
 
   const handleSetLocationLater = () => {
-    Alert.alert(
-      "Set Location Later",
-      "You can set your location anytime from the settings to discover nearby merchants.",
-      [{ text: "OK" }]
-    );
+    // Navigate to search screen where user can search for merchants and commodities
+    router.push("/search");
   };
 
   const toggleMenu = () => {
