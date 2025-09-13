@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Animated } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Animated, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
@@ -216,7 +216,7 @@ export default function ConsumerHome() {
           onPress={handleGoBack}
           activeOpacity={0.8}
         >
-          <Ionicons name="chevron-back" size={24} color="#666" />
+          <Image source={require('../../assets/images/back_arrow.svg')} style={{ width: 24, height: 24 }} resizeMode="contain" />
         </TouchableOpacity>
       </View>
 
@@ -237,7 +237,7 @@ export default function ConsumerHome() {
           {/* Profile Section */}
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
-              <Ionicons name="person" size={40} color="#4682B4" />
+              <Image source={require('../../assets/images/account_circle.svg')} style={{ width: 50, height: 50 }} resizeMode="contain" />
             </View>
             <Text style={styles.profileName}>Hi, ANTHONY</Text>
           </View>
@@ -318,7 +318,7 @@ export default function ConsumerHome() {
         {/* Location Icon */}
         <View style={styles.locationIcon}>
           <View style={styles.locationIconInner}>
-            <Ionicons name="location" size={24} color="#4682B4" />
+            <Image source={require('../../assets/images/globe_img.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
           </View>
         </View>
         
