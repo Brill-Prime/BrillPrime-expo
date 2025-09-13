@@ -115,31 +115,53 @@ export default function ConsumerHome() {
     toggleMenu();
     
     switch (item) {
-      case "Dashboard":
-        router.push("/dashboard/consumer");
+      case "Account":
+        // Future implementation
+        Alert.alert("Coming Soon", "Account management feature will be available soon!");
         break;
-      case "Orders":
+      case "Transaction History":
+        // Future implementation
+        Alert.alert("Coming Soon", "Transaction history feature will be available soon!");
+        break;
+      case "Order History":
         router.push("/orders/consumer-orders");
-        break;
-      case "Favorites":
-        // Future implementation
-        Alert.alert("Coming Soon", "Favorites feature will be available soon!");
-        break;
-      case "Profile":
-        // Future implementation
-        Alert.alert("Coming Soon", "Profile feature will be available soon!");
-        break;
-      case "Settings":
-        // Future implementation
-        Alert.alert("Coming Soon", "Settings feature will be available soon!");
         break;
       case "Support":
         // Future implementation
         Alert.alert("Coming Soon", "Support feature will be available soon!");
         break;
+      case "About":
+        // Future implementation
+        Alert.alert("Coming Soon", "About page will be available soon!");
+        break;
+      case "Switch to Merchant":
+        Alert.alert("Switch Role", "This feature will allow you to switch to merchant mode!");
+        break;
       default:
         Alert.alert("Navigation", `Navigating to ${item}`);
     }
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+              router.replace("/");
+            } catch (error) {
+              console.error("Error signing out:", error);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -199,58 +221,71 @@ export default function ConsumerHome() {
       {/* Navigation Sidebar */}
       <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
         <View style={styles.sidebarContent}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>Navigation</Text>
-            <Text style={styles.sidebarEmail}>{userEmail}</Text>
+          {/* Profile Section */}
+          <View style={styles.profileSection}>
+            <View style={styles.profileImageContainer}>
+              <Ionicons name="person" size={40} color="#4682B4" />
+            </View>
+            <Text style={styles.profileName}>Hi, ANTHONY</Text>
           </View>
           
-          <View style={styles.sidebarMenuItems}>
+          {/* Menu Items */}
+          <View style={styles.menuList}>
             <TouchableOpacity 
               style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Dashboard")}
+              onPress={() => handleMenuItemPress("Account")}
             >
-              <Ionicons name="home-outline" size={20} color="#4682B4" />
-              <Text style={styles.menuItemText}>Dashboard</Text>
+              <Text style={styles.menuItemText}>Account</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Orders")}
+              onPress={() => handleMenuItemPress("Transaction History")}
             >
-              <Ionicons name="receipt-outline" size={20} color="#4682B4" />
-              <Text style={styles.menuItemText}>My Orders</Text>
+              <Text style={styles.menuItemText}>Transaction History</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Favorites")}
+              onPress={() => handleMenuItemPress("Order History")}
             >
-              <Ionicons name="heart-outline" size={20} color="#4682B4" />
-              <Text style={styles.menuItemText}>Favorites</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Profile")}
-            >
-              <Ionicons name="person-outline" size={20} color="#4682B4" />
-              <Text style={styles.menuItemText}>Profile</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Settings")}
-            >
-              <Ionicons name="settings-outline" size={20} color="#4682B4" />
-              <Text style={styles.menuItemText}>Settings</Text>
+              <Text style={styles.menuItemText}>Order History</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.menuItem} 
               onPress={() => handleMenuItemPress("Support")}
             >
-              <Ionicons name="help-circle-outline" size={20} color="#4682B4" />
               <Text style={styles.menuItemText}>Support</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => handleMenuItemPress("About")}
+            >
+              <Text style={styles.menuItemText}>About</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom Buttons */}
+          <View style={styles.bottomButtons}>
+            <TouchableOpacity 
+              style={styles.merchantButton} 
+              onPress={() => handleMenuItemPress("Switch to Merchant")}
+            >
+              <Text style={styles.merchantButtonText}>Switch to Merchant</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.signOutButton} 
+              onPress={handleSignOut}
+            >
+              <Text style={styles.signOutButtonText}>Sign out</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -363,7 +398,7 @@ const styles = StyleSheet.create({
   sidebar: {
     position: 'absolute',
     top: 0,
-    width: 250,
+    width: 280,
     height: height,
     backgroundColor: 'white',
     zIndex: 20,
@@ -375,40 +410,75 @@ const styles = StyleSheet.create({
   },
   sidebarContent: {
     flex: 1,
-    paddingTop: 80,
+    paddingTop: 40,
     paddingHorizontal: 20,
   },
-  sidebarHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    paddingBottom: 20,
-    marginBottom: 30,
+  profileSection: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  sidebarTitle: {
-    fontSize: 24,
+  profileImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  profileName: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#4682B4',
-    marginBottom: 5,
+    color: '#333',
   },
-  sidebarEmail: {
-    fontSize: 14,
-    color: '#666',
-  },
-  sidebarMenuItems: {
+  menuList: {
     flex: 1,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 15,
     paddingHorizontal: 10,
-    borderRadius: 10,
-    marginBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   menuItemText: {
     fontSize: 16,
     color: '#333',
-    marginLeft: 15,
+    fontWeight: '600',
+  },
+  bottomButtons: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+  },
+  merchantButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#2f75c2',
+    borderRadius: 25,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  merchantButtonText: {
+    color: '#2f75c2',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  signOutButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e74c3c',
+    borderRadius: 25,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    color: '#e74c3c',
+    fontSize: 16,
     fontWeight: '500',
   },
   menuOverlay: {
