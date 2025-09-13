@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Animated }
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from "expo-linear-gradient";
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -12,6 +12,12 @@ export default function ConsumerHome() {
   const [userEmail, setUserEmail] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useState(new Animated.Value(-250))[0];
+  const [region, setRegion] = useState({
+    latitude: 6.5244, // Default to Lagos, Nigeria coordinates
+    longitude: 3.3792,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
 
   useEffect(() => {
     loadUserData();
@@ -49,7 +55,24 @@ export default function ConsumerHome() {
         {
           text: "Allow",
           onPress: () => {
-            Alert.alert("Success!", "Location has been set automatically. You can now discover merchants near you.");
+            // Get user's current location
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const { latitude, longitude } = position.coords;
+                setRegion({
+                  latitude,
+                  longitude,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
+                });
+                Alert.alert("Success!", "Location has been set automatically. You can now discover merchants near you.");
+              },
+              (error) => {
+                console.error("Error getting location:", error);
+                Alert.alert("Error", "Unable to get your location. Please try again or set manually.");
+              },
+              { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+            );
           }
         }
       ]
@@ -81,11 +104,16 @@ export default function ConsumerHome() {
 
   return (
     <View style={styles.container}>
-      {/* Map Background */}
-      <LinearGradient
-        colors={['#4a90e2', '#357abd', '#1e5f99']}
-        locations={[0, 0.5, 1]}
+      {/* Real Map Background */}
+      <MapView
+        provider={PROVIDER_GOOGLE}
         style={styles.mapBackground}
+        region={region}
+        onRegionChangeComplete={setRegion}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        toolbarEnabled={false}
       />
       
       {/* Back Button */}
@@ -226,11 +254,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mapBackground: {
-    width: width + 20,
+    width: width,
     height: height * 0.53,
     position: 'absolute',
-    left: -10,
-    top: -2,
+    left: 0,
+    top: 0,
   },
   backButtonContainer: {
     width: 60,
