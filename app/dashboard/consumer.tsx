@@ -63,10 +63,10 @@ export default function ConsumerDashboard() {
   const features = [
     { title: "Browse Products", description: "Discover amazing products", emoji: "🛍️", color: "#667eea", route: null },
     { title: "My Orders", description: "Track your orders", emoji: "📦", color: "#f093fb", route: "/orders/consumer-orders" },
+    { title: "Messages", description: "Chat with merchants & drivers", emoji: "💬", color: "#4CAF50", route: "/chat" },
     { title: "Favorites", description: "Your saved items", emoji: "❤️", color: "#4facfe", route: null },
     { title: "Offers", description: "Special deals for you", emoji: "🎁", color: "#ff7e5f", route: null },
-    { title: "Profile", description: "Manage your account", emoji: "👤", color: "#a8e6cf", route: null },
-    { title: "Support", description: "Get help anytime", emoji: "💬", color: "#ffd93d", route: null }
+    { title: "Support", description: "Get help anytime", emoji: "🎧", color: "#ffd93d", route: "/support" }
   ];
 
   const styles = getResponsiveStyles(screenData);

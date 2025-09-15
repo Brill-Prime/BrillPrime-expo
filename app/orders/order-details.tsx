@@ -150,11 +150,14 @@ export default function OrderDetails() {
         { text: 'Call', onPress: () => console.log('Calling driver...') },
       ]);
     } else {
-      Alert.alert('Message Driver', `Send message to ${order?.driverName}?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send', onPress: () => console.log('Messaging driver...') },
-      ]);
+      // Navigate to chat screen
+      router.push(`/chat/conv_${order?.id}`);
     }
+  };
+
+  const handleContactMerchant = () => {
+    // Navigate to chat screen for merchant
+    router.push(`/chat/conv_merchant_${order?.id}`);
   };
 
   const getStatusColor = (status: Order['status']) => {
@@ -346,6 +349,40 @@ export default function OrderDetails() {
             <Text style={[styles.totalValue, { fontSize: responsiveFontSize.regular }]}>
               ₦{order.totalAmount.toLocaleString()}.00
             </Text>
+          </View>
+        </View>
+
+        {/* Contact Merchant */}
+        <View style={[styles.contactDriver, { 
+          marginHorizontal: responsivePadding,
+          padding: isSmallScreen ? 10 : 12,
+          marginBottom: 15
+        }]}>
+          <View style={styles.driverInfo}>
+            <Text style={[styles.contactText, { fontSize: responsiveFontSize.small }]}>
+              Contact merchant
+            </Text>
+            <View style={[styles.driverAvatar, { 
+              width: isSmallScreen ? 25 : 30, 
+              height: isSmallScreen ? 25 : 30,
+              borderRadius: isSmallScreen ? 12.5 : 15,
+              backgroundColor: '#667eea'
+            }]}>
+              <Text style={[styles.driverAvatarText, { fontSize: responsiveFontSize.small }]}>
+                {order.merchantName?.charAt(0) || 'M'}
+              </Text>
+            </View>
+            <Text style={[styles.driverName, { fontSize: responsiveFontSize.small }]}>
+              {order.merchantName || 'Merchant'}
+            </Text>
+          </View>
+          <View style={styles.driverActions}>
+            <TouchableOpacity onPress={handleContactMerchant}>
+              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>💬</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert('Call Merchant', 'Calling merchant...')}>
+              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>📞</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
