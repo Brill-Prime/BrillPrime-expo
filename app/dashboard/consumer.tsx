@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -88,11 +88,11 @@ export default function ConsumerDashboard() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>What would you like to do?</Text>
-        
+
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               style={styles.featureCard}
               onPress={() => handleFeaturePress(feature)}
               activeOpacity={0.8}
@@ -104,6 +104,39 @@ export default function ConsumerDashboard() {
               <Text style={styles.featureDescription}>{feature.description}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>Services</Text>
+        <View style={styles.servicesContainer}>
+          <TouchableOpacity
+            style={styles.serviceCard}
+            onPress={() => router.push('/order/fuel')}
+          >
+            <View style={styles.serviceIconContainer}>
+              <Image
+                source={require('../../assets/images/consumer_order_fuel_icon.png')}
+                style={styles.serviceIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.serviceTitle}>Order Fuel</Text>
+            <Text style={styles.serviceDescription}>Get fuel delivered to your location</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.serviceCard}
+            onPress={() => router.push('/toll')}
+          >
+            <View style={styles.serviceIconContainer}>
+              <Image
+                source={require('../../assets/images/purchase_toll_gate_white.png')}
+                style={styles.serviceIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.serviceTitle}>Toll Payment</Text>
+            <Text style={styles.serviceDescription}>Pay toll fees in advance</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.statsContainer}>
@@ -132,7 +165,7 @@ const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
   const isTablet = width >= 768;
   const isSmallScreen = width < 350;
-  
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -213,6 +246,46 @@ const getResponsiveStyles = (screenData: any) => {
       textAlign: "center",
     },
     featureDescription: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
+      color: "#7f8c8d",
+      textAlign: "center",
+    },
+    servicesContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: Math.max(24, height * 0.04),
+      gap: Math.max(12, width * 0.03),
+    },
+    serviceCard: {
+      flex: 1,
+      backgroundColor: "#f8f9fa",
+      padding: Math.max(16, width * 0.04),
+      borderRadius: 15,
+      alignItems: "center",
+      minHeight: isTablet ? 140 : 120,
+      justifyContent: "center",
+    },
+    serviceIconContainer: {
+      backgroundColor: "#667eea",
+      width: isTablet ? 60 : 50,
+      height: isTablet ? 60 : 50,
+      borderRadius: isTablet ? 30 : 25,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: Math.max(8, height * 0.015),
+    },
+    serviceIcon: {
+      width: isTablet ? 30 : 25,
+      height: isTablet ? 30 : 25,
+    },
+    serviceTitle: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "600",
+      color: "#2c3e50",
+      marginBottom: Math.max(4, height * 0.008),
+      textAlign: "center",
+    },
+    serviceDescription: {
       fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
       color: "#7f8c8d",
       textAlign: "center",
