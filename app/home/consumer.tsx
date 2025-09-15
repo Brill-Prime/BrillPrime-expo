@@ -179,27 +179,22 @@ export default function ConsumerHome() {
     
     switch (item) {
       case "Account":
-        // Future implementation
-        showInfo("Coming Soon", "Account management feature will be available soon!");
+        router.push("/account");
         break;
       case "Notifications":
-        // Future implementation
-        showInfo("Coming Soon", "Notifications feature will be available soon!");
+        router.push("/notifications");
         break;
       case "Transaction History":
-        // Future implementation
-        showInfo("Coming Soon", "Transaction history feature will be available soon!");
+        router.push("/transactions");
         break;
       case "Order History":
         router.push("/orders/consumer-orders");
         break;
       case "Support":
-        // Future implementation
-        showInfo("Coming Soon", "Support feature will be available soon!");
+        router.push("/support");
         break;
       case "About":
-        // Future implementation
-        showInfo("Coming Soon", "About page will be available soon!");
+        router.push("/about");
         break;
       case "Switch to Merchant":
         showInfo("Switch Role", "This feature will allow you to switch to merchant mode!");
