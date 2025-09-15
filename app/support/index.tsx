@@ -4,122 +4,122 @@ import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   ScrollView,
-  TextInput,
   Alert,
   Dimensions,
-  Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-  expanded: boolean;
+interface SupportTicket {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
 }
 
-export default function Support() {
+export default function SupportScreen() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [activeTab, setActiveTab] = useState<'faq' | 'contact' | 'help'>('faq');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [contactForm, setContactForm] = useState({
+  const [formData, setFormData] = useState<SupportTicket>({
     name: '',
     email: '',
     subject: '',
-    message: ''
+    message: '',
   });
-  const [faqs, setFaqs] = useState<FAQItem[]>([
-    {
-      id: '1',
-      question: 'How do I track my order?',
-      answer: 'You can track your order by going to "Order History" in the menu and selecting your order. You\'ll see real-time updates on your delivery status.',
-      expanded: false
-    },
-    {
-      id: '2',
-      question: 'What payment methods do you accept?',
-      answer: 'We accept all major credit cards, debit cards, digital wallets like Apple Pay and Google Pay, and cash on delivery for select areas.',
-      expanded: false
-    },
-    {
-      id: '3',
-      question: 'How can I cancel or modify my order?',
-      answer: 'Orders can be cancelled within 5 minutes of placement. After that, please contact our support team. Modifications depend on the order status.',
-      expanded: false
-    },
-    {
-      id: '4',
-      question: 'What is your return policy?',
-      answer: 'We offer a 30-day return policy for most items. Products must be unused and in original packaging. Some items like perishables cannot be returned.',
-      expanded: false
-    },
-    {
-      id: '5',
-      question: 'How do I get a refund?',
-      answer: 'Refunds are processed within 5-7 business days after we receive your return. The amount will be credited to your original payment method.',
-      expanded: false
-    },
-    {
-      id: '6',
-      question: 'Do you deliver to my area?',
-      answer: 'We deliver to most major cities and towns. Enter your postal code during checkout to check if delivery is available in your area.',
-      expanded: false
-    }
-  ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
+
+    loadUserData();
+
     return () => subscription?.remove();
   }, []);
 
-  const toggleFAQ = (id: string) => {
-    setFaqs(prev =>
-      prev.map(faq =>
-        faq.id === id ? { ...faq, expanded: !faq.expanded } : faq
-      )
-    );
-  };
-
-  const handleContactSubmit = () => {
-    if (!contactForm.name || !contactForm.email || !contactForm.message) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+  const loadUserData = async () => {
+    try {
+      const email = await AsyncStorage.getItem('userEmail');
+      if (email) {
+        setFormData(prev => ({ ...prev, email }));
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
-
-    Alert.alert(
-      'Message Sent',
-      'Thank you for contacting us. We\'ll get back to you within 24 hours.',
-      [{ text: 'OK', onPress: () => setContactForm({ name: '', email: '', subject: '', message: '' }) }]
-    );
   };
 
-  const openExternalLink = (url: string) => {
-    Linking.openURL(url);
+  const handleInputChange = (field: keyof SupportTicket, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const callSupport = () => {
-    Linking.openURL('tel:+1234567890');
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Validation Error', 'Please enter your name');
+      return false;
+    }
+    if (!formData.email.trim() || !formData.email.includes('@')) {
+      Alert.alert('Validation Error', 'Please enter a valid email address');
+      return false;
+    }
+    if (!formData.subject.trim()) {
+      Alert.alert('Validation Error', 'Please enter a subject');
+      return false;
+    }
+    if (!formData.message.trim()) {
+      Alert.alert('Validation Error', 'Please enter your message');
+      return false;
+    }
+    return true;
   };
 
-  const emailSupport = () => {
-    Linking.openURL('mailto:support@brillprime.com');
-  };
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
-  const filteredFAQs = faqs.filter(faq =>
-    faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    setIsSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      Alert.alert(
+        'Support Ticket Submitted',
+        'Your support request has been submitted successfully. Our team will review your ticket and respond within 24 hours.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Reset form
+              setFormData({
+                name: '',
+                email: formData.email, // Keep email
+                subject: '',
+                message: '',
+              });
+              router.back();
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Submission Failed', 'Failed to submit your support ticket. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const styles = getResponsiveStyles(screenData);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -129,194 +129,102 @@ export default function Support() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'faq' && styles.activeTab]}
-          onPress={() => setActiveTab('faq')}
-        >
-          <Text style={[styles.tabText, activeTab === 'faq' && styles.activeTabText]}>FAQ</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'contact' && styles.activeTab]}
-          onPress={() => setActiveTab('contact')}
-        >
-          <Text style={[styles.tabText, activeTab === 'contact' && styles.activeTabText]}>Contact</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'help' && styles.activeTab]}
-          onPress={() => setActiveTab('help')}
-        >
-          <Text style={[styles.tabText, activeTab === 'help' && styles.activeTabText]}>Help</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {activeTab === 'faq' && (
-          <View>
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#666" />
+        {/* Form Fields */}
+        <View style={styles.formContainer}>
+          {/* Name Field */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Name</Text>
+            <View style={styles.inputContainer}>
               <TextInput
-                style={styles.searchInput}
-                placeholder="Search FAQs..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
+                style={styles.textInput}
+                value={formData.name}
+                onChangeText={(value) => handleInputChange('name', value)}
+                placeholder="Enter your name"
+                placeholderTextColor="#B7B7B7"
               />
             </View>
-
-            {/* FAQ List */}
-            {filteredFAQs.map((faq) => (
-              <View key={faq.id} style={styles.faqCard}>
-                <TouchableOpacity
-                  style={styles.faqQuestion}
-                  onPress={() => toggleFAQ(faq.id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.questionText}>{faq.question}</Text>
-                  <Ionicons
-                    name={faq.expanded ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-                
-                {faq.expanded && (
-                  <View style={styles.faqAnswer}>
-                    <Text style={styles.answerText}>{faq.answer}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
           </View>
-        )}
 
-        {activeTab === 'contact' && (
-          <View>
-            <View style={styles.quickContactContainer}>
-              <Text style={styles.sectionTitle}>Quick Contact</Text>
-              <View style={styles.quickContactRow}>
-                <TouchableOpacity style={styles.quickContactButton} onPress={callSupport}>
-                  <Ionicons name="call" size={24} color="#667eea" />
-                  <Text style={styles.quickContactText}>Call Us</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.quickContactButton} onPress={emailSupport}>
-                  <Ionicons name="mail" size={24} color="#667eea" />
-                  <Text style={styles.quickContactText}>Email Us</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.contactFormContainer}>
-              <Text style={styles.sectionTitle}>Send us a message</Text>
-              
+          {/* Email Field */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Email</Text>
+            <View style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
-                placeholder="Your Name *"
-                value={contactForm.name}
-                onChangeText={(text) => setContactForm(prev => ({ ...prev, name: text }))}
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Your Email *"
-                value={contactForm.email}
-                onChangeText={(text) => setContactForm(prev => ({ ...prev, email: text }))}
+                style={styles.textInput}
+                value={formData.email}
+                onChangeText={(value) => handleInputChange('email', value)}
+                placeholder="Enter your email"
+                placeholderTextColor="#B7B7B7"
                 keyboardType="email-address"
+                autoCapitalize="none"
               />
-              
+            </View>
+          </View>
+
+          {/* Subject Field */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Subject</Text>
+            <View style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
-                placeholder="Subject"
-                value={contactForm.subject}
-                onChangeText={(text) => setContactForm(prev => ({ ...prev, subject: text }))}
+                style={styles.textInput}
+                value={formData.subject}
+                onChangeText={(value) => handleInputChange('subject', value)}
+                placeholder="Enter subject"
+                placeholderTextColor="#B7B7B7"
               />
-              
+            </View>
+          </View>
+
+          {/* Message Field */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Message</Text>
+            <View style={[styles.inputContainer, styles.messageContainer]}>
               <TextInput
-                style={[styles.input, styles.messageInput]}
-                placeholder="Your Message *"
-                value={contactForm.message}
-                onChangeText={(text) => setContactForm(prev => ({ ...prev, message: text }))}
+                style={[styles.textInput, styles.messageInput]}
+                value={formData.message}
+                onChangeText={(value) => handleInputChange('message', value)}
+                placeholder="Describe your issue or question..."
+                placeholderTextColor="#B7B7B7"
                 multiline
-                numberOfLines={5}
+                numberOfLines={6}
                 textAlignVertical="top"
               />
-              
-              <TouchableOpacity style={styles.submitButton} onPress={handleContactSubmit}>
-                <Text style={styles.submitButtonText}>Send Message</Text>
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Submitting...' : 'Submit'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Quick Help Options */}
+          <View style={styles.quickHelpContainer}>
+            <Text style={styles.quickHelpTitle}>Need quick help?</Text>
+            <View style={styles.quickHelpOptions}>
+              <TouchableOpacity style={styles.quickHelpOption}>
+                <Ionicons name="help-circle-outline" size={20} color="#667eea" />
+                <Text style={styles.quickHelpText}>FAQ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickHelpOption}>
+                <Ionicons name="chatbubble-outline" size={20} color="#667eea" />
+                <Text style={styles.quickHelpText}>Live Chat</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickHelpOption}>
+                <Ionicons name="call-outline" size={20} color="#667eea" />
+                <Text style={styles.quickHelpText}>Call Us</Text>
               </TouchableOpacity>
             </View>
           </View>
-        )}
-
-        {activeTab === 'help' && (
-          <View>
-            <View style={styles.helpSection}>
-              <Text style={styles.sectionTitle}>Help Topics</Text>
-              
-              <TouchableOpacity style={styles.helpItem}>
-                <Ionicons name="bag" size={24} color="#667eea" />
-                <Text style={styles.helpItemText}>Order Issues</Text>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.helpItem}>
-                <Ionicons name="card" size={24} color="#667eea" />
-                <Text style={styles.helpItemText}>Payment Problems</Text>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.helpItem}>
-                <Ionicons name="return-up-back" size={24} color="#667eea" />
-                <Text style={styles.helpItemText}>Returns & Refunds</Text>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.helpItem}>
-                <Ionicons name="person" size={24} color="#667eea" />
-                <Text style={styles.helpItemText}>Account Settings</Text>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.helpItem}>
-                <Ionicons name="shield-checkmark" size={24} color="#667eea" />
-                <Text style={styles.helpItemText}>Privacy & Security</Text>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.resourcesSection}>
-              <Text style={styles.sectionTitle}>Resources</Text>
-              
-              <TouchableOpacity
-                style={styles.resourceButton}
-                onPress={() => openExternalLink('https://brillprime.com/terms')}
-              >
-                <Text style={styles.resourceButtonText}>Terms of Service</Text>
-                <Ionicons name="open" size={16} color="#667eea" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.resourceButton}
-                onPress={() => openExternalLink('https://brillprime.com/privacy')}
-              >
-                <Text style={styles.resourceButtonText}>Privacy Policy</Text>
-                <Ionicons name="open" size={16} color="#667eea" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.resourceButton}
-                onPress={() => openExternalLink('https://brillprime.com/community')}
-              >
-                <Text style={styles.resourceButtonText}>Community Guidelines</Text>
-                <Ionicons name="open" size={16} color="#667eea" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -328,7 +236,7 @@ const getResponsiveStyles = (screenData: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#f8f9fa',
+      backgroundColor: '#fff',
     },
     header: {
       flexDirection: 'row',
@@ -336,7 +244,7 @@ const getResponsiveStyles = (screenData: any) => {
       justifyContent: 'space-between',
       paddingHorizontal: Math.max(16, width * 0.04),
       paddingTop: Math.max(50, height * 0.07),
-      paddingBottom: Math.max(16, height * 0.02),
+      paddingBottom: 16,
       backgroundColor: 'white',
       borderBottomWidth: 1,
       borderBottomColor: '#e9ecef',
@@ -352,174 +260,85 @@ const getResponsiveStyles = (screenData: any) => {
     placeholder: {
       width: 40,
     },
-    tabContainer: {
-      flexDirection: 'row',
-      backgroundColor: 'white',
-      paddingHorizontal: Math.max(16, width * 0.04),
-    },
-    tab: {
-      flex: 1,
-      paddingVertical: 16,
-      alignItems: 'center',
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
-    },
-    activeTab: {
-      borderBottomColor: '#667eea',
-    },
-    tabText: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
-      color: '#666',
-      fontWeight: '500',
-    },
-    activeTabText: {
-      color: '#667eea',
-      fontWeight: '600',
-    },
     content: {
       flex: 1,
-      paddingHorizontal: Math.max(16, width * 0.04),
-      paddingTop: 16,
     },
-    searchContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'white',
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: '#e9ecef',
+    formContainer: {
+      padding: Math.max(20, width * 0.05),
     },
-    searchInput: {
-      flex: 1,
-      paddingVertical: 12,
-      paddingLeft: 8,
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
+    fieldContainer: {
+      marginBottom: 24,
     },
-    faqCard: {
-      backgroundColor: 'white',
-      borderRadius: 12,
+    fieldLabel: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: '600',
+      color: '#000',
+      textAlign: 'center',
       marginBottom: 8,
-      overflow: 'hidden',
+      fontFamily: 'Montserrat',
     },
-    faqQuestion: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: Math.max(16, width * 0.04),
-    },
-    questionText: {
-      flex: 1,
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
-      fontWeight: '600',
-      color: '#333',
-      marginRight: 8,
-    },
-    faqAnswer: {
-      paddingHorizontal: Math.max(16, width * 0.04),
-      paddingBottom: Math.max(16, width * 0.04),
-      borderTopWidth: 1,
-      borderTopColor: '#f0f0f0',
-    },
-    answerText: {
-      fontSize: isTablet ? 15 : isSmallScreen ? 13 : 14,
-      color: '#666',
-      lineHeight: 20,
-    },
-    sectionTitle: {
-      fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
-      fontWeight: 'bold',
-      color: '#333',
-      marginBottom: 16,
-    },
-    quickContactContainer: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: Math.max(16, width * 0.04),
-      marginBottom: 16,
-    },
-    quickContactRow: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    quickContactButton: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 16,
-      backgroundColor: '#f8f9fa',
-      borderRadius: 8,
-    },
-    quickContactText: {
-      marginTop: 8,
-      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
-      color: '#667eea',
-      fontWeight: '600',
-    },
-    contactFormContainer: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: Math.max(16, width * 0.04),
-    },
-    input: {
+    inputContainer: {
       borderWidth: 1,
-      borderColor: '#e9ecef',
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      marginBottom: 12,
+      borderColor: '#4682B4',
+      borderRadius: 30,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    messageContainer: {
+      height: 120,
+    },
+    textInput: {
       fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
+      color: '#000',
+      fontFamily: 'Montserrat',
+      fontWeight: '500',
     },
     messageInput: {
-      height: isTablet ? 120 : 100,
+      height: 88,
+      textAlignVertical: 'top',
     },
     submitButton: {
-      backgroundColor: '#667eea',
-      borderRadius: 8,
+      backgroundColor: '#4682B4',
+      borderRadius: 30,
       paddingVertical: 16,
       alignItems: 'center',
-      marginTop: 8,
+      marginTop: 20,
+      marginBottom: 30,
+    },
+    submitButtonDisabled: {
+      backgroundColor: '#ccc',
     },
     submitButtonText: {
-      color: 'white',
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
+      fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
       fontWeight: '600',
+      color: '#fff',
+      fontFamily: 'Montserrat',
     },
-    helpSection: {
-      backgroundColor: 'white',
+    quickHelpContainer: {
+      marginTop: 20,
+      padding: 20,
+      backgroundColor: '#f8f9fa',
       borderRadius: 12,
-      padding: Math.max(16, width * 0.04),
+    },
+    quickHelpTitle: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: '600',
+      color: '#333',
+      textAlign: 'center',
       marginBottom: 16,
     },
-    helpItem: {
+    quickHelpOptions: {
       flexDirection: 'row',
+      justifyContent: 'space-around',
+    },
+    quickHelpOption: {
       alignItems: 'center',
-      paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
+      padding: 12,
     },
-    helpItemText: {
-      flex: 1,
-      marginLeft: 12,
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
-      color: '#333',
-    },
-    resourcesSection: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: Math.max(16, width * 0.04),
-    },
-    resourceButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
-    },
-    resourceButtonText: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
+    quickHelpText: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
       color: '#667eea',
+      marginTop: 4,
       fontWeight: '500',
     },
   });

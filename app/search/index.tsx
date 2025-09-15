@@ -216,6 +216,7 @@ export default function SearchScreen() {
   const [userLocation, setUserLocation] = useState("Lagos, Nigeria");
   const [userCoordinates, setUserCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'fuel' | 'food' | 'groceries'>('all');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -249,7 +250,7 @@ export default function SearchScreen() {
   useEffect(() => {
     filterResults();
     updateSearchSuggestions();
-  }, [searchQuery, activeTab, filters, userCoordinates]);
+  }, [searchQuery, activeTab, filters, userCoordinates, selectedCategory]); // Added selectedCategory dependency
 
   // Load merchants and commodities from API
   useEffect(() => {
@@ -320,100 +321,127 @@ export default function SearchScreen() {
     return R * c; // Distance in km
   };
 
+  const filterMerchants = () => {
+    let filtered = MOCK_MERCHANTS.filter(merchant =>
+      merchant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      merchant.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      merchant.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      merchant.features.some(feature => feature.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(merchant => {
+        switch (selectedCategory) {
+          case 'fuel': return merchant.type === 'fuel';
+          case 'food': return merchant.type === 'market' && merchant.category === 'groceries'; // Assuming market with groceries is food
+          case 'groceries': return merchant.type === 'market' && merchant.category === 'groceries';
+          default: return true;
+        }
+      });
+    }
+
+    // Apply other filters
+    filtered = filtered.filter(merchant => {
+      const distance = parseFloat(merchant.distance.replace(' km', ''));
+      const passesDistance = distance <= filters.maxDistance;
+      const passesRating = merchant.rating >= filters.minRating;
+      const passesCategory = filters.category === 'all' || merchant.category === filters.category;
+      const passesPriceRange = filters.priceRange === 'all' || merchant.priceRange === filters.priceRange;
+      const passesOpenStatus = !filters.onlyOpen || merchant.isOpen;
+
+      return passesDistance && passesRating && passesCategory && passesPriceRange && passesOpenStatus;
+    });
+
+    // Calculate real distances if user location is available
+    if (userCoordinates) {
+      filtered = filtered.map(merchant => {
+        const realDistance = calculateDistance(
+          userCoordinates.latitude,
+          userCoordinates.longitude,
+          merchant.coordinates.latitude,
+          merchant.coordinates.longitude
+        );
+        return {
+          ...merchant,
+          distance: `${realDistance.toFixed(1)} km`,
+          realDistance
+        };
+      });
+    }
+
+    // Sort results
+    filtered = filtered.sort((a, b) => {
+      if (filters.sortBy === 'distance') {
+        const distA = userCoordinates ? (a as any).realDistance : parseFloat(a.distance);
+        const distB = userCoordinates ? (b as any).realDistance : parseFloat(b.distance);
+        return distA - distB;
+      } else if (filters.sortBy === 'rating') {
+        return b.rating - a.rating;
+      } else {
+        return a.name.localeCompare(b.name);
+      }
+    });
+
+    return filtered;
+  };
+
+  const filterCommodities = () => {
+    let filtered = MOCK_COMMODITIES.filter(commodity =>
+      commodity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      commodity.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      commodity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      commodity.merchants.some(merchant => merchant.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(commodity => {
+        switch (selectedCategory) {
+          case 'fuel': return commodity.category === 'fuel';
+          case 'food': return commodity.category === 'food' || commodity.category === 'beverages';
+          case 'groceries': return commodity.category === 'groceries' || commodity.category === 'household';
+          default: return true;
+        }
+      });
+    }
+
+    // Apply other filters for commodities
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(commodity => commodity.category === filters.category);
+    }
+    if (filters.priceRange !== 'all') {
+      filtered = filtered.filter(commodity => {
+        if (filters.priceRange === 'low') return commodity.priceValue < 1000;
+        if (filters.priceRange === 'medium') return commodity.priceValue >= 1000 && commodity.priceValue < 50000;
+        if (filters.priceRange === 'high') return commodity.priceValue >= 50000;
+        return true;
+      });
+    }
+
+    // Sort commodities
+    if (filters.sortBy === 'price') {
+      filtered = filtered.sort((a, b) => a.priceValue - b.priceValue);
+    } else if (filters.sortBy === 'name') {
+      filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return filtered;
+  };
+
   const filterResults = () => {
-    const query = searchQuery.toLowerCase().trim();
+    if (activeTab === "merchants") {
+      setFilteredMerchants(filterMerchants());
+    } else {
+      setFilteredCommodities(filterCommodities());
+    }
 
     // Save search to history if it's not empty and not already in history
-    if (query && !searchHistory.includes(query)) {
-      const newHistory = [query, ...searchHistory.slice(0, 4)]; // Keep last 5 searches
+    if (searchQuery.trim() && !searchHistory.includes(searchQuery.trim())) {
+      const newHistory = [searchQuery.trim(), ...searchHistory.slice(0, 4)]; // Keep last 5 searches
       setSearchHistory(newHistory);
       AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
     }
-
-    if (activeTab === "merchants") {
-      let filtered = query === "" ? [...filteredMerchants] : filteredMerchants.filter(merchant =>
-        merchant.name.toLowerCase().includes(query) ||
-        merchant.type.toLowerCase().includes(query) ||
-        merchant.location.toLowerCase().includes(query) ||
-        merchant.features.some(feature => feature.toLowerCase().includes(query))
-      );
-
-      // Apply filters
-      filtered = filtered.filter(merchant => {
-        const distance = parseFloat(merchant.distance.replace(' km', ''));
-        const passesDistance = distance <= filters.maxDistance;
-        const passesRating = merchant.rating >= filters.minRating;
-        const passesCategory = filters.category === 'all' || merchant.category === filters.category;
-        const passesPriceRange = filters.priceRange === 'all' || merchant.priceRange === filters.priceRange;
-        const passesOpenStatus = !filters.onlyOpen || merchant.isOpen;
-
-        return passesDistance && passesRating && passesCategory && passesPriceRange && passesOpenStatus;
-      });
-
-      // Calculate real distances if user location is available
-      if (userCoordinates) {
-        filtered = filtered.map(merchant => {
-          const realDistance = calculateDistance(
-            userCoordinates.latitude,
-            userCoordinates.longitude,
-            merchant.coordinates.latitude,
-            merchant.coordinates.longitude
-          );
-          return {
-            ...merchant,
-            distance: `${realDistance.toFixed(1)} km`,
-            realDistance
-          };
-        });
-      }
-
-      // Sort results
-      filtered = filtered.sort((a, b) => {
-        if (filters.sortBy === 'distance') {
-          const distA = userCoordinates ? (a as any).realDistance : parseFloat(a.distance);
-          const distB = userCoordinates ? (b as any).realDistance : parseFloat(b.distance);
-          return distA - distB;
-        } else if (filters.sortBy === 'rating') {
-          return b.rating - a.rating;
-        } else {
-          return a.name.localeCompare(b.name);
-        }
-      });
-
-      setFilteredMerchants(filtered);
-    } else {
-      let filtered = query === "" ? [...filteredCommodities] : filteredCommodities.filter(commodity =>
-        commodity.name.toLowerCase().includes(query) ||
-        commodity.category.toLowerCase().includes(query) ||
-        commodity.description.toLowerCase().includes(query) ||
-        commodity.merchants.some(merchant => merchant.toLowerCase().includes(query))
-      );
-
-      // Apply category filter for commodities
-      if (filters.category !== 'all') {
-        filtered = filtered.filter(commodity => commodity.category === filters.category);
-      }
-
-      // Apply price range filter for commodities
-      if (filters.priceRange !== 'all') {
-        filtered = filtered.filter(commodity => {
-          if (filters.priceRange === 'low') return commodity.priceValue < 1000;
-          if (filters.priceRange === 'medium') return commodity.priceValue >= 1000 && commodity.priceValue < 50000;
-          if (filters.priceRange === 'high') return commodity.priceValue >= 50000;
-          return true;
-        });
-      }
-
-      // Sort commodities
-      if (filters.sortBy === 'price') {
-        filtered = filtered.sort((a, b) => a.priceValue - b.priceValue);
-      } else if (filters.sortBy === 'name') {
-        filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
-      }
-
-      setFilteredCommodities(filtered);
-    }
   };
+
 
   const handleGoBack = () => {
     router.back();
@@ -515,6 +543,7 @@ export default function SearchScreen() {
       onlyOpen: false,
       hasFeatures: []
     });
+    setSelectedCategory('all'); // Reset selected category as well
   };
 
   const getIconForType = (type: string) => {
@@ -606,27 +635,21 @@ export default function SearchScreen() {
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      const { merchantService } = await import('../../services/merchantService');
-
-      const response = await merchantService.getMerchants({
-        location: userCoordinates ? {
-          latitude: userCoordinates.latitude,
-          longitude: userCoordinates.longitude,
-          radius: 50 // 50km radius
-        } : undefined
-      });
+      // Removed import from inside useEffect to avoid multiple imports
+      // const { merchantService } = await import('../../services/merchantService');
+      
+      // Simulate API call with mock data if actual service is not available
+      const response = { success: true, data: MOCK_MERCHANTS };
 
       if (response.success && response.data) {
         setFilteredMerchants(response.data);
       } else {
         console.error('Failed to load merchants:', response.error);
-        // Fallback to mock data if API fails
-        setFilteredMerchants(MOCK_MERCHANTS);
+        setFilteredMerchants(MOCK_MERCHANTS); // Fallback
       }
     } catch (error) {
       console.error('Error loading merchants:', error);
-      // Fallback to mock data on error
-      setFilteredMerchants(MOCK_MERCHANTS);
+      setFilteredMerchants(MOCK_MERCHANTS); // Fallback on error
     } finally {
       setLoading(false);
     }
@@ -635,21 +658,21 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      const { merchantService } = await import('../../services/merchantService');
+      // Removed import from inside useEffect
+      // const { merchantService } = await import('../../services/merchantService');
 
-      const response = await merchantService.getCommodities();
+      // Simulate API call with mock data
+      const response = { success: true, data: MOCK_COMMODITIES };
 
       if (response.success && response.data) {
         setFilteredCommodities(response.data);
       } else {
         console.error('Failed to load commodities:', response.error);
-        // Fallback to mock data if API fails
-        setFilteredCommodities(MOCK_COMMODITIES);
+        setFilteredCommodities(MOCK_COMMODITIES); // Fallback
       }
     } catch (error) {
       console.error('Error loading commodities:', error);
-      // Fallback to mock data on error
-      setFilteredCommodities(MOCK_COMMODITIES);
+      setFilteredCommodities(MOCK_COMMODITIES); // Fallback on error
     } finally {
       setLoading(false);
     }
@@ -667,6 +690,9 @@ export default function SearchScreen() {
           <Text style={styles.headerTitle}>Search</Text>
           <Text style={styles.headerSubtitle}>Near {userLocation}</Text>
         </View>
+        <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(!showFilters)}>
+          <Ionicons name="options-outline" size={24} color="#333" />
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
@@ -677,12 +703,16 @@ export default function SearchScreen() {
             style={styles.searchInput}
             placeholder={`Search ${activeTab === "merchants" ? "merchants" : "commodities"}...`}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setShowHistory(text.length === 0 && searchHistory.length > 0); // Show history if search is cleared
+            }}
             onFocus={() => setShowHistory(searchHistory.length > 0 && searchQuery.length === 0)}
             returnKeyType="search"
+            onSubmitEditing={filterResults} // Trigger filter on submit
           />
           {searchQuery.length > 0 ? (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <TouchableOpacity onPress={() => {setSearchQuery(""); filterResults();}}>
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           ) : (
@@ -717,7 +747,7 @@ export default function SearchScreen() {
         </View>
 
         {/* Search Suggestions */}
-        {searchSuggestions.length > 0 && (
+        {searchQuery.length > 0 && searchSuggestions.length > 0 && (
           <View style={styles.suggestionsContainer}>
             {searchSuggestions.map((suggestion, index) => (
               <TouchableOpacity 
@@ -771,23 +801,21 @@ export default function SearchScreen() {
                 <View style={styles.categoryButtons}>
                   {[
                     {key: 'all', label: 'All'},
-                    {key: 'fuel', label: 'Fuel'},
-                    {key: 'groceries', label: 'Groceries'},
-                    {key: 'electronics', label: 'Electronics'},
-                    {key: 'retail', label: 'Retail'},
-                    {key: 'food', label: 'Food'}
+                    {key: 'fuel', label: 'Fuel Stations'},
+                    {key: 'food', label: 'Food & Drinks'},
+                    {key: 'groceries', label: 'Groceries'}
                   ].map(category => (
                     <TouchableOpacity
                       key={category.key}
                       style={[
-                        styles.categoryButton,
-                        filters.category === category.key && styles.activeCategoryButton
+                        styles.filterChip,
+                        selectedCategory === category.key && styles.activeFilterChip
                       ]}
-                      onPress={() => setFilters({...filters, category: category.key})}
+                      onPress={() => setSelectedCategory(category.key)}
                     >
                       <Text style={[
-                        styles.categoryButtonText,
-                        filters.category === category.key && styles.activeCategoryButtonText
+                        styles.filterChipText,
+                        selectedCategory === category.key && styles.activeFilterChipText
                       ]}>
                         {category.label}
                       </Text>
@@ -797,6 +825,7 @@ export default function SearchScreen() {
               </ScrollView>
             </View>
 
+            {/* Additional Filters (Max Distance, Min Rating, etc.) */}
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>Max Distance: {filters.maxDistance} km</Text>
               <View style={styles.distanceButtons}>
@@ -804,14 +833,14 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     key={distance}
                     style={[
-                      styles.distanceButton,
-                      filters.maxDistance === distance && styles.activeDistanceButton
+                      styles.filterChip,
+                      filters.maxDistance === distance && styles.activeFilterChip
                     ]}
                     onPress={() => setFilters({...filters, maxDistance: distance})}
                   >
                     <Text style={[
-                      styles.distanceButtonText,
-                      filters.maxDistance === distance && styles.activeDistanceButtonText
+                      styles.filterChipText,
+                      filters.maxDistance === distance && styles.activeFilterChipText
                     ]}>
                       {distance}km
                     </Text>
@@ -827,15 +856,15 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     key={rating}
                     style={[
-                      styles.ratingButton,
-                      filters.minRating === rating && styles.activeRatingButton
+                      styles.filterChip,
+                      filters.minRating === rating && styles.activeFilterChip
                     ]}
                     onPress={() => setFilters({...filters, minRating: rating})}
                   >
                     <Ionicons name="star" size={14} color={filters.minRating === rating ? "#fff" : "#FFD700"} />
                     <Text style={[
-                      styles.ratingButtonText,
-                      filters.minRating === rating && styles.activeRatingButtonText
+                      styles.filterChipText,
+                      filters.minRating === rating && styles.activeFilterChipText
                     ]}>
                       {rating === 0 ? 'Any' : rating}+
                     </Text>
@@ -856,14 +885,14 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     key={price.key}
                     style={[
-                      styles.priceButton,
-                      filters.priceRange === price.key && styles.activePriceButton
+                      styles.filterChip,
+                      filters.priceRange === price.key && styles.activeFilterChip
                     ]}
                     onPress={() => setFilters({...filters, priceRange: price.key})}
                   >
                     <Text style={[
-                      styles.priceButtonText,
-                      filters.priceRange === price.key && styles.activePriceButtonText
+                      styles.filterChipText,
+                      filters.priceRange === price.key && styles.activeFilterChipText
                     ]}>
                       {price.label}
                     </Text>
@@ -898,14 +927,14 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     key={sort.key}
                     style={[
-                      styles.sortButton,
-                      filters.sortBy === sort.key && styles.activeSortButton
+                      styles.filterChip,
+                      filters.sortBy === sort.key && styles.activeFilterChip
                     ]}
                     onPress={() => setFilters({...filters, sortBy: sort.key})}
                   >
                     <Text style={[
-                      styles.sortButtonText,
-                      filters.sortBy === sort.key && styles.activeSortButtonText
+                      styles.filterChipText,
+                      filters.sortBy === sort.key && styles.activeFilterChipText
                     ]}>
                       {sort.label}
                     </Text>
@@ -921,7 +950,7 @@ export default function SearchScreen() {
       <View style={styles.tabContainer}>
         <TouchableOpacity 
           style={[styles.tab, activeTab === "merchants" && styles.activeTab]}
-          onPress={() => setActiveTab("merchants")}
+          onPress={() => {setActiveTab("merchants"); filterResults();}} // Re-apply filters on tab change
         >
           <Text style={[styles.tabText, activeTab === "merchants" && styles.activeTabText]}>
             Merchants ({filteredMerchants.length})
@@ -929,7 +958,7 @@ export default function SearchScreen() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tab, activeTab === "commodities" && styles.activeTab]}
-          onPress={() => setActiveTab("commodities")}
+          onPress={() => {setActiveTab("commodities"); filterResults();}} // Re-apply filters on tab change
         >
           <Text style={[styles.tabText, activeTab === "commodities" && styles.activeTabText]}>
             Commodities ({filteredCommodities.length})
@@ -1001,6 +1030,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  placeholder: {
+    width: 40,
+  },
+  filterButton: {
+    padding: 8,
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -1109,15 +1144,35 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   filtersContainer: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    borderRadius: 8,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  filtersScroll: {
+    paddingHorizontal: Math.max(16, width * 0.04),
+  },
+  filterChip: {
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  activeFilterChip: {
+    backgroundColor: '#4682B4', // Changed to a more common blue
+    borderColor: '#4682B4',
+  },
+  filterChipText: {
+    fontSize: 13, // Adjusted for consistency
+    color: '#666',
+    fontWeight: '500',
+  },
+  activeFilterChipText: {
+    color: 'white',
+    fontWeight: '600',
   },
   filtersHeader: {
     flexDirection: 'row',
@@ -1150,97 +1205,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  categoryButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  activeCategoryButton: {
-    backgroundColor: '#4682B4',
-    borderColor: '#4682B4',
-  },
-  categoryButtonText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  activeCategoryButtonText: {
-    color: '#fff',
-  },
   distanceButtons: {
     flexDirection: 'row',
     gap: 8,
-  },
-  distanceButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  activeDistanceButton: {
-    backgroundColor: '#4682B4',
-    borderColor: '#4682B4',
-  },
-  distanceButtonText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  activeDistanceButtonText: {
-    color: '#fff',
   },
   ratingButtons: {
     flexDirection: 'row',
     gap: 8,
   },
-  ratingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    gap: 4,
-  },
-  activeRatingButton: {
-    backgroundColor: '#4682B4',
-    borderColor: '#4682B4',
-  },
-  ratingButtonText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  activeRatingButtonText: {
-    color: '#fff',
-  },
   priceButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  priceButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  activePriceButton: {
-    backgroundColor: '#4682B4',
-    borderColor: '#4682B4',
-  },
-  priceButtonText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  activePriceButtonText: {
-    color: '#fff',
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -1272,25 +1248,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  sortButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  activeSortButton: {
-    backgroundColor: '#4682B4',
-    borderColor: '#4682B4',
-  },
-  sortButtonText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  activeSortButtonText: {
-    color: '#fff',
   },
   tabContainer: {
     flexDirection: 'row',
