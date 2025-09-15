@@ -70,9 +70,24 @@ export default function SplashScreen() {
         console.log('userToken:', userToken ? 'exists' : 'null');
         console.log('Navigation condition check: hasSeenOnboarding is', hasSeenOnboarding === null ? 'null' : hasSeenOnboarding);
 
-        // Temporarily bypass onboarding and authentication to show consumer homepage with map
-        console.log('Bypassing onboarding - navigating directly to consumer homepage');
-        router.replace("/home/consumer");
+        if (hasSeenOnboarding === null) {
+          // First time user - show onboarding
+          console.log('First time user, navigating to onboarding');
+          router.replace("/onboarding/screen1");
+        } else if (userToken) {
+          // Returning user with token - go to appropriate home screen
+          const userRole = await AsyncStorage.getItem("userRole");
+          console.log('Returning user with token, role:', userRole);
+          if (userRole === "consumer") {
+            router.replace("/home/consumer");
+          } else {
+            router.replace(`/dashboard/${userRole || "consumer"}`);
+          }
+        } else {
+          // User has seen onboarding but no token - go to role selection
+          console.log('User seen onboarding but no token, navigating to role selection');
+          router.replace("/auth/role-selection");
+        }
       } catch (error) {
         console.error("Error checking user status:", error);
         // On error, default to onboarding
