@@ -7,11 +7,12 @@ export default function OTPVerification() {
   const router = useRouter();
   const [otp, setOtp] = useState(["", "", "", "", ""]);
   const inputRefs = useRef<TextInput[]>([]);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleOTPChange = (value: string, index: number) => {
     // Only allow numeric input
     const numericValue = value.replace(/[^0-9]/g, '');
-    
+
     const newOtp = [...otp];
     newOtp[index] = numericValue;
     setOtp(newOtp);
@@ -19,6 +20,9 @@ export default function OTPVerification() {
     // Auto-focus next input
     if (numericValue && index < 4) {
       inputRefs.current[index + 1]?.focus();
+    } else if (!numericValue && index > 0) {
+      // Auto-focus previous input on backspace
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
@@ -34,47 +38,56 @@ export default function OTPVerification() {
 
   const handleVerifyOTP = async () => {
     const otpString = otp.join("");
-    
+
     if (otpString.length !== 5) {
       Alert.alert("Error", "Please enter all 5 digits of the verification code.");
       return;
     }
 
+    setIsVerifying(true);
+
     try {
-      // For demo purposes, accept any 5-digit code
-      // In a real app, you would verify this with your backend
-      
-      // Get pending user data
-      const pendingUserData = await AsyncStorage.getItem("pendingUserData");
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
-      
-      if (pendingUserData) {
-        // Registration successful
-        const userData = JSON.parse(pendingUserData);
-        
-        // Generate token and save user session
-        const token = "user_token_" + Date.now();
-        await AsyncStorage.setItem("userToken", token);
-        await AsyncStorage.setItem("userEmail", userData.email);
-        await AsyncStorage.setItem("userRole", selectedRole || "consumer");
-        
-        // Clean up pending data
-        await AsyncStorage.removeItem("pendingUserData");
-        
-        Alert.alert(
-          "Success!", 
-          "Verification successful!",
-          [
-            {
-              text: "OK",
-              onPress: () => router.replace(`/dashboard/${selectedRole || "consumer"}`)
-            }
-          ]
-        );
+      const { authService } = await import('../../services/authService');
+      const tempEmail = await AsyncStorage.getItem("pendingUserData"); // Assuming pendingUserData stores email and other details
+      const tempRole = await AsyncStorage.getItem("selectedRole");
+
+      if (!tempEmail) {
+        Alert.alert("Error", "Session expired. Please sign up again.");
+        router.replace("/auth/signup");
+        return;
+      }
+
+      const userData = JSON.parse(tempEmail); // Parse the stored pending user data
+
+      const response = await authService.verifyOTP({
+        email: userData.email, // Use email from parsed data
+        otp: otpString
+      });
+
+      if (response.success && response.data) {
+        // Store authenticated user data
+        await AsyncStorage.setItem("userToken", response.data.token);
+        await AsyncStorage.setItem("userEmail", response.data.user.email);
+        await AsyncStorage.setItem("userRole", response.data.user.role);
+
+        // Clean up temporary data
+        await AsyncStorage.multiRemove(["pendingUserData", "selectedRole"]);
+
+        Alert.alert("Success", "Account verified successfully!");
+
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
+      } else {
+        Alert.alert("Error", response.error || "Invalid verification code");
       }
     } catch (error) {
-      console.error("Error verifying OTP:", error);
+      console.error("OTP Verification Error:", error);
       Alert.alert("Error", "Verification failed. Please try again.");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -115,6 +128,7 @@ export default function OTPVerification() {
             keyboardType="numeric"
             maxLength={1}
             selectTextOnFocus
+            editable={!isVerifying} // Disable input while verifying
           />
         ))}
       </View>
@@ -126,26 +140,26 @@ export default function OTPVerification() {
       </View>
 
       {/* Submit Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
           styles.submitButton,
           !isCodeComplete() && styles.submitButtonDisabled
-        ]} 
+        ]}
         onPress={handleVerifyOTP}
-        disabled={!isCodeComplete()}
+        disabled={!isCodeComplete() || isVerifying} // Disable if code not complete or verifying
       >
         <Text style={[
           styles.submitButtonText,
-          !isCodeComplete() && styles.submitButtonTextDisabled
+          (!isCodeComplete() || isVerifying) && styles.submitButtonTextDisabled
         ]}>
-          Submit
+          {isVerifying ? "Verifying..." : "Submit"}
         </Text>
       </TouchableOpacity>
 
       {/* Resend Code */}
       <View style={styles.resendContainer}>
         <Text style={styles.resendText}>Didn't get code? </Text>
-        <TouchableOpacity onPress={handleResendOTP}>
+        <TouchableOpacity onPress={handleResendOTP} disabled={isVerifying}>
           <Text style={styles.resendLink}>Resend</Text>
         </TouchableOpacity>
       </View>

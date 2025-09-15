@@ -25,48 +25,63 @@ export default function Notifications() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Order Delivered',
-      message: 'Your order #12345 has been successfully delivered to your location.',
-      timestamp: '2 hours ago',
-      type: 'delivery',
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'Special Offer',
-      message: '20% off on all electronics! Use code SAVE20. Valid until tomorrow.',
-      timestamp: '5 hours ago',
-      type: 'promo',
-      read: false,
-    },
-    {
-      id: '3',
-      title: 'Order Confirmed',
-      message: 'Your order #12344 has been confirmed and is being prepared.',
-      timestamp: '1 day ago',
-      type: 'order',
-      read: true,
-    },
-    {
-      id: '4',
-      title: 'Account Update',
-      message: 'Your profile information has been successfully updated.',
-      timestamp: '2 days ago',
-      type: 'system',
-      read: true,
-    },
-    {
-      id: '5',
-      title: 'New Products Available',
-      message: 'Check out the latest products in your favorite categories.',
-      timestamp: '3 days ago',
-      type: 'promo',
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      // Create notification service for real API calls
+      const { apiClient } = await import('../../services/api');
+      const { authService } = await import('../../services/authService');
+      
+      const token = await authService.getToken();
+      if (!token) {
+        console.log('No auth token, skipping notifications load');
+        return;
+      }
+
+      const response = await apiClient.get('/api/notifications', {
+        Authorization: `Bearer ${token}`
+      });
+
+      if (response.success && response.data) {
+        // Transform API data to match local interface
+        const transformedNotifications: Notification[] = response.data.map((notif: any) => ({
+          id: notif.id,
+          title: notif.title,
+          message: notif.message,
+          timestamp: formatTimestamp(notif.createdAt),
+          type: notif.type || 'system',
+          read: notif.read || false
+        }));
+        
+        setNotifications(transformedNotifications);
+      } else {
+        console.error('Failed to load notifications:', response.error);
+        // Fallback to empty array
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      setNotifications([]);
+    }
+  };
+
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+  };
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {

@@ -46,18 +46,28 @@ export default function SignIn() {
     }
 
     try {
-      const mockToken = "user_token_" + Date.now();
-      await AsyncStorage.setItem("userToken", mockToken);
-      await AsyncStorage.setItem("userEmail", formData.email);
+      // Import authService for real API calls
+      const { authService } = await import('../../services/authService');
+      
+      const response = await authService.signIn({
+        email: formData.email,
+        password: formData.password
+      });
 
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
-      await AsyncStorage.setItem("userRole", selectedRole || "consumer");
+      if (response.success && response.data) {
+        // Store user data from API response
+        await AsyncStorage.setItem("userToken", response.data.token);
+        await AsyncStorage.setItem("userEmail", response.data.user.email);
+        await AsyncStorage.setItem("userRole", response.data.user.role);
 
-      // Route consumers to home page, others to dashboard
-      if (selectedRole === "consumer") {
-        router.replace("/home/consumer");
+        // Route based on user role from API
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
       } else {
-        router.replace(`/dashboard/${selectedRole || "consumer"}`);
+        Alert.alert("Sign In Failed", response.error || "Invalid credentials");
       }
     } catch (error) {
       console.error("Error signing in:", error);

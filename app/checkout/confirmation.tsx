@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -43,6 +42,7 @@ export default function ConfirmationScreen() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('card');
   const [loading, setLoading] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [orderStatus, setOrderStatus] = useState<'idle' | 'success' | 'failed'>('idle'); // Added to track order status
 
   const deliveryFee = 500;
   const serviceFee = 200;
@@ -56,7 +56,7 @@ export default function ConfirmationScreen() {
 
   useEffect(() => {
     loadOrderData();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -104,48 +104,70 @@ export default function ConfirmationScreen() {
     if (!orderData) return;
 
     setLoading(true);
+    setOrderStatus('idle'); // Reset status
 
     try {
-      // Create final order
-      const finalOrder = {
-        id: `ORD${Date.now()}`,
-        ...orderData,
-        subtotal: getSubtotal(),
-        deliveryFee,
-        serviceFee,
-        totalAmount: getTotalAmount(),
-        paymentMethod: selectedPaymentMethod,
-        status: 'pending',
-        orderDate: new Date().toISOString(),
-        estimatedDelivery: new Date(Date.now() + 30 * 60000).toISOString(), // 30 minutes
-      };
+      // Real order submission
+      const { orderService } = await import('../../services/orderService');
 
-      // Save to orders history
-      const existingOrders = await AsyncStorage.getItem('userOrders');
-      const orders = existingOrders ? JSON.parse(existingOrders) : [];
-      orders.push(finalOrder);
-      await AsyncStorage.setItem('userOrders', JSON.stringify(orders));
+      const response = await orderService.createOrder({
+        commodityId: orderData.commodityId,
+        merchantId: orderData.merchantId,
+        quantity: orderData.quantity,
+        deliveryAddress: orderData.location,
+        deliveryType: orderData.deliveryType,
+        recipientName: orderData.recipientName,
+        recipientPhone: orderData.recipientPhone,
+        specialInstructions: orderData.notes,
+        paymentMethodId: 'default' // TODO: Get from payment selection
+      });
 
-      // Clear pending order
-      await AsyncStorage.removeItem('pendingOrder');
-
-      Alert.alert(
-        'Order Confirmed!',
-        `Your order #${finalOrder.id} has been placed successfully. You will receive updates on the delivery status.`,
-        [
-          {
-            text: 'View Order',
-            onPress: () => router.replace(`/orders/order-details?id=${finalOrder.id}`)
-          }
-        ]
-      );
+      if (response.success && response.data) {
+        await AsyncStorage.setItem('lastOrderId', response.data.id);
+        setOrderStatus('success');
+      } else {
+        console.error('Order creation failed:', response.error);
+        setOrderStatus('failed');
+      }
     } catch (error) {
       console.error('Error confirming order:', error);
-      Alert.alert('Error', 'Failed to confirm order. Please try again.');
+      setOrderStatus('failed');
     } finally {
       setLoading(false);
     }
   };
+
+  // Handle order status feedback
+  useEffect(() => {
+    if (orderStatus === 'success') {
+      Alert.alert(
+        'Order Confirmed!',
+        `Your order has been placed successfully.`,
+        [
+          {
+            text: 'View Order',
+            onPress: async () => {
+              const lastOrderId = await AsyncStorage.getItem('lastOrderId');
+              if (lastOrderId) {
+                router.replace(`/orders/order-details?id=${lastOrderId}`);
+              } else {
+                router.replace('/orders'); // Fallback if order ID is not found
+              }
+            }
+          }
+        ]
+      );
+      // Clear pending order after successful confirmation
+      AsyncStorage.removeItem('pendingOrder');
+    } else if (orderStatus === 'failed') {
+      Alert.alert(
+        'Order Failed',
+        'There was an issue placing your order. Please check your details and try again.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    }
+  }, [orderStatus, router]);
+
 
   if (!orderData) {
     return (
@@ -193,7 +215,7 @@ export default function ConfirmationScreen() {
           {/* Delivery Details */}
           <View style={styles.summaryCard}>
             <Text style={styles.cardTitle}>Delivery Details</Text>
-            
+
             <View style={styles.detailRow}>
               <Ionicons name="person-outline" size={20} color="#666" />
               <View style={styles.detailInfo}>
@@ -275,22 +297,22 @@ export default function ConfirmationScreen() {
           {/* Price Breakdown */}
           <View style={styles.priceCard}>
             <Text style={styles.cardTitle}>Price Breakdown</Text>
-            
+
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Subtotal</Text>
               <Text style={styles.priceValue}>₦{getSubtotal().toLocaleString()}</Text>
             </View>
-            
+
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Delivery Fee</Text>
               <Text style={styles.priceValue}>₦{deliveryFee.toLocaleString()}</Text>
             </View>
-            
+
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Service Fee</Text>
               <Text style={styles.priceValue}>₦{serviceFee.toLocaleString()}</Text>
             </View>
-            
+
             <View style={[styles.priceRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total Amount</Text>
               <Text style={styles.totalValue}>₦{getTotalAmount().toLocaleString()}</Text>
@@ -304,7 +326,7 @@ export default function ConfirmationScreen() {
         <TouchableOpacity 
           style={[styles.confirmButton, loading && styles.disabledButton]}
           onPress={handleConfirmOrder}
-          disabled={loading}
+          disabled={loading || orderStatus !== 'idle'} // Disable if processing or already responded
         >
           <Text style={styles.confirmButtonText}>
             {loading ? 'Processing...' : `Confirm Order - ₦${getTotalAmount().toLocaleString()}`}

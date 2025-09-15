@@ -24,37 +24,40 @@ export default function PaymentMethodScreen() {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
-  const paymentMethods: PaymentMethod[] = [
-    {
-      id: '1',
-      type: 'mastercard',
-      cardNumber: '**** **** **** 1234',
-      expiry: '02/26'
-    },
-    {
-      id: '2',
-      type: 'visa',
-      cardNumber: '**** **** **** 1234',
-      expiry: '02/26'
-    },
-    {
-      id: '3',
-      type: 'apple-pay',
-      cardNumber: '**** **** **** 1234',
-      expiry: '02/26'
-    },
-    {
-      id: '4',
-      type: 'google-pay',
-      cardNumber: '**** **** **** 1234',
-      expiry: '02/26'
-    },
-    {
-      id: '5',
-      type: 'paypal',
-      name: 'Anthony Godfrey'
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  useEffect(() => {
+    loadPaymentMethods();
+  }, []);
+
+  const loadPaymentMethods = async () => {
+    try {
+      const { paymentService } = await import('../../services/paymentService');
+      
+      const response = await paymentService.getPaymentMethods();
+      
+      if (response.success && response.data) {
+        // Transform API data to match local interface
+        const transformedMethods: PaymentMethod[] = response.data.map(method => ({
+          id: method.id,
+          type: method.type === 'card' ? (method.brand?.toLowerCase() as any) || 'visa' : method.type as any,
+          cardNumber: method.last4 ? `**** **** **** ${method.last4}` : undefined,
+          expiry: method.expiryMonth && method.expiryYear ? 
+            `${method.expiryMonth.toString().padStart(2, '0')}/${method.expiryYear.toString().slice(-2)}` : undefined,
+          name: method.type !== 'card' ? 'Account Holder' : undefined
+        }));
+        
+        setPaymentMethods(transformedMethods);
+      } else {
+        console.error('Failed to load payment methods:', response.error);
+        // Fallback to empty array
+        setPaymentMethods([]);
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+      setPaymentMethods([]);
     }
-  ];
+  };
 
   const getPaymentIcon = (type: string) => {
     switch (type) {

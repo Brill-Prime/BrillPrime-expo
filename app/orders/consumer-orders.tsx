@@ -46,54 +46,34 @@ export default function ConsumerOrders() {
 
   const loadOrders = async () => {
     try {
-      // Mock data - replace with actual API call
-      const mockOrders: Order[] = [
-        {
-          id: '1001',
-          merchantName: 'Lagos Fuel Station',
-          items: ['Premium Petrol'],
-          totalAmount: 30000,
-          status: 'delivered',
-          orderDate: '2024-01-15T17:00:00',
-          location: 'Rayfield, Jos',
-          quantity: '1 litre',
-          itemType: 'petrol',
-        },
-        {
-          id: '1002',
-          merchantName: 'Victoria Island Market',
-          items: ['Premium Petrol'],
-          totalAmount: 30000,
-          status: 'cancelled',
-          orderDate: '2024-01-15T17:00:00',
-          location: 'Rayfield, Jos',
-          quantity: '1 litre',
-          itemType: 'petrol',
-        },
-        {
-          id: '1003',
-          merchantName: 'Ikeja Shopping Mall',
-          items: ['Diesel'],
-          totalAmount: 25000,
-          status: 'delivered',
-          orderDate: '2024-01-14T14:20:00',
-          location: 'Victoria Island, Lagos',
-          quantity: '2 litres',
-          itemType: 'diesel',
-        },
-        {
-          id: '1004',
-          merchantName: 'Lagos Fuel Station',
-          items: ['Premium Petrol'],
-          totalAmount: 45000,
-          status: 'preparing',
-          orderDate: '2024-01-13T16:45:00',
-          location: 'Ikeja, Lagos',
-          quantity: '1.5 litres',
-          itemType: 'petrol',
-        },
-      ];
-      setOrders(mockOrders);
+      const { orderService } = await import('../../services/orderService');
+      
+      const response = await orderService.getUserOrders({
+        limit: 50,
+        offset: 0
+      });
+
+      if (response.success && response.data) {
+        // Transform API data to match local interface
+        const transformedOrders: Order[] = response.data.orders.map(order => ({
+          id: order.id,
+          merchantName: order.merchantName || 'Unknown Merchant',
+          items: order.items ? order.items.map(item => item.name) : ['Unknown Item'],
+          totalAmount: order.totalAmount,
+          status: order.status,
+          orderDate: order.createdAt,
+          estimatedDelivery: order.estimatedDelivery,
+          location: order.deliveryAddress,
+          quantity: order.quantity ? `${order.quantity} ${order.unit || 'units'}` : 'N/A',
+          itemType: order.commodityType || 'general'
+        }));
+        
+        setOrders(transformedOrders);
+      } else {
+        console.error('Failed to load orders:', response.error);
+        // Fallback to empty array if API fails
+        setOrders([]);
+      }
     } catch (error) {
       console.error('Error loading orders:', error);
       Alert.alert('Error', 'Failed to load orders');

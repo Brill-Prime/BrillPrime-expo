@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   View, 
@@ -12,7 +11,7 @@ import {
   Modal,
   ActivityIndicator 
 } from "react-native";
-import { useRouter } from "expo-router";
+import {useRouter} from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
@@ -222,7 +221,8 @@ export default function SearchScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
-  
+  const [loading, setLoading] = useState(false); // Added loading state
+
   // Enhanced filter states
   const [filters, setFilters] = useState({
     maxDistance: 10, // km
@@ -251,11 +251,20 @@ export default function SearchScreen() {
     updateSearchSuggestions();
   }, [searchQuery, activeTab, filters, userCoordinates]);
 
+  // Load merchants and commodities from API
+  useEffect(() => {
+    if (activeTab === "merchants") {
+      loadMerchants();
+    } else {
+      loadCommodities();
+    }
+  }, [activeTab, userCoordinates]); // Re-fetch when tab or user location changes
+
   const loadUserData = async () => {
     try {
       const savedLocation = await AsyncStorage.getItem("userLocation");
       const savedAddress = await AsyncStorage.getItem("userAddress");
-      
+
       if (savedLocation) {
         const coordinates = JSON.parse(savedLocation);
         setUserCoordinates(coordinates);
@@ -313,22 +322,22 @@ export default function SearchScreen() {
 
   const filterResults = () => {
     const query = searchQuery.toLowerCase().trim();
-    
+
     // Save search to history if it's not empty and not already in history
     if (query && !searchHistory.includes(query)) {
       const newHistory = [query, ...searchHistory.slice(0, 4)]; // Keep last 5 searches
       setSearchHistory(newHistory);
       AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
     }
-    
+
     if (activeTab === "merchants") {
-      let filtered = query === "" ? [...MOCK_MERCHANTS] : MOCK_MERCHANTS.filter(merchant =>
+      let filtered = query === "" ? [...filteredMerchants] : filteredMerchants.filter(merchant =>
         merchant.name.toLowerCase().includes(query) ||
         merchant.type.toLowerCase().includes(query) ||
         merchant.location.toLowerCase().includes(query) ||
         merchant.features.some(feature => feature.toLowerCase().includes(query))
       );
-      
+
       // Apply filters
       filtered = filtered.filter(merchant => {
         const distance = parseFloat(merchant.distance.replace(' km', ''));
@@ -337,7 +346,7 @@ export default function SearchScreen() {
         const passesCategory = filters.category === 'all' || merchant.category === filters.category;
         const passesPriceRange = filters.priceRange === 'all' || merchant.priceRange === filters.priceRange;
         const passesOpenStatus = !filters.onlyOpen || merchant.isOpen;
-        
+
         return passesDistance && passesRating && passesCategory && passesPriceRange && passesOpenStatus;
       });
 
@@ -357,7 +366,7 @@ export default function SearchScreen() {
           };
         });
       }
-      
+
       // Sort results
       filtered = filtered.sort((a, b) => {
         if (filters.sortBy === 'distance') {
@@ -370,21 +379,21 @@ export default function SearchScreen() {
           return a.name.localeCompare(b.name);
         }
       });
-      
+
       setFilteredMerchants(filtered);
     } else {
-      let filtered = query === "" ? [...MOCK_COMMODITIES] : MOCK_COMMODITIES.filter(commodity =>
+      let filtered = query === "" ? [...filteredCommodities] : filteredCommodities.filter(commodity =>
         commodity.name.toLowerCase().includes(query) ||
         commodity.category.toLowerCase().includes(query) ||
         commodity.description.toLowerCase().includes(query) ||
         commodity.merchants.some(merchant => merchant.toLowerCase().includes(query))
       );
-      
+
       // Apply category filter for commodities
       if (filters.category !== 'all') {
         filtered = filtered.filter(commodity => commodity.category === filters.category);
       }
-      
+
       // Apply price range filter for commodities
       if (filters.priceRange !== 'all') {
         filtered = filtered.filter(commodity => {
@@ -401,7 +410,7 @@ export default function SearchScreen() {
       } else if (filters.sortBy === 'name') {
         filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
       }
-      
+
       setFilteredCommodities(filtered);
     }
   };
@@ -437,7 +446,7 @@ export default function SearchScreen() {
     const newFavorites = favorites.includes(id) 
       ? favorites.filter(fav => fav !== id)
       : [...favorites, id];
-    
+
     setFavorites(newFavorites);
     await AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
   };
@@ -462,17 +471,17 @@ export default function SearchScreen() {
       let location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      
+
       const coordinates = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       };
-      
+
       setUserCoordinates(coordinates);
       await AsyncStorage.setItem("userLocation", JSON.stringify(coordinates));
-      
+
       // Get address
-      let addressInfo = "Your Current Location";
+      let addressInfo = "Your Location";
       try {
         let reverseGeocode = await Location.reverseGeocodeAsync(coordinates);
         if (reverseGeocode.length > 0) {
@@ -482,11 +491,11 @@ export default function SearchScreen() {
       } catch (geoError) {
         console.log("Geocoding failed, using default address");
       }
-      
+
       setUserLocation(addressInfo);
       await AsyncStorage.setItem("userAddress", addressInfo);
       setFilters({...filters, sortBy: 'distance'});
-      
+
       setIsLoadingLocation(false);
       Alert.alert("Success!", `Location updated to ${addressInfo}. Results sorted by distance.`);
     } catch (error) {
@@ -594,6 +603,59 @@ export default function SearchScreen() {
     </TouchableOpacity>
   );
 
+  const loadMerchants = async () => {
+    try {
+      setLoading(true);
+      const { merchantService } = await import('../../services/merchantService');
+
+      const response = await merchantService.getMerchants({
+        location: userCoordinates ? {
+          latitude: userCoordinates.latitude,
+          longitude: userCoordinates.longitude,
+          radius: 50 // 50km radius
+        } : undefined
+      });
+
+      if (response.success && response.data) {
+        setFilteredMerchants(response.data);
+      } else {
+        console.error('Failed to load merchants:', response.error);
+        // Fallback to mock data if API fails
+        setFilteredMerchants(MOCK_MERCHANTS);
+      }
+    } catch (error) {
+      console.error('Error loading merchants:', error);
+      // Fallback to mock data on error
+      setFilteredMerchants(MOCK_MERCHANTS);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCommodities = async () => {
+    try {
+      setLoading(true);
+      const { merchantService } = await import('../../services/merchantService');
+
+      const response = await merchantService.getCommodities();
+
+      if (response.success && response.data) {
+        setFilteredCommodities(response.data);
+      } else {
+        console.error('Failed to load commodities:', response.error);
+        // Fallback to mock data if API fails
+        setFilteredCommodities(MOCK_COMMODITIES);
+      }
+    } catch (error) {
+      console.error('Error loading commodities:', error);
+      // Fallback to mock data on error
+      setFilteredCommodities(MOCK_COMMODITIES);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -629,7 +691,7 @@ export default function SearchScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         <View style={styles.searchActions}>
           <TouchableOpacity 
             style={[styles.actionButton, isLoadingLocation && styles.disabledButton]} 
@@ -701,7 +763,7 @@ export default function SearchScreen() {
                 <Text style={styles.resetFiltersText}>Reset</Text>
               </TouchableOpacity>
             </View>
-            
+
             {/* Category Filter */}
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>Category</Text>
@@ -877,7 +939,12 @@ export default function SearchScreen() {
 
       {/* Results */}
       <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
-        {activeTab === "merchants" ? (
+        {loading ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color="#4682B4" />
+            <Text style={styles.emptyText}>Loading...</Text>
+          </View>
+        ) : activeTab === "merchants" ? (
           filteredMerchants.length > 0 ? (
             filteredMerchants.map(renderMerchantItem)
           ) : (

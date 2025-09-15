@@ -1,6 +1,8 @@
 // API Service Configuration
 // This file provides the core API client and configuration
 
+import { ENV } from '../config/environment';
+
 interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -10,14 +12,14 @@ interface ApiResponse<T = any> {
 
 class ApiClient {
   private baseURL: string;
-  
+
   constructor() {
-    // Use environment variable or default to Render backend URL
-    this.baseURL = process.env.API_BASE_URL || 'https://your-backend-app.onrender.com';
+    this.baseURL = ENV.apiBaseUrl;
+    console.log('API Base URL:', this.baseURL);
   }
 
   private async makeRequest<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {

@@ -15,6 +15,7 @@ export default function SignUp() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("consumer"); // Added state for role selection
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -28,6 +29,11 @@ export default function SignUp() {
       Alert.alert("Error", "Please enter your full name");
       return false;
     }
+    // Split fullName into firstName and lastName
+    const nameParts = formData.fullName.trim().split(' ');
+    const firstName = nameParts.length > 0 ? nameParts[0] : '';
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
     if (!formData.email.trim() || !formData.email.includes("@")) {
       Alert.alert("Error", "Please enter a valid email address");
       return false;
@@ -51,11 +57,30 @@ export default function SignUp() {
     if (!validateForm()) return;
 
     try {
-      await AsyncStorage.setItem("pendingUserData", JSON.stringify(formData));
-      router.push("/auth/otp-verification");
+      // Import authService for real API calls
+      const { authService } = await import('../../services/authService');
+
+      const response = await authService.signUp({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.fullName.split(' ')[0], // Extract first name
+        lastName: formData.fullName.split(' ').slice(1).join(' '), // Extract last name
+        role: selectedRole || "consumer",
+        phoneNumber: formData.phone
+      });
+
+      if (response.success && response.data) {
+        // Store temporary data for OTP verification
+        await AsyncStorage.setItem("tempUserEmail", formData.email);
+        await AsyncStorage.setItem("tempUserRole", selectedRole || "consumer");
+
+        router.push("/auth/otp-verification");
+      } else {
+        Alert.alert("Sign Up Failed", response.error || "Registration failed");
+      }
     } catch (error) {
-      console.error("Error saving user data:", error);
-      Alert.alert("Error", "Please try again");
+      console.error("Error signing up:", error);
+      Alert.alert("Error", "Sign up failed. Please try again.");
     }
   };
 
@@ -64,8 +89,8 @@ export default function SignUp() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -176,6 +201,26 @@ export default function SignUp() {
             </View>
           </View>
 
+          {/* Role Selection (Example: Consumer, Merchant) */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="people-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <Text style={styles.roleLabel}>Role:</Text>
+              <TouchableOpacity
+                style={[styles.roleButton, selectedRole === 'consumer' && styles.roleButtonSelected]}
+                onPress={() => setSelectedRole('consumer')}
+              >
+                <Text style={[styles.roleButtonText, selectedRole === 'consumer' && styles.roleButtonTextSelected]}>Consumer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.roleButton, selectedRole === 'merchant' && styles.roleButtonSelected]}
+                onPress={() => setSelectedRole('merchant')}
+              >
+                <Text style={[styles.roleButtonText, selectedRole === 'merchant' && styles.roleButtonTextSelected]}>Merchant</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Sign Up Button */}
           <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
             <Text style={styles.signUpButtonText}>Sign Up</Text>
@@ -199,19 +244,19 @@ export default function SignUp() {
 
           {/* Social Login Buttons */}
           <View style={styles.socialContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
             >
               <Ionicons name="logo-google" size={24} color="#DB4437" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Apple")}
             >
               <Ionicons name="logo-apple" size={24} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Facebook")}
             >
@@ -363,6 +408,32 @@ const styles = StyleSheet.create({
   signInLink: {
     fontSize: 14,
     color: PRIMARY_COLOR,
+    fontWeight: "700",
+  },
+  // Styles for role selection
+  roleLabel: {
+    fontSize: 16,
+    color: "#111827",
+    marginRight: 10,
+  },
+  roleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: GRAY_400,
+    marginHorizontal: 5,
+  },
+  roleButtonSelected: {
+    backgroundColor: PRIMARY_COLOR,
+    borderColor: PRIMARY_COLOR,
+  },
+  roleButtonText: {
+    fontSize: 14,
+    color: GRAY_400,
+  },
+  roleButtonTextSelected: {
+    color: "#FFFFFF",
     fontWeight: "700",
   },
 });

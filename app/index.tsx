@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import { Text, View, StyleSheet, Animated, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -9,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export default function SplashScreen() {
   const router = useRouter();
   const variant = process.env.APP_VARIANT || "main";
-  
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -47,56 +46,70 @@ export default function SplashScreen() {
         ])
       ).start();
     };
-    
+
     startPulse();
 
-    const checkUserStatus = async () => {
+    const checkAuthState = async () => {
+    try {
+      const [onboarding, token] = await AsyncStorage.multiGet(['hasSeenOnboarding', 'userToken']);
+
+      console.log('hasSeenOnboarding:', onboarding[1]);
+      console.log('userToken:', token[1]);
+
+      console.log('Navigation condition check: hasSeenOnboarding is', onboarding[1]);
+
+      if (!onboarding[1]) {
+        console.log('First time user, navigating to onboarding');
+        router.replace('/onboarding/screen1');
+        return;
+      }
+
+      if (!token[1]) {
+        console.log('No token, navigating to role selection');
+        router.replace('/auth/role-selection');
+        return;
+      }
+
+      // Verify token with backend
       try {
-        // Wait for 5 seconds (splash screen duration)
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        if (variant === "admin") {
-          router.replace("/admin-panel");
-          return;
-        }
+        const { authService } = await import('../services/authService');
+        const userResponse = await authService.getCurrentUser();
 
-        console.log('SPLASH SCREEN NAVIGATION STARTED');
+        if (userResponse.success && userResponse.data) {
+          // Token is valid, navigate based on role
+          const role = userResponse.data.role;
+          console.log('Verified user role:', role);
 
-        // Check if user is first time visitor
-        const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-        const userToken = await AsyncStorage.getItem("userToken");
-
-        console.log('hasSeenOnboarding:', hasSeenOnboarding);
-        console.log('userToken:', userToken ? 'exists' : 'null');
-        console.log('Navigation condition check: hasSeenOnboarding is', hasSeenOnboarding === null ? 'null' : hasSeenOnboarding);
-
-        if (hasSeenOnboarding === null) {
-          // First time user - show onboarding
-          console.log('First time user, navigating to onboarding');
-          router.replace("/onboarding/screen1");
-        } else if (userToken) {
-          // Returning user with token - go to appropriate home screen
-          const userRole = await AsyncStorage.getItem("userRole");
-          console.log('Returning user with token, role:', userRole);
-          if (userRole === "consumer") {
-            router.replace("/home/consumer");
+          if (role === 'consumer') {
+            console.log('Consumer user, navigating to home');
+            router.replace('/home/consumer');
           } else {
-            router.replace(`/dashboard/${userRole || "consumer"}`);
+            console.log('Non-consumer user, navigating to dashboard');
+            router.replace(`/dashboard/${role}`);
           }
         } else {
-          // User has seen onboarding but no token - go to role selection
-          console.log('User seen onboarding but no token, navigating to role selection');
-          router.replace("/auth/role-selection");
+          // Token is invalid, clear storage and redirect to auth
+          console.log('Invalid token, clearing storage');
+          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole']);
+          router.replace('/auth/role-selection');
         }
       } catch (error) {
-        console.error("Error checking user status:", error);
-        // On error, default to onboarding
-        console.log('Error occurred, navigating to onboarding');
-        router.replace("/onboarding/screen1");
+        console.error('Error verifying token:', error);
+        // On network error, still try to navigate based on stored role
+        const role = await AsyncStorage.getItem('userRole');
+        if (role === 'consumer') {
+          router.replace('/home/consumer');
+        } else {
+          router.replace(`/dashboard/${role || 'consumer'}`);
+        }
       }
-    };
+    } catch (error) {
+      console.error('Error checking auth state:', error);
+      router.replace('/onboarding/screen1');
+    }
+  };
 
-    checkUserStatus();
+    checkAuthState();
   }, [router, variant, fadeAnim, scaleAnim, pulseAnim]);
 
   if (variant === "admin") {
@@ -128,7 +141,7 @@ export default function SplashScreen() {
             resizeMode="contain"
           />
         </Animated.View>
-        
+
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#3b82f6" />
         </View>
