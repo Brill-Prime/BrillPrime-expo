@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,6 +20,15 @@ export default function SignIn() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -58,6 +68,8 @@ export default function SignIn() {
   const handleSocialLogin = (provider: string) => {
     Alert.alert("Coming Soon", `${provider} login will be available soon!`);
   };
+
+  const styles = getResponsiveStyles(screenData);
 
   return (
     <KeyboardAvoidingView
@@ -143,19 +155,19 @@ export default function SignIn() {
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
             >
-              <Ionicons name="logo-google" size={24} color="#DB4437" />
+              <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Apple")}
             >
-              <Ionicons name="logo-apple" size={24} color="#000" />
+              <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Facebook")}
             >
-              <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+              <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
             </TouchableOpacity>
           </View>
 
@@ -176,128 +188,138 @@ const PRIMARY_COLOR = "rgb(11, 26, 81)";
 const GRAY_400 = "#9CA3AF";
 const GRAY_600 = "#6B7280";
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    maxWidth: 400,
-    alignSelf: "center",
-    width: "100%",
-    justifyContent: "center",
-    minHeight: "100%",
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  logo: {
-    width: 80,
-    height: 64,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: PRIMARY_COLOR,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 25,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  leftIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#111827",
-  },
-  rightIcon: {
-    marginLeft: 12,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: PRIMARY_COLOR,
-    fontWeight: "500",
-  },
-  signInButton: {
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  signInText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#000000",
-  },
-  dividerText: {
-    paddingHorizontal: 8,
-    fontSize: 14,
-    color: "rgb(19, 19, 19)",
-    fontWeight: "300",
-  },
-  socialContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    marginBottom: 20,
-  },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  signUpContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  signUpText: {
-    fontSize: 14,
-    color: "rgb(19, 19, 19)",
-    fontWeight: "300",
-  },
-  signUpLink: {
-    fontSize: 14,
-    color: PRIMARY_COLOR,
-    fontWeight: "700",
-  },
-});
+const getResponsiveStyles = (screenData: any) => {
+  const { width, height } = screenData;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 350;
+  
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#FFFFFF",
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: Math.max(20, width * 0.06),
+      paddingVertical: Math.max(24, height * 0.03),
+      maxWidth: isTablet ? 500 : 400,
+      alignSelf: "center",
+      width: "100%",
+      justifyContent: "center",
+      minHeight: "100%",
+    },
+    header: {
+      alignItems: "center",
+      marginBottom: Math.max(24, height * 0.04),
+    },
+    logo: {
+      width: isTablet ? 100 : isSmallScreen ? 60 : 80,
+      height: isTablet ? 80 : isSmallScreen ? 48 : 64,
+      marginBottom: Math.max(6, height * 0.01),
+    },
+    title: {
+      fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
+      fontWeight: "800",
+      color: PRIMARY_COLOR,
+      textAlign: "center",
+    },
+    inputContainer: {
+      marginBottom: Math.max(14, height * 0.02),
+    },
+    inputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "#D1D5DB",
+      borderRadius: 25,
+      backgroundColor: "#FFFFFF",
+      paddingHorizontal: Math.max(16, width * 0.04),
+      paddingVertical: Math.max(14, height * 0.018),
+      minHeight: 50,
+    },
+    leftIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      color: "#111827",
+    },
+    rightIcon: {
+      marginLeft: 12,
+    },
+    forgotPassword: {
+      alignSelf: "flex-end",
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    forgotPasswordText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: PRIMARY_COLOR,
+      fontWeight: "500",
+    },
+    signInButton: {
+      backgroundColor: PRIMARY_COLOR,
+      borderRadius: 25,
+      paddingVertical: Math.max(14, height * 0.02),
+      alignItems: "center",
+      marginBottom: Math.max(24, height * 0.04),
+      minHeight: 50,
+      justifyContent: "center",
+    },
+    signInText: {
+      color: "#FFFFFF",
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "500",
+    },
+    divider: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: "#000000",
+    },
+    dividerText: {
+      paddingHorizontal: 8,
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: "rgb(19, 19, 19)",
+      fontWeight: "300",
+    },
+    socialContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: Math.max(16, width * 0.04),
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    socialButton: {
+      width: isTablet ? 64 : 56,
+      height: isTablet ? 64 : 56,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: "#D1D5DB",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#FFFFFF",
+    },
+    signUpContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: Math.max(10, width * 0.02),
+    },
+    signUpText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: "rgb(19, 19, 19)",
+      fontWeight: "300",
+    },
+    signUpLink: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: PRIMARY_COLOR,
+      fontWeight: "700",
+    },
+  });
+};

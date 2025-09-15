@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7,6 +7,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export default function ConsumerDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     loadUserData();
@@ -59,6 +68,8 @@ export default function ConsumerDashboard() {
     { title: "Profile", description: "Manage your account", emoji: "👤", color: "#a8e6cf", route: null },
     { title: "Support", description: "Get help anytime", emoji: "💬", color: "#ffd93d", route: null }
   ];
+
+  const styles = getResponsiveStyles(screenData);
 
   return (
     <LinearGradient
@@ -117,109 +128,120 @@ export default function ConsumerDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: 20,
-    paddingTop: 60,
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-  },
-  email: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 2,
-  },
-  signOutButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
-  },
-  signOutText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  content: {
-    flex: 1,
-    backgroundColor: "white",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 20,
-    paddingTop: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 20,
-  },
-  featuresGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 15,
-    marginBottom: 30,
-  },
-  featureCard: {
-    width: "47%",
-    backgroundColor: "#f8f9fa",
-    padding: 20,
-    borderRadius: 15,
-    alignItems: "center",
-  },
-  featureIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  featureEmoji: {
-    fontSize: 24,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#2c3e50",
-    marginBottom: 5,
-  },
-  featureDescription: {
-    fontSize: 12,
-    color: "#7f8c8d",
-    textAlign: "center",
-  },
-  statsContainer: {
-    marginBottom: 20,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#667eea",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "white",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 2,
-  },
-});
+const getResponsiveStyles = (screenData: any) => {
+  const { width, height } = screenData;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 350;
+  
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      padding: Math.max(16, width * 0.05),
+      paddingTop: Math.max(50, height * 0.07),
+    },
+    greeting: {
+      fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
+      fontWeight: "bold",
+      color: "white",
+    },
+    email: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: "rgba(255, 255, 255, 0.8)",
+      marginTop: 2,
+    },
+    signOutButton: {
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      paddingHorizontal: Math.max(12, width * 0.03),
+      paddingVertical: Math.max(6, height * 0.01),
+      borderRadius: 15,
+    },
+    signOutText: {
+      color: "white",
+      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
+      fontWeight: "500",
+    },
+    content: {
+      flex: 1,
+      backgroundColor: "white",
+      borderTopLeftRadius: 30,
+      borderTopRightRadius: 30,
+      paddingHorizontal: Math.max(16, width * 0.05),
+      paddingTop: Math.max(24, height * 0.03),
+    },
+    sectionTitle: {
+      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
+      fontWeight: "bold",
+      color: "#2c3e50",
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    featuresGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Math.max(12, width * 0.03),
+      marginBottom: Math.max(24, height * 0.04),
+    },
+    featureCard: {
+      width: isTablet ? "31%" : "47%",
+      backgroundColor: "#f8f9fa",
+      padding: Math.max(16, width * 0.04),
+      borderRadius: 15,
+      alignItems: "center",
+      minHeight: isTablet ? 140 : 120,
+      justifyContent: "center",
+    },
+    featureIcon: {
+      width: isTablet ? 60 : 50,
+      height: isTablet ? 60 : 50,
+      borderRadius: isTablet ? 30 : 25,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: Math.max(8, height * 0.015),
+    },
+    featureEmoji: {
+      fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
+    },
+    featureTitle: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "600",
+      color: "#2c3e50",
+      marginBottom: Math.max(4, height * 0.008),
+      textAlign: "center",
+    },
+    featureDescription: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
+      color: "#7f8c8d",
+      textAlign: "center",
+    },
+    statsContainer: {
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: Math.max(8, width * 0.02),
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: "#667eea",
+      padding: Math.max(12, width * 0.03),
+      borderRadius: 10,
+      alignItems: "center",
+      minHeight: isTablet ? 80 : 60,
+      justifyContent: "center",
+    },
+    statNumber: {
+      fontSize: isTablet ? 22 : isSmallScreen ? 16 : 18,
+      fontWeight: "bold",
+      color: "white",
+    },
+    statLabel: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
+      color: "rgba(255, 255, 255, 0.8)",
+      marginTop: 2,
+    },
+  });
+};
