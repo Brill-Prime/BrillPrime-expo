@@ -42,13 +42,13 @@ const getAlertConfig = (type: AlertType) => {
       };
     case 'warning':
       return {
-        icon: require('../assets/images/filled_star.svg'),
+        icon: require('../assets/images/congratulations_icon.png'),
         backgroundColor: '#FF9800',
         lightBackground: '#FFF3E0'
       };
     case 'info':
       return {
-        icon: require('../assets/images/empty_rating_.svg'),
+        icon: require('../assets/images/congratulations_icon.png'),
         backgroundColor: '#2196F3',
         lightBackground: '#E3F2FD'
       };
@@ -73,16 +73,20 @@ export default function AlertModal({
   showCancelButton = false
 }: AlertModalProps) {
   const config = getAlertConfig(type);
-  const scaleValue = new Animated.Value(0);
+  const scaleValue = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     if (visible) {
       Animated.spring(scaleValue, {
         toValue: 1,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }).start();
     } else {
-      scaleValue.setValue(0);
+      Animated.timing(scaleValue, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
     }
   }, [visible]);
 

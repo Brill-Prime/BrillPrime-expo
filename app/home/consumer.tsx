@@ -5,12 +5,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import * as Location from 'expo-location';
+import { useAlert } from '../../components/AlertProvider';
 
 // Get initial screen dimensions
 const getScreenDimensions = () => Dimensions.get('window');
 
 export default function ConsumerHome() {
   const router = useRouter();
+  const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [userEmail, setUserEmail] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(getScreenDimensions());
@@ -76,34 +78,24 @@ export default function ConsumerHome() {
   };
 
   const handleGoBack = () => {
-    Alert.alert(
+    showConfirmDialog(
       "Go Back",
       "Are you sure you want to go back?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Yes",
-          onPress: () => router.back()
-        }
-      ]
+      () => router.back()
     );
   };
 
   const handleSetLocationAutomatically = () => {
-    Alert.alert(
+    showConfirmDialog(
       "Location Access",
       "Allow Brill Prime to access your location to find nearby merchants?",
-      [
-        { text: "Not Now", style: "cancel" },
-        {
-          text: "Allow",
-          onPress: async () => {
+      async () => {
             setIsLoadingLocation(true);
             try {
               // Request location permissions
               let { status } = await Location.requestForegroundPermissionsAsync();
               if (status !== 'granted') {
-                Alert.alert("Permission Denied", "Location permission is required to find nearby merchants.");
+                showError("Permission Denied", "Location permission is required to find nearby merchants.");
                 setIsLoadingLocation(false);
                 return;
               }
@@ -147,7 +139,7 @@ export default function ConsumerHome() {
               await AsyncStorage.setItem("userAddress", addressInfo);
               
               setIsLoadingLocation(false);
-              Alert.alert("Success!", `Location set to ${addressInfo}. You can now discover merchants near you.`);
+              showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
             } catch (error) {
               console.error("Error getting location:", error);
               setIsLoadingLocation(false);
@@ -160,11 +152,9 @@ export default function ConsumerHome() {
                 errorMessage = "Location services are not available. Please enable GPS and try again.";
               }
               
-              Alert.alert("Error", errorMessage);
+              showError("Location Error", errorMessage);
             }
-          }
-        }
-      ]
+      }
     );
   };
 
@@ -190,54 +180,49 @@ export default function ConsumerHome() {
     switch (item) {
       case "Account":
         // Future implementation
-        Alert.alert("Coming Soon", "Account management feature will be available soon!");
+        showInfo("Coming Soon", "Account management feature will be available soon!");
         break;
       case "Notifications":
         // Future implementation
-        Alert.alert("Coming Soon", "Notifications feature will be available soon!");
+        showInfo("Coming Soon", "Notifications feature will be available soon!");
         break;
       case "Transaction History":
         // Future implementation
-        Alert.alert("Coming Soon", "Transaction history feature will be available soon!");
+        showInfo("Coming Soon", "Transaction history feature will be available soon!");
         break;
       case "Order History":
         router.push("/orders/consumer-orders");
         break;
       case "Support":
         // Future implementation
-        Alert.alert("Coming Soon", "Support feature will be available soon!");
+        showInfo("Coming Soon", "Support feature will be available soon!");
         break;
       case "About":
         // Future implementation
-        Alert.alert("Coming Soon", "About page will be available soon!");
+        showInfo("Coming Soon", "About page will be available soon!");
         break;
       case "Switch to Merchant":
-        Alert.alert("Switch Role", "This feature will allow you to switch to merchant mode!");
+        showInfo("Switch Role", "This feature will allow you to switch to merchant mode!");
         break;
       default:
-        Alert.alert("Navigation", `Navigating to ${item}`);
+        showInfo("Navigation", `Navigating to ${item}`);
     }
   };
 
   const handleSignOut = async () => {
-    Alert.alert(
+    showConfirmDialog(
       "Sign Out",
       "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
-              router.replace("/");
-            } catch (error) {
-              console.error("Error signing out:", error);
-            }
-          }
+      async () => {
+        try {
+          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+          router.replace("/");
+          showSuccess("Signed Out", "You have been successfully signed out.");
+        } catch (error) {
+          console.error("Error signing out:", error);
+          showError("Sign Out Error", "There was an error signing out. Please try again.");
         }
-      ]
+      }
     );
   };
 
