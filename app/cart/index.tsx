@@ -112,7 +112,7 @@ export default function CartScreen() {
   };
 
   const handleSelectPaymentMethod = () => {
-    Alert.alert('Coming Soon', 'Payment method selection will be available soon!');
+    router.push('/payment');
   };
 
   const handleMakePayment = () => {
