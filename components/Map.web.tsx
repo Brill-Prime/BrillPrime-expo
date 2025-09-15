@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 
 export const PROVIDER_GOOGLE = 'google' as const;
 
@@ -15,7 +15,8 @@ export default function MapViewWeb({ style, children, ...props }: {
       backgroundColor: '#e8f4f8', 
       justifyContent: 'center', 
       alignItems: 'center',
-      border: '2px solid #4682B4',
+      borderWidth: 2,
+      borderColor: '#4682B4',
       borderRadius: 8
     }]}>
       <View style={{
