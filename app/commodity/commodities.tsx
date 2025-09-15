@@ -56,6 +56,7 @@ export default function CommoditiesScreen() {
   const [viewMode, setViewMode] = useState<'categories' | 'products'>('categories');
   const [loading, setLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   // Mock data for categories
   const categories: Category[] = [
@@ -135,6 +136,7 @@ export default function CommoditiesScreen() {
 
   useEffect(() => {
     loadCartItems();
+    loadFavorites();
     
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
@@ -160,6 +162,71 @@ export default function CommoditiesScreen() {
       setCartItems(items);
     } catch (error) {
       console.error('Error saving cart items:', error);
+    }
+  };
+
+  const loadFavorites = async () => {
+    try {
+      const savedFavorites = await AsyncStorage.getItem('favoriteItemIds');
+      if (savedFavorites) {
+        setFavorites(JSON.parse(savedFavorites));
+      }
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+  };
+
+  const toggleFavorite = async (product: Product) => {
+    try {
+      const isFavorite = favorites.includes(product.id);
+      let updatedFavorites: string[];
+      
+      if (isFavorite) {
+        updatedFavorites = favorites.filter(id => id !== product.id);
+        // Remove from detailed favorites
+        const savedDetailedFavorites = await AsyncStorage.getItem('favoriteItems');
+        if (savedDetailedFavorites) {
+          const detailedFavorites = JSON.parse(savedDetailedFavorites);
+          const updatedDetailedFavorites = detailedFavorites.filter((item: any) => item.id !== product.id);
+          await AsyncStorage.setItem('favoriteItems', JSON.stringify(updatedDetailedFavorites));
+        }
+      } else {
+        updatedFavorites = [...favorites, product.id];
+        // Add to detailed favorites
+        const favoriteItem = {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          unit: product.unit,
+          merchantName: product.merchantName,
+          merchantLocation: product.merchantLocation,
+          category: categories.find(c => c.id === product.categoryId)?.name.toLowerCase() || 'product',
+          dateAdded: new Date().toISOString(),
+          inStock: product.inStock,
+        };
+        
+        const savedDetailedFavorites = await AsyncStorage.getItem('favoriteItems');
+        const detailedFavorites = savedDetailedFavorites ? JSON.parse(savedDetailedFavorites) : [];
+        detailedFavorites.push(favoriteItem);
+        await AsyncStorage.setItem('favoriteItems', JSON.stringify(detailedFavorites));
+      }
+      
+      setFavorites(updatedFavorites);
+      await AsyncStorage.setItem('favoriteItemIds', JSON.stringify(updatedFavorites));
+      
+      Alert.alert(
+        isFavorite ? 'Removed from Favorites' : 'Added to Favorites',
+        isFavorite 
+          ? `${product.name} has been removed from your favorites`
+          : `${product.name} has been added to your favorites`,
+        [
+          { text: 'OK', style: 'default' },
+          ...(isFavorite ? [] : [{ text: 'View Favorites', onPress: () => router.push('/favorites') }])
+        ]
+      );
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
@@ -393,35 +460,47 @@ export default function CommoditiesScreen() {
                       </View>
 
                       <View style={styles.productActions}>
-                        {getCartQuantity(product.id) > 0 ? (
-                          <View style={styles.quantityControls}>
+                        <View style={styles.actionRow}>
+                          {getCartQuantity(product.id) > 0 ? (
+                            <View style={styles.quantityControls}>
+                              <TouchableOpacity
+                                style={styles.quantityButton}
+                                onPress={() => handleRemoveFromCart(product.id)}
+                              >
+                                <Ionicons name="remove" size={16} color="#2e67c7" />
+                              </TouchableOpacity>
+                              <Text style={styles.quantityText}>{getCartQuantity(product.id)}</Text>
+                              <TouchableOpacity
+                                style={styles.quantityButton}
+                                onPress={() => handleAddToCart(product)}
+                              >
+                                <Ionicons name="add" size={16} color="#2e67c7" />
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
                             <TouchableOpacity
-                              style={styles.quantityButton}
-                              onPress={() => handleRemoveFromCart(product.id)}
-                            >
-                              <Ionicons name="remove" size={16} color="#2e67c7" />
-                            </TouchableOpacity>
-                            <Text style={styles.quantityText}>{getCartQuantity(product.id)}</Text>
-                            <TouchableOpacity
-                              style={styles.quantityButton}
+                              style={[
+                                styles.addToCartButton,
+                                !product.inStock && styles.disabledButton
+                              ]}
                               onPress={() => handleAddToCart(product)}
+                              disabled={!product.inStock}
                             >
-                              <Ionicons name="add" size={16} color="#2e67c7" />
+                              <Ionicons name="cart-outline" size={16} color="#fff" />
+                              <Text style={styles.addToCartText}>Add to Cart</Text>
                             </TouchableOpacity>
-                          </View>
-                        ) : (
+                          )}
                           <TouchableOpacity
-                            style={[
-                              styles.addToCartButton,
-                              !product.inStock && styles.disabledButton
-                            ]}
-                            onPress={() => handleAddToCart(product)}
-                            disabled={!product.inStock}
+                            style={styles.favoriteButton}
+                            onPress={() => toggleFavorite(product)}
                           >
-                            <Ionicons name="cart-outline" size={16} color="#fff" />
-                            <Text style={styles.addToCartText}>Add to Cart</Text>
+                            <Ionicons 
+                              name={favorites.includes(product.id) ? "heart" : "heart-outline"} 
+                              size={20} 
+                              color={favorites.includes(product.id) ? "#e74c3c" : "#666"} 
+                            />
                           </TouchableOpacity>
-                        )}
+                        </View>
                         <Text style={styles.minimumOrder}>
                           Min: {product.minimumOrder} {product.unit}
                         </Text>
@@ -710,6 +789,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Regular',
   },
   productActions: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -754,6 +837,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 5,
     fontFamily: 'Montserrat-SemiBold',
+  },
+  favoriteButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f8f9fa',
   },
   minimumOrder: {
     fontSize: 12,
