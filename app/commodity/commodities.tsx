@@ -294,9 +294,9 @@ export default function CommoditiesScreen() {
   };
 
   const handleProductPress = (product: Product) => {
-    // Navigate to product details or order screen
+    // Navigate to commodity details screen
     router.push({
-      pathname: '/order',
+      pathname: `/commodity/${product.id}`,
       params: {
         commodityId: product.id,
         commodityName: product.name,

@@ -180,7 +180,24 @@ export default function CommodityDetailScreen() {
     };
 
     try {
-      const updatedCart = [...cartItems, cartItem];
+      // Check if item already exists in cart
+      const existingItemIndex = cartItems.findIndex(
+        item => item.commodityId === commodity.id && item.merchantId === selectedMerchant.id
+      );
+
+      let updatedCart;
+      if (existingItemIndex !== -1) {
+        // Update existing item quantity
+        updatedCart = cartItems.map((item, index) =>
+          index === existingItemIndex 
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      } else {
+        // Add new item
+        updatedCart = [...cartItems, cartItem];
+      }
+
       await AsyncStorage.setItem('cartItems', JSON.stringify(updatedCart));
       setCartItems(updatedCart);
       setShowQuantityModal(false);

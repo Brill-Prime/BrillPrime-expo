@@ -2,12 +2,15 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { cartService } from "../../services/cartService";
 
 export default function ConsumerDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [cartItemCount, setCartItemCount] = useState(0);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -19,7 +22,20 @@ export default function ConsumerDashboard() {
 
   useEffect(() => {
     loadUserData();
+    loadCartCount();
+    
+    // Refresh cart count when screen is focused
+    const unsubscribe = router.addListener?.('focus', () => {
+      loadCartCount();
+    });
+
+    return unsubscribe;
   }, []);
+
+  const loadCartCount = async () => {
+    const count = await cartService.getCartItemCount();
+    setCartItemCount(count);
+  };
 
   const loadUserData = async () => {
     try {
@@ -80,9 +96,22 @@ export default function ConsumerDashboard() {
           <Text style={styles.greeting}>Hello, Consumer! 👋</Text>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.cartButton} 
+            onPress={() => router.push('/cart')}
+          >
+            <Ionicons name="cart-outline" size={24} color="white" />
+            {cartItemCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartItemCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -185,6 +214,31 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
       color: "rgba(255, 255, 255, 0.8)",
       marginTop: 2,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Math.max(8, width * 0.02),
+    },
+    cartButton: {
+      position: 'relative',
+      padding: Math.max(8, width * 0.02),
+    },
+    cartBadge: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      backgroundColor: '#ff4444',
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    cartBadgeText: {
+      color: 'white',
+      fontSize: 10,
+      fontWeight: 'bold',
     },
     signOutButton: {
       backgroundColor: "rgba(255, 255, 255, 0.2)",

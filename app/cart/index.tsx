@@ -63,6 +63,18 @@ export default function CartScreen() {
     try {
       await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
       setCartItems(updatedItems);
+      
+      // Also update commodities cart for consistency
+      const commoditiesCartItems = updatedItems.map(item => ({
+        productId: item.commodityId || item.id,
+        quantity: item.quantity,
+        price: item.price,
+        productName: item.commodityName,
+        productUnit: item.unit,
+        merchantId: item.merchantId,
+        merchantName: item.merchantName,
+      }));
+      await AsyncStorage.setItem('commoditiesCart', JSON.stringify(commoditiesCartItems));
     } catch (error) {
       console.error('Error updating cart:', error);
     }
@@ -128,6 +140,15 @@ export default function CartScreen() {
     } catch (error) {
       console.error('Error preparing checkout:', error);
       Alert.alert('Error', 'Failed to prepare checkout. Please try again.');
+    }
+  };
+
+  const clearCart = async () => {
+    try {
+      await AsyncStorage.multiRemove(['cartItems', 'commoditiesCart', 'checkoutItems']);
+      setCartItems([]);
+    } catch (error) {
+      console.error('Error clearing cart:', error);
     }
   };
 

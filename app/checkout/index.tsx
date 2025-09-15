@@ -100,7 +100,7 @@ export default function CheckoutScreen() {
       // Create individual orders for each cart item
       const orderPromises = cartItems.map(async (item) => {
         const orderData = {
-          commodityId: item.id,
+          commodityId: item.commodityId || item.id,
           commodityName: item.commodityName,
           commodityType: item.category || 'product',
           merchantId: item.merchantId,
@@ -112,7 +112,10 @@ export default function CheckoutScreen() {
           location: selectedAddress.address,
           notes: deliveryNotes,
           paymentMethod,
-          totalAmount: (item.price * item.quantity) + deliveryFee + serviceFee
+          totalAmount: (item.price * item.quantity),
+          deliveryFee: deliveryFee,
+          serviceFee: serviceFee,
+          grandTotal: (item.price * item.quantity) + deliveryFee + serviceFee
         };
 
         // Save individual order
@@ -130,9 +133,12 @@ export default function CheckoutScreen() {
 
       const orderIds = await Promise.all(orderPromises);
 
-      // Clear cart and checkout items
-      await AsyncStorage.removeItem('cartItems');
-      await AsyncStorage.removeItem('checkoutItems');
+      // Clear all cart-related storage
+      await AsyncStorage.multiRemove([
+        'cartItems', 
+        'checkoutItems', 
+        'commoditiesCart'
+      ]);
 
       // Save order history
       const existingOrders = await AsyncStorage.getItem('userOrders');
