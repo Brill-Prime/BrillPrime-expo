@@ -203,6 +203,27 @@ export default function CommodityDetailScreen() {
     setShowQuantityModal(true);
   };
 
+  const handleOrderNow = () => {
+    if (!selectedMerchant || !selectedMerchant.isOpen) {
+      Alert.alert('Error', 'Please select an available merchant first');
+      return;
+    }
+
+    // Navigate to order screen with commodity details
+    router.push({
+      pathname: '/order',
+      params: {
+        commodityId: commodity.id,
+        commodityName: commodity.name,
+        commodityType: commodity.category,
+        merchantId: selectedMerchant.id,
+        merchantName: selectedMerchant.name,
+        unitPrice: selectedMerchant.price.replace(/[^\d]/g, ''),
+        unit: commodity.unit,
+      }
+    });
+  };
+
   const handleGoBack = () => {
     router.back();
   };
@@ -422,17 +443,30 @@ export default function CommodityDetailScreen() {
           <Text style={styles.totalLabel}>Total:</Text>
           <Text style={styles.totalAmount}>₦{getTotalPrice().toLocaleString()}</Text>
         </View>
-        <TouchableOpacity 
-          style={[
-            styles.addToCartButton,
-            (!selectedMerchant || !selectedMerchant.isOpen) && styles.disabledButton
-          ]}
-          onPress={handleAddToCart}
-          disabled={!selectedMerchant || !selectedMerchant.isOpen}
-        >
-          <Ionicons name="cart" size={20} color="#fff" />
-          <Text style={styles.addToCartText}>Add to Cart</Text>
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={[
+              styles.addToCartButton,
+              (!selectedMerchant || !selectedMerchant.isOpen) && styles.disabledButton
+            ]}
+            onPress={handleAddToCart}
+            disabled={!selectedMerchant || !selectedMerchant.isOpen}
+          >
+            <Ionicons name="cart" size={20} color="#fff" />
+            <Text style={styles.addToCartText}>Add to Cart</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[
+              styles.orderNowButton,
+              (!selectedMerchant || !selectedMerchant.isOpen) && styles.disabledButton
+            ]}
+            onPress={handleOrderNow}
+            disabled={!selectedMerchant || !selectedMerchant.isOpen}
+          >
+            <Ionicons name="flash" size={20} color="#fff" />
+            <Text style={styles.orderNowText}>Order Now</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -755,8 +789,6 @@ const styles = StyleSheet.create({
     height: 100,
   },
   bottomBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: 'white',
     paddingHorizontal: 20,
     paddingVertical: 15,
@@ -768,7 +800,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   totalContainer: {
-    flex: 1,
+    marginBottom: 15,
   },
   totalLabel: {
     fontSize: 12,
@@ -779,19 +811,41 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   addToCartButton: {
     backgroundColor: '#4682B4',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
     gap: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  orderNowButton: {
+    backgroundColor: '#2e67c7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+    flex: 1,
+    justifyContent: 'center',
   },
   disabledButton: {
     backgroundColor: '#ccc',
   },
   addToCartText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  orderNowText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
