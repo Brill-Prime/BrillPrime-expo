@@ -21,12 +21,12 @@ export default function SplashScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
 
@@ -37,12 +37,12 @@ export default function SplashScreen() {
           Animated.timing(pulseAnim, {
             toValue: 1.05,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ])
       ).start();
@@ -70,15 +70,9 @@ export default function SplashScreen() {
         console.log('userToken:', userToken ? 'exists' : 'null');
         console.log('Navigation condition check: hasSeenOnboarding is', hasSeenOnboarding === null ? 'null' : hasSeenOnboarding);
 
-        if (!hasSeenOnboarding) {
-          // First time user - go to onboarding
-          console.log('Navigating to onboarding screen 1');
-          router.replace("/onboarding/screen1");
-        } else {
-          // Returning user - must authenticate regardless of token
-          console.log('Returning user - navigating to role selection for authentication');
-          router.replace("/auth/role-selection");
-        }
+        // Temporarily bypass onboarding and authentication to show consumer homepage with map
+        console.log('Bypassing onboarding - navigating directly to consumer homepage');
+        router.replace("/home/consumer");
       } catch (error) {
         console.error("Error checking user status:", error);
         // On error, default to onboarding
