@@ -38,8 +38,8 @@ export default ({ config }) => {
     ],
     entryPoint:
       variant === "admin"
-        ? "./app/admin-panel.tsx"
-        : "./app/main-app.tsx",
+        ? "./app/admin-panel/admin-panel.tsx"
+        : "./app/main-app/main-app.tsx",
     platforms: variant === "admin" ? ["web"] : ["ios", "android", "web"],
   };
 };
