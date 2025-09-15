@@ -23,32 +23,113 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // Store email for reset process
-      await AsyncStorage.setItem("resetEmail", email);
+      // Generate reset token
+      const resetToken = generateResetToken();
+      const resetExpiry = Date.now() + (60 * 60 * 1000); // 1 hour from now
       
-      // Simulate API delay
-      setTimeout(async () => {
-        setIsLoading(false);
-        
-        // Show success alert and navigate immediately
+      // Store reset data locally (in real app, this would be stored on server)
+      await AsyncStorage.setItem("resetEmail", email);
+      await AsyncStorage.setItem("resetToken", resetToken);
+      await AsyncStorage.setItem("resetTokenExpiry", resetExpiry.toString());
+      
+      // Send email with reset link
+      const resetLink = `https://your-app-domain.com/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+      
+      const emailData = {
+        to: email,
+        subject: "Password Reset Request - BrillPrime",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; padding: 20px;">
+              <img src="https://your-app-domain.com/assets/images/logo.png" alt="BrillPrime" style="width: 100px; height: 80px;">
+              <h2 style="color: #0b1a51;">Password Reset Request</h2>
+            </div>
+            
+            <div style="padding: 20px; background-color: #f9f9f9; border-radius: 10px; margin: 20px 0;">
+              <p>Hello,</p>
+              <p>We received a request to reset your password for your BrillPrime account.</p>
+              <p>Click the button below to reset your password:</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetLink}" 
+                   style="background-color: #0b1a51; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; display: inline-block; font-weight: bold;">
+                  Reset Password
+                </a>
+              </div>
+              
+              <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #666; font-size: 14px;">${resetLink}</p>
+              
+              <p><strong>This link will expire in 1 hour.</strong></p>
+              
+              <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+              <p>© 2024 BrillPrime. All rights reserved.</p>
+            </div>
+          </div>
+        `
+      };
+
+      // Send email (replace with your email service)
+      const response = await sendPasswordResetEmail(emailData);
+      
+      setIsLoading(false);
+      
+      if (response.success) {
         Alert.alert(
           "Reset Link Sent!",
-          `A password reset link has been sent to ${email}. You'll be redirected to reset your password.`,
+          `A password reset link has been sent to ${email}. Please check your email and click the link to reset your password.`,
           [
             {
-              text: "Continue",
+              text: "OK",
               onPress: () => {
-                router.push("/auth/reset-password");
+                router.back(); // Go back to sign in
               }
             }
           ]
         );
-      }, 1000);
+      } else {
+        throw new Error("Failed to send email");
+      }
       
     } catch (error) {
       console.error("Error sending reset link:", error);
       setIsLoading(false);
       Alert.alert("Error", "Failed to send reset link. Please try again.");
+    }
+  };
+
+  const generateResetToken = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 32; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  const sendPasswordResetEmail = async (emailData: any) => {
+    try {
+      // Replace with your actual email service API
+      // Example using EmailJS, SendGrid, or your backend API
+      
+      // For now, simulate successful email sending
+      console.log("Sending email:", emailData);
+      
+      // In a real app, you would make an API call like:
+      // const response = await fetch('/api/send-reset-email', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(emailData)
+      // });
+      // return await response.json();
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Email sending error:", error);
+      return { success: false, error };
     }
   };
 

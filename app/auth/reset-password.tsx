@@ -1,17 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function ResetPassword() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [formData, setFormData] = useState({
     newPassword: "",
     confirmPassword: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidToken, setIsValidToken] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    validateResetToken();
+  }, []);
+
+  const validateResetToken = async () => {
+    try {
+      const urlToken = params.token as string;
+      const urlEmail = params.email as string;
+      
+      // Get stored token and expiry
+      const storedToken = await AsyncStorage.getItem("resetToken");
+      const tokenExpiry = await AsyncStorage.getItem("resetTokenExpiry");
+      const storedEmail = await AsyncStorage.getItem("resetEmail");
+      
+      if (!urlToken || !storedToken || urlToken !== storedToken) {
+        throw new Error("Invalid or missing token");
+      }
+      
+      if (!tokenExpiry || Date.now() > parseInt(tokenExpiry)) {
+        throw new Error("Token has expired");
+      }
+      
+      if (urlEmail && storedEmail && urlEmail !== storedEmail) {
+        throw new Error("Email mismatch");
+      }
+      
+      setIsValidToken(true);
+      setIsLoading(false);
+      
+    } catch (error) {
+      console.error("Token validation error:", error);
+      setIsLoading(false);
+      
+      Alert.alert(
+        "Invalid Reset Link",
+        "This password reset link is invalid or has expired. Please request a new one.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/auth/forgot-password")
+          }
+        ]
+      );
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -61,14 +110,14 @@ export default function ResetPassword() {
 
     try {
       const resetEmail = await AsyncStorage.getItem("resetEmail");
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
       
-      const token = "user_token_" + Date.now();
-      await AsyncStorage.setItem("userToken", token);
-      await AsyncStorage.setItem("userEmail", resetEmail || "user@brillprime.com");
-      await AsyncStorage.setItem("userRole", selectedRole || "consumer");
+      // In a real app, you would make an API call to update the password
+      // await updateUserPassword(resetEmail, newPassword);
       
+      // Clean up reset tokens and data
       await AsyncStorage.removeItem("resetEmail");
+      await AsyncStorage.removeItem("resetToken");
+      await AsyncStorage.removeItem("resetTokenExpiry");
       
       Alert.alert(
         "Success!",
@@ -76,7 +125,7 @@ export default function ResetPassword() {
         [
           {
             text: "OK",
-            onPress: () => router.replace(`/dashboard/${selectedRole || "consumer"}`)
+            onPress: () => router.replace("/auth/signin")
           }
         ]
       );
@@ -86,6 +135,38 @@ export default function ResetPassword() {
       Alert.alert("Error", "Failed to reset password. Please try again.");
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.loadingText}>Validating reset link...</Text>
+      </View>
+    );
+  }
+
+  if (!isValidToken) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.errorText}>Invalid or expired reset link</Text>
+        <TouchableOpacity 
+          style={styles.resetButton} 
+          onPress={() => router.replace("/auth/forgot-password")}
+        >
+          <Text style={styles.resetButtonText}>Request New Link</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -228,5 +309,16 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "500",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "rgb(11, 26, 81)",
+    marginTop: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff6b6b",
+    marginTop: 20,
+    textAlign: "center",
   },
 });
