@@ -372,41 +372,43 @@ export default function ConsumerHome() {
 
       {/* Location Setup Modal */}
       {!isLocationSet && (
-      <View style={styles.locationModal}>
-        {/* Location Icon */}
-        <View style={styles.locationIcon}>
-          <View style={styles.locationIconInner}>
-            <Image source={require('../../assets/images/globe_img.png')} style={styles.globeIcon} resizeMode="contain" />
-          </View>
-        </View>
-        
-        {/* Modal Content */}
-        <View style={styles.modalContent}>
-          <Text style={styles.whereAreYouText}>Where are you?</Text>
-          <Text style={styles.descriptionText}>
-            Set your location so you can see merchants available around you
-          </Text>
-          
-          {/* Button Container */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.setAutomaticallyBtn} 
-              onPress={handleSetLocationAutomatically}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.setAutomaticallyText}>Set automatically</Text>
-            </TouchableOpacity>
+        <View style={styles.locationModalOverlay}>
+          <View style={styles.locationModal}>
+            {/* Location Icon */}
+            <View style={styles.locationIcon}>
+              <View style={styles.locationIconInner}>
+                <Image source={require('../../assets/images/globe_img.png')} style={styles.globeIcon} resizeMode="contain" />
+              </View>
+            </View>
             
-            <TouchableOpacity 
-              style={styles.setLaterBtn} 
-              onPress={handleSetLocationLater}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.setLaterText}>Set later</Text>
-            </TouchableOpacity>
+            {/* Modal Content */}
+            <View style={styles.modalContent}>
+              <Text style={styles.whereAreYouText}>Where are you?</Text>
+              <Text style={styles.descriptionText}>
+                Set your location so you can see merchants available around you
+              </Text>
+              
+              {/* Button Container */}
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity 
+                  style={styles.setAutomaticallyBtn} 
+                  onPress={handleSetLocationAutomatically}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.setAutomaticallyText}>Set automatically</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.setLaterBtn} 
+                  onPress={handleSetLocationLater}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.setLaterText}>Set later</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
-      </View>
       )}
 
       {/* Loading Overlay */}
@@ -430,7 +432,7 @@ const styles = StyleSheet.create({
   },
   mapBackground: {
     width: '100%',
-    height: '53%',
+    height: '100%',
     position: 'absolute',
     left: 0,
     top: 0,
@@ -572,12 +574,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 15,
   },
-  locationModal: {
+  locationModalOverlay: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: '47%',
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+    zIndex: 25,
+  },
+  locationModal: {
     backgroundColor: 'white',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -590,12 +597,15 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     paddingBottom: 40,
     alignItems: 'center',
+    minHeight: '50%',
+    maxHeight: '60%',
   },
   locationIcon: {
     width: 100,
     height: 100,
     position: 'absolute',
     top: -50,
+    alignSelf: 'center',
     backgroundColor: '#4682B4',
     borderRadius: 50,
     alignItems: 'center',
