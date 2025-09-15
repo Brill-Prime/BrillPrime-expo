@@ -115,12 +115,20 @@ export default function CartScreen() {
     router.push('/payment');
   };
 
-  const handleMakePayment = () => {
+  const handleMakePayment = async () => {
     if (cartItems.length === 0) {
       Alert.alert('Empty Cart', 'Please add items to your cart before making payment');
       return;
     }
-    router.push('/checkout');
+
+    try {
+      // Save cart items for checkout
+      await AsyncStorage.setItem('checkoutItems', JSON.stringify(cartItems));
+      router.push('/checkout');
+    } catch (error) {
+      console.error('Error preparing checkout:', error);
+      Alert.alert('Error', 'Failed to prepare checkout. Please try again.');
+    }
   };
 
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);

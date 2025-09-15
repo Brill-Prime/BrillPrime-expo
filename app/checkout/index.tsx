@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -21,6 +20,8 @@ interface CartItem {
   price: number;
   quantity: number;
   unit: string;
+  category?: string; // Added for potential use in order creation
+  merchantId?: string; // Added for potential use in order creation
 }
 
 interface Address {
@@ -44,7 +45,7 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     loadCheckoutData();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -88,47 +89,68 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (cartItems.length === 0) {
+      Alert.alert('Empty Cart', 'No items to checkout');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Create order object
-      const order = {
-        id: `ORD${Date.now()}`,
-        items: cartItems,
-        totalAmount: getTotal(),
-        subtotal: getSubtotal(),
-        deliveryFee,
-        serviceFee,
-        paymentMethod,
-        deliveryAddress: selectedAddress.address,
-        deliveryNotes,
-        status: 'pending',
-        orderDate: new Date().toISOString(),
-        estimatedDelivery: new Date(Date.now() + 30 * 60000).toISOString(), // 30 minutes from now
-      };
+      // Create individual orders for each cart item
+      const orderPromises = cartItems.map(async (item) => {
+        const orderData = {
+          commodityId: item.id,
+          commodityName: item.commodityName,
+          commodityType: item.category || 'product',
+          merchantId: item.merchantId,
+          merchantName: item.merchantName,
+          deliveryType: 'yourself' as const,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPrice: item.price,
+          location: selectedAddress.address,
+          notes: deliveryNotes,
+          paymentMethod,
+          totalAmount: (item.price * item.quantity) + deliveryFee + serviceFee
+        };
 
-      // Save order to storage (in real app, send to API)
+        // Save individual order
+        const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem(`order_${orderId}`, JSON.stringify({
+          ...orderData,
+          id: orderId,
+          status: 'pending',
+          orderDate: new Date().toISOString(),
+          estimatedDelivery: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        }));
+
+        return orderId;
+      });
+
+      const orderIds = await Promise.all(orderPromises);
+
+      // Clear cart and checkout items
+      await AsyncStorage.removeItem('cartItems');
+      await AsyncStorage.removeItem('checkoutItems');
+
+      // Save order history
       const existingOrders = await AsyncStorage.getItem('userOrders');
       const orders = existingOrders ? JSON.parse(existingOrders) : [];
-      orders.push(order);
+      orders.push(...orderIds);
       await AsyncStorage.setItem('userOrders', JSON.stringify(orders));
-
-      // Clear cart
-      await AsyncStorage.removeItem('cartItems');
 
       Alert.alert(
         'Order Placed Successfully!',
-        `Your order #${order.id} has been placed and will be delivered in approximately 30 minutes.`,
+        `${orderIds.length} order(s) have been placed successfully. You will receive updates on their status.`,
         [
-          {
-            text: 'View Order',
-            onPress: () => router.replace(`/orders/order-details?id=${order.id}`)
-          }
+          { text: 'View Orders', onPress: () => router.push('/orders/consumer-orders') },
+          { text: 'Continue Shopping', onPress: () => router.push('/dashboard/consumer') }
         ]
       );
     } catch (error) {
-      console.error('Error placing order:', error);
-      Alert.alert('Error', 'Failed to place order. Please try again.');
+      console.error('Error completing checkout:', error);
+      Alert.alert('Checkout Failed', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -183,7 +205,7 @@ export default function CheckoutScreen() {
         {/* Payment Method */}
         <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
-          
+
           <TouchableOpacity 
             style={[styles.paymentOption, paymentMethod === 'card' && styles.selectedPayment]}
             onPress={() => setPaymentMethod('card')}
@@ -228,22 +250,22 @@ export default function CheckoutScreen() {
         {/* Order Summary */}
         <View style={[styles.summaryCard, { marginHorizontal: responsivePadding }]}>
           <Text style={styles.summaryTitle}>Order Summary</Text>
-          
+
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString()}</Text>
           </View>
-          
+
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Delivery Fee</Text>
             <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString()}</Text>
           </View>
-          
+
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Service Fee</Text>
             <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString()}</Text>
           </View>
-          
+
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>₦{getTotal().toLocaleString()}</Text>
