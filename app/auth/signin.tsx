@@ -14,6 +14,7 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import BackButton from "../../components/BackButton";
 
 export default function SignIn() {
   const router = useRouter();
@@ -61,6 +62,12 @@ export default function SignIn() {
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
+          {/* Header with Back Button */}
+          <View style={styles.headerRow}>
+            <BackButton color={PRIMARY_COLOR} />
+            <View style={styles.spacer} />
+          </View>
+
           {/* Logo + Title */}
           <View style={styles.header}>
             <Image
@@ -187,6 +194,15 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     minHeight: "100%",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  spacer: {
+    width: 40,
   },
   header: {
     alignItems: "center",

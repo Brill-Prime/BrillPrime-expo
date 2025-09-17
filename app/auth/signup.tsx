@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvo
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import BackButton from "../../components/BackButton";
 
 export default function SignUp() {
   const router = useRouter();
@@ -70,6 +71,12 @@ export default function SignUp() {
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
+          {/* Header with Back Button */}
+          <View style={styles.headerRow}>
+            <BackButton color={PRIMARY_COLOR} />
+            <View style={styles.spacer} />
+          </View>
+
           {/* Logo and Title */}
           <View style={styles.header}>
             <Image
@@ -250,6 +257,15 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: "center",
     width: "100%",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  spacer: {
+    width: 40,
   },
   header: {
     alignItems: "center",

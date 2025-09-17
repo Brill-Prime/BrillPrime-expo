@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import BackButton from "../../components/BackButton";
 
 export default function OTPVerification() {
   const router = useRouter();
@@ -87,6 +88,12 @@ export default function OTPVerification() {
 
   return (
     <View style={styles.container}>
+      {/* Header with Back Button */}
+      <View style={styles.headerRow}>
+        <BackButton color="rgb(11, 26, 81)" />
+        <View style={styles.spacer} />
+      </View>
+
       {/* Logo and Header */}
       <View style={styles.header}>
         <Image
@@ -160,9 +167,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
   },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 16,
+    paddingHorizontal: 24,
+  },
+  spacer: {
+    width: 40,
+  },
   header: {
     alignItems: "center",
-    marginTop: 60,
+    marginTop: 40,
     marginBottom: 48,
   },
   logo: {

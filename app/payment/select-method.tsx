@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import BackButton from "../../components/BackButton";
 
 // Using the app's consistent color scheme
 const PRIMARY_COLOR = "rgb(11, 26, 81)";
@@ -81,9 +82,7 @@ export default function SelectPaymentMethod() {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color={DARK_TEXT} />
-            </TouchableOpacity>
+            <BackButton onPress={handleBack} color={DARK_TEXT} />
             <Text style={styles.title}>Select Payment Method</Text>
             <View style={styles.placeholder} />
           </View>
@@ -169,12 +168,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingTop: 8,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  
   title: {
     fontSize: 20,
     fontWeight: "700",

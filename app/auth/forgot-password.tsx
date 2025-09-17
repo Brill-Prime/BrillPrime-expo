@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, Keyb
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import BackButton from "../../components/BackButton";
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -49,6 +50,12 @@ export default function ForgotPassword() {
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
+          {/* Header with Back Button */}
+          <View style={styles.headerRow}>
+            <BackButton color={PRIMARY_COLOR} />
+            <View style={styles.spacer} />
+          </View>
+
           {/* Header */}
           <View style={styles.header}>
             <Image
@@ -161,6 +168,15 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     minHeight: "100%",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  spacer: {
+    width: 40,
   },
   header: {
     alignItems: "center",
