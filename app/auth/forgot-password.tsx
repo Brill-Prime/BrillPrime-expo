@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,6 +8,7 @@ export default function ForgotPassword() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
@@ -30,19 +31,8 @@ export default function ForgotPassword() {
       setTimeout(async () => {
         setIsLoading(false);
         
-        // Show success alert and navigate immediately
-        Alert.alert(
-          "Reset Link Sent!",
-          `A password reset link has been sent to ${email}. You'll be redirected to reset your password.`,
-          [
-            {
-              text: "Continue",
-              onPress: () => {
-                router.push("/auth/reset-password");
-              }
-            }
-          ]
-        );
+        // Show success modal
+        setShowSuccessModal(true);
       }, 1000);
       
     } catch (error) {
@@ -105,6 +95,44 @@ export default function ForgotPassword() {
             <Text style={styles.backToSignInText}>Remember your password? </Text>
             <TouchableOpacity onPress={() => router.back()}>
               <Text style={styles.linkText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Mailbox Icon */}
+            <View style={styles.iconContainer}>
+              <Image
+                source={require('../../assets/images/mailbox.png')}
+                style={styles.mailboxIcon}
+                resizeMode="contain"
+              />
+            </View>
+            
+            {/* Success Message */}
+            <Text style={styles.modalTitle}>Reset Link Sent!</Text>
+            <Text style={styles.modalMessage}>
+              A password reset link has been sent to {email}. You'll be redirected to reset your password.
+            </Text>
+            
+            {/* Continue Button */}
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={() => {
+                setShowSuccessModal(false);
+                router.push("/auth/reset-password");
+              }}
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -207,5 +235,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: PRIMARY_COLOR,
     fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  modalContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    maxWidth: 320,
+    width: "100%",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  iconContainer: {
+    marginBottom: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mailboxIcon: {
+    width: 80,
+    height: 80,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: PRIMARY_COLOR,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: GRAY_600,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  modalButton: {
+    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
