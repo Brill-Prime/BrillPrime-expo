@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Payment Method</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #0c1a2a;
+    }
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .back-btn {
+      font-size: 24px;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    h2 {
+      text-align: center;
+      margin: 10px 0 25px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .payment-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #f0f0f0;
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 15px;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .payment-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .payment-logo {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .payment-info {
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+    }
+    .payment-info .number {
+      font-weight: 500;
+    }
+    .payment-info .expiry {
+      color: #888;
+      font-size: 13px;
+    }
+    .add-method {
+      border: 1px dashed #bbb;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      color: #aaa;
+      font-size: 15px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="back-btn">&#8592;</div>
+    <h2>Select Payment Method</h2>
+
+    <!-- Mastercard -->
+    <div class="payment-card">
+      <div class="payment-left">
+        <div class="payment-logo">💳</div>
+        <div class="payment-info">
+          <span class="number">**** **** **** 1234</span>
+          <span class="expiry">02/16</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISA -->
+    <div class="payment-card">
+      <div class="payment-left">
+        <div class="payment-logo">💳</div>
+        <div class="payment-info">
+          <span class="number">**** **** **** 1234</span>
+          <span class="expiry">02/16</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Apple Pay -->
+    <div class="payment-card">
+      <div class="payment-left">
+        <div class="payment-logo">🍎</div>
+        <div class="payment-info">
+          <span class="number">**** **** **** 1234</span>
+          <span class="expiry">02/16</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Pay -->
+    <div class="payment-card">
+      <div class="payment-left">
+        <div class="payment-logo">🅖</div>
+        <div class="payment-info">
+          <span class="number">**** **** **** 1234</span>
+          <span class="expiry">02/16</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PayPal -->
+    <div class="payment-card">
+      <div class="payment-left">
+        <div class="payment-logo">🅟</div>
+        <div class="payment-info">
+          <span class="number">Anthony Godfrey</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Payment Method -->
+    <div class="add-method">+ Add Payment Method…</div>
+  </div>
+</body>
+</html>
