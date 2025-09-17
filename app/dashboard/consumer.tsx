@@ -50,7 +50,7 @@ export default function ConsumerDashboard() {
     { title: "Favorites", description: "Your saved items", emoji: "❤️", color: "#4facfe" },
     { title: "Offers", description: "Special deals for you", emoji: "🎁", color: "#ff7e5f" },
     { title: "Profile", description: "Manage your account", emoji: "👤", color: "#a8e6cf" },
-    { title: "Support", description: "Get help anytime", emoji: "💬", color: "#ffd93d" }
+    { title: "Support", description: "Get help anytime", emoji: "💬", color: "#ffd93d", action: () => router.push("/support") }
   ];
 
   return (
