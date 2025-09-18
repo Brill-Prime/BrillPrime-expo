@@ -37,17 +37,36 @@ export default function SignIn() {
     }
 
     try {
-      const mockToken = "user_token_" + Date.now();
-      await AsyncStorage.setItem("userToken", mockToken);
+      const response = await fetch('https://your-app-name.replit.app/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Store auth data
+      await AsyncStorage.setItem("userToken", data.data.token);
       await AsyncStorage.setItem("userEmail", formData.email);
+      await AsyncStorage.setItem("userData", JSON.stringify(data.data.user));
 
       const selectedRole = await AsyncStorage.getItem("selectedRole");
-      await AsyncStorage.setItem("userRole", selectedRole || "consumer");
+      const userRole = data.data.user.role || selectedRole || "consumer";
+      await AsyncStorage.setItem("userRole", userRole);
 
-      router.replace(`/dashboard/${selectedRole || "consumer"}`);
+      router.replace(`/dashboard/${userRole}`);
     } catch (error) {
       console.error("Error signing in:", error);
-      Alert.alert("Error", "Sign in failed. Please try again.");
+      Alert.alert("Error", error.message || "Sign in failed. Please try again.");
     }
   };
 

@@ -54,26 +54,44 @@ export default function Support() {
       return;
     }
 
-    // Here you would typically send the support request to your backend
-    Alert.alert(
-      "Support Request Sent",
-      "Thank you for contacting us. We'll get back to you within 24 hours.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            // Clear form after successful submission
-            setFormData({
-              name: "",
-              email: "",
-              subject: "",
-              message: "",
-            });
-            router.back();
-          },
+    try {
+      const response = await fetch('https://your-app-name.replit.app/api/support/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ]
-    );
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit support request');
+      }
+
+      Alert.alert(
+        "Support Request Sent",
+        "Thank you for contacting us. We'll get back to you within 24 hours.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Clear form after successful submission
+              setFormData({
+                name: "",
+                email: "",
+                subject: "",
+                message: "",
+              });
+              router.back();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error submitting support request:", error);
+      Alert.alert("Error", error.message || "Failed to submit support request. Please try again.");
+    }
   };
 
   const handleBack = () => {

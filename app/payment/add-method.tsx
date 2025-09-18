@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import BackButton from "../../components/BackButton";
 
 // Using the app's consistent color scheme

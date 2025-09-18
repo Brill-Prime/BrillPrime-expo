@@ -42,40 +42,57 @@ export default function OTPVerification() {
     }
 
     try {
-      // For demo purposes, accept any 5-digit code
-      // In a real app, you would verify this with your backend
-      
-      // Get pending user data
       const pendingUserData = await AsyncStorage.getItem("pendingUserData");
+      if (!pendingUserData) {
+        Alert.alert("Error", "No pending verification found. Please register again.");
+        return;
+      }
+
+      const userData = JSON.parse(pendingUserData);
+
+      const response = await fetch('https://your-app-name.replit.app/api/auth/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          otp: otpString,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'OTP verification failed');
+      }
+
+      // Registration and verification successful
       const selectedRole = await AsyncStorage.getItem("selectedRole");
       
-      if (pendingUserData) {
-        // Registration successful
-        const userData = JSON.parse(pendingUserData);
-        
-        // Generate token and save user session
-        const token = "user_token_" + Date.now();
-        await AsyncStorage.setItem("userToken", token);
-        await AsyncStorage.setItem("userEmail", userData.email);
-        await AsyncStorage.setItem("userRole", selectedRole || "consumer");
-        
-        // Clean up pending data
-        await AsyncStorage.removeItem("pendingUserData");
-        
-        Alert.alert(
-          "Success!", 
-          "Verification successful!",
-          [
-            {
-              text: "OK",
-              onPress: () => router.replace(`/dashboard/${selectedRole || "consumer"}`)
-            }
-          ]
-        );
+      // Store user session
+      if (data.data?.token) {
+        await AsyncStorage.setItem("userToken", data.data.token);
       }
+      await AsyncStorage.setItem("userEmail", userData.email);
+      await AsyncStorage.setItem("userRole", userData.role || selectedRole || "consumer");
+      
+      // Clean up pending data
+      await AsyncStorage.removeItem("pendingUserData");
+      
+      Alert.alert(
+        "Success!", 
+        "Verification successful!",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace(`/dashboard/${userData.role || selectedRole || "consumer"}`)
+          }
+        ]
+      );
     } catch (error) {
       console.error("Error verifying OTP:", error);
-      Alert.alert("Error", "Verification failed. Please try again.");
+      Alert.alert("Error", error.message || "Verification failed. Please try again.");
     }
   };
 

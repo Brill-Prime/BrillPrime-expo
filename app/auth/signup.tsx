@@ -52,11 +52,38 @@ export default function SignUp() {
     if (!validateForm()) return;
 
     try {
-      await AsyncStorage.setItem("pendingUserData", JSON.stringify(formData));
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      
+      const response = await fetch('https://your-app-name.replit.app/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          role: selectedRole || "consumer",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      // Store pending data for OTP verification
+      await AsyncStorage.setItem("pendingUserData", JSON.stringify({
+        ...formData,
+        role: selectedRole || "consumer"
+      }));
+      
       router.push("/auth/otp-verification");
     } catch (error) {
-      console.error("Error saving user data:", error);
-      Alert.alert("Error", "Please try again");
+      console.error("Error during registration:", error);
+      Alert.alert("Error", error.message || "Registration failed. Please try again.");
     }
   };
 

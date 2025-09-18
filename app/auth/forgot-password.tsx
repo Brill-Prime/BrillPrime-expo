@@ -25,21 +25,31 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
+      const response = await fetch('https://your-app-name.replit.app/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      setIsLoading(false);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset link');
+      }
+
       // Store email for reset process
       await AsyncStorage.setItem("resetEmail", email);
       
-      // Simulate API delay
-      setTimeout(async () => {
-        setIsLoading(false);
-        
-        // Show success modal
-        setShowSuccessModal(true);
-      }, 1000);
+      // Show success modal
+      setShowSuccessModal(true);
       
     } catch (error) {
       console.error("Error sending reset link:", error);
       setIsLoading(false);
-      Alert.alert("Error", "Failed to send reset link. Please try again.");
+      Alert.alert("Error", error.message || "Failed to send reset link. Please try again.");
     }
   };
 
