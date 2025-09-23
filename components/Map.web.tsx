@@ -56,7 +56,7 @@ export default function MapViewWeb({
     // Load Google Maps script
     if (!window.google) {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBdVl-cGl-Qma_jgWgb_nSiUUZ1TsNjmK8&libraries=geometry`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY}&libraries=geometry`;
       script.async = true;
       script.defer = true;
       script.onload = initializeMap;
