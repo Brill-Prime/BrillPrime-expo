@@ -77,11 +77,11 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), color: "#4682B4", route: "/commodity/commodities" },
-    { title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'), color: "#f093fb", route: "/orders/consumer-orders" },
-    { title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'), color: "#4CAF50", route: "/chat" },
-    { title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'), color: "#4facfe", route: "/favorites" },
-    { title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'), color: "#ffd93d", route: "/support" }
+    { title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), route: "/commodity/commodities" },
+    { title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'), route: "/orders/consumer-orders" },
+    { title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'), route: "/chat" },
+    { title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'), route: "/favorites" },
+    { title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'), route: "/support" }
   ];
 
   const styles = getResponsiveStyles(screenData);
@@ -127,11 +127,11 @@ export default function ConsumerDashboard() {
           {features.map((feature, index) => (
             <TouchableOpacity
               key={index}
-              style={[styles.featureCard, { backgroundColor: feature.color }]}
+              style={styles.featureCard}
               onPress={() => handleFeaturePress(feature)}
               activeOpacity={0.8}
             >
-              <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
+              <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
                 <Image 
                   source={feature.icon}
                   style={styles.featureIconImage}
@@ -291,12 +291,14 @@ const getResponsiveStyles = (screenData: any) => {
     },
     featureCard: {
       width: isTablet ? "31%" : "47%",
-      backgroundColor: "#f8f9fa",
+      backgroundColor: "white",
       padding: Math.max(16, width * 0.04),
       borderRadius: 25,
       alignItems: "center",
       minHeight: isTablet ? 140 : 120,
       justifyContent: "center",
+      borderWidth: 2,
+      borderColor: "#4682B4",
     },
     featureIcon: {
       width: isTablet ? 60 : 50,
@@ -330,12 +332,14 @@ const getResponsiveStyles = (screenData: any) => {
     },
     serviceCard: {
       flex: 1,
-      backgroundColor: "#f8f9fa",
+      backgroundColor: "white",
       padding: Math.max(16, width * 0.04),
       borderRadius: 25,
       alignItems: "center",
       minHeight: isTablet ? 140 : 120,
       justifyContent: "center",
+      borderWidth: 2,
+      borderColor: "#4682B4",
     },
     serviceIconContainer: {
       backgroundColor: "#4682B4",
