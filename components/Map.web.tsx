@@ -72,7 +72,7 @@ export default function MapViewWeb({
         console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
 
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,marker&loading=async`;
         script.async = true;
         script.defer = true;
         script.onload = initializeMap;
@@ -161,21 +161,30 @@ export default function MapViewWeb({
             position.coords.longitude
           );
 
-          new google.maps.Marker({
-            position: userLocation,
-            map: googleMapRef.current,
-            title: 'Your Location',
-            icon: {
-              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-                  <circle cx="10" cy="10" r="8" fill="#4285F4" stroke="white" stroke-width="2"/>
-                  <circle cx="10" cy="10" r="3" fill="white"/>
-                </svg>
-              `),
-              scaledSize: new google.maps.Size(20, 20),
-              anchor: new google.maps.Point(10, 10)
-            }
-          });
+          // Use modern AdvancedMarkerElement if available, fallback to classic Marker
+          if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+            new google.maps.marker.AdvancedMarkerElement({
+              position: userLocation,
+              map: googleMapRef.current,
+              title: 'Your Location'
+            });
+          } else {
+            new google.maps.Marker({
+              position: userLocation,
+              map: googleMapRef.current,
+              title: 'Your Location',
+              icon: {
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="8" fill="#4285F4" stroke="white" stroke-width="2"/>
+                    <circle cx="10" cy="10" r="3" fill="white"/>
+                  </svg>
+                `),
+                scaledSize: new google.maps.Size(20, 20),
+                anchor: new google.maps.Point(10, 10)
+              }
+            });
+          }
         },
         (error) => {
           console.log('Geolocation error:', error);
@@ -201,21 +210,32 @@ export default function MapViewWeb({
         const { coordinate, title, description, pinColor } = props;
 
         if (coordinate) {
-          const marker = new google.maps.Marker({
-            position: new google.maps.LatLng(coordinate.latitude, coordinate.longitude),
-            map: googleMapRef.current,
-            title: title || '',
-            icon: pinColor ? {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
-                  <path d="M16 0C7.163 0 0 7.163 0 16c0 16 16 24 16 24s16-8 16-24C32 7.163 24.837 0 16 0z" fill="${pinColor}"/>
-                  <circle cx="16" cy="16" r="6" fill="white"/>
-                </svg>
-              `)}`,
-              scaledSize: new google.maps.Size(32, 40),
-              anchor: new google.maps.Point(16, 40)
-            } : undefined
-          });
+          let marker: any;
+          
+          // Use modern AdvancedMarkerElement if available, fallback to classic Marker
+          if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+            marker = new google.maps.marker.AdvancedMarkerElement({
+              position: new google.maps.LatLng(coordinate.latitude, coordinate.longitude),
+              map: googleMapRef.current,
+              title: title || ''
+            });
+          } else {
+            marker = new google.maps.Marker({
+              position: new google.maps.LatLng(coordinate.latitude, coordinate.longitude),
+              map: googleMapRef.current,
+              title: title || '',
+              icon: pinColor ? {
+                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+                    <path d="M16 0C7.163 0 0 7.163 0 16c0 16 16 24 16 24s16-8 16-24C32 7.163 24.837 0 16 0z" fill="${pinColor}"/>
+                    <circle cx="16" cy="16" r="6" fill="white"/>
+                  </svg>
+                `)}`,
+                scaledSize: new google.maps.Size(32, 40),
+                anchor: new google.maps.Point(16, 40)
+              } : undefined
+            });
+          }
 
           if (description) {
             const infoWindow = new google.maps.InfoWindow({
