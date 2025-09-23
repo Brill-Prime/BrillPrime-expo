@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 interface UserProfile {
   firstName: string;
@@ -21,6 +22,7 @@ interface UserProfile {
   email: string;
   phone: string;
   address: string;
+  profileImage?: string;
 }
 
 export default function EditProfileScreen() {
@@ -31,6 +33,7 @@ export default function EditProfileScreen() {
     email: '',
     phone: '',
     address: '',
+    profileImage: undefined,
   });
   const [loading, setLoading] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
@@ -51,6 +54,7 @@ export default function EditProfileScreen() {
       const phone = await AsyncStorage.getItem('userPhone');
       const name = await AsyncStorage.getItem('userName');
       const address = await AsyncStorage.getItem('userAddress');
+      const profileImage = await AsyncStorage.getItem('userProfileImage');
       
       // Split name into first and last
       const nameParts = (name || 'John Doe').split(' ');
@@ -63,6 +67,7 @@ export default function EditProfileScreen() {
         email: email || '',
         phone: phone || '',
         address: address || '',
+        profileImage: profileImage || undefined,
       });
     } catch (error) {
       console.error('Error loading user profile:', error);
@@ -103,10 +108,74 @@ export default function EditProfileScreen() {
       'Choose an option',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Camera', onPress: () => Alert.alert('Camera', 'Camera functionality will be implemented soon') },
-        { text: 'Photo Library', onPress: () => Alert.alert('Gallery', 'Photo library access will be implemented soon') },
+        { text: 'Camera', onPress: openCamera },
+        { text: 'Photo Library', onPress: openImageLibrary },
+        { text: 'Remove Photo', onPress: removePhoto, style: 'destructive' },
       ]
     );
+  };
+
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
+      Alert.alert(
+        'Permissions Required',
+        'Please grant camera and photo library permissions to change your profile picture.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const openCamera = async () => {
+    const hasPermissions = await requestPermissions();
+    if (!hasPermissions) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setProfile(prev => ({ ...prev, profileImage: imageUri }));
+      }
+    } catch (error) {
+      console.error('Error opening camera:', error);
+      Alert.alert('Error', 'Failed to open camera. Please try again.');
+    }
+  };
+
+  const openImageLibrary = async () => {
+    const hasPermissions = await requestPermissions();
+    if (!hasPermissions) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setProfile(prev => ({ ...prev, profileImage: imageUri }));
+      }
+    } catch (error) {
+      console.error('Error opening image library:', error);
+      Alert.alert('Error', 'Failed to open photo library. Please try again.');
+    }
+  };
+
+  const removePhoto = () => {
+    setProfile(prev => ({ ...prev, profileImage: undefined }));
   };
 
   const handleChangePassword = () => {
@@ -130,6 +199,11 @@ export default function EditProfileScreen() {
       if (profile.address) {
         await AsyncStorage.setItem('userAddress', profile.address);
       }
+      if (profile.profileImage) {
+        await AsyncStorage.setItem('userProfileImage', profile.profileImage);
+      } else {
+        await AsyncStorage.removeItem('userProfileImage');
+      }
 
       // Call API to update profile
       try {
@@ -139,7 +213,8 @@ export default function EditProfileScreen() {
           lastName: profile.lastName,
           email: profile.email,
           phone: profile.phone,
-          address: profile.address
+          address: profile.address,
+          profileImage: profile.profileImage
         });
       } catch (apiError) {
         console.log('API call failed, but local storage updated:', apiError);
@@ -187,10 +262,19 @@ export default function EditProfileScreen() {
               style={styles.profileImageContainer}
               onPress={handleChangePhoto}
             >
-              <Image 
-                source={require('../../assets/images/account_circle.svg')}
-                style={styles.profileImage}
-              />
+              {profile.profileImage ? (
+                <Image 
+                  source={{ uri: profile.profileImage }}
+                  style={styles.profileImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Image 
+                  source={require('../../assets/images/account_circle.svg')}
+                  style={styles.profileImage}
+                  resizeMode="contain"
+                />
+              )}
               <TouchableOpacity style={styles.cameraButton} onPress={handleChangePhoto}>
                 <Ionicons name="camera" size={16} color="#fff" />
               </TouchableOpacity>
