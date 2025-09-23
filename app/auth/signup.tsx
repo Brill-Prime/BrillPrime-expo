@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAlert } from "../../components/AlertProvider";
 
 export default function SignUp() {
   const router = useRouter();
+  const { showError, showConfirmDialog, showInfo } = useAlert();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -26,7 +28,7 @@ export default function SignUp() {
 
   const validateForm = () => {
     if (!formData.fullName.trim()) {
-      Alert.alert("Error", "Please enter your full name");
+      showError("Error", "Please enter your full name");
       return false;
     }
     // Split fullName into firstName and lastName
@@ -35,19 +37,19 @@ export default function SignUp() {
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
     if (!formData.email.trim() || !formData.email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showError("Error", "Please enter a valid email address");
       return false;
     }
     if (!formData.phone.trim() || formData.phone.length < 10) {
-      Alert.alert("Error", "Please enter a valid phone number");
+      showError("Error", "Please enter a valid phone number");
       return false;
     }
     if (formData.password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      showError("Error", "Password must be at least 6 characters");
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      showError("Error", "Passwords do not match");
       return false;
     }
     return true;
@@ -59,15 +61,10 @@ export default function SignUp() {
     // Check if user has selected a role first
     const storedRole = await AsyncStorage.getItem("selectedRole");
     if (!storedRole) {
-      Alert.alert(
+      showConfirmDialog(
         "Role Required",
         "Please select your role first.",
-        [
-          {
-            text: "Select Role",
-            onPress: () => router.replace("/auth/role-selection")
-          }
-        ]
+        () => router.replace("/auth/role-selection")
       );
       return;
     }
@@ -113,18 +110,19 @@ export default function SignUp() {
         // Handle specific error cases
         const errorMessage = response.error || "Registration failed";
         if (errorMessage.includes("email already exists") || errorMessage.includes("already registered")) {
-          Alert.alert("Account Exists", "An account with this email already exists. Would you like to sign in instead?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Sign In", onPress: () => router.push("/auth/signin") }
-          ]);
+          showConfirmDialog(
+            "Account Exists", 
+            "An account with this email already exists. Would you like to sign in instead?",
+            () => router.push("/auth/signin")
+          );
         } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
-          Alert.alert("Network Error", "Please check your internet connection and try again.");
+          showError("Network Error", "Please check your internet connection and try again.");
         } else if (errorMessage.includes("invalid email")) {
-          Alert.alert("Invalid Email", "Please enter a valid email address.");
+          showError("Invalid Email", "Please enter a valid email address.");
         } else if (errorMessage.includes("password too weak")) {
-          Alert.alert("Weak Password", "Please choose a stronger password with at least 8 characters.");
+          showError("Weak Password", "Please choose a stronger password with at least 8 characters.");
         } else {
-          Alert.alert("Sign Up Failed", errorMessage);
+          showError("Sign Up Failed", errorMessage);
         }
       }
     } catch (error) {
@@ -132,18 +130,18 @@ export default function SignUp() {
 
       // Handle network errors specifically
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        Alert.alert(
+        showError(
           "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
       } else {
-        Alert.alert("Error", "Sign up failed. Please try again.");
+        showError("Error", "Sign up failed. Please try again.");
       }
     }
   };
 
   const handleSocialLogin = (provider: string) => {
-    Alert.alert("Coming Soon", `${provider} login will be available soon!`);
+    showInfo("Coming Soon", `${provider} login will be available soon!`);
   };
 
   return (

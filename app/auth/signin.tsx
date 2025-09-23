@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,9 +14,11 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useAlert } from "../../components/AlertProvider";
 
 export default function SignIn() {
   const router = useRouter();
+  const { showError, showConfirmDialog, showInfo } = useAlert();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
@@ -41,13 +42,13 @@ export default function SignIn() {
     setLoading(true); // Set loading state
 
     if (!formData.email.trim() || !formData.password.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      showError("Error", "Please fill in all fields");
       setLoading(false); // Reset loading state
       return;
     }
 
     if (!formData.email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showError("Error", "Please enter a valid email address");
       setLoading(false); // Reset loading state
       return;
     }
@@ -55,15 +56,10 @@ export default function SignIn() {
     // Check if user has selected a role first
     const selectedRole = await AsyncStorage.getItem("selectedRole");
     if (!selectedRole) {
-      Alert.alert(
+      showConfirmDialog(
         "Role Required",
         "Please select your role first.",
-        [
-          {
-            text: "Select Role",
-            onPress: () => router.replace("/auth/role-selection")
-          }
-        ]
+        () => router.replace("/auth/role-selection")
       );
       setLoading(false); // Reset loading state
       return;
@@ -82,15 +78,10 @@ export default function SignIn() {
       if (response.success && response.data) {
         // Validate that the user's role matches selected role
         if (response.data.user.role !== selectedRole) {
-          Alert.alert(
+          showConfirmDialog(
             "Role Mismatch",
             `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
-            [
-              {
-                text: "Select Role",
-                onPress: () => router.replace("/auth/role-selection")
-              }
-            ]
+            () => router.replace("/auth/role-selection")
           );
           setLoading(false); // Reset loading state
           return;
@@ -114,17 +105,18 @@ export default function SignIn() {
         // Handle specific error cases
         const errorMessage = response.error || "Invalid credentials";
         if (errorMessage.includes("Invalid credentials") || errorMessage.includes("authentication")) {
-          Alert.alert("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
+          showError("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
         } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
-          Alert.alert("Network Error", "Please check your internet connection and try again.");
+          showError("Network Error", "Please check your internet connection and try again.");
           setError('Unable to connect to server. Trying offline mode...');
         } else if (errorMessage.includes("account not found")) {
-          Alert.Alert("Account Not Found", "No account found with this email. Would you like to sign up?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Sign Up", onPress: () => router.push("/auth/signup") }
-          ]);
+          showConfirmDialog(
+            "Account Not Found", 
+            "No account found with this email. Would you like to sign up?",
+            () => router.push("/auth/signup")
+          );
         } else {
-          Alert.alert("Sign In Failed", errorMessage);
+          showError("Sign In Failed", errorMessage);
           setError(errorMessage);
         }
       }
@@ -133,13 +125,13 @@ export default function SignIn() {
 
       // Handle network errors specifically
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        Alert.alert(
+        showError(
           "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
         setError('Unable to connect to server. Trying offline mode...');
       } else {
-        Alert.alert("Error", "Sign in failed. Please try again.");
+        showError("Error", "Sign in failed. Please try again.");
         setError("Sign in failed. Please try again.");
       }
     } finally {
@@ -148,7 +140,7 @@ export default function SignIn() {
   };
 
   const handleSocialLogin = (provider: string) => {
-    Alert.alert("Coming Soon", `${provider} login will be available soon!`);
+    showInfo("Coming Soon", `${provider} login will be available soon!`);
   };
 
   const styles = getResponsiveStyles(screenData);
