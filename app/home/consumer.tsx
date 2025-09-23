@@ -372,7 +372,7 @@ export default function ConsumerHome() {
             {/* Location Icon */}
             <View style={styles.locationIcon}>
               <View style={styles.locationIconInner}>
-                <Image source={require('../../assets/images/globe_img.png')} style={styles.globeIcon} resizeMode="contain" />
+                <Image source={require('../../assets/images/globe_img.png')} style={styles.globeIcon} resizeMode="cover" />
               </View>
             </View>
             
@@ -622,8 +622,6 @@ const styles = StyleSheet.create({
   globeIcon: {
     width: '100%',
     height: '100%',
-    maxWidth: 24,
-    maxHeight: 24,
   },
   modalContent: {
     alignItems: 'center',
