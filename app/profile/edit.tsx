@@ -110,18 +110,11 @@ export default function EditProfileScreen() {
   };
 
   const handleChangePassword = () => {
-    Alert.alert(
-      'Change Password',
-      'You will be redirected to change your password',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Continue', onPress: () => Alert.alert('Password Change', 'Password change functionality will be implemented soon') },
-      ]
-    );
+    router.push('/profile/change-password');
   };
 
   const handlePrivacySettings = () => {
-    Alert.alert('Privacy Settings', 'Privacy settings will be available soon');
+    router.push('/profile/privacy-settings');
   };
 
   const handleSave = async () => {
@@ -273,13 +266,13 @@ export default function EditProfileScreen() {
           {/* Additional Options */}
           <View style={styles.optionsSection}>
             <TouchableOpacity style={styles.optionItem} onPress={handleChangePassword}>
-              <Ionicons name="key-outline" size={20} color="#2f75c2" />
+              <Ionicons name="key-outline" size={20} color="#4682B4" />
               <Text style={styles.optionText}>Change Password</Text>
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem} onPress={handlePrivacySettings}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#2f75c2" />
+              <Ionicons name="shield-checkmark-outline" size={20} color="#4682B4" />
               <Text style={styles.optionText}>Privacy Settings</Text>
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
@@ -316,7 +309,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   saveButton: {
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -353,7 +346,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     borderRadius: 15,
     width: 30,
     height: 30,
@@ -362,7 +355,7 @@ const styles = StyleSheet.create({
   },
   changePhotoText: {
     fontSize: 14,
-    color: '#2f75c2',
+    color: '#4682B4',
     fontWeight: '500',
   },
   formSection: {
