@@ -54,7 +54,7 @@ export default function MerchantDashboard() {
 
   return (
     <LinearGradient
-      colors={['#f093fb', '#f5576c']}
+      colors={['#4facfe', '#00f2fe']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -155,8 +155,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: "white",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
     paddingHorizontal: 20,
     paddingTop: 30,
   },
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     width: "47%",
     backgroundColor: "#f8f9fa",
     padding: 20,
-    borderRadius: 15,
+    borderRadius: 25,
     alignItems: "center",
   },
   featureIcon: {
@@ -217,9 +217,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#f093fb",
+    backgroundColor: "#4facfe",
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 20,
     alignItems: "center",
   },
   statNumber: {

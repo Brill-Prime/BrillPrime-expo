@@ -88,7 +88,7 @@ export default function ConsumerDashboard() {
 
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2']}
+      colors={['#4facfe', '#00f2fe']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -254,8 +254,8 @@ const getResponsiveStyles = (screenData: any) => {
     content: {
       flex: 1,
       backgroundColor: "white",
-      borderTopLeftRadius: 30,
-      borderTopRightRadius: 30,
+      borderTopLeftRadius: 35,
+      borderTopRightRadius: 35,
       paddingHorizontal: Math.max(16, width * 0.05),
       paddingTop: Math.max(24, height * 0.03),
     },
@@ -275,7 +275,7 @@ const getResponsiveStyles = (screenData: any) => {
       width: isTablet ? "31%" : "47%",
       backgroundColor: "#f8f9fa",
       padding: Math.max(16, width * 0.04),
-      borderRadius: 15,
+      borderRadius: 25,
       alignItems: "center",
       minHeight: isTablet ? 140 : 120,
       justifyContent: "center",
@@ -313,13 +313,13 @@ const getResponsiveStyles = (screenData: any) => {
       flex: 1,
       backgroundColor: "#f8f9fa",
       padding: Math.max(16, width * 0.04),
-      borderRadius: 15,
+      borderRadius: 25,
       alignItems: "center",
       minHeight: isTablet ? 140 : 120,
       justifyContent: "center",
     },
     serviceIconContainer: {
-      backgroundColor: "#667eea",
+      backgroundColor: "#4facfe",
       width: isTablet ? 60 : 50,
       height: isTablet ? 60 : 50,
       borderRadius: isTablet ? 30 : 25,
@@ -352,9 +352,9 @@ const getResponsiveStyles = (screenData: any) => {
     },
     statCard: {
       flex: 1,
-      backgroundColor: "#667eea",
+      backgroundColor: "#4facfe",
       padding: Math.max(12, width * 0.03),
-      borderRadius: 10,
+      borderRadius: 20,
       alignItems: "center",
       minHeight: isTablet ? 80 : 60,
       justifyContent: "center",
