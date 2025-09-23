@@ -6,6 +6,7 @@ interface EnvironmentConfig {
   apiBaseUrl: string;
   environment: 'development' | 'staging' | 'production';
   enableLogging: boolean;
+  googleMapsApiKey: string;
   features: {
     pushNotifications: boolean;
     analytics: boolean;
@@ -22,6 +23,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     apiBaseUrl: process.env.API_BASE_URL || '',
     environment: environment as any,
     enableLogging: isDevelopment,
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
     features: {
       pushNotifications: true,
       analytics: !isDevelopment,

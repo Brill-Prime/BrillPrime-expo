@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import Constants from 'expo-constants';
@@ -60,29 +59,43 @@ export default function MapViewWeb({
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
 
+  // Load Google Maps script based on environment variables
   useEffect(() => {
-    // Load Google Maps script
+    // Use environment variables for API keys
+    const androidApiKey = process.env.MAPS_API_KEY_ANDROID;
+    const iosApiKey = process.env.MAPS_API_KEY_IOS;
+    const allApisApiKey = process.env.MAPS_API_KEY_ALL;
+    
+    let apiKeyToUse = allApisApiKey; // Default to the general key
+
+    // In a web environment, we might not have direct access to platform-specific env vars.
+    // For simplicity, we'll use the general API key for the web, assuming it's configured for web usage.
+    // If specific web keys were provided, logic would go here to select the appropriate one.
+    
     if (!window.google) {
-      // Use the API key directly for now
-      const apiKey = 'AIzaSyDdTWdXMVc9twUm1ng_Ef_EpslM_hBb3uw';
-      console.log('Loading Google Maps with API key');
-      
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeMap;
-      document.head.appendChild(script);
+      if (apiKeyToUse) {
+        console.log('Loading Google Maps with API key');
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKeyToUse}&libraries=geometry`;
+        script.async = true;
+        script.defer = true;
+        script.onload = initializeMap;
+        document.head.appendChild(script);
+      } else {
+        console.error('Google Maps API key is not configured.');
+      }
     } else {
       initializeMap();
     }
   }, []);
 
+
   useEffect(() => {
     if (googleMapRef.current && region) {
       const center = new google.maps.LatLng(region.latitude, region.longitude);
       googleMapRef.current.setCenter(center);
-      
+
       // Calculate zoom level based on latitudeDelta
       const zoom = Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2);
       googleMapRef.current.setZoom(Math.min(Math.max(zoom, 1), 20));
@@ -119,17 +132,17 @@ export default function MapViewWeb({
     if (onRegionChangeComplete) {
       googleMapRef.current.addListener('bounds_changed', () => {
         if (!googleMapRef.current) return;
-        
+
         const center = googleMapRef.current.getCenter();
         const bounds = googleMapRef.current.getBounds();
-        
+
         if (center && bounds) {
           const ne = bounds.getNorthEast();
           const sw = bounds.getSouthWest();
-          
+
           const latitudeDelta = ne.lat() - sw.lat();
           const longitudeDelta = ne.lng() - sw.lng();
-          
+
           onRegionChangeComplete({
             latitude: center.lat(),
             longitude: center.lng(),
@@ -148,7 +161,7 @@ export default function MapViewWeb({
             position.coords.latitude,
             position.coords.longitude
           );
-          
+
           new google.maps.Marker({
             position: userLocation,
             map: googleMapRef.current,
@@ -187,7 +200,7 @@ export default function MapViewWeb({
       if (React.isValidElement(child) && child.type === Marker) {
         const props = child.props as any;
         const { coordinate, title, description, pinColor } = props;
-        
+
         if (coordinate) {
           const marker = new google.maps.Marker({
             position: new google.maps.LatLng(coordinate.latitude, coordinate.longitude),
