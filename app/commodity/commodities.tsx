@@ -62,12 +62,23 @@ export default function CommoditiesScreen() {
   const categories: Category[] = [
     { id: 1, name: 'Fuel & Energy', icon: 'car-outline', description: 'Petrol, Diesel, Gas' },
     { id: 2, name: 'Food & Beverages', icon: 'restaurant-outline', description: 'Fresh food, drinks' },
-    { id: 3, name: 'Groceries', icon: 'bag-outline', description: 'Daily essentials' },
-    { id: 4, name: 'Medicine', icon: 'medical-outline', description: 'Healthcare products' },
+    { id: 3, name: 'Supermarket/Convenience Store', icon: 'storefront-outline', description: 'Daily essentials, groceries' },
+    { id: 4, name: 'Medical & Health', icon: 'medical-outline', description: 'Healthcare products & services' },
     { id: 5, name: 'Electronics', icon: 'phone-portrait-outline', description: 'Tech gadgets' },
-    { id: 6, name: 'Fashion', icon: 'shirt-outline', description: 'Clothing & accessories' },
-    { id: 7, name: 'Home & Garden', icon: 'home-outline', description: 'Household items' },
-    { id: 8, name: 'Tools & Hardware', icon: 'hammer-outline', description: 'Construction tools' },
+    { id: 6, name: 'Apparel & Clothing', icon: 'shirt-outline', description: 'Fashion & accessories' },
+    { id: 7, name: 'Beauty, Cosmetics & Personal Care', icon: 'rose-outline', description: 'Beauty & personal care' },
+    { id: 8, name: 'Art & Entertainment', icon: 'brush-outline', description: 'Creative arts & entertainment' },
+    { id: 9, name: 'Education', icon: 'school-outline', description: 'Educational services & materials' },
+    { id: 10, name: 'Event Planner', icon: 'calendar-outline', description: 'Event planning services' },
+    { id: 11, name: 'Finance', icon: 'card-outline', description: 'Financial services' },
+    { id: 12, name: 'Hotel', icon: 'bed-outline', description: 'Hospitality & accommodation' },
+    { id: 13, name: 'Non-profit Organisation', icon: 'heart-outline', description: 'Community & social services' },
+    { id: 14, name: 'Oil & Gas', icon: 'water-outline', description: 'Oil & gas products' },
+    { id: 15, name: 'Restaurant', icon: 'restaurant-outline', description: 'Dining & food services' },
+    { id: 16, name: 'Shopping & Retail', icon: 'bag-outline', description: 'Retail shopping' },
+    { id: 17, name: 'Ticket', icon: 'ticket-outline', description: 'Event & travel tickets' },
+    { id: 18, name: 'Toll Gate', icon: 'car-sport-outline', description: 'Toll gate services' },
+    { id: 19, name: 'Vehicle Service', icon: 'build-outline', description: 'Auto repair & maintenance' },
   ];
 
   // Mock data for products
