@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/google.maps": "^3.58.1",
     "@types/react": "~19.0.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",

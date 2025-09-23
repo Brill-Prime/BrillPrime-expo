@@ -1,6 +1,14 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
+import Constants from 'expo-constants';
+
+// Declare global google maps types
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+}
 
 export const PROVIDER_GOOGLE = 'google' as const;
 
@@ -55,8 +63,12 @@ export default function MapViewWeb({
   useEffect(() => {
     // Load Google Maps script
     if (!window.google) {
+      // Use the API key directly for now
+      const apiKey = 'AIzaSyDdTWdXMVc9twUm1ng_Ef_EpslM_hBb3uw';
+      console.log('Loading Google Maps with API key');
+      
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
       script.async = true;
       script.defer = true;
       script.onload = initializeMap;
@@ -173,7 +185,8 @@ export default function MapViewWeb({
     // Process children to find Marker components
     React.Children.forEach(children, (child) => {
       if (React.isValidElement(child) && child.type === Marker) {
-        const { coordinate, title, description, pinColor } = child.props;
+        const props = child.props as any;
+        const { coordinate, title, description, pinColor } = props;
         
         if (coordinate) {
           const marker = new google.maps.Marker({

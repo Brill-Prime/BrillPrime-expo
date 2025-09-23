@@ -5,6 +5,9 @@ export default ({ config }) => {
 
   return {
     ...config,
+    extra: {
+      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+    },
     name: variant === "admin" ? "Brill Prime Admin" : "Brill Prime",
     slug: variant === "admin" ? "brill-prime-admin" : "brill-prime",
     version: "1.0.0",
@@ -30,7 +33,10 @@ export default ({ config }) => {
     },
     web: {
       favicon: "./assets/images/logo.png",
-      bundler: "metro"
+      bundler: "metro",
+      config: {
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+      }
     },
     plugins: [
       "expo-router",
