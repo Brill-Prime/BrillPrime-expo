@@ -200,7 +200,68 @@ class AuthService {
       }
     } catch (error) {
       console.error('Token refresh error:', error);
-      return false;
+      
+      // Handle specific error cases
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        // Network error - don't clear tokens, let user try again
+        console.log('Network error during token refresh, keeping tokens');
+        return false;
+      } else {
+        // Other errors - clear invalid tokens
+        await this.clearAuthData();
+        return false;
+      }
+    }
+  }
+
+  // Validate token format and structure
+  private isValidTokenFormat(token: string): boolean {
+    if (!token || typeof token !== 'string') return false;
+    
+    // Basic JWT format check (header.payload.signature)
+    const parts = token.split('.');
+    return parts.length === 3;
+  }
+
+  // Enhanced authentication check with better error handling
+  async isAuthenticatedWithValidation(): Promise<{ isAuthenticated: boolean; shouldRefresh: boolean; error?: string }> {
+    try {
+      const token = await this.getToken();
+      if (!token) {
+        return { isAuthenticated: false, shouldRefresh: false, error: 'No token found' };
+      }
+
+      if (!this.isValidTokenFormat(token)) {
+        await this.clearAuthData();
+        return { isAuthenticated: false, shouldRefresh: false, error: 'Invalid token format' };
+      }
+
+      // Check token expiry
+      const expiry = await AsyncStorage.getItem('tokenExpiry');
+      if (!expiry || Date.now() > parseInt(expiry)) {
+        // Token expired, try to refresh
+        const refreshed = await this.refreshTokenIfNeeded();
+        return { 
+          isAuthenticated: refreshed, 
+          shouldRefresh: false, 
+          error: refreshed ? undefined : 'Token expired and refresh failed' 
+        };
+      }
+
+      // Check if token needs refresh soon
+      const needsRefresh = await this.needsTokenRefresh();
+      
+      return { 
+        isAuthenticated: true, 
+        shouldRefresh: needsRefresh 
+      };
+    } catch (error) {
+      console.error('Authentication validation error:', error);
+      return { 
+        isAuthenticated: false, 
+        shouldRefresh: false, 
+        error: 'Authentication validation failed' 
+      };
     }
   }
 }

@@ -40,35 +40,77 @@ export default function RoleSelection() {
         // Validate existing token with backend
         try {
           const { authService } = await import('../../services/authService');
-          const response = await authService.getCurrentUser();
+          const authCheck = await authService.isAuthenticatedWithValidation();
           
-          if (response.success && response.data) {
-            // Token is valid, navigate based on role
-            if (role === "consumer") {
-              router.replace("/home/consumer");
-            } else {
-              router.replace(`/dashboard/${role}`);
+          if (authCheck.isAuthenticated) {
+            // Get current user data to validate role
+            const userResponse = await authService.getCurrentUser();
+            
+            if (userResponse.success && userResponse.data) {
+              const userRole = userResponse.data.role;
+              
+              // Check if stored role matches selected role
+              if (userRole === role) {
+                // Roles match, navigate to appropriate screen
+                if (role === "consumer") {
+                  router.replace("/home/consumer");
+                } else {
+                  router.replace(`/dashboard/${role}`);
+                }
+                return;
+              } else {
+                // Role mismatch - update stored role and continue
+                await AsyncStorage.setItem("selectedRole", userRole);
+                Alert.alert(
+                  "Role Updated",
+                  `Your account role has been updated to ${userRole}. Please select your role again.`,
+                  [{ text: "OK", onPress: () => setSelectedRole(null) }]
+                );
+                return;
+              }
             }
+          }
+          
+          // Token is invalid or expired, clear it and proceed to auth
+          console.log("Token validation failed, clearing auth data");
+          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole", "tokenExpiry"]);
+          
+        } catch (tokenError) {
+          console.log("Token validation error:", tokenError);
+          
+          // Handle network errors gracefully
+          if (tokenError.message?.includes('network') || tokenError.message?.includes('fetch')) {
+            Alert.alert(
+              "Connection Error",
+              "Unable to verify your authentication. Please check your internet connection.",
+              [
+                { text: "Try Again", onPress: () => handleSelect(role) },
+                { text: "Continue Offline", onPress: () => proceedToAuth() }
+              ]
+            );
             return;
           } else {
-            // Token is invalid, clear it and proceed to sign in
-            await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+            // Other errors - clear auth data
+            await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole", "tokenExpiry"]);
           }
-        } catch (tokenError) {
-          console.log("Token validation failed, proceeding to auth");
-          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
         }
       }
 
-      // Check if user has account (stored email indicates previous registration)
-      const storedEmail = await AsyncStorage.getItem("userEmail");
+      // Proceed with normal authentication flow
+      proceedToAuth();
       
-      if (storedEmail) {
-        // User has registered before → Sign in
-        router.push("/auth/signin");
-      } else {
-        // New user → Sign up
-        router.push("/auth/signup");
+      async function proceedToAuth() {
+
+      // Check if user has account (stored email indicates previous registration)
+        const storedEmail = await AsyncStorage.getItem("userEmail");
+        
+        if (storedEmail) {
+          // User has registered before → Sign in
+          router.push("/auth/signin");
+        } else {
+          // New user → Sign up
+          router.push("/auth/signup");
+        }
       }
     } catch (error) {
       console.error("Error saving role:", error);
