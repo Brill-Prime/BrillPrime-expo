@@ -3,8 +3,8 @@
 export interface User {
   id: string;
   email: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
   phone?: string;
   profileImageUrl?: string;
   role: 'consumer' | 'merchant' | 'driver';
@@ -146,9 +146,10 @@ export interface VerifyOTPRequest {
 }
 
 export interface UpdateProfileRequest {
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
   address?: string;
 }
 

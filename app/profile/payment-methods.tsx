@@ -98,9 +98,18 @@ export default function PaymentMethodsScreen() {
 
   const handleRemoveMethod = (methodId: string) => {
     const method = paymentMethods.find(m => m.id === methodId);
-    if (method?.isDefault && paymentMethods.length > 1) {
+    
+    if (paymentMethods.length === 1) {
       Alert.alert(
         'Cannot Remove',
+        'You must have at least one payment method. Please add another method before removing this one.'
+      );
+      return;
+    }
+
+    if (method?.isDefault && paymentMethods.length > 1) {
+      Alert.alert(
+        'Cannot Remove Default',
         'You cannot remove your default payment method. Please set another method as default first.'
       );
       return;
@@ -108,7 +117,7 @@ export default function PaymentMethodsScreen() {
 
     Alert.alert(
       'Remove Payment Method',
-      'Are you sure you want to remove this payment method?',
+      `Are you sure you want to remove "${method?.title}"? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -124,8 +133,10 @@ export default function PaymentMethodsScreen() {
             try {
               await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
               setPaymentMethods(updatedMethods);
+              Alert.alert('Success', 'Payment method removed successfully');
             } catch (error) {
               console.error('Error removing payment method:', error);
+              Alert.alert('Error', 'Failed to remove payment method');
             }
           }
         }
@@ -136,8 +147,109 @@ export default function PaymentMethodsScreen() {
   const handleAddPaymentMethod = () => {
     Alert.alert(
       'Add Payment Method',
-      'This feature will be available soon. You can configure payment methods in the app settings.',
-      [{ text: 'OK' }]
+      'Choose a payment method type',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Credit/Debit Card', onPress: () => addCardMethod() },
+        { text: 'Bank Account', onPress: () => addBankMethod() },
+        { text: 'Digital Wallet', onPress: () => addWalletMethod() },
+      ]
+    );
+  };
+
+  const addCardMethod = () => {
+    Alert.prompt(
+      'Add Card',
+      'Enter card details (Demo)',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add', 
+          onPress: (cardNumber) => {
+            if (cardNumber && cardNumber.length >= 4) {
+              const newMethod: PaymentMethod = {
+                id: Date.now().toString(),
+                type: 'card',
+                title: 'Credit/Debit Card',
+                subtitle: `•••• •••• •••• ${cardNumber.slice(-4)}`,
+                icon: 'card-outline',
+                isDefault: paymentMethods.length === 0,
+                created: new Date().toISOString()
+              };
+              const updatedMethods = [...paymentMethods, newMethod];
+              AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+              setPaymentMethods(updatedMethods);
+              Alert.alert('Success', 'Card added successfully');
+            } else {
+              Alert.alert('Error', 'Please enter a valid card number');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '1234567890123456'
+    );
+  };
+
+  const addBankMethod = () => {
+    Alert.prompt(
+      'Add Bank Account',
+      'Enter bank account details (Demo)',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add', 
+          onPress: (accountNumber) => {
+            if (accountNumber && accountNumber.length >= 4) {
+              const newMethod: PaymentMethod = {
+                id: Date.now().toString(),
+                type: 'bank',
+                title: 'Bank Account',
+                subtitle: `Account ending in ${accountNumber.slice(-4)}`,
+                icon: 'business-outline',
+                isDefault: paymentMethods.length === 0,
+                created: new Date().toISOString()
+              };
+              const updatedMethods = [...paymentMethods, newMethod];
+              AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+              setPaymentMethods(updatedMethods);
+              Alert.alert('Success', 'Bank account added successfully');
+            } else {
+              Alert.alert('Error', 'Please enter a valid account number');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '1234567890'
+    );
+  };
+
+  const addWalletMethod = () => {
+    Alert.alert(
+      'Add Digital Wallet',
+      'Choose wallet type',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add Wallet', 
+          onPress: () => {
+            const newMethod: PaymentMethod = {
+              id: Date.now().toString(),
+              type: 'wallet',
+              title: 'Digital Wallet',
+              subtitle: 'Mobile money wallet',
+              icon: 'wallet-outline',
+              isDefault: paymentMethods.length === 0,
+              created: new Date().toISOString()
+            };
+            const updatedMethods = [...paymentMethods, newMethod];
+            AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+            setPaymentMethods(updatedMethods);
+            Alert.alert('Success', 'Digital wallet added successfully');
+          }
+        }
+      ]
     );
   };
 

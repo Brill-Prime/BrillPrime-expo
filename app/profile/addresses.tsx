@@ -80,10 +80,16 @@ export default function AddressesScreen() {
       return;
     }
 
+    // Check for duplicate labels
+    if (addresses.some(addr => addr.label.toLowerCase() === newAddress.label.toLowerCase())) {
+      Alert.alert('Duplicate Label', 'An address with this label already exists. Please choose a different label.');
+      return;
+    }
+
     const address: Address = {
       id: Date.now().toString(),
-      label: newAddress.label,
-      address: newAddress.address,
+      label: newAddress.label.trim(),
+      address: newAddress.address.trim(),
       isDefault: addresses.length === 0,
       created: new Date().toISOString()
     };
@@ -91,6 +97,8 @@ export default function AddressesScreen() {
     saveAddresses([...addresses, address]);
     setNewAddress({ label: '', address: '' });
     setShowAddModal(false);
+    
+    Alert.alert('Success', 'Address added successfully');
   };
 
   const handleEditAddress = (address: Address) => {
@@ -105,9 +113,18 @@ export default function AddressesScreen() {
       return;
     }
 
+    // Check for duplicate labels (excluding current address)
+    if (addresses.some(addr => 
+      addr.id !== editingAddress.id && 
+      addr.label.toLowerCase() === newAddress.label.toLowerCase()
+    )) {
+      Alert.alert('Duplicate Label', 'An address with this label already exists. Please choose a different label.');
+      return;
+    }
+
     const updatedAddresses = addresses.map(addr =>
       addr.id === editingAddress.id
-        ? { ...addr, label: newAddress.label, address: newAddress.address }
+        ? { ...addr, label: newAddress.label.trim(), address: newAddress.address.trim() }
         : addr
     );
 
@@ -115,6 +132,8 @@ export default function AddressesScreen() {
     setEditingAddress(null);
     setNewAddress({ label: '', address: '' });
     setShowAddModal(false);
+    
+    Alert.alert('Success', 'Address updated successfully');
   };
 
   const handleDeleteAddress = (addressId: string) => {

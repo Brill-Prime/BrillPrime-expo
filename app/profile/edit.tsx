@@ -97,6 +97,33 @@ export default function EditProfileScreen() {
     return true;
   };
 
+  const handleChangePhoto = () => {
+    Alert.alert(
+      'Change Profile Photo',
+      'Choose an option',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Camera', onPress: () => Alert.alert('Camera', 'Camera functionality will be implemented soon') },
+        { text: 'Photo Library', onPress: () => Alert.alert('Gallery', 'Photo library access will be implemented soon') },
+      ]
+    );
+  };
+
+  const handleChangePassword = () => {
+    Alert.alert(
+      'Change Password',
+      'You will be redirected to change your password',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => Alert.alert('Password Change', 'Password change functionality will be implemented soon') },
+      ]
+    );
+  };
+
+  const handlePrivacySettings = () => {
+    Alert.alert('Privacy Settings', 'Privacy settings will be available soon');
+  };
+
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -111,9 +138,19 @@ export default function EditProfileScreen() {
         await AsyncStorage.setItem('userAddress', profile.address);
       }
 
-      // TODO: Call API to update profile
-      // const { userService } = await import('../../services/userService');
-      // await userService.updateProfile(profile);
+      // Call API to update profile
+      try {
+        const { userService } = await import('../../services/userService');
+        await userService.updateProfile({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          email: profile.email,
+          phone: profile.phone,
+          address: profile.address
+        });
+      } catch (apiError) {
+        console.log('API call failed, but local storage updated:', apiError);
+      }
 
       Alert.alert(
         'Success',
@@ -153,16 +190,21 @@ export default function EditProfileScreen() {
         <View style={{ paddingHorizontal: responsivePadding }}>
           {/* Profile Image */}
           <View style={styles.profileSection}>
-            <View style={styles.profileImageContainer}>
+            <TouchableOpacity 
+              style={styles.profileImageContainer}
+              onPress={handleChangePhoto}
+            >
               <Image 
                 source={require('../../assets/images/account_circle.svg')}
                 style={styles.profileImage}
               />
-              <TouchableOpacity style={styles.cameraButton}>
+              <TouchableOpacity style={styles.cameraButton} onPress={handleChangePhoto}>
                 <Ionicons name="camera" size={16} color="#fff" />
               </TouchableOpacity>
-            </View>
-            <Text style={styles.changePhotoText}>Tap to change photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleChangePhoto}>
+              <Text style={styles.changePhotoText}>Tap to change photo</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Form Fields */}
@@ -230,13 +272,13 @@ export default function EditProfileScreen() {
 
           {/* Additional Options */}
           <View style={styles.optionsSection}>
-            <TouchableOpacity style={styles.optionItem}>
+            <TouchableOpacity style={styles.optionItem} onPress={handleChangePassword}>
               <Ionicons name="key-outline" size={20} color="#2f75c2" />
               <Text style={styles.optionText}>Change Password</Text>
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.optionItem}>
+            <TouchableOpacity style={styles.optionItem} onPress={handlePrivacySettings}>
               <Ionicons name="shield-checkmark-outline" size={20} color="#2f75c2" />
               <Text style={styles.optionText}>Privacy Settings</Text>
               <Ionicons name="chevron-forward" size={20} color="#666" />
