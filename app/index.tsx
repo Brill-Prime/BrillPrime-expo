@@ -20,12 +20,12 @@ export default function SplashScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
 
@@ -36,12 +36,12 @@ export default function SplashScreen() {
           Animated.timing(pulseAnim, {
             toValue: 1.05,
             duration: 1000,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 1000,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ])
       ).start();
@@ -64,7 +64,7 @@ export default function SplashScreen() {
 
       if (!onboarding[1]) {
         console.log('First time user, navigating to onboarding');
-        router.replace('/onboarding/screen1');
+        setTimeout(() => router.replace('/onboarding/screen1'), 1500);
         return;
       }
 
@@ -74,7 +74,7 @@ export default function SplashScreen() {
       if (!token[1] || isTokenExpired) {
         console.log('No valid token, clearing auth data and navigating to role selection');
         await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-        router.replace('/auth/role-selection');
+        setTimeout(() => router.replace('/auth/role-selection'), 1500);
         return;
       }
 
@@ -173,12 +173,17 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
+    minHeight: '100vh',
+    width: '100%',
   },
   content: {
     alignItems: "center",
+    justifyContent: "center",
   },
   logoContainer: {
     marginBottom: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoImage: {
     width: 128,
@@ -186,10 +191,12 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     marginTop: 32,
+    alignItems: "center",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#1f2937",
+    textAlign: "center",
   },
 });
