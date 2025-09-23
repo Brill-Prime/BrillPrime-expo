@@ -23,13 +23,20 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
         },
+        signal: controller.signal,
         ...options,
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -42,9 +49,20 @@ class ApiClient {
       };
     } catch (error) {
       console.error('API request failed:', error);
+      
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout - please check your connection';
+      } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        errorMessage = 'Failed to fetch - backend server may be down';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: errorMessage,
       };
     }
   }

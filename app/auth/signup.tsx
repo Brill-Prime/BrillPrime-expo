@@ -60,7 +60,7 @@ export default function SignUp() {
     const storedRole = await AsyncStorage.getItem("selectedRole");
     if (!storedRole) {
       Alert.alert(
-        "Role Required", 
+        "Role Required",
         "Please select your role first.",
         [
           {
@@ -129,11 +129,11 @@ export default function SignUp() {
       }
     } catch (error) {
       console.error("Error signing up:", error);
-      
+
       // Handle network errors specifically
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
         Alert.alert(
-          "Connection Error", 
+          "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
       } else {

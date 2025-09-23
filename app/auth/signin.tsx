@@ -21,6 +21,8 @@ export default function SignIn() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -35,13 +37,18 @@ export default function SignIn() {
   };
 
   const handleSignIn = async () => {
+    setError(''); // Clear previous errors
+    setLoading(true); // Set loading state
+
     if (!formData.email.trim() || !formData.password.trim()) {
       Alert.alert("Error", "Please fill in all fields");
+      setLoading(false); // Reset loading state
       return;
     }
 
     if (!formData.email.includes("@")) {
       Alert.alert("Error", "Please enter a valid email address");
+      setLoading(false); // Reset loading state
       return;
     }
 
@@ -49,7 +56,7 @@ export default function SignIn() {
     const selectedRole = await AsyncStorage.getItem("selectedRole");
     if (!selectedRole) {
       Alert.alert(
-        "Role Required", 
+        "Role Required",
         "Please select your role first.",
         [
           {
@@ -58,13 +65,14 @@ export default function SignIn() {
           }
         ]
       );
+      setLoading(false); // Reset loading state
       return;
     }
 
     try {
       // Import authService for real API calls
       const { authService } = await import('../../services/authService');
-      
+
       const response = await authService.signIn({
         email: formData.email,
         password: formData.password,
@@ -75,7 +83,7 @@ export default function SignIn() {
         // Validate that the user's role matches selected role
         if (response.data.user.role !== selectedRole) {
           Alert.alert(
-            "Role Mismatch", 
+            "Role Mismatch",
             `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
             [
               {
@@ -84,6 +92,7 @@ export default function SignIn() {
               }
             ]
           );
+          setLoading(false); // Reset loading state
           return;
         }
 
@@ -108,27 +117,33 @@ export default function SignIn() {
           Alert.alert("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
         } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
           Alert.alert("Network Error", "Please check your internet connection and try again.");
+          setError('Unable to connect to server. Trying offline mode...');
         } else if (errorMessage.includes("account not found")) {
-          Alert.alert("Account Not Found", "No account found with this email. Would you like to sign up?", [
+          Alert.Alert("Account Not Found", "No account found with this email. Would you like to sign up?", [
             { text: "Cancel", style: "cancel" },
             { text: "Sign Up", onPress: () => router.push("/auth/signup") }
           ]);
         } else {
           Alert.alert("Sign In Failed", errorMessage);
+          setError(errorMessage);
         }
       }
     } catch (error) {
       console.error("Error signing in:", error);
-      
+
       // Handle network errors specifically
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
         Alert.alert(
-          "Connection Error", 
+          "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
+        setError('Unable to connect to server. Trying offline mode...');
       } else {
         Alert.alert("Error", "Sign in failed. Please try again.");
+        setError("Sign in failed. Please try again.");
       }
+    } finally {
+      setLoading(false); // Reset loading state in finally block
     }
   };
 
@@ -196,6 +211,11 @@ export default function SignIn() {
             </View>
           </View>
 
+          {/* Error Message Display */}
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
+
           {/* Forgot Password */}
           <TouchableOpacity
             style={styles.forgotPassword}
@@ -205,8 +225,8 @@ export default function SignIn() {
           </TouchableOpacity>
 
           {/* Sign In Button */}
-          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-            <Text style={styles.signInText}>Sign In</Text>
+          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn} disabled={loading}>
+            <Text style={styles.signInText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -218,19 +238,19 @@ export default function SignIn() {
 
           {/* Social Buttons */}
           <View style={styles.socialContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
             >
               <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Apple")}
             >
               <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Facebook")}
             >
@@ -259,7 +279,7 @@ const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
   const isTablet = width >= 768;
   const isSmallScreen = width < 350;
-  
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -387,6 +407,12 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
       color: PRIMARY_COLOR,
       fontWeight: "700",
+    },
+    errorText: {
+      color: 'red',
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      textAlign: 'center',
+      marginBottom: Math.max(16, height * 0.025),
     },
   });
 };
