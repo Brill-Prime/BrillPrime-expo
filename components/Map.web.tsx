@@ -33,6 +33,9 @@ export default function MapViewWeb({
   scrollEnabled,
   zoomEnabled,
   children,
+  enableStoreLocator = false,
+  storeLocations = [],
+  onLocationSelect,
   ...props 
 }: { 
   style?: any; 
@@ -53,11 +56,23 @@ export default function MapViewWeb({
   scrollEnabled?: boolean;
   zoomEnabled?: boolean;
   children?: React.ReactNode;
+  enableStoreLocator?: boolean;
+  storeLocations?: Array<{
+    title: string;
+    address: string;
+    coords: { lat: number; lng: number };
+    placeId?: string;
+  }>;
+  onLocationSelect?: (location: any) => void;
   [key: string]: any;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const directionsService = useRef<google.maps.DirectionsService | null>(null);
+  const directionsRenderer = useRef<google.maps.DirectionsRenderer | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [filteredLocations, setFilteredLocations] = useState(storeLocations);
 
   // Load Google Maps script based on environment variables
   useEffect(() => {
@@ -127,6 +142,16 @@ export default function MapViewWeb({
 
     googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
 
+    // Initialize directions service and renderer
+    if (enableStoreLocator) {
+      directionsService.current = new google.maps.DirectionsService();
+      directionsRenderer.current = new google.maps.DirectionsRenderer({
+        suppressMarkers: false,
+        draggable: true
+      });
+      directionsRenderer.current.setMap(googleMapRef.current);
+    }
+
     // Handle region change
     if (onRegionChangeComplete) {
       googleMapRef.current.addListener('bounds_changed', () => {
@@ -194,7 +219,116 @@ export default function MapViewWeb({
 
     // Add markers from children
     addMarkersFromChildren();
+
+    // Add store locator markers if enabled
+    if (enableStoreLocator) {
+      addStoreLocatorMarkers();
+    }
   };
+
+  const addStoreLocatorMarkers = () => {
+    if (!googleMapRef.current) return;
+
+    filteredLocations.forEach((location) => {
+      let marker: any;
+      
+      if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+        marker = new google.maps.marker.AdvancedMarkerElement({
+          position: new google.maps.LatLng(location.coords.lat, location.coords.lng),
+          map: googleMapRef.current,
+          title: location.title
+        });
+      } else {
+        marker = new google.maps.Marker({
+          position: new google.maps.LatLng(location.coords.lat, location.coords.lng),
+          map: googleMapRef.current,
+          title: location.title,
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+                <path d="M16 0C7.163 0 0 7.163 0 16c0 16 16 24 16 24s16-8 16-24C32 7.163 24.837 0 16 0z" fill="#1967d2"/>
+                <circle cx="16" cy="16" r="6" fill="white"/>
+              </svg>
+            `)}`,
+            scaledSize: new google.maps.Size(32, 40),
+            anchor: new google.maps.Point(16, 40)
+          }
+        });
+      }
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: `
+          <div style="max-width: 200px;">
+            <h3 style="margin: 0 0 8px 0; color: #1967d2;">${location.title}</h3>
+            <p style="margin: 0 0 8px 0; color: #757575;">${location.address}</p>
+            <button 
+              onclick="getDirections('${location.coords.lat}', '${location.coords.lng}')"
+              style="background: #1967d2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;"
+            >
+              Get Directions
+            </button>
+          </div>
+        `
+      });
+
+      marker.addListener('click', () => {
+        infoWindow.open(googleMapRef.current, marker);
+        if (onLocationSelect) {
+          onLocationSelect(location);
+        }
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    // Make getDirections available globally for the InfoWindow button
+    (window as any).getDirections = (lat: string, lng: string) => {
+      if (navigator.geolocation && directionsService.current && directionsRenderer.current) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const origin = new google.maps.LatLng(
+            position.coords.latitude,
+            position.coords.longitude
+          );
+          const destination = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+
+          directionsService.current!.route({
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING
+          }, (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK) {
+              directionsRenderer.current!.setDirections(result);
+            }
+          });
+        });
+      }
+    };
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchInput(query);
+    if (query.trim() === '') {
+      setFilteredLocations(storeLocations);
+    } else {
+      const filtered = storeLocations.filter(location =>
+        location.title.toLowerCase().includes(query.toLowerCase()) ||
+        location.address.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredLocations(filtered);
+    }
+  };
+
+  useEffect(() => {
+    if (googleMapRef.current && enableStoreLocator) {
+      // Clear existing markers
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
+      
+      // Add updated markers
+      addStoreLocatorMarkers();
+      addMarkersFromChildren();
+    }
+  }, [filteredLocations]);
 
   const addMarkersFromChildren = () => {
     if (!googleMapRef.current) return;
@@ -261,6 +395,37 @@ export default function MapViewWeb({
 
   return (
     <View style={style}>
+      {enableStoreLocator && (
+        <div style={{
+          position: 'absolute',
+          top: 10,
+          left: 10,
+          zIndex: 1000,
+          background: 'white',
+          padding: '10px',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          minWidth: '250px'
+        }}>
+          <input
+            type="text"
+            placeholder="Search locations..."
+            value={searchInput}
+            onChange={(e) => handleSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              border: '1px solid #e0e0e0',
+              borderRadius: '4px',
+              fontSize: '14px',
+              marginBottom: '8px'
+            }}
+          />
+          <div style={{ fontSize: '12px', color: '#757575' }}>
+            {filteredLocations.length} location(s) found
+          </div>
+        </div>
+      )}
       <div 
         ref={mapRef} 
         style={{ 
