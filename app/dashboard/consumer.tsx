@@ -88,11 +88,17 @@ export default function ConsumerDashboard() {
 
   return (
     <LinearGradient
-      colors={['#4facfe', '#00f2fe']}
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/home/consumer')}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
           <Text style={styles.greeting}>Hello, Consumer! 👋</Text>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
@@ -204,6 +210,13 @@ const getResponsiveStyles = (screenData: any) => {
       alignItems: "flex-start",
       padding: Math.max(16, width * 0.05),
       paddingTop: Math.max(50, height * 0.07),
+    },
+    backButton: {
+      padding: Math.max(8, width * 0.02),
+      marginRight: Math.max(12, width * 0.03),
+    },
+    headerTextContainer: {
+      flex: 1,
     },
     greeting: {
       fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
@@ -319,7 +332,7 @@ const getResponsiveStyles = (screenData: any) => {
       justifyContent: "center",
     },
     serviceIconContainer: {
-      backgroundColor: "#4facfe",
+      backgroundColor: "rgb(11, 26, 81)",
       width: isTablet ? 60 : 50,
       height: isTablet ? 60 : 50,
       borderRadius: isTablet ? 30 : 25,
@@ -352,7 +365,7 @@ const getResponsiveStyles = (screenData: any) => {
     },
     statCard: {
       flex: 1,
-      backgroundColor: "#4facfe",
+      backgroundColor: "rgb(11, 26, 81)",
       padding: Math.max(12, width * 0.03),
       borderRadius: 20,
       alignItems: "center",

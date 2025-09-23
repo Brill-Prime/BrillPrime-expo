@@ -63,11 +63,17 @@ export default function DriverDashboard() {
 
   return (
     <LinearGradient
-      colors={['#4facfe', '#00f2fe']}
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/home/consumer')}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
           <Text style={styles.greeting}>Ready to Drive! 🚗</Text>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
@@ -155,6 +161,18 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
+  backButton: {
+    marginRight: 15,
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   greeting: {
     fontSize: 24,
     fontWeight: "bold",
@@ -208,7 +226,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   onlineToggle: {
-    backgroundColor: "#4facfe",
+    backgroundColor: "rgb(11, 26, 81)",
   },
   toggleCircle: {
     width: 26,
@@ -226,7 +244,7 @@ const styles = StyleSheet.create({
     color: "#7f8c8d",
   },
   onlineText: {
-    color: "#4facfe",
+    color: "rgb(11, 26, 81)",
   },
   sectionTitle: {
     fontSize: 20,
@@ -285,7 +303,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#4facfe",
+    backgroundColor: "rgb(11, 26, 81)",
     padding: 15,
     borderRadius: 20,
     alignItems: "center",
