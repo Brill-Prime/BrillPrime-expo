@@ -70,7 +70,7 @@ export default function SplashScreen() {
 
       // Check if token exists and is not expired
       const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
-      
+
       if (!token[1] || isTokenExpired) {
         console.log('No valid token, clearing auth data and navigating to role selection');
         await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
@@ -84,23 +84,11 @@ export default function SplashScreen() {
         const userResponse = await authService.getCurrentUser();
 
         if (userResponse.success && userResponse.data) {
-          // Token is valid, navigate based on role
+          // Token is valid, navigate to home page for all users
           const role = userResponse.data.role;
           console.log('Verified user role:', role);
-
-          // Ensure selected role matches user's actual role
-          if (selectedRole[1] && selectedRole[1] !== role) {
-            console.log('Role mismatch, updating stored role');
-            await AsyncStorage.setItem('selectedRole', role);
-          }
-
-          if (role === 'consumer') {
-            console.log('Consumer user, navigating to home');
-            router.replace('/home/consumer');
-          } else {
-            console.log('Non-consumer user, navigating to dashboard');
-            router.replace(`/dashboard/${role}`);
-          }
+          console.log('Navigating to home page');
+          router.replace('/home/consumer');
         } else {
           // Token is invalid, clear storage and redirect to auth
           console.log('Invalid token, clearing storage');
@@ -109,7 +97,7 @@ export default function SplashScreen() {
         }
       } catch (error) {
         console.error('Error verifying token:', error);
-        
+
         // Handle different types of errors
         if (error.message?.includes('network') || error.message?.includes('fetch')) {
           console.log('Network error, using cached data');
@@ -126,7 +114,7 @@ export default function SplashScreen() {
             }
           }
         }
-        
+
         // Clear invalid auth data and redirect to role selection
         console.log('Clearing invalid auth data due to error');
         await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);

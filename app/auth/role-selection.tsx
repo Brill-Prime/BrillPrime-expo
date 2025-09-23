@@ -51,12 +51,8 @@ export default function RoleSelection() {
               
               // Check if stored role matches selected role
               if (userRole === role) {
-                // Roles match, navigate to appropriate screen
-                if (role === "consumer") {
-                  router.replace("/home/consumer");
-                } else {
-                  router.replace(`/dashboard/${role}`);
-                }
+                // Roles match, navigate to home screen
+                router.replace("/home/consumer");
                 return;
               } else {
                 // Role mismatch - update stored role and continue
