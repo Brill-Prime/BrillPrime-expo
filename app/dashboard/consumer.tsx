@@ -77,11 +77,11 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { title: "Browse Products", description: "Discover amazing products", emoji: "🛍️", color: "#667eea", route: "/commodity/commodities" },
-    { title: "My Orders", description: "Track your orders", emoji: "📦", color: "#f093fb", route: "/orders/consumer-orders" },
-    { title: "Messages", description: "Chat with merchants & drivers", emoji: "💬", color: "#4CAF50", route: "/chat" },
-    { title: "Favorites", description: "Your saved items", emoji: "❤️", color: "#4facfe", route: "/favorites" },
-    { title: "Support", description: "Get help anytime", emoji: "🎧", color: "#ffd93d", route: "/support" }
+    { title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), color: "#667eea", route: "/commodity/commodities" },
+    { title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'), color: "#f093fb", route: "/orders/consumer-orders" },
+    { title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'), color: "#4CAF50", route: "/chat" },
+    { title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'), color: "#4facfe", route: "/favorites" },
+    { title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'), color: "#ffd93d", route: "/support" }
   ];
 
   const styles = getResponsiveStyles(screenData);
@@ -132,7 +132,11 @@ export default function ConsumerDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
-                <Text style={styles.featureEmoji}>{feature.emoji}</Text>
+                <Image 
+                  source={feature.icon}
+                  style={styles.featureIconImage}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -301,8 +305,9 @@ const getResponsiveStyles = (screenData: any) => {
       alignItems: "center",
       marginBottom: Math.max(8, height * 0.015),
     },
-    featureEmoji: {
-      fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
+    featureIconImage: {
+      width: isTablet ? 32 : 28,
+      height: isTablet ? 32 : 28,
     },
     featureTitle: {
       fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
