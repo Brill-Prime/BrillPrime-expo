@@ -10,7 +10,7 @@ channel = "stable-25_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npx", "serve", "-s", "dist", "-l", "5000"]
+run = ["npx", "expo", "start", "--web", "--port", "5000", "--host", "lan"]
 build = ["npm", "run", "build"]
 
 [workflows]
@@ -40,3 +40,7 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 42907
+externalPort = 3000
