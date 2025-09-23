@@ -17,7 +17,6 @@ export default function SignUp() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("consumer"); // Added state for role selection
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -257,25 +256,6 @@ export default function SignUp() {
             </View>
           </View>
 
-          {/* Role Selection (Example: Consumer, Merchant) */}
-          <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="people-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
-              <Text style={styles.roleLabel}>Role:</Text>
-              <TouchableOpacity
-                style={[styles.roleButton, selectedRole === 'consumer' && styles.roleButtonSelected]}
-                onPress={() => setSelectedRole('consumer')}
-              >
-                <Text style={[styles.roleButtonText, selectedRole === 'consumer' && styles.roleButtonTextSelected]}>Consumer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.roleButton, selectedRole === 'merchant' && styles.roleButtonSelected]}
-                onPress={() => setSelectedRole('merchant')}
-              >
-                <Text style={[styles.roleButtonText, selectedRole === 'merchant' && styles.roleButtonTextSelected]}>Merchant</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           {/* Sign Up Button */}
           <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
@@ -464,32 +444,6 @@ const styles = StyleSheet.create({
   signInLink: {
     fontSize: 14,
     color: PRIMARY_COLOR,
-    fontWeight: "700",
-  },
-  // Styles for role selection
-  roleLabel: {
-    fontSize: 16,
-    color: "#111827",
-    marginRight: 10,
-  },
-  roleButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: GRAY_400,
-    marginHorizontal: 5,
-  },
-  roleButtonSelected: {
-    backgroundColor: PRIMARY_COLOR,
-    borderColor: PRIMARY_COLOR,
-  },
-  roleButtonText: {
-    fontSize: 14,
-    color: GRAY_400,
-  },
-  roleButtonTextSelected: {
-    color: "#FFFFFF",
     fontWeight: "700",
   },
 });
