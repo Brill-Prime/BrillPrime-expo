@@ -61,29 +61,28 @@ export default function MapViewWeb({
 
   // Load Google Maps script based on environment variables
   useEffect(() => {
-    // Use environment variables for API keys
-    const androidApiKey = process.env.MAPS_API_KEY_ANDROID;
-    const iosApiKey = process.env.MAPS_API_KEY_IOS;
-    const allApisApiKey = process.env.MAPS_API_KEY_ALL;
-    
-    let apiKeyToUse = allApisApiKey; // Default to the general key
-
-    // In a web environment, we might not have direct access to platform-specific env vars.
-    // For simplicity, we'll use the general API key for the web, assuming it's configured for web usage.
-    // If specific web keys were provided, logic would go here to select the appropriate one.
+    // Access API key from multiple sources
+    const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey || 
+                   Constants.expoConfig?.web?.config?.googleMapsApiKey ||
+                   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+                   process.env.GOOGLE_MAPS_API_KEY;
     
     if (!window.google) {
-      if (apiKeyToUse) {
-        console.log('Loading Google Maps with API key');
+      if (apiKey) {
+        console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
 
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKeyToUse}&libraries=geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
         script.async = true;
         script.defer = true;
         script.onload = initializeMap;
         document.head.appendChild(script);
       } else {
-        console.error('Google Maps API key is not configured.');
+        console.error('Google Maps API key is not configured. Available config:', {
+          expoConfig: Constants.expoConfig?.extra,
+          webConfig: Constants.expoConfig?.web?.config,
+          processEnv: !!process.env.GOOGLE_MAPS_API_KEY
+        });
       }
     } else {
       initializeMap();
