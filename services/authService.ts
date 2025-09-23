@@ -31,11 +31,19 @@ class AuthService {
   }
 
   // Sign in user
-  async signIn(data: SignInRequest): Promise<ApiResponse<AuthResponse>> {
+  async signIn(data: SignInRequest & { role?: string }): Promise<ApiResponse<AuthResponse>> {
     const response = await apiClient.post<AuthResponse>('/api/auth/signin', data);
     
     if (response.success && response.data) {
-      // Store user data locally
+      // Validate role if provided
+      if (data.role && response.data.user.role !== data.role) {
+        return {
+          success: false,
+          error: `Account role mismatch. Expected ${data.role} but account is ${response.data.user.role}`
+        };
+      }
+      
+      // Store user data locally with expiry
       await this.storeAuthData(response.data);
     }
     
@@ -97,10 +105,14 @@ class AuthService {
   // Helper methods
   private async storeAuthData(authData: AuthResponse): Promise<void> {
     try {
+      const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+      
       await AsyncStorage.multiSet([
         [this.TOKEN_KEY, authData.token],
         [this.USER_KEY, JSON.stringify(authData.user)],
         [this.ROLE_KEY, authData.user.role],
+        ['tokenExpiry', tokenExpiry.toString()],
+        ['selectedRole', authData.user.role] // Update selected role to match actual user role
       ]);
     } catch (error) {
       console.error('Error storing auth data:', error);
@@ -113,7 +125,11 @@ class AuthService {
         this.TOKEN_KEY,
         this.USER_KEY,
         this.ROLE_KEY,
-        'hasSeenOnboarding', // Clear onboarding flag too
+        'tokenExpiry',
+        'selectedRole',
+        'pendingUserData',
+        'tempUserEmail',
+        'tempUserRole'
       ]);
     } catch (error) {
       console.error('Error clearing auth data:', error);
@@ -141,7 +157,51 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
-    return token !== null;
+    if (!token) return false;
+    
+    // Check token expiry
+    const expiry = await AsyncStorage.getItem('tokenExpiry');
+    if (!expiry || Date.now() > parseInt(expiry)) {
+      await this.clearAuthData();
+      return false;
+    }
+    
+    return true;
+  }
+
+  // Check if token needs refresh (expires in next hour)
+  async needsTokenRefresh(): Promise<boolean> {
+    const expiry = await AsyncStorage.getItem('tokenExpiry');
+    if (!expiry) return true;
+    
+    const expiryTime = parseInt(expiry);
+    const oneHourFromNow = Date.now() + (60 * 60 * 1000);
+    
+    return expiryTime < oneHourFromNow;
+  }
+
+  // Refresh token if needed
+  async refreshTokenIfNeeded(): Promise<boolean> {
+    try {
+      if (!(await this.needsTokenRefresh())) {
+        return true; // Token is still valid
+      }
+
+      const response = await this.getCurrentUser();
+      if (response.success && response.data) {
+        // Token is still valid on server, just update expiry
+        const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000);
+        await AsyncStorage.setItem('tokenExpiry', tokenExpiry.toString());
+        return true;
+      } else {
+        // Token is invalid, clear auth data
+        await this.clearAuthData();
+        return false;
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      return false;
+    }
   }
 }
 

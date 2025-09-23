@@ -51,12 +51,16 @@ export default function SplashScreen() {
 
     const checkAuthState = async () => {
     try {
-      const [onboarding, token] = await AsyncStorage.multiGet(['hasSeenOnboarding', 'userToken']);
+      const [onboarding, token, tokenExpiry, selectedRole] = await AsyncStorage.multiGet([
+        'hasSeenOnboarding', 
+        'userToken', 
+        'tokenExpiry',
+        'selectedRole'
+      ]);
 
       console.log('hasSeenOnboarding:', onboarding[1]);
       console.log('userToken:', token[1]);
-
-      console.log('Navigation condition check: hasSeenOnboarding is', onboarding[1]);
+      console.log('selectedRole:', selectedRole[1]);
 
       if (!onboarding[1]) {
         console.log('First time user, navigating to onboarding');
@@ -64,8 +68,12 @@ export default function SplashScreen() {
         return;
       }
 
-      if (!token[1]) {
-        console.log('No token, navigating to role selection');
+      // Check if token exists and is not expired
+      const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
+      
+      if (!token[1] || isTokenExpired) {
+        console.log('No valid token, clearing auth data and navigating to role selection');
+        await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
         router.replace('/auth/role-selection');
         return;
       }
@@ -80,6 +88,12 @@ export default function SplashScreen() {
           const role = userResponse.data.role;
           console.log('Verified user role:', role);
 
+          // Ensure selected role matches user's actual role
+          if (selectedRole[1] && selectedRole[1] !== role) {
+            console.log('Role mismatch, updating stored role');
+            await AsyncStorage.setItem('selectedRole', role);
+          }
+
           if (role === 'consumer') {
             console.log('Consumer user, navigating to home');
             router.replace('/home/consumer');
@@ -90,18 +104,33 @@ export default function SplashScreen() {
         } else {
           // Token is invalid, clear storage and redirect to auth
           console.log('Invalid token, clearing storage');
-          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole']);
+          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
           router.replace('/auth/role-selection');
         }
       } catch (error) {
         console.error('Error verifying token:', error);
-        // On network error, still try to navigate based on stored role
-        const role = await AsyncStorage.getItem('userRole');
-        if (role === 'consumer') {
-          router.replace('/home/consumer');
-        } else {
-          router.replace(`/dashboard/${role || 'consumer'}`);
+        
+        // Handle different types of errors
+        if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          console.log('Network error, using cached data');
+          // On network error, try to navigate based on stored role if token hasn't expired
+          if (!isTokenExpired) {
+            const role = await AsyncStorage.getItem('userRole');
+            if (role) {
+              if (role === 'consumer') {
+                router.replace('/home/consumer');
+              } else {
+                router.replace(`/dashboard/${role}`);
+              }
+              return;
+            }
+          }
         }
+        
+        // Clear invalid auth data and redirect to role selection
+        console.log('Clearing invalid auth data due to error');
+        await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
+        router.replace('/auth/role-selection');
       }
     } catch (error) {
       console.error('Error checking auth state:', error);

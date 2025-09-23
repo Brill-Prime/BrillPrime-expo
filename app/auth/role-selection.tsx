@@ -33,10 +33,38 @@ export default function RoleSelection() {
     try {
       await AsyncStorage.setItem("selectedRole", role);
 
+      // Check if user has valid token
       const userToken = await AsyncStorage.getItem("userToken");
-
+      
       if (userToken) {
-        // Returning user → Sign in
+        // Validate existing token with backend
+        try {
+          const { authService } = await import('../../services/authService');
+          const response = await authService.getCurrentUser();
+          
+          if (response.success && response.data) {
+            // Token is valid, navigate based on role
+            if (role === "consumer") {
+              router.replace("/home/consumer");
+            } else {
+              router.replace(`/dashboard/${role}`);
+            }
+            return;
+          } else {
+            // Token is invalid, clear it and proceed to sign in
+            await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+          }
+        } catch (tokenError) {
+          console.log("Token validation failed, proceeding to auth");
+          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+        }
+      }
+
+      // Check if user has account (stored email indicates previous registration)
+      const storedEmail = await AsyncStorage.getItem("userEmail");
+      
+      if (storedEmail) {
+        // User has registered before → Sign in
         router.push("/auth/signin");
       } else {
         // New user → Sign up
@@ -44,7 +72,7 @@ export default function RoleSelection() {
       }
     } catch (error) {
       console.error("Error saving role:", error);
-      Alert.alert("Error", "Please try again.");
+      Alert.alert("Error", "Failed to save role selection. Please try again.");
     }
   };
 

@@ -56,31 +56,89 @@ export default function SignUp() {
   const handleSignUp = async () => {
     if (!validateForm()) return;
 
+    // Check if user has selected a role first
+    const storedRole = await AsyncStorage.getItem("selectedRole");
+    if (!storedRole) {
+      Alert.alert(
+        "Role Required", 
+        "Please select your role first.",
+        [
+          {
+            text: "Select Role",
+            onPress: () => router.replace("/auth/role-selection")
+          }
+        ]
+      );
+      return;
+    }
+
+    // Use stored role instead of component state
+    const finalRole = storedRole;
+
     try {
       // Import authService for real API calls
       const { authService } = await import('../../services/authService');
 
+      const nameParts = formData.fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       const response = await authService.signUp({
         email: formData.email,
         password: formData.password,
-        firstName: formData.fullName.split(' ')[0], // Extract first name
-        lastName: formData.fullName.split(' ').slice(1).join(' '), // Extract last name
-        role: selectedRole || "consumer",
+        firstName,
+        lastName,
+        role: finalRole,
         phoneNumber: formData.phone
       });
 
       if (response.success && response.data) {
-        // Store temporary data for OTP verification
-        await AsyncStorage.setItem("tempUserEmail", formData.email);
-        await AsyncStorage.setItem("tempUserRole", selectedRole || "consumer");
+        // Store pending user data for OTP verification
+        const pendingUserData = {
+          email: formData.email,
+          firstName,
+          lastName,
+          role: finalRole,
+          phoneNumber: formData.phone
+        };
+
+        await AsyncStorage.multiSet([
+          ["pendingUserData", JSON.stringify(pendingUserData)],
+          ["tempUserEmail", formData.email],
+          ["tempUserRole", finalRole]
+        ]);
 
         router.push("/auth/otp-verification");
       } else {
-        Alert.alert("Sign Up Failed", response.error || "Registration failed");
+        // Handle specific error cases
+        const errorMessage = response.error || "Registration failed";
+        if (errorMessage.includes("email already exists") || errorMessage.includes("already registered")) {
+          Alert.alert("Account Exists", "An account with this email already exists. Would you like to sign in instead?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign In", onPress: () => router.push("/auth/signin") }
+          ]);
+        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+          Alert.alert("Network Error", "Please check your internet connection and try again.");
+        } else if (errorMessage.includes("invalid email")) {
+          Alert.alert("Invalid Email", "Please enter a valid email address.");
+        } else if (errorMessage.includes("password too weak")) {
+          Alert.alert("Weak Password", "Please choose a stronger password with at least 8 characters.");
+        } else {
+          Alert.alert("Sign Up Failed", errorMessage);
+        }
       }
     } catch (error) {
       console.error("Error signing up:", error);
-      Alert.alert("Error", "Sign up failed. Please try again.");
+      
+      // Handle network errors specifically
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        Alert.alert(
+          "Connection Error", 
+          "Unable to connect to server. Please check your internet connection and try again."
+        );
+      } else {
+        Alert.alert("Error", "Sign up failed. Please try again.");
+      }
     }
   };
 

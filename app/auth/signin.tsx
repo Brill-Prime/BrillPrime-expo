@@ -45,20 +45,55 @@ export default function SignIn() {
       return;
     }
 
+    // Check if user has selected a role first
+    const selectedRole = await AsyncStorage.getItem("selectedRole");
+    if (!selectedRole) {
+      Alert.alert(
+        "Role Required", 
+        "Please select your role first.",
+        [
+          {
+            text: "Select Role",
+            onPress: () => router.replace("/auth/role-selection")
+          }
+        ]
+      );
+      return;
+    }
+
     try {
       // Import authService for real API calls
       const { authService } = await import('../../services/authService');
       
       const response = await authService.signIn({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        role: selectedRole // Include selected role
       });
 
       if (response.success && response.data) {
+        // Validate that the user's role matches selected role
+        if (response.data.user.role !== selectedRole) {
+          Alert.alert(
+            "Role Mismatch", 
+            `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
+            [
+              {
+                text: "Select Role",
+                onPress: () => router.replace("/auth/role-selection")
+              }
+            ]
+          );
+          return;
+        }
+
         // Store user data from API response
-        await AsyncStorage.setItem("userToken", response.data.token);
-        await AsyncStorage.setItem("userEmail", response.data.user.email);
-        await AsyncStorage.setItem("userRole", response.data.user.role);
+        await AsyncStorage.multiSet([
+          ["userToken", response.data.token],
+          ["userEmail", response.data.user.email],
+          ["userRole", response.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
+        ]);
 
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
@@ -67,11 +102,33 @@ export default function SignIn() {
           router.replace(`/dashboard/${response.data.user.role}`);
         }
       } else {
-        Alert.alert("Sign In Failed", response.error || "Invalid credentials");
+        // Handle specific error cases
+        const errorMessage = response.error || "Invalid credentials";
+        if (errorMessage.includes("Invalid credentials") || errorMessage.includes("authentication")) {
+          Alert.alert("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
+        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+          Alert.alert("Network Error", "Please check your internet connection and try again.");
+        } else if (errorMessage.includes("account not found")) {
+          Alert.alert("Account Not Found", "No account found with this email. Would you like to sign up?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign Up", onPress: () => router.push("/auth/signup") }
+          ]);
+        } else {
+          Alert.alert("Sign In Failed", errorMessage);
+        }
       }
     } catch (error) {
       console.error("Error signing in:", error);
-      Alert.alert("Error", "Sign in failed. Please try again.");
+      
+      // Handle network errors specifically
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        Alert.alert(
+          "Connection Error", 
+          "Unable to connect to server. Please check your internet connection and try again."
+        );
+      } else {
+        Alert.alert("Error", "Sign in failed. Please try again.");
+      }
     }
   };
 
