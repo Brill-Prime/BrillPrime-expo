@@ -80,8 +80,8 @@ export default function ConsumerHome() {
   const handleGoBack = () => {
     showConfirmDialog(
       "Go Back",
-      "Are you sure you want to go back?",
-      () => router.back()
+      "Are you sure you want to go back to dashboard?",
+      () => router.push('/dashboard/consumer')
     );
   };
 
