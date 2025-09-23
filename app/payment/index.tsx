@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -33,9 +32,9 @@ export default function PaymentMethodScreen() {
   const loadPaymentMethods = async () => {
     try {
       const { paymentService } = await import('../../services/paymentService');
-      
+
       const response = await paymentService.getPaymentMethods();
-      
+
       if (response.success && response.data) {
         // Transform API data to match local interface
         const transformedMethods: PaymentMethod[] = response.data.map(method => ({
@@ -46,7 +45,7 @@ export default function PaymentMethodScreen() {
             `${method.expiryMonth.toString().padStart(2, '0')}/${method.expiryYear.toString().slice(-2)}` : undefined,
           name: method.type !== 'card' ? 'Account Holder' : undefined
         }));
-        
+
         setPaymentMethods(transformedMethods);
       } else {
         console.error('Failed to load payment methods:', response.error);
@@ -124,7 +123,7 @@ export default function PaymentMethodScreen() {
                   color="white" 
                 />
               </View>
-              
+
               <View style={styles.paymentInfo}>
                 {method.cardNumber && (
                   <Text style={styles.cardNumber}>{method.cardNumber}</Text>

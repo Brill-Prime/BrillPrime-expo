@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2e67c7',
+    color: '#4682B4',
     fontFamily: 'Montserrat-Bold',
   },
   footer: {
@@ -604,10 +604,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   orderButton: {
-    backgroundColor: '#2e67c7',
+    backgroundColor: '#4682B4',
     borderRadius: 25,
     paddingVertical: 16,
     alignItems: 'center',
+  },
+  orderButtonHover: {
+    backgroundColor: '#0B1A51',
   },
   disabledButton: {
     backgroundColor: '#bdc3c7',

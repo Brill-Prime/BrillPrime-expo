@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -148,7 +147,7 @@ export default function CommoditiesScreen() {
   useEffect(() => {
     loadCartItems();
     loadFavorites();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -191,7 +190,7 @@ export default function CommoditiesScreen() {
     try {
       const isFavorite = favorites.includes(product.id);
       let updatedFavorites: string[];
-      
+
       if (isFavorite) {
         updatedFavorites = favorites.filter(id => id !== product.id);
         // Remove from detailed favorites
@@ -216,16 +215,16 @@ export default function CommoditiesScreen() {
           dateAdded: new Date().toISOString(),
           inStock: product.inStock,
         };
-        
+
         const savedDetailedFavorites = await AsyncStorage.getItem('favoriteItems');
         const detailedFavorites = savedDetailedFavorites ? JSON.parse(savedDetailedFavorites) : [];
         detailedFavorites.push(favoriteItem);
         await AsyncStorage.setItem('favoriteItems', JSON.stringify(detailedFavorites));
       }
-      
+
       setFavorites(updatedFavorites);
       await AsyncStorage.setItem('favoriteItemIds', JSON.stringify(updatedFavorites));
-      
+
       Alert.alert(
         isFavorite ? 'Removed from Favorites' : 'Added to Favorites',
         isFavorite 
@@ -248,7 +247,7 @@ export default function CommoditiesScreen() {
 
   const handleAddToCart = (product: Product) => {
     const existingItem = cartItems.find(item => item.productId === product.id);
-    
+
     if (existingItem) {
       const updatedCart = cartItems.map(item =>
         item.productId === product.id
@@ -281,7 +280,7 @@ export default function CommoditiesScreen() {
 
   const handleRemoveFromCart = (productId: string) => {
     const existingItem = cartItems.find(item => item.productId === productId);
-    
+
     if (existingItem && existingItem.quantity > 1) {
       const updatedCart = cartItems.map(item =>
         item.productId === productId
@@ -372,7 +371,7 @@ export default function CommoditiesScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: responsivePadding }}>
-          
+
           {/* Categories View */}
           {viewMode === 'categories' && (
             <View style={styles.section}>
@@ -383,9 +382,11 @@ export default function CommoditiesScreen() {
                     key={category.id}
                     style={styles.categoryCard}
                     onPress={() => handleCategorySelect(category.id)}
+                    onPressIn={() => {}} // Placeholder for potential hover effects if needed later
+                    onPressOut={() => {}} // Placeholder for potential hover effects if needed later
                   >
                     <View style={styles.categoryIcon}>
-                      <Ionicons name={category.icon as any} size={32} color="#2e67c7" />
+                      <Ionicons name={category.icon as any} size={32} color="#4682B4" />
                     </View>
                     <Text style={styles.categoryName}>{category.name}</Text>
                     <Text style={styles.categoryDescription}>{category.description}</Text>
@@ -406,7 +407,7 @@ export default function CommoditiesScreen() {
                     setSelectedCategory(null);
                   }}
                 >
-                  <Ionicons name="chevron-back" size={20} color="#2e67c7" />
+                  <Ionicons name="chevron-back" size={20} color="#4682B4" />
                   <Text style={styles.backToCategoriesText}>Back to Categories</Text>
                 </TouchableOpacity>
                 <Text style={styles.productsCount}>
@@ -416,7 +417,7 @@ export default function CommoditiesScreen() {
 
               {loading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#2e67c7" />
+                  <ActivityIndicator size="large" color="#4682B4" />
                   <Text style={styles.loadingText}>Loading products...</Text>
                 </View>
               ) : (
@@ -426,6 +427,14 @@ export default function CommoditiesScreen() {
                       key={product.id}
                       style={styles.productCard}
                       onPress={() => handleProductPress(product)}
+                      onPressIn={(e) => {
+                        if (e.nativeEvent.source.module && e.nativeEvent.source.module.startsWith('TouchableOpacity')) {
+                          e.currentTarget.setNativeProps({ style: { backgroundColor: '#0B1A51' } });
+                        }
+                      }}
+                      onPressOut={(e) => {
+                        e.currentTarget.setNativeProps({ style: { backgroundColor: '#fff' } });
+                      }}
                     >
                       <View style={styles.productHeader}>
                         <Text style={styles.productName}>{product.name}</Text>
@@ -475,27 +484,40 @@ export default function CommoditiesScreen() {
                           {getCartQuantity(product.id) > 0 ? (
                             <View style={styles.quantityControls}>
                               <TouchableOpacity
-                                style={styles.quantityButton}
+                                style={[styles.quantityButton, styles.quantityButtonHover]}
                                 onPress={() => handleRemoveFromCart(product.id)}
+                                onPressIn={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#0B1A51' }] }); }}
+                                onPressOut={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#fff' }] }); }}
                               >
-                                <Ionicons name="remove" size={16} color="#2e67c7" />
+                                <Ionicons name="remove" size={16} color="#4682B4" />
                               </TouchableOpacity>
                               <Text style={styles.quantityText}>{getCartQuantity(product.id)}</Text>
                               <TouchableOpacity
-                                style={styles.quantityButton}
+                                style={[styles.quantityButton, styles.quantityButtonHover]}
                                 onPress={() => handleAddToCart(product)}
+                                onPressIn={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#0B1A51' }] }); }}
+                                onPressOut={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#fff' }] }); }}
                               >
-                                <Ionicons name="add" size={16} color="#2e67c7" />
+                                <Ionicons name="add" size={16} color="#4682B4" />
                               </TouchableOpacity>
                             </View>
                           ) : (
                             <TouchableOpacity
                               style={[
                                 styles.addToCartButton,
-                                !product.inStock && styles.disabledButton
+                                !product.inStock && styles.disabledButton,
+                                styles.addToCartButtonHover
                               ]}
                               onPress={() => handleAddToCart(product)}
                               disabled={!product.inStock}
+                              onPressIn={(e) => {
+                                if (!product.inStock) return; // Do not apply hover effect if disabled
+                                e.currentTarget.setNativeProps({ style: [styles.addToCartButton, styles.addToCartButtonHover, { backgroundColor: '#0B1A51' }] });
+                              }}
+                              onPressOut={(e) => {
+                                if (!product.inStock) return; // Do not apply hover effect if disabled
+                                e.currentTarget.setNativeProps({ style: [styles.addToCartButton, styles.addToCartButtonHover, { backgroundColor: '#4682B4' }] });
+                              }}
                             >
                               <Ionicons name="cart-outline" size={16} color="#fff" />
                               <Text style={styles.addToCartText}>Add to Cart</Text>
@@ -504,6 +526,8 @@ export default function CommoditiesScreen() {
                           <TouchableOpacity
                             style={styles.favoriteButton}
                             onPress={() => toggleFavorite(product)}
+                            onPressIn={(e) => { e.currentTarget.setNativeProps({ style: [styles.favoriteButton, { backgroundColor: '#0B1A51' }] }); }}
+                            onPressOut={(e) => { e.currentTarget.setNativeProps({ style: [styles.favoriteButton, { backgroundColor: '#f8f9fa' }] }); }}
                           >
                             <Ionicons 
                               name={favorites.includes(product.id) ? "heart" : "heart-outline"} 
@@ -572,7 +596,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#2e67c7',
+    backgroundColor: '#4682B4',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -674,7 +698,7 @@ const styles = StyleSheet.create({
   },
   backToCategoriesText: {
     fontSize: 16,
-    color: '#2e67c7',
+    color: '#4682B4',
     marginLeft: 5,
     fontFamily: 'Montserrat-SemiBold',
   },
@@ -756,7 +780,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2e67c7',
+    color: '#4682B4',
     fontFamily: 'Montserrat-Bold',
   },
   unit: {
@@ -782,7 +806,7 @@ const styles = StyleSheet.create({
   merchantInitial: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2e67c7',
+    color: '#4682B4',
     fontFamily: 'Montserrat-Bold',
   },
   merchantDetails: {
@@ -824,6 +848,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 2,
   },
+  quantityButtonHover: {
+    backgroundColor: '#4682B4', // Default color, will be changed on hover
+  },
   quantityText: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -834,10 +861,13 @@ const styles = StyleSheet.create({
   addToCartButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2e67c7',
+    backgroundColor: '#4682B4',
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 20,
+  },
+  addToCartButtonHover: {
+    backgroundColor: '#0B1A51', // Default color, will be changed on hover
   },
   disabledButton: {
     backgroundColor: '#bdc3c7',

@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   confirmButton: {
-    backgroundColor: '#2e67c7',
+    backgroundColor: '#4682B4',
     borderRadius: 25,
     paddingVertical: 16,
     alignItems: 'center',

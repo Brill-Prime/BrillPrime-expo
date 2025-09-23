@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -403,7 +402,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   openGatesCounter: {
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -439,7 +438,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   selectedVehicleType: {
-    borderColor: '#2f75c2',
+    borderColor: '#4682B4',
     backgroundColor: '#f0f7ff',
   },
   vehicleIcon: {
@@ -454,7 +453,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   selectedVehicleName: {
-    color: '#2f75c2',
+    color: '#4682B4',
     fontWeight: '600',
   },
   vehicleDescription: {
@@ -477,7 +476,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   selectedTollGateCard: {
-    borderColor: '#2f75c2',
+    borderColor: '#4682B4',
     backgroundColor: '#f8f9ff',
   },
   closedTollGateCard: {
@@ -574,7 +573,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2f75c2',
+    color: '#4682B4',
     fontFamily: 'Montserrat',
   },
   vehicleTypeLabel: {
@@ -656,7 +655,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2f75c2',
+    color: '#4682B4',
     fontFamily: 'Montserrat',
   },
   footer: {
@@ -671,7 +670,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   purchaseButton: {
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     borderRadius: 25,
     paddingVertical: 15,
     flexDirection: 'row',

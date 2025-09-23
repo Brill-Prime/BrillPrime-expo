@@ -53,7 +53,7 @@ export default function DriverDashboard() {
   };
 
   const features = [
-    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#667eea" },
+    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4" },
     { title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb" },
     { title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe" },
     { title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f" },
@@ -63,7 +63,7 @@ export default function DriverDashboard() {
 
   return (
     <LinearGradient
-      colors={['rgb(11, 26, 81)', '#1e3a8a']}
+      colors={['#0B1A51', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -99,7 +99,7 @@ export default function DriverDashboard() {
         </View>
 
         <Text style={styles.sectionTitle}>Your Dashboard</Text>
-        
+
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
             <TouchableOpacity key={index} style={styles.featureCard}>
@@ -128,7 +128,7 @@ export default function DriverDashboard() {
               <Text style={styles.statLabel}>Rating</Text>
             </View>
           </View>
-          
+
           <View style={styles.recentDeliveries}>
             <Text style={styles.sectionSubTitle}>Recent Deliveries</Text>
             <View style={styles.deliveryItem}>
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   onlineToggle: {
-    backgroundColor: "rgb(11, 26, 81)",
+    backgroundColor: "#4682B4",
   },
   toggleCircle: {
     width: 26,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     color: "#7f8c8d",
   },
   onlineText: {
-    color: "rgb(11, 26, 81)",
+    color: "#4682B4",
   },
   sectionTitle: {
     fontSize: 20,
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "rgb(11, 26, 81)",
+    backgroundColor: "#4682B4",
     padding: 15,
     borderRadius: 20,
     alignItems: "center",

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -44,7 +43,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadUserProfile();
     loadSettings();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -57,7 +56,7 @@ export default function ProfileScreen() {
       const email = await AsyncStorage.getItem('userEmail');
       const phone = await AsyncStorage.getItem('userPhone');
       const name = await AsyncStorage.getItem('userName');
-      
+
       setUserProfile({
         name: name || 'John Doe',
         email: email || 'john.doe@brillprime.com',
@@ -83,7 +82,7 @@ export default function ProfileScreen() {
   const updateSetting = async (key: keyof Settings, value: boolean) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
-    
+
     try {
       await AsyncStorage.setItem('userSettings', JSON.stringify(newSettings));
     } catch (error) {
@@ -143,14 +142,14 @@ export default function ProfileScreen() {
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <View style={styles.menuItemLeft}>
         <View style={styles.menuIcon}>
-          <Ionicons name={icon as any} size={22} color="#2f75c2" />
+          <Ionicons name={icon as any} size={22} color="#4682B4" />
         </View>
         <View style={styles.menuItemContent}>
           <Text style={styles.menuItemTitle}>{title}</Text>
           {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
         </View>
       </View>
-      
+
       {rightElement || (showArrow && (
         <Ionicons name="chevron-forward" size={20} color="#666" />
       ))}
@@ -171,7 +170,7 @@ export default function ProfileScreen() {
           style={styles.editButton}
           onPress={() => router.push('/profile/edit')}
         >
-          <Ionicons name="create-outline" size={24} color="#2f75c2" />
+          <Ionicons name="create-outline" size={24} color="#4682B4" />
         </TouchableOpacity>
       </View>
 
@@ -187,7 +186,7 @@ export default function ProfileScreen() {
               <Ionicons name="camera" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{userProfile?.name}</Text>
             <Text style={styles.profileEmail}>{userProfile?.email}</Text>
@@ -240,8 +239,8 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.notifications}
                 onValueChange={(value) => updateSetting('notifications', value)}
-                thumbColor={settings.notifications ? '#2f75c2' : '#f4f3f4'}
-                trackColor={{ false: '#767577', true: '#2f75c281' }}
+                thumbColor={settings.notifications ? '#4682B4' : '#f4f3f4'}
+                trackColor={{ false: '#767577', true: '#4682B481' }}
               />
             }
           />
@@ -255,8 +254,8 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.locationServices}
                 onValueChange={(value) => updateSetting('locationServices', value)}
-                thumbColor={settings.locationServices ? '#2f75c2' : '#f4f3f4'}
-                trackColor={{ false: '#767577', true: '#2f75c281' }}
+                thumbColor={settings.locationServices ? '#4682B4' : '#f4f3f4'}
+                trackColor={{ false: '#767577', true: '#4682B481' }}
               />
             }
           />
@@ -270,8 +269,8 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.emailUpdates}
                 onValueChange={(value) => updateSetting('emailUpdates', value)}
-                thumbColor={settings.emailUpdates ? '#2f75c2' : '#f4f3f4'}
-                trackColor={{ false: '#767577', true: '#2f75c281' }}
+                thumbColor={settings.emailUpdates ? '#4682B4' : '#f4f3f4'}
+                trackColor={{ false: '#767577', true: '#4682B481' }}
               />
             }
           />
@@ -285,8 +284,8 @@ export default function ProfileScreen() {
               <Switch
                 value={settings.promotionalOffers}
                 onValueChange={(value) => updateSetting('promotionalOffers', value)}
-                thumbColor={settings.promotionalOffers ? '#2f75c2' : '#f4f3f4'}
-                trackColor={{ false: '#767577', true: '#2f75c281' }}
+                thumbColor={settings.promotionalOffers ? '#4682B4' : '#f4f3f4'}
+                trackColor={{ false: '#767577', true: '#4682B481' }}
               />
             }
           />
@@ -322,7 +321,12 @@ export default function ProfileScreen() {
 
         {/* Logout Section */}
         <View style={[styles.logoutSection, { marginHorizontal: responsivePadding }]}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={handleLogout}
+            onPressIn={() => {}} // Placeholder for hover effect
+            onPressOut={() => {}} // Placeholder for hover effect
+          >
             <Ionicons name="log-out-outline" size={22} color="#e74c3c" />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
@@ -389,7 +393,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     borderRadius: 12,
     width: 24,
     height: 24,

@@ -58,7 +58,7 @@ export default function MerchantDashboard() {
       style={styles.container}
     >
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.push('/home/consumer')}
         >
@@ -75,7 +75,7 @@ export default function MerchantDashboard() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Manage Your Business</Text>
-        
+
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
             <TouchableOpacity key={index} style={styles.featureCard}>
@@ -104,7 +104,7 @@ export default function MerchantDashboard() {
               <Text style={styles.statLabel}>Orders</Text>
             </View>
           </View>
-          
+
           <View style={styles.recentOrders}>
             <Text style={styles.sectionSubTitle}>Recent Orders</Text>
             <View style={styles.orderItem}>

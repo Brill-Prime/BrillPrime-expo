@@ -23,7 +23,7 @@ export default function ConsumerDashboard() {
   useEffect(() => {
     loadUserData();
     loadCartCount();
-    
+
     // Refresh cart count when screen is focused
     const unsubscribe = router.addListener?.('focus', () => {
       loadCartCount();
@@ -77,7 +77,7 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), color: "#667eea", route: "/commodity/commodities" },
+    { title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), color: "#4682B4", route: "/commodity/commodities" },
     { title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'), color: "#f093fb", route: "/orders/consumer-orders" },
     { title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'), color: "#4CAF50", route: "/chat" },
     { title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'), color: "#4facfe", route: "/favorites" },
@@ -88,7 +88,7 @@ export default function ConsumerDashboard() {
 
   return (
     <LinearGradient
-      colors={['rgb(11, 26, 81)', '#1e3a8a']}
+      colors={['#0B1A51', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -127,7 +127,7 @@ export default function ConsumerDashboard() {
           {features.map((feature, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.featureCard}
+              style={[styles.featureCard, { backgroundColor: feature.color }]}
               onPress={() => handleFeaturePress(feature)}
               activeOpacity={0.8}
             >
@@ -147,10 +147,11 @@ export default function ConsumerDashboard() {
         <Text style={styles.sectionTitle}>Services</Text>
         <View style={styles.servicesContainer}>
           <TouchableOpacity
-            style={styles.serviceCard}
+            style={[styles.serviceCard]}
             onPress={() => router.push('/order/fuel')}
+            
           >
-            <View style={styles.serviceIconContainer}>
+            <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
               <Image
                 source={require('../../assets/images/consumer_order_fuel_icon.png')}
                 style={styles.serviceIcon}
@@ -165,7 +166,7 @@ export default function ConsumerDashboard() {
             style={styles.serviceCard}
             onPress={() => router.push('/toll')}
           >
-            <View style={styles.serviceIconContainer}>
+            <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
               <Image
                 source={require('../../assets/images/purchase_toll_gate_white.png')}
                 style={styles.serviceIcon}
@@ -180,15 +181,15 @@ export default function ConsumerDashboard() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Your Stats</Text>
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
               <Text style={styles.statNumber}>12</Text>
               <Text style={styles.statLabel}>Orders</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
               <Text style={styles.statNumber}>₹2,450</Text>
               <Text style={styles.statLabel}>Total Spent</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
               <Text style={styles.statNumber}>8</Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
@@ -337,7 +338,7 @@ const getResponsiveStyles = (screenData: any) => {
       justifyContent: "center",
     },
     serviceIconContainer: {
-      backgroundColor: "rgb(11, 26, 81)",
+      backgroundColor: "#4682B4",
       width: isTablet ? 60 : 50,
       height: isTablet ? 60 : 50,
       borderRadius: isTablet ? 30 : 25,
@@ -370,7 +371,7 @@ const getResponsiveStyles = (screenData: any) => {
     },
     statCard: {
       flex: 1,
-      backgroundColor: "rgb(11, 26, 81)",
+      backgroundColor: "#4682B4",
       padding: Math.max(12, width * 0.03),
       borderRadius: 20,
       alignItems: "center",

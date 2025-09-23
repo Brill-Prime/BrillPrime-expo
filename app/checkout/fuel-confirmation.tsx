@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -55,7 +54,7 @@ export default function FuelConfirmationScreen() {
 
   useEffect(() => {
     loadOrderData();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -95,9 +94,9 @@ export default function FuelConfirmationScreen() {
 
   const handlePlaceOrder = async () => {
     if (!orderData) return;
-    
+
     setLoading(true);
-    
+
     try {
       const finalOrder = {
         id: `FUEL${Date.now()}`,
@@ -167,7 +166,7 @@ export default function FuelConfirmationScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: responsivePadding }}>
-          
+
           {/* Order Summary */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Order Summary</Text>
@@ -226,7 +225,7 @@ export default function FuelConfirmationScreen() {
                 <Ionicons 
                   name={method.icon as any} 
                   size={24} 
-                  color={selectedPaymentMethod === method.id ? "#2f75c2" : "#666"} 
+                  color={selectedPaymentMethod === method.id ? "#4682B4" : "#666"} 
                 />
                 <Text style={[
                   styles.paymentText,
@@ -239,7 +238,7 @@ export default function FuelConfirmationScreen() {
                   <Text style={styles.unavailableLabel}>Unavailable</Text>
                 )}
                 {selectedPaymentMethod === method.id && method.available && (
-                  <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />
+                  <Ionicons name="checkmark-circle" size={20} color="#4682B4" />
                 )}
               </TouchableOpacity>
             ))}
@@ -319,7 +318,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   editButtonText: {
-    color: '#2f75c2',
+    color: '#4682B4',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Montserrat',
@@ -373,7 +372,7 @@ const styles = StyleSheet.create({
   itemTotal: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2f75c2',
+    color: '#4682B4',
     fontFamily: 'Montserrat',
   },
   deliveryCard: {
@@ -420,7 +419,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedPaymentMethod: {
-    borderColor: '#2f75c2',
+    borderColor: '#4682B4',
     backgroundColor: '#f8f9ff',
   },
   unavailablePaymentMethod: {
@@ -435,7 +434,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   selectedPaymentText: {
-    color: '#2f75c2',
+    color: '#4682B4',
     fontWeight: '600',
   },
   unavailablePaymentText: {
@@ -488,7 +487,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2f75c2',
+    color: '#4682B4',
     fontFamily: 'Montserrat',
   },
   footer: {
@@ -503,7 +502,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   placeOrderButton: {
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     borderRadius: 25,
     paddingVertical: 15,
     alignItems: 'center',

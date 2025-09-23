@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -33,7 +32,7 @@ export default function CartScreen() {
 
   useEffect(() => {
     loadCartItems();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -63,7 +62,7 @@ export default function CartScreen() {
     try {
       await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
       setCartItems(updatedItems);
-      
+
       // Also update commodities cart for consistency
       const commoditiesCartItems = updatedItems.map(item => ({
         productId: item.commodityId || item.id,
@@ -187,7 +186,7 @@ export default function CartScreen() {
                   <View style={styles.cartIcon}>
                     <Text style={styles.cartIconText}>{getItemIcon(item.category)}</Text>
                   </View>
-                  
+
                   <View style={styles.cartInfo}>
                     <Text style={styles.itemName}>{item.commodityName}</Text>
                     <View style={styles.quantityControls}>
@@ -197,11 +196,11 @@ export default function CartScreen() {
                       >
                         <Text style={styles.quantityButtonText}>-</Text>
                       </TouchableOpacity>
-                      
+
                       <View style={styles.quantityDisplay}>
                         <Text style={styles.quantityText}>{item.quantity}</Text>
                       </View>
-                      
+
                       <TouchableOpacity 
                         style={styles.quantityButton}
                         onPress={() => updateQuantity(item.id, item.quantity + 1)}
@@ -211,7 +210,7 @@ export default function CartScreen() {
                     </View>
                   </View>
                 </View>
-                
+
                 <View style={styles.cartRight}>
                   <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString()}.00</Text>
                   <TouchableOpacity 
@@ -297,7 +296,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: '#2e67c7',
+    backgroundColor: '#4682B4',
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 25,
@@ -387,7 +386,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   summary: {
-    backgroundColor: '#2e67c7',
+    backgroundColor: '#4682B4',
     borderRadius: 10,
     padding: 20,
     marginVertical: 20,
@@ -424,7 +423,7 @@ const styles = StyleSheet.create({
     color: '#aaa',
   },
   paymentButton: {
-    backgroundColor: '#0c1a2a',
+    backgroundColor: '#0B1A51',
     borderRadius: 30,
     paddingVertical: 15,
     alignItems: 'center',

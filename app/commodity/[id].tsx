@@ -982,10 +982,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   modalConfirmButton: {
-    backgroundColor: '#2f75c2',
+    backgroundColor: '#4682B4',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 25,
+  },
+  modalConfirmButtonHover: {
+    backgroundColor: '#0B1A51',
   },
   modalConfirmText: {
     color: '#fff',
