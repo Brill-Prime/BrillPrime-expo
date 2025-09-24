@@ -103,13 +103,13 @@ export default function MerchantHome() {
         router.push("/transactions");
         break;
       case "Settings":
-        router.push("/account");
+        router.push("/profile/edit");
         break;
       case "Support":
         router.push("/support");
         break;
       case "Switch to Consumer":
-        showInfo("Switch Role", "This feature will allow you to switch to consumer mode!");
+        router.push("/home/consumer");
         break;
       default:
         showInfo("Navigation", `Navigating to ${item}`);

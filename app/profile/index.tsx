@@ -297,25 +297,25 @@ export default function ProfileScreen() {
             icon="help-circle-outline"
             title="Help & Support"
             subtitle="Get help with your account or orders"
-            onPress={() => Alert.alert('Help', 'Contact support at support@brillprime.com')}
+            onPress={() => router.push('/support')}
           />
           <MenuItem
             icon="document-text-outline"
             title="Terms & Conditions"
             subtitle="Read our terms of service"
-            onPress={() => Alert.alert('Terms', 'Terms & Conditions feature coming soon')}
+            onPress={() => router.push('/about')}
           />
           <MenuItem
             icon="shield-checkmark-outline"
             title="Privacy Policy"
             subtitle="How we protect your privacy"
-            onPress={() => Alert.alert('Privacy', 'Privacy Policy feature coming soon')}
+            onPress={() => router.push('/profile/privacy-settings')}
           />
           <MenuItem
             icon="star-outline"
             title="Rate Brill Prime"
             subtitle="Share your feedback with us"
-            onPress={() => Alert.alert('Rating', 'Thank you for your feedback!')}
+            onPress={() => router.push('/support')}
           />
         </MenuSection>
 

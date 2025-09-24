@@ -152,13 +152,19 @@ export default function Account() {
 
         {/* Action Buttons */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/profile/change-password')}
+          >
             <Ionicons name="key" size={20} color="#667eea" />
             <Text style={styles.actionButtonText}>Change Password</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/profile/privacy-settings')}
+          >
             <Ionicons name="shield-checkmark" size={20} color="#667eea" />
             <Text style={styles.actionButtonText}>Privacy Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
