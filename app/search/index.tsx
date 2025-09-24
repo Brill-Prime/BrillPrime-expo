@@ -583,11 +583,11 @@ export default function SearchScreen() {
       <View style={styles.resultContent}>
         <View style={styles.resultHeader}>
           <Text style={styles.resultTitle}>{merchant.name}</Text>
-          <TouchableOpacity onPress={() => toggleFavorite(merchant.id.toString())}>
+          <TouchableOpacity onPress={() => toggleFavorite(merchant.id)}>
             <Ionicons
-              name={favorites.includes(merchant.id.toString()) ? "heart" : "heart-outline"}
+              name={favorites.includes(merchant.id) ? "heart" : "heart-outline"}
               size={20}
-              color={favorites.includes(merchant.id.toString()) ? "#e74c3c" : "#ccc"}
+              color={favorites.includes(merchant.id) ? "#e74c3c" : "#ccc"}
             />
           </TouchableOpacity>
         </View>
