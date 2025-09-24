@@ -6,17 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Dimensions,
   Image,
-  TextInput,
-  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
-import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -58,18 +54,7 @@ export default function MerchantCommoditiesScreen() {
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingCommodity, setEditingCommodity] = useState<Commodity | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    category: 'petrol',
-    unit: 'Litres',
-    price: '',
-    image: '',
-  });
+  
 
   useEffect(() => {
     loadCommodities();
@@ -78,7 +63,15 @@ export default function MerchantCommoditiesScreen() {
       setScreenDimensions(window);
     });
 
-    return () => subscription?.remove();
+    // Reload commodities when screen is focused
+    const unsubscribe = router.addListener?.('focus', () => {
+      loadCommodities();
+    });
+
+    return () => {
+      subscription?.remove();
+      unsubscribe?.();
+    };
   }, []);
 
   const loadCommodities = async () => {
@@ -141,29 +134,14 @@ export default function MerchantCommoditiesScreen() {
   };
 
   const handleAddCommodity = () => {
-    setEditingCommodity(null);
-    setFormData({
-      name: '',
-      description: '',
-      category: 'petrol',
-      unit: 'Litres',
-      price: '',
-      image: '',
-    });
-    setShowAddModal(true);
+    router.push('/merchant/add-commodity');
   };
 
   const handleEditCommodity = (commodity: Commodity) => {
-    setEditingCommodity(commodity);
-    setFormData({
-      name: commodity.name,
-      description: commodity.description,
-      category: commodity.category,
-      unit: commodity.unit,
-      price: commodity.price.toString(),
-      image: commodity.image,
+    router.push({
+      pathname: '/merchant/add-commodity',
+      params: { commodityId: commodity.id }
     });
-    setShowAddModal(true);
   };
 
   const handleDeleteCommodity = (commodity: Commodity) => {
@@ -178,87 +156,25 @@ export default function MerchantCommoditiesScreen() {
     );
   };
 
-  const handleSelectImage = async () => {
+  const handleToggleStock = async (commodity: Commodity) => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        showError('Permission Required', 'Camera roll permissions are required to select images');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        setFormData({ ...formData, image: result.assets[0].uri });
-      }
-    } catch (error) {
-      console.error('Error selecting image:', error);
-      showError('Error', 'Failed to select image');
-    }
-  };
-
-  const handleSaveCommodity = async () => {
-    if (!formData.name.trim() || !formData.description.trim() || !formData.price.trim()) {
-      showError('Validation Error', 'Please fill in all required fields');
-      return;
-    }
-
-    const price = parseFloat(formData.price);
-    if (isNaN(price) || price <= 0) {
-      showError('Validation Error', 'Please enter a valid price');
-      return;
-    }
-
-    try {
-      let updatedCommodities: Commodity[];
-
-      if (editingCommodity) {
-        // Update existing commodity
-        updatedCommodities = commodities.map(c =>
-          c.id === editingCommodity.id
-            ? {
-                ...c,
-                name: formData.name.trim(),
-                description: formData.description.trim(),
-                category: formData.category,
-                unit: formData.unit,
-                price: price,
-                image: formData.image || c.image,
-              }
-            : c
-        );
-        showSuccess('Success', 'Commodity updated successfully');
-      } else {
-        // Add new commodity
-        const newCommodity: Commodity = {
-          id: Date.now().toString(),
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          category: formData.category,
-          unit: formData.unit,
-          price: price,
-          image: formData.image || require('../../assets/images/consumer_order_fuel_icon.png'),
-          inStock: true,
-          createdAt: new Date().toISOString(),
-          merchantId: 'merchant1',
-        };
-
-        updatedCommodities = [...commodities, newCommodity];
-        showSuccess('Success', 'Commodity added successfully');
-      }
-
+      const updatedCommodities = commodities.map(c =>
+        c.id === commodity.id
+          ? { ...c, inStock: !c.inStock }
+          : c
+      );
       await saveCommodities(updatedCommodities);
-      setShowAddModal(false);
+      showSuccess(
+        'Stock Updated', 
+        `${commodity.name} is now ${!commodity.inStock ? 'in stock' : 'out of stock'}`
+      );
     } catch (error) {
-      console.error('Error saving commodity:', error);
-      showError('Error', 'Failed to save commodity');
+      console.error('Error toggling stock:', error);
+      showError('Error', 'Failed to update stock status');
     }
   };
+
+  
 
   const filteredCommodities = selectedCategory === 'all' 
     ? commodities 
@@ -306,20 +222,36 @@ export default function MerchantCommoditiesScreen() {
         </View>
       </View>
 
-      <View style={styles.commodityActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEditCommodity(commodity)}
-        >
-          <Ionicons name="pencil" size={18} color="white" />
-        </TouchableOpacity>
+      <View style={styles.commodityFooter}>
+        <View style={styles.stockStatus}>
+          <TouchableOpacity
+            style={[
+              styles.stockToggle,
+              { backgroundColor: commodity.inStock ? '#4CAF50' : '#FF9800' }
+            ]}
+            onPress={() => handleToggleStock(commodity)}
+          >
+            <Text style={styles.stockText}>
+              {commodity.inStock ? 'In Stock' : 'Out of Stock'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.commodityActions}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEditCommodity(commodity)}
+          >
+            <Ionicons name="pencil" size={18} color="white" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteCommodity(commodity)}
-        >
-          <Ionicons name="trash" size={18} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteCommodity(commodity)}
+          >
+            <Ionicons name="trash" size={18} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -399,117 +331,7 @@ export default function MerchantCommoditiesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Add/Edit Modal */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={() => setShowAddModal(false)}
-              style={styles.modalBackButton}
-            >
-              <View style={styles.backButtonCircle}>
-                <Ionicons name="chevron-back" size={24} color="#1C1B1F" />
-              </View>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {editingCommodity ? 'Edit Commodity' : 'Add New Commodities'}
-            </Text>
-          </View>
-
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.formContainer}>
-              {/* Category Filter */}
-              <View style={styles.modalCategoriesContainer}>
-                <TouchableOpacity style={styles.modalCategoryButton}>
-                  <Text style={styles.modalCategoryText}>All</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Image Picker */}
-              <TouchableOpacity style={styles.imagePickerContainer} onPress={handleSelectImage}>
-                {formData.image ? (
-                  <Image 
-                    source={typeof formData.image === 'string' ? { uri: formData.image } : formData.image}
-                    style={styles.selectedImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.imagePickerPlaceholder}>
-                    <Ionicons name="camera" size={40} color="#4682B4" />
-                    <Text style={styles.imagePickerText}>Add Image</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* Form Fields */}
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Name of Item"
-                  value={formData.name}
-                  onChangeText={(text) => setFormData({ ...formData, name: text })}
-                  placeholderTextColor="#B7B7B7"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Description"
-                  value={formData.description}
-                  onChangeText={(text) => setFormData({ ...formData, description: text })}
-                  placeholderTextColor="#B7B7B7"
-                  multiline
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => {
-                    // Show unit picker
-                    Alert.alert(
-                      'Select Unit',
-                      '',
-                      UNITS.map(unit => ({
-                        text: unit,
-                        onPress: () => setFormData({ ...formData, unit })
-                      }))
-                    );
-                  }}
-                >
-                  <Text style={[styles.textInput, { color: formData.unit ? '#131313' : '#B7B7B7' }]}>
-                    {formData.unit || 'Basic Unit Of Item'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#4682B4" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Price per Item"
-                  value={formData.price}
-                  onChangeText={(text) => setFormData({ ...formData, price: text })}
-                  placeholderTextColor="#B7B7B7"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              {/* Save Button */}
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveCommodity}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+      
     </View>
   );
 }
@@ -719,10 +541,29 @@ const styles = StyleSheet.create({
     color: 'white',
     fontFamily: 'Montserrat-Light',
   },
+  commodityFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 8,
+  },
+  stockStatus: {
+    flex: 1,
+  },
+  stockToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    alignSelf: 'flex-start',
+  },
+  stockText: {
+    fontSize: 12,
+    color: 'white',
+    fontWeight: '500',
+    fontFamily: 'Montserrat-Medium',
+  },
   commodityActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 8,
     gap: 10,
   },
   editButton: {
@@ -763,113 +604,5 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontFamily: 'Montserrat-Regular',
   },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 15,
-    paddingHorizontal: 25,
-    backgroundColor: '#fff',
-  },
-  modalBackButton: {
-    marginRight: 15,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#000',
-    fontFamily: 'Montserrat-ExtraBold',
-  },
-  modalContent: {
-    flex: 1,
-  },
-  formContainer: {
-    paddingHorizontal: 29,
-    paddingTop: 20,
-  },
-  modalCategoriesContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  modalCategoryButton: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#4682B4',
-  },
-  modalCategoryText: {
-    fontSize: 12,
-    color: '#131313',
-    fontFamily: 'Montserrat-Regular',
-  },
-  imagePickerContainer: {
-    width: 250,
-    height: 250,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    alignSelf: 'center',
-    marginBottom: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imagePickerPlaceholder: {
-    alignItems: 'center',
-  },
-  imagePickerText: {
-    fontSize: 16,
-    color: '#4682B4',
-    marginTop: 10,
-    fontFamily: 'Montserrat-Regular',
-  },
-  selectedImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 15,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Montserrat-Regular',
-    color: '#131313',
-    minHeight: 50,
-  },
-  pickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 50,
-  },
-  saveButton: {
-    backgroundColor: '#0B1A51',
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  saveButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '400',
-    fontFamily: 'Montserrat-Regular',
-  },
+  
 });
