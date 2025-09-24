@@ -49,7 +49,8 @@ export default function OrderDetails() {
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [showLiveTracking, setShowLiveTracking] = useState(false);
   const [userRole, setUserRole] = useState<'consumer' | 'driver'>('consumer');
-
+  const [showDriverCommunication, setShowDriverCommunication] = useState(false);
+  const [showMerchantCommunication, setShowMerchantCommunication] = useState(false);
 
   useEffect(() => {
     loadOrderDetails();
@@ -402,10 +403,10 @@ export default function OrderDetails() {
             </Text>
           </View>
           <View style={styles.driverActions}>
-            <TouchableOpacity onPress={handleContactMerchant}>
+            <TouchableOpacity onPress={() => setShowMerchantCommunication(true)}>
               <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>💬</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Call Merchant', 'Calling merchant...')}>
+            <TouchableOpacity onPress={() => setShowMerchantCommunication(true)}>
               <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>📞</Text>
             </TouchableOpacity>
           </View>
@@ -434,10 +435,10 @@ export default function OrderDetails() {
             </Text>
           </View>
           <View style={styles.driverActions}>
-            <TouchableOpacity onPress={() => handleContactDriver('message')}>
+            <TouchableOpacity onPress={() => setShowDriverCommunication(true)}>
               <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>💬</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleContactDriver('call')}>
+            <TouchableOpacity onPress={() => setShowDriverCommunication(true)}>
               <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>📞</Text>
             </TouchableOpacity>
           </View>
@@ -567,6 +568,60 @@ export default function OrderDetails() {
           userRole={userRole}
           onClose={() => setShowLiveTracking(false)}
         />
+      </Modal>
+
+      {/* Driver Communication Modal */}
+      <Modal
+        visible={showDriverCommunication}
+        animationType="slide"
+        onRequestClose={() => setShowDriverCommunication(false)}
+      >
+        <View style={styles.communicationModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowDriverCommunication(false)}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Contact Driver</Text>
+            <View />
+          </View>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.modalButton} onPress={() => handleContactDriver('message')}>
+              <Ionicons name="chatbubble-outline" size={24} color="#fff" />
+              <Text style={styles.modalButtonText}>Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalButton} onPress={() => handleContactDriver('call')}>
+              <Ionicons name="call-outline" size={24} color="#fff" />
+              <Text style={styles.modalButtonText}>Call</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Merchant Communication Modal */}
+      <Modal
+        visible={showMerchantCommunication}
+        animationType="slide"
+        onRequestClose={() => setShowMerchantCommunication(false)}
+      >
+        <View style={styles.communicationModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowMerchantCommunication(false)}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Contact Merchant</Text>
+            <View />
+          </View>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.modalButton} onPress={handleContactMerchant}>
+              <Ionicons name="chatbubble-outline" size={24} color="#fff" />
+              <Text style={styles.modalButtonText}>Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalButton} onPress={() => Alert.alert('Call Merchant', 'Calling merchant...')}>
+              <Ionicons name="call-outline" size={24} color="#fff" />
+              <Text style={styles.modalButtonText}>Call</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -918,5 +973,46 @@ const styles = StyleSheet.create({
   },
   trackButton: {
     backgroundColor: '#28a745',
+  },
+  communicationModalContainer: {
+    flex: 1,
+    backgroundColor: '#0b1437',
+    paddingTop: 50,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2e3a59',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+  },
+  modalButton: {
+    backgroundColor: '#2f75c2',
+    borderRadius: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    width: '70%',
+    justifyContent: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

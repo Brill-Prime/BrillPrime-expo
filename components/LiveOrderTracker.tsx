@@ -2,7 +2,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import MapView, { PROVIDER_GOOGLE } from './Map';
+import CommunicationModal from './CommunicationModal';
 import { locationService } from '../services/locationService';
 import { orderService } from '../services/orderService';
 import { Order } from '../services/types';
@@ -19,6 +21,8 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
   const [consumerLocation, setConsumerLocation] = useState<any>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [estimatedTime, setEstimatedTime] = useState<string>('');
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     loadOrderDetails();
@@ -200,9 +204,12 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       <View style={styles.actions}>
         {userRole === 'driver' && (
           <>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => setShowCommunicationModal(true)}
+            >
               <Ionicons name="call" size={20} color="white" />
-              <Text style={styles.actionText}>Call Customer</Text>
+              <Text style={styles.actionText}>Contact Customer</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, styles.completeButton]}>
               <Ionicons name="checkmark" size={20} color="white" />
@@ -211,12 +218,26 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
           </>
         )}
         {userRole === 'consumer' && (
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => setShowCommunicationModal(true)}
+          >
             <Ionicons name="chatbubble" size={20} color="white" />
             <Text style={styles.actionText}>Contact Driver</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Communication Modal */}
+      <CommunicationModal
+        visible={showCommunicationModal}
+        onClose={() => setShowCommunicationModal(false)}
+        contactName={userRole === 'driver' ? 'Customer' : 'Driver'}
+        contactPhone="+234-801-234-5678"
+        contactRole={userRole === 'driver' ? 'merchant' : 'driver'}
+        orderId={orderId}
+        onChatPress={() => router.push(`/chat/conv_${orderId}`)}
+      />
     </View>
   );
 }

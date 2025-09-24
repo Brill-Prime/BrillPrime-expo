@@ -18,6 +18,7 @@ import * as Location from 'expo-location';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
 import { locationService } from '../../services/locationService';
 import { Merchant } from '../../services/types';
+import CommunicationModal from '../../components/CommunicationModal'; // Assuming this path is correct
 
 const { width } = Dimensions.get('window');
 
@@ -227,6 +228,8 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false); // Added loading state
   const [showMap, setShowMap] = useState(false); // State to toggle map view
   const [nearbyMerchants, setNearbyMerchants] = useState<Merchant[]>([]); // State for nearby merchants
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false); // State for communication modal
+  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null); // State for selected merchant for modal
 
   // Enhanced filter states
   const [filters, setFilters] = useState({
@@ -452,8 +455,11 @@ export default function SearchScreen() {
     router.back();
   };
 
-  const handleMerchantPress = (merchant: any) => {
-    router.push(`/merchant/${merchant.id}`);
+  const handleMerchantPress = (merchant: Merchant) => {
+    // In addition to navigating, open the communication modal
+    setSelectedMerchant(merchant);
+    setShowCommunicationModal(true);
+    // router.push(`/merchant/${merchant.id}`); // Navigation might be handled within the modal or after selection
   };
 
   const handleCommodityPress = (commodity: any) => {
@@ -564,7 +570,7 @@ export default function SearchScreen() {
     }
   };
 
-  const renderMerchantItem = (merchant: any) => (
+  const renderMerchantItem = (merchant: Merchant) => (
     <TouchableOpacity
       key={merchant.id}
       style={styles.resultItem}
@@ -1085,6 +1091,30 @@ export default function SearchScreen() {
           </ScrollView>
         </>
       )}
+
+      {/* Communication Modal */}
+      <CommunicationModal
+        visible={showCommunicationModal}
+        onClose={() => setShowCommunicationModal(false)}
+        contactName={selectedMerchant?.name || 'Merchant'}
+        contactPhone={selectedMerchant?.phone} // Assuming merchants have a 'phone' property
+        contactRole="merchant"
+        onChatPress={() => {
+          if (selectedMerchant) {
+            router.push(`/chat/conv_merchant_${selectedMerchant.id}`);
+          }
+          setShowCommunicationModal(false);
+        }}
+        onCallPress={() => {
+          if (selectedMerchant && selectedMerchant.phone) {
+            // Implement phone call functionality here, e.g., using Linking from react-native
+            Alert.alert("Call", `Calling ${selectedMerchant.name} at ${selectedMerchant.phone}`);
+          } else {
+            Alert.alert("Call Failed", "Phone number not available for this merchant.");
+          }
+          setShowCommunicationModal(false);
+        }}
+      />
     </View>
   );
 }

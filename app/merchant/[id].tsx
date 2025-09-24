@@ -9,7 +9,9 @@ import {
   Linking,
   Platform,
   Dimensions,
-  Image
+  Image,
+  Modal,
+  TextInput
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +35,7 @@ const MERCHANT_DATA = {
     isOpen: true,
     operatingHours: {
       monday: "06:00 - 22:00",
-      tuesday: "06:00 - 22:00", 
+      tuesday: "06:00 - 22:00",
       wednesday: "06:00 - 22:00",
       thursday: "06:00 - 22:00",
       friday: "06:00 - 22:00",
@@ -57,7 +59,7 @@ const MERCHANT_DATA = {
     ]
   },
   "2": {
-    id: "2", 
+    id: "2",
     name: "Victoria Island Market",
     type: "market",
     address: "Tiamiyu Savage Street, Victoria Island, Lagos, Nigeria",
@@ -71,7 +73,7 @@ const MERCHANT_DATA = {
     operatingHours: {
       monday: "07:00 - 19:00",
       tuesday: "07:00 - 19:00",
-      wednesday: "07:00 - 19:00", 
+      wednesday: "07:00 - 19:00",
       thursday: "07:00 - 19:00",
       friday: "07:00 - 19:00",
       saturday: "07:00 - 20:00",
@@ -94,7 +96,7 @@ const MERCHANT_DATA = {
   },
   "3": {
     id: "3",
-    name: "Ikeja Shopping Mall", 
+    name: "Ikeja Shopping Mall",
     type: "shopping",
     address: "Allen Avenue, Ikeja, Lagos, Nigeria",
     phone: "+234-800-SHOP-001",
@@ -108,7 +110,7 @@ const MERCHANT_DATA = {
       monday: "10:00 - 21:00",
       tuesday: "10:00 - 21:00",
       wednesday: "10:00 - 21:00",
-      thursday: "10:00 - 21:00", 
+      thursday: "10:00 - 21:00",
       friday: "10:00 - 22:00",
       saturday: "09:00 - 22:00",
       sunday: "11:00 - 20:00"
@@ -131,11 +133,63 @@ const MERCHANT_DATA = {
   }
 };
 
+// Mock communication modal component
+const CommunicationModal = ({ visible, onClose, contactName, contactPhone, contactRole, onChatPress }) => {
+  const handleCall = () => {
+    if (!contactPhone) {
+      Alert.alert("Error", "Phone number not available");
+      return;
+    }
+
+    const phoneUrl = `tel:${contactPhone.replace(/[^0-9+]/g, '')}`;
+    Linking.canOpenURL(phoneUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(phoneUrl);
+      } else {
+        Alert.alert("Error", "Phone calling is not supported on this device");
+      }
+    }).catch(() => {
+      Alert.alert("Error", "Unable to make phone call");
+    });
+  };
+
+  return (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Contact {contactName}</Text>
+
+          <TouchableOpacity style={styles.modalButton} onPress={handleCall}>
+            <Ionicons name="call" size={24} color="#4682B4" />
+            <Text style={styles.modalButtonText}>Call ({contactPhone || 'N/A'})</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.modalButton} onPress={onChatPress}>
+            <Ionicons name="chatbubble-outline" size={24} color="#4682B4" />
+            <Text style={styles.modalButtonText}>Chat via In-App</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+
 export default function MerchantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [merchant, setMerchant] = useState<any>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false);
 
   useEffect(() => {
     if (id && MERCHANT_DATA[id as keyof typeof MERCHANT_DATA]) {
@@ -164,7 +218,7 @@ export default function MerchantDetailScreen() {
       Alert.alert("Error", "Phone number not available");
       return;
     }
-    
+
     Alert.alert(
       "Call Merchant",
       `Would you like to call ${merchant.name}?\n${merchant.phone}`,
@@ -181,7 +235,7 @@ export default function MerchantDetailScreen() {
                 Alert.alert("Error", "Phone calling is not supported on this device");
               }
             }).catch(() => {
-              Alert.alert("Error", "Unable to make phone call");
+              Alert.Alert("Error", "Unable to make phone call");
             });
           }
         }
@@ -194,7 +248,7 @@ export default function MerchantDetailScreen() {
       Alert.alert("Error", "Email address not available");
       return;
     }
-    
+
     const emailUrl = `mailto:${merchant.email}?subject=Inquiry about ${merchant.name}&body=Hello, I would like to inquire about your services.`;
     Linking.canOpenURL(emailUrl).then((supported) => {
       if (supported) {
@@ -212,12 +266,12 @@ export default function MerchantDetailScreen() {
       Alert.alert("Error", "Address not available");
       return;
     }
-    
+
     const address = encodeURIComponent(merchant.address);
-    const mapsUrl = Platform.OS === 'ios' 
+    const mapsUrl = Platform.OS === 'ios'
       ? `http://maps.apple.com/?daddr=${address}`
       : `https://www.google.com/maps/dir/?api=1&destination=${address}`;
-    
+
     Linking.canOpenURL(mapsUrl).then((supported) => {
       if (supported) {
         Linking.openURL(mapsUrl);
@@ -252,7 +306,7 @@ export default function MerchantDetailScreen() {
     for (let i = 0; i < fullStars; i++) {
       stars.push(<Ionicons key={i} name="star" size={16} color="#FFD700" />);
     }
-    
+
     if (hasHalfStar) {
       stars.push(<Ionicons key="half" name="star-half" size={16} color="#FFD700" />);
     }
@@ -295,8 +349,8 @@ export default function MerchantDetailScreen() {
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
             {merchant.images.map((image: string, index: number) => (
               <TouchableOpacity key={index} style={styles.imageWrapper} onPress={() => setSelectedImageIndex(index)}>
-                <Image 
-                  source={{ uri: image }} 
+                <Image
+                  source={{ uri: image }}
                   style={styles.merchantImage}
                   defaultSource={require('../../assets/images/logo.png')}
                 />
@@ -309,12 +363,12 @@ export default function MerchantDetailScreen() {
           {merchant.images.length > 1 && (
             <View style={styles.imageIndicators}>
               {merchant.images.map((_: string, index: number) => (
-                <View 
-                  key={index} 
+                <View
+                  key={index}
                   style={[
-                    styles.indicator, 
+                    styles.indicator,
                     selectedImageIndex === index && styles.activeIndicator
-                  ]} 
+                  ]}
                 />
               ))}
             </View>
@@ -325,7 +379,7 @@ export default function MerchantDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.merchantName}>{merchant.name}</Text>
           <Text style={styles.merchantDescription}>{merchant.description}</Text>
-          
+
           <View style={styles.ratingContainer}>
             <View style={styles.starsContainer}>
               {renderStars(merchant.rating)}
@@ -337,17 +391,17 @@ export default function MerchantDetailScreen() {
         {/* Contact & Location */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact & Location</Text>
-          
+
           <View style={styles.infoRow}>
             <Ionicons name="location" size={20} color="#4682B4" />
             <Text style={styles.infoText}>{merchant.address}</Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Ionicons name="call" size={20} color="#4682B4" />
             <Text style={styles.infoText}>{merchant.phone}</Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Ionicons name="mail" size={20} color="#4682B4" />
             <Text style={styles.infoText}>{merchant.email}</Text>
@@ -457,12 +511,12 @@ export default function MerchantDetailScreen() {
           <Ionicons name="call" size={20} color="#4682B4" />
           <Text style={styles.actionText}>Call</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.actionButton} onPress={handleEmail}>
           <Ionicons name="mail" size={20} color="#4682B4" />
           <Text style={styles.actionText}>Email</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={[styles.actionButton, styles.primaryAction]} onPress={handleDirections}>
           <Ionicons name="navigate" size={20} color="white" />
           <Text style={[styles.actionText, styles.primaryActionText]}>Directions</Text>
@@ -798,5 +852,61 @@ const styles = StyleSheet.create({
     color: '#4682B4',
     fontWeight: '500',
     marginRight: 6,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f7ff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '100%',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#4682B4',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    color: '#4682B4',
+    fontWeight: '500',
+    marginLeft: 10,
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
 });
