@@ -86,6 +86,103 @@ export default function MapViewWeb({
   const [nearbyMerchants, setNearbyMerchants] = useState<Array<Merchant & { liveLocation?: any }>>([]);
   const [liveTrackingMarker, setLiveTrackingMarker] = useState<google.maps.Marker | null>(null);
   const merchantMarkersRef = useRef<google.maps.Marker[]>([]);
+  const [showFallback, setShowFallback] = useState(false);
+
+  const showFallbackMap = () => {
+    setShowFallback(true);
+    if (mapRef.current) {
+      mapRef.current.innerHTML = `
+        <div style="
+          width: 100%; 
+          height: 100%; 
+          background: linear-gradient(45deg, #e8f4f8, #f0f8ff);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+              linear-gradient(rgba(70, 130, 180, 0.1) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(70, 130, 180, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+          "></div>
+          <div style="
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+            z-index: 1;
+            max-width: 300px;
+          ">
+            <div style="
+              width: 60px;
+              height: 60px;
+              background: #4682B4;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto 15px;
+              color: white;
+              font-size: 24px;
+            ">🗺️</div>
+            <h3 style="
+              margin: 0 0 10px;
+              color: #333;
+              font-size: 18px;
+              font-weight: 600;
+            ">Nigeria Region</h3>
+            <p style="
+              margin: 0 0 15px;
+              color: #666;
+              font-size: 14px;
+              line-height: 1.4;
+            ">Interactive map centered on Nigeria.<br/>Showing nearby merchants and locations.</p>
+            <div style="
+              background: #f8f9fa;
+              padding: 10px;
+              border-radius: 5px;
+              font-size: 12px;
+              color: #666;
+            ">
+              📍 Lat: ${region?.latitude || 9.0765}°<br/>
+              📍 Lng: ${region?.longitude || 7.3986}°
+            </div>
+          </div>
+          ${nearbyMerchants.map((merchant, index) => `
+            <div style="
+              position: absolute;
+              width: 12px;
+              height: 12px;
+              background: #28a745;
+              border: 2px solid white;
+              border-radius: 50%;
+              top: ${20 + (index * 15)}%;
+              left: ${25 + (index * 12)}%;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              animation: pulse 2s infinite;
+            "></div>
+          `).join('')}
+          <style>
+            @keyframes pulse {
+              0% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.2); opacity: 0.7; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          </style>
+        </div>
+      `;
+    }
+  };
 
   // Load Google Maps script based on environment variables
   useEffect(() => {
@@ -104,6 +201,10 @@ export default function MapViewWeb({
         script.async = true;
         script.defer = true;
         script.onload = initializeMap;
+        script.onerror = () => {
+          console.error('Failed to load Google Maps script');
+          showFallbackMap();
+        };
         document.head.appendChild(script);
       } else {
         console.error('Google Maps API key is not configured. Available config:', {
@@ -111,6 +212,7 @@ export default function MapViewWeb({
           webConfig: Constants.expoConfig?.web?.config,
           processEnv: !!process.env.GOOGLE_MAPS_API_KEY
         });
+        showFallbackMap();
       }
     } else {
       initializeMap();
@@ -132,28 +234,41 @@ export default function MapViewWeb({
   const initializeMap = () => {
     if (!mapRef.current) return;
 
-    const mapOptions: google.maps.MapOptions = {
-      center: region ? 
-        new google.maps.LatLng(region.latitude, region.longitude) : 
-        new google.maps.LatLng(9.0765, 7.3986), // Default to Nigeria
-      zoom: region ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 6, // Adjusted zoom for Nigeria
-      mapTypeId: mapType === 'satellite' ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP,
-      disableDefaultUI: !toolbarEnabled,
-      zoomControl: zoomEnabled !== false,
-      scrollwheel: scrollEnabled !== false,
-      draggable: scrollEnabled !== false,
-      disableDoubleClickZoom: !zoomEnabled,
-      gestureHandling: scrollEnabled === false ? 'none' : 'auto',
-      styles: [
-        {
-          featureType: 'poi',
-          elementType: 'labels',
-          stylers: [{ visibility: 'on' }]
-        }
-      ]
-    };
+    // Check if Google Maps loaded properly
+    if (!window.google || !window.google.maps) {
+      console.error('Google Maps failed to load, showing fallback map');
+      showFallbackMap();
+      return;
+    }
 
-    googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
+    try {
+      const mapOptions: google.maps.MapOptions = {
+        center: region ? 
+          new google.maps.LatLng(region.latitude, region.longitude) : 
+          new google.maps.LatLng(9.0765, 7.3986), // Default to Nigeria
+        zoom: region ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 6, // Adjusted zoom for Nigeria
+        mapTypeId: mapType === 'satellite' ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP,
+        disableDefaultUI: !toolbarEnabled,
+        zoomControl: zoomEnabled !== false,
+        scrollwheel: scrollEnabled !== false,
+        draggable: scrollEnabled !== false,
+        disableDoubleClickZoom: !zoomEnabled,
+        gestureHandling: scrollEnabled === false ? 'none' : 'auto',
+        styles: [
+          {
+            featureType: 'poi',
+            elementType: 'labels',
+            stylers: [{ visibility: 'on' }]
+          }
+        ]
+      };
+
+      googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
+    } catch (error) {
+      console.error('Error initializing Google Maps:', error);
+      showFallbackMap();
+      return;
+    }
 
     // Initialize directions service and renderer
     if (enableStoreLocator) {
@@ -514,6 +629,21 @@ export default function MapViewWeb({
       }
     });
   };
+
+  if (showFallback) {
+    return (
+      <View style={style}>
+        <div 
+          ref={mapRef} 
+          style={{ 
+            width: '100%', 
+            height: '100%',
+            minHeight: '400px'
+          }} 
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={style}>
