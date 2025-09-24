@@ -20,12 +20,12 @@ export default function SplashScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
 
@@ -36,12 +36,12 @@ export default function SplashScreen() {
           Animated.timing(pulseAnim, {
             toValue: 1.05,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ])
       ).start();
