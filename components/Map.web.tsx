@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Constants from 'expo-constants';
+import { locationService } from '../services/locationService';
+import { Merchant } from '../services/types';
 
 // Declare global google maps types
 declare global {
@@ -36,6 +38,10 @@ export default function MapViewWeb({
   enableStoreLocator = false,
   storeLocations = [],
   onLocationSelect,
+  showMerchants = false,
+  enableLiveTracking = false,
+  trackingUserId,
+  onLiveLocationUpdate,
   ...props 
 }: { 
   style?: any; 
@@ -64,6 +70,10 @@ export default function MapViewWeb({
     placeId?: string;
   }>;
   onLocationSelect?: (location: any) => void;
+  showMerchants?: boolean;
+  enableLiveTracking?: boolean;
+  trackingUserId?: string;
+  onLiveLocationUpdate?: (location: any) => void;
   [key: string]: any;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -73,6 +83,9 @@ export default function MapViewWeb({
   const directionsRenderer = useRef<google.maps.DirectionsRenderer | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [filteredLocations, setFilteredLocations] = useState(storeLocations);
+  const [nearbyMerchants, setNearbyMerchants] = useState<Array<Merchant & { liveLocation?: any }>>([]);
+  const [liveTrackingMarker, setLiveTrackingMarker] = useState<google.maps.Marker | null>(null);
+  const merchantMarkersRef = useRef<google.maps.Marker[]>([]);
 
   // Load Google Maps script based on environment variables
   useEffect(() => {
@@ -392,6 +405,115 @@ export default function MapViewWeb({
       addMarkersFromChildren();
     }
   }, [children]);
+
+  // Load nearby merchants when showMerchants is enabled
+  useEffect(() => {
+    if (showMerchants && googleMapRef.current && region) {
+      loadNearbyMerchants(region.latitude, region.longitude);
+    }
+  }, [showMerchants, region]);
+
+  // Set up live tracking
+  useEffect(() => {
+    if (enableLiveTracking && trackingUserId) {
+      const trackLocation = async () => {
+        const response = await locationService.getLiveLocation(trackingUserId);
+        if (response.success && response.data) {
+          updateLiveTrackingMarker(response.data);
+          if (onLiveLocationUpdate) {
+            onLiveLocationUpdate(response.data);
+          }
+        }
+      };
+
+      const interval = setInterval(trackLocation, 5000);
+      trackLocation(); // Initial call
+
+      return () => clearInterval(interval);
+    }
+  }, [enableLiveTracking, trackingUserId]);
+
+  const loadNearbyMerchants = async (latitude: number, longitude: number) => {
+    const response = await locationService.getNearbyMerchantsLive(latitude, longitude, 10);
+    if (response.success && response.data) {
+      setNearbyMerchants(response.data);
+      addMerchantMarkers(response.data);
+    }
+  };
+
+  const updateLiveTrackingMarker = (location: any) => {
+    if (!googleMapRef.current) return;
+
+    if (liveTrackingMarker) {
+      liveTrackingMarker.setPosition(
+        new google.maps.LatLng(location.latitude, location.longitude)
+      );
+    } else {
+      const marker = new google.maps.Marker({
+        position: new google.maps.LatLng(location.latitude, location.longitude),
+        map: googleMapRef.current,
+        title: 'Live Location',
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+              <path d="M16 0C7.163 0 0 7.163 0 16c0 16 16 24 16 24s16-8 16-24C32 7.163 24.837 0 16 0z" fill="#ff4444"/>
+              <circle cx="16" cy="16" r="6" fill="white"/>
+            </svg>
+          `)}`,
+          scaledSize: new google.maps.Size(32, 40),
+          anchor: new google.maps.Point(16, 40)
+        }
+      });
+      setLiveTrackingMarker(marker);
+    }
+  };
+
+  const addMerchantMarkers = (merchants: Array<Merchant & { liveLocation?: any }>) => {
+    if (!googleMapRef.current) return;
+
+    // Clear existing merchant markers
+    merchantMarkersRef.current.forEach(marker => marker.setMap(null));
+    merchantMarkersRef.current = [];
+
+    merchants.forEach((merchant) => {
+      if (merchant.liveLocation || (merchant.address?.coordinates)) {
+        const coords = merchant.liveLocation || merchant.address?.coordinates;
+        
+        const marker = new google.maps.Marker({
+          position: new google.maps.LatLng(coords.latitude, coords.longitude),
+          map: googleMapRef.current,
+          title: merchant.name,
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+                <path d="M16 0C7.163 0 0 7.163 0 16c0 16 16 24 16 24s16-8 16-24C32 7.163 24.837 0 16 0z" fill="#28a745"/>
+                <circle cx="16" cy="16" r="6" fill="white"/>
+              </svg>
+            `)}`,
+            scaledSize: new google.maps.Size(32, 40),
+            anchor: new google.maps.Point(16, 40)
+          }
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="max-width: 200px;">
+              <h3 style="margin: 0 0 8px 0; color: #28a745;">${merchant.name}</h3>
+              <p style="margin: 0 0 8px 0; color: #757575;">${merchant.address?.street || 'Address not available'}</p>
+              <p style="margin: 0 0 8px 0; color: #757575;">Type: ${merchant.type}</p>
+              ${merchant.isOpen ? '<span style="color: #28a745;">● Open</span>' : '<span style="color: #dc3545;">● Closed</span>'}
+            </div>
+          `
+        });
+
+        marker.addListener('click', () => {
+          infoWindow.open(googleMapRef.current, marker);
+        });
+
+        merchantMarkersRef.current.push(marker);
+      }
+    });
+  };
 
   return (
     <View style={style}>

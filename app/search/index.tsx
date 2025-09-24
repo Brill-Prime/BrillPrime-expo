@@ -1,131 +1,134 @@
-import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
   Alert,
   Dimensions,
   Modal,
-  ActivityIndicator 
+  ActivityIndicator
 } from "react-native";
-import {useRouter} from "expo-router";
+import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
+import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
+import { locationService } from '../../services/locationService';
+import { Merchant } from '../../services/types';
 
 const { width } = Dimensions.get('window');
 
 // Enhanced mock data with more detailed information
 const MOCK_MERCHANTS = [
-  { 
-    id: 1, 
-    name: "Lagos Fuel Station", 
-    type: "fuel", 
+  {
+    id: 1,
+    name: "Lagos Fuel Station",
+    type: "fuel",
     category: "fuel",
-    location: "Victoria Island, Lagos", 
-    distance: "2.3 km", 
-    rating: 4.5, 
+    location: "Victoria Island, Lagos",
+    distance: "2.3 km",
+    rating: 4.5,
     reviews: 124,
     coordinates: { latitude: 6.4281, longitude: 3.4219 },
     priceRange: "medium",
     isOpen: true,
     features: ["24/7", "Car Wash", "ATM"]
   },
-  { 
-    id: 2, 
-    name: "Victoria Island Market", 
-    type: "market", 
+  {
+    id: 2,
+    name: "Victoria Island Market",
+    type: "market",
     category: "groceries",
-    location: "Victoria Island, Lagos", 
-    distance: "1.8 km", 
-    rating: 4.2, 
+    location: "Victoria Island, Lagos",
+    distance: "1.8 km",
+    rating: 4.2,
     reviews: 89,
     coordinates: { latitude: 6.4241, longitude: 3.4189 },
     priceRange: "low",
     isOpen: true,
     features: ["Fresh Produce", "Local Vendors"]
   },
-  { 
-    id: 3, 
-    name: "Ikeja Shopping Mall", 
-    type: "shopping", 
+  {
+    id: 3,
+    name: "Ikeja Shopping Mall",
+    type: "shopping",
     category: "retail",
-    location: "Ikeja, Lagos", 
-    distance: "5.1 km", 
-    rating: 4.7, 
+    location: "Ikeja, Lagos",
+    distance: "5.1 km",
+    rating: 4.7,
     reviews: 203,
     coordinates: { latitude: 6.5927, longitude: 3.3615 },
     priceRange: "high",
     isOpen: true,
     features: ["Air Conditioned", "Food Court", "Parking"]
   },
-  { 
-    id: 4, 
-    name: "Lekki Phase 1 Fuel", 
-    type: "fuel", 
+  {
+    id: 4,
+    name: "Lekki Phase 1 Fuel",
+    type: "fuel",
     category: "fuel",
-    location: "Lekki, Lagos", 
-    distance: "4.2 km", 
-    rating: 4.3, 
+    location: "Lekki, Lagos",
+    distance: "4.2 km",
+    rating: 4.3,
     reviews: 67,
     coordinates: { latitude: 6.4474, longitude: 3.5614 },
     priceRange: "medium",
     isOpen: false,
     features: ["Premium Fuel", "Quick Service"]
   },
-  { 
-    id: 5, 
-    name: "Computer Village", 
-    type: "electronics", 
+  {
+    id: 5,
+    name: "Computer Village",
+    type: "electronics",
     category: "electronics",
-    location: "Ikeja, Lagos", 
-    distance: "6.8 km", 
-    rating: 4.1, 
+    location: "Ikeja, Lagos",
+    distance: "6.8 km",
+    rating: 4.1,
     reviews: 156,
     coordinates: { latitude: 6.5492, longitude: 3.3619 },
     priceRange: "medium",
     isOpen: true,
     features: ["Tech Repair", "Wholesale", "Gadgets"]
   },
-  { 
-    id: 6, 
-    name: "Palms Shopping Mall", 
-    type: "shopping", 
+  {
+    id: 6,
+    name: "Palms Shopping Mall",
+    type: "shopping",
     category: "retail",
-    location: "Lekki, Lagos", 
-    distance: "3.9 km", 
-    rating: 4.6, 
+    location: "Lekki, Lagos",
+    distance: "3.9 km",
+    rating: 4.6,
     reviews: 298,
     coordinates: { latitude: 6.4167, longitude: 3.5405 },
     priceRange: "high",
     isOpen: true,
     features: ["Cinema", "Restaurants", "Brand Stores"]
   },
-  { 
-    id: 7, 
-    name: "Mainland Market", 
-    type: "market", 
+  {
+    id: 7,
+    name: "Mainland Market",
+    type: "market",
     category: "groceries",
-    location: "Yaba, Lagos", 
-    distance: "7.2 km", 
-    rating: 3.9, 
+    location: "Yaba, Lagos",
+    distance: "7.2 km",
+    rating: 3.9,
     reviews: 45,
     coordinates: { latitude: 6.5158, longitude: 3.3696 },
     priceRange: "low",
     isOpen: true,
     features: ["Bulk Purchase", "Local Items"]
   },
-  { 
-    id: 8, 
-    name: "Express Fuel Stop", 
-    type: "fuel", 
+  {
+    id: 8,
+    name: "Express Fuel Stop",
+    type: "fuel",
     category: "fuel",
-    location: "Surulere, Lagos", 
-    distance: "8.5 km", 
-    rating: 4.0, 
+    location: "Surulere, Lagos",
+    distance: "8.5 km",
+    rating: 4.0,
     reviews: 78,
     coordinates: { latitude: 6.4969, longitude: 3.3515 },
     priceRange: "low",
@@ -135,71 +138,71 @@ const MOCK_MERCHANTS = [
 ];
 
 const MOCK_COMMODITIES = [
-  { 
-    id: 1, 
-    name: "Premium Petrol", 
-    category: "fuel", 
-    merchants: ["Lagos Fuel Station", "Lekki Phase 1 Fuel"], 
+  {
+    id: 1,
+    name: "Premium Petrol",
+    category: "fuel",
+    merchants: ["Lagos Fuel Station", "Lekki Phase 1 Fuel"],
     price: "₦650/L",
     priceValue: 650,
     availability: "In Stock",
     description: "High quality premium petrol"
   },
-  { 
-    id: 2, 
-    name: "Fresh Tomatoes", 
-    category: "food", 
-    merchants: ["Victoria Island Market", "Mainland Market"], 
+  {
+    id: 2,
+    name: "Fresh Tomatoes",
+    category: "food",
+    merchants: ["Victoria Island Market", "Mainland Market"],
     price: "₦800/kg",
     priceValue: 800,
     availability: "In Stock",
     description: "Fresh local tomatoes"
   },
-  { 
-    id: 3, 
-    name: "Rice (50kg)", 
-    category: "food", 
-    merchants: ["Victoria Island Market"], 
+  {
+    id: 3,
+    name: "Rice (50kg)",
+    category: "food",
+    merchants: ["Victoria Island Market"],
     price: "₦45,000",
     priceValue: 45000,
     availability: "Limited Stock",
     description: "Premium long grain rice"
   },
-  { 
-    id: 4, 
-    name: "iPhone 15", 
-    category: "electronics", 
-    merchants: ["Computer Village", "Palms Shopping Mall"], 
+  {
+    id: 4,
+    name: "iPhone 15",
+    category: "electronics",
+    merchants: ["Computer Village", "Palms Shopping Mall"],
     price: "₦1,200,000",
     priceValue: 1200000,
     availability: "In Stock",
     description: "Latest iPhone model"
   },
-  { 
-    id: 5, 
-    name: "Samsung TV 55\"", 
-    category: "electronics", 
-    merchants: ["Computer Village", "Palms Shopping Mall"], 
+  {
+    id: 5,
+    name: "Samsung TV 55\"",
+    category: "electronics",
+    merchants: ["Computer Village", "Palms Shopping Mall"],
     price: "₦650,000",
     priceValue: 650000,
     availability: "In Stock",
     description: "4K Smart TV"
   },
-  { 
-    id: 6, 
-    name: "Diesel", 
-    category: "fuel", 
-    merchants: ["Lagos Fuel Station", "Express Fuel Stop"], 
+  {
+    id: 6,
+    name: "Diesel",
+    category: "fuel",
+    merchants: ["Lagos Fuel Station", "Express Fuel Stop"],
     price: "₦750/L",
     priceValue: 750,
     availability: "In Stock",
     description: "Clean diesel fuel"
   },
-  { 
-    id: 7, 
-    name: "Bread (Loaf)", 
-    category: "food", 
-    merchants: ["Victoria Island Market", "Mainland Market"], 
+  {
+    id: 7,
+    name: "Bread (Loaf)",
+    category: "food",
+    merchants: ["Victoria Island Market", "Mainland Market"],
     price: "₦500",
     priceValue: 500,
     availability: "In Stock",
@@ -213,8 +216,7 @@ export default function SearchScreen() {
   const [activeTab, setActiveTab] = useState<"merchants" | "commodities">("merchants");
   const [filteredMerchants, setFilteredMerchants] = useState(MOCK_MERCHANTS);
   const [filteredCommodities, setFilteredCommodities] = useState(MOCK_COMMODITIES);
-  const [userLocation, setUserLocation] = useState("Lagos, Nigeria");
-  const [userCoordinates, setUserCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<any>(null); // Modified to support location object
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'fuel' | 'food' | 'groceries'>('all');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -223,6 +225,8 @@ export default function SearchScreen() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false); // Added loading state
+  const [showMap, setShowMap] = useState(false); // State to toggle map view
+  const [nearbyMerchants, setNearbyMerchants] = useState<Merchant[]>([]); // State for nearby merchants
 
   // Enhanced filter states
   const [filters, setFilters] = useState({
@@ -245,6 +249,7 @@ export default function SearchScreen() {
     loadUserData();
     loadSearchHistory();
     loadFavorites();
+    loadUserLocation(); // Load user location on component mount
   }, []);
 
   useEffect(() => {
@@ -313,11 +318,11 @@ export default function SearchScreen() {
     const R = 6371; // Radius of the Earth in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in km
   };
 
@@ -471,7 +476,7 @@ export default function SearchScreen() {
   };
 
   const toggleFavorite = async (id: number) => {
-    const newFavorites = favorites.includes(id) 
+    const newFavorites = favorites.includes(id)
       ? favorites.filter(fav => fav !== id)
       : [...favorites, id];
 
@@ -482,7 +487,7 @@ export default function SearchScreen() {
   const handleNearMe = async () => {
     if (userCoordinates) {
       // Already have location, just sort by distance
-      setFilters({...filters, sortBy: 'distance'});
+      setFilters({ ...filters, sortBy: 'distance' });
       Alert.alert("Near Me", "Results sorted by distance from your location.");
       return;
     }
@@ -505,7 +510,7 @@ export default function SearchScreen() {
         longitude: location.coords.longitude
       };
 
-      setUserCoordinates(coordinates);
+      setUserCoordinates(coordinates); // Set userCoordinates
       await AsyncStorage.setItem("userLocation", JSON.stringify(coordinates));
 
       // Get address
@@ -522,7 +527,7 @@ export default function SearchScreen() {
 
       setUserLocation(addressInfo);
       await AsyncStorage.setItem("userAddress", addressInfo);
-      setFilters({...filters, sortBy: 'distance'});
+      setFilters({ ...filters, sortBy: 'distance' });
 
       setIsLoadingLocation(false);
       Alert.alert("Success!", `Location updated to ${addressInfo}. Results sorted by distance.`);
@@ -549,7 +554,7 @@ export default function SearchScreen() {
   const getIconForType = (type: string) => {
     switch (type) {
       case "fuel": return "car";
-      case "market": 
+      case "market":
       case "groceries": return "basket";
       case "shopping":
       case "retail": return "storefront";
@@ -560,8 +565,8 @@ export default function SearchScreen() {
   };
 
   const renderMerchantItem = (merchant: any) => (
-    <TouchableOpacity 
-      key={merchant.id} 
+    <TouchableOpacity
+      key={merchant.id}
       style={styles.resultItem}
       onPress={() => handleMerchantPress(merchant)}
     >
@@ -572,10 +577,10 @@ export default function SearchScreen() {
         <View style={styles.resultHeader}>
           <Text style={styles.resultTitle}>{merchant.name}</Text>
           <TouchableOpacity onPress={() => toggleFavorite(merchant.id)}>
-            <Ionicons 
-              name={favorites.includes(merchant.id) ? "heart" : "heart-outline"} 
-              size={20} 
-              color={favorites.includes(merchant.id) ? "#e74c3c" : "#ccc"} 
+            <Ionicons
+              name={favorites.includes(merchant.id) ? "heart" : "heart-outline"}
+              size={20}
+              color={favorites.includes(merchant.id) ? "#e74c3c" : "#ccc"}
             />
           </TouchableOpacity>
         </View>
@@ -586,8 +591,8 @@ export default function SearchScreen() {
             <Ionicons name="star" size={14} color="#FFD700" />
             <Text style={styles.ratingText}>{merchant.rating} ({merchant.reviews})</Text>
           </View>
-          <View style={[styles.statusDot, { 
-            backgroundColor: merchant.isOpen ? '#4CAF50' : '#f44336' 
+          <View style={[styles.statusDot, {
+            backgroundColor: merchant.isOpen ? '#4CAF50' : '#f44336'
           }]} />
         </View>
         <View style={styles.featuresContainer}>
@@ -603,8 +608,8 @@ export default function SearchScreen() {
   );
 
   const renderCommodityItem = (commodity: any) => (
-    <TouchableOpacity 
-      key={commodity.id} 
+    <TouchableOpacity
+      key={commodity.id}
       style={styles.resultItem}
       onPress={() => handleCommodityPress(commodity)}
     >
@@ -635,9 +640,6 @@ export default function SearchScreen() {
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      // Removed import from inside useEffect to avoid multiple imports
-      // const { merchantService } = await import('../../services/merchantService');
-      
       // Simulate API call with mock data if actual service is not available
       const response = { success: true, data: MOCK_MERCHANTS };
 
@@ -658,9 +660,6 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      // Removed import from inside useEffect
-      // const { merchantService } = await import('../../services/merchantService');
-
       // Simulate API call with mock data
       const response = { success: true, data: MOCK_COMMODITIES };
 
@@ -678,6 +677,31 @@ export default function SearchScreen() {
     }
   };
 
+  // --- New functions for live location tracking ---
+  const loadUserLocation = async () => {
+    const hasPermission = await locationService.requestLocationPermission();
+    if (hasPermission) {
+      const location = await locationService.getCurrentLocation();
+      if (location) {
+        setUserLocation(location);
+        loadNearbyMerchants(location.latitude, location.longitude);
+      }
+    } else {
+      Alert.alert(
+        'Location Permission Required',
+        'Please enable location access to find nearby merchants.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const loadNearbyMerchants = async (latitude: number, longitude: number) => {
+    const response = await locationService.getNearbyMerchantsLive(latitude, longitude, 10);
+    if (response.success && response.data) {
+      setNearbyMerchants(response.data);
+    }
+  };
+  // --- End of new functions ---
 
   return (
     <View style={styles.container}>
@@ -692,6 +716,12 @@ export default function SearchScreen() {
         </View>
         <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(!showFilters)}>
           <Ionicons name="options-outline" size={24} color="#333" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setShowMap(!showMap)}
+          style={styles.mapToggle}
+        >
+          <Ionicons name={showMap ? "list" : "map"} size={24} color="#007bff" />
         </TouchableOpacity>
       </View>
 
@@ -712,7 +742,7 @@ export default function SearchScreen() {
             onSubmitEditing={filterResults} // Trigger filter on submit
           />
           {searchQuery.length > 0 ? (
-            <TouchableOpacity onPress={() => {setSearchQuery(""); filterResults();}}>
+            <TouchableOpacity onPress={() => { setSearchQuery(""); filterResults(); }}>
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           ) : (
@@ -723,8 +753,8 @@ export default function SearchScreen() {
         </View>
 
         <View style={styles.searchActions}>
-          <TouchableOpacity 
-            style={[styles.actionButton, isLoadingLocation && styles.disabledButton]} 
+          <TouchableOpacity
+            style={[styles.actionButton, isLoadingLocation && styles.disabledButton]}
             onPress={handleNearMe}
             disabled={isLoadingLocation}
           >
@@ -735,8 +765,8 @@ export default function SearchScreen() {
             )}
             <Text style={styles.actionButtonText}>Near Me</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.actionButton, showFilters && styles.activeActionButton]} 
+          <TouchableOpacity
+            style={[styles.actionButton, showFilters && styles.activeActionButton]}
             onPress={() => setShowFilters(!showFilters)}
           >
             <Ionicons name="options" size={16} color={showFilters ? "#fff" : "#4682B4"} />
@@ -750,8 +780,8 @@ export default function SearchScreen() {
         {searchQuery.length > 0 && searchSuggestions.length > 0 && (
           <View style={styles.suggestionsContainer}>
             {searchSuggestions.map((suggestion, index) => (
-              <TouchableOpacity 
-                key={index} 
+              <TouchableOpacity
+                key={index}
                 style={styles.suggestionItem}
                 onPress={() => handleSuggestionSelect(suggestion)}
               >
@@ -772,8 +802,8 @@ export default function SearchScreen() {
               </TouchableOpacity>
             </View>
             {searchHistory.map((item, index) => (
-              <TouchableOpacity 
-                key={index} 
+              <TouchableOpacity
+                key={index}
                 style={styles.historyItem}
                 onPress={() => handleHistorySelect(item)}
               >
@@ -800,10 +830,10 @@ export default function SearchScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
                 <View style={styles.categoryButtons}>
                   {[
-                    {key: 'all', label: 'All'},
-                    {key: 'fuel', label: 'Fuel Stations'},
-                    {key: 'food', label: 'Food & Drinks'},
-                    {key: 'groceries', label: 'Groceries'}
+                    { key: 'all', label: 'All' },
+                    { key: 'fuel', label: 'Fuel Stations' },
+                    { key: 'food', label: 'Food & Drinks' },
+                    { key: 'groceries', label: 'Groceries' }
                   ].map(category => (
                     <TouchableOpacity
                       key={category.key}
@@ -836,7 +866,7 @@ export default function SearchScreen() {
                       styles.filterChip,
                       filters.maxDistance === distance && styles.activeFilterChip
                     ]}
-                    onPress={() => setFilters({...filters, maxDistance: distance})}
+                    onPress={() => setFilters({ ...filters, maxDistance: distance })}
                   >
                     <Text style={[
                       styles.filterChipText,
@@ -859,7 +889,7 @@ export default function SearchScreen() {
                       styles.filterChip,
                       filters.minRating === rating && styles.activeFilterChip
                     ]}
-                    onPress={() => setFilters({...filters, minRating: rating})}
+                    onPress={() => setFilters({ ...filters, minRating: rating })}
                   >
                     <Ionicons name="star" size={14} color={filters.minRating === rating ? "#fff" : "#FFD700"} />
                     <Text style={[
@@ -877,10 +907,10 @@ export default function SearchScreen() {
               <Text style={styles.filterLabel}>Price Range</Text>
               <View style={styles.priceButtons}>
                 {[
-                  {key: 'all', label: 'All'},
-                  {key: 'low', label: 'Under ₦1K'},
-                  {key: 'medium', label: '₦1K-₦50K'},
-                  {key: 'high', label: 'Over ₦50K'}
+                  { key: 'all', label: 'All' },
+                  { key: 'low', label: 'Under ₦1K' },
+                  { key: 'medium', label: '₦1K-₦50K' },
+                  { key: 'high', label: 'Over ₦50K' }
                 ].map(price => (
                   <TouchableOpacity
                     key={price.key}
@@ -888,7 +918,7 @@ export default function SearchScreen() {
                       styles.filterChip,
                       filters.priceRange === price.key && styles.activeFilterChip
                     ]}
-                    onPress={() => setFilters({...filters, priceRange: price.key})}
+                    onPress={() => setFilters({ ...filters, priceRange: price.key })}
                   >
                     <Text style={[
                       styles.filterChipText,
@@ -907,7 +937,7 @@ export default function SearchScreen() {
                   <Text style={styles.filterLabel}>Only show open locations</Text>
                   <TouchableOpacity
                     style={[styles.toggle, filters.onlyOpen && styles.activeToggle]}
-                    onPress={() => setFilters({...filters, onlyOpen: !filters.onlyOpen})}
+                    onPress={() => setFilters({ ...filters, onlyOpen: !filters.onlyOpen })}
                   >
                     <View style={[styles.toggleDot, filters.onlyOpen && styles.activeToggleDot]} />
                   </TouchableOpacity>
@@ -919,10 +949,10 @@ export default function SearchScreen() {
               <Text style={styles.filterLabel}>Sort By</Text>
               <View style={styles.sortButtons}>
                 {[
-                  {key: 'distance', label: 'Distance'},
-                  {key: 'rating', label: 'Rating'},
-                  {key: 'name', label: 'Name'},
-                  ...(activeTab === 'commodities' ? [{key: 'price', label: 'Price'}] : [])
+                  { key: 'distance', label: 'Distance' },
+                  { key: 'rating', label: 'Rating' },
+                  { key: 'name', label: 'Name' },
+                  ...(activeTab === 'commodities' ? [{ key: 'price', label: 'Price' }] : [])
                 ].map(sort => (
                   <TouchableOpacity
                     key={sort.key}
@@ -930,7 +960,7 @@ export default function SearchScreen() {
                       styles.filterChip,
                       filters.sortBy === sort.key && styles.activeFilterChip
                     ]}
-                    onPress={() => setFilters({...filters, sortBy: sort.key})}
+                    onPress={() => setFilters({ ...filters, sortBy: sort.key })}
                   >
                     <Text style={[
                       styles.filterChipText,
@@ -946,55 +976,115 @@ export default function SearchScreen() {
         )}
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === "merchants" && styles.activeTab]}
-          onPress={() => {setActiveTab("merchants"); filterResults();}} // Re-apply filters on tab change
-        >
-          <Text style={[styles.tabText, activeTab === "merchants" && styles.activeTabText]}>
-            Merchants ({filteredMerchants.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === "commodities" && styles.activeTab]}
-          onPress={() => {setActiveTab("commodities"); filterResults();}} // Re-apply filters on tab change
-        >
-          <Text style={[styles.tabText, activeTab === "commodities" && styles.activeTabText]}>
-            Commodities ({filteredCommodities.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Results */}
-      <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
-        {loading ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color="#4682B4" />
-            <Text style={styles.emptyText}>Loading...</Text>
+      {/* Map View or Tabs */}
+      {showMap && userLocation ? (
+        <View style={styles.mapContainer}>
+          <MapView
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            region={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            showsUserLocation={true}
+            showMerchants={true}
+          />
+        </View>
+      ) : (
+        <>
+          {/* Tabs */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "merchants" && styles.activeTab]}
+              onPress={() => { setActiveTab("merchants"); filterResults(); }} // Re-apply filters on tab change
+            >
+              <Text style={[styles.tabText, activeTab === "merchants" && styles.activeTabText]}>
+                Merchants ({filteredMerchants.length})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "commodities" && styles.activeTab]}
+              onPress={() => { setActiveTab("commodities"); filterResults(); }} // Re-apply filters on tab change
+            >
+              <Text style={[styles.tabText, activeTab === "commodities" && styles.activeTabText]}>
+                Commodities ({filteredCommodities.length})
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : activeTab === "merchants" ? (
-          filteredMerchants.length > 0 ? (
-            filteredMerchants.map(renderMerchantItem)
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="search" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No merchants found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
-            </View>
-          )
-        ) : (
-          filteredCommodities.length > 0 ? (
-            filteredCommodities.map(renderCommodityItem)
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="search" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No commodities found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
-            </View>
-          )
-        )}
-      </ScrollView>
+
+          {/* Results */}
+          <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+            {/* Nearby Merchants Section */}
+            {nearbyMerchants.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Nearby Merchants</Text>
+                {nearbyMerchants.slice(0, 3).map((merchant) => (
+                  <TouchableOpacity
+                    key={merchant.id}
+                    style={styles.merchantCard}
+                    onPress={() => router.push(`/merchant/${merchant.id}`)}
+                  >
+                    <View style={styles.merchantInfo}>
+                      <Text style={styles.merchantName}>{merchant.name}</Text>
+                      <Text style={styles.merchantType}>{merchant.type}</Text>
+                      <Text style={styles.merchantAddress}>
+                        {merchant.address?.street || 'Address not available'}
+                      </Text>
+                      <View style={styles.merchantStatus}>
+                        <View style={[
+                          styles.statusDot,
+                          { backgroundColor: merchant.isOpen ? '#28a745' : '#dc3545' }
+                        ]} />
+                        <Text style={styles.statusText}>
+                          {merchant.isOpen ? 'Open' : 'Closed'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.distanceContainer}>
+                      <Text style={styles.distance}>
+                        {userLocation && merchant.address?.coordinates
+                          ? `${locationService.calculateDistance(
+                              userLocation.latitude,
+                              userLocation.longitude,
+                              merchant.address.coordinates.latitude,
+                              merchant.address.coordinates.longitude
+                            ).toFixed(1)} km`
+                          : 'N/A'
+                        }
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Regular Search Results */}
+            {activeTab === "merchants" ? (
+              filteredMerchants.length > 0 ? (
+                filteredMerchants.map(renderMerchantItem)
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search" size={48} color="#ccc" />
+                  <Text style={styles.emptyText}>No merchants found</Text>
+                  <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
+                </View>
+              )
+            ) : (
+              filteredCommodities.length > 0 ? (
+                filteredCommodities.map(renderCommodityItem)
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search" size={48} color="#ccc" />
+                  <Text style={styles.emptyText}>No commodities found</Text>
+                  <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
+                </View>
+              )
+            )}
+          </ScrollView>
+        </>
+      )}
     </View>
   );
 }
@@ -1020,22 +1110,34 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#333',
+    flex: 1,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#666',
     marginTop: 2,
-  },
-  placeholder: {
-    width: 40,
+    textAlign: 'center',
   },
   filterButton: {
     padding: 8,
+  },
+  mapToggle: {
+    padding: 8,
+    marginLeft: 10,
+  },
+  mapContainer: {
+    flex: 1,
+  },
+  map: {
+    flex: 1,
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -1162,11 +1264,11 @@ const styles = StyleSheet.create({
     borderColor: '#e9ecef',
   },
   activeFilterChip: {
-    backgroundColor: '#4682B4', // Changed to a more common blue
+    backgroundColor: '#4682B4',
     borderColor: '#4682B4',
   },
   filterChipText: {
-    fontSize: 13, // Adjusted for consistency
+    fontSize: 13,
     color: '#666',
     fontWeight: '500',
   },
@@ -1179,6 +1281,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
+    paddingHorizontal: 20,
   },
   filtersTitle: {
     fontSize: 16,
@@ -1191,6 +1294,7 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     marginBottom: 15,
+    paddingHorizontal: 20,
   },
   filterLabel: {
     fontSize: 14,
@@ -1279,6 +1383,72 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 15,
   },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+  },
+  merchantCard: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  merchantInfo: {
+    flex: 1,
+  },
+  merchantName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  merchantType: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  merchantAddress: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 8,
+  },
+  merchantStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  distanceContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 16,
+  },
+  distance: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007bff',
+  },
   resultItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1340,11 +1510,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginLeft: 4,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   featuresContainer: {
     flexDirection: 'row',

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,9 +7,12 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  Modal
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import LiveOrderTracker from '../../components/LiveOrderTracker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OrderItem {
   name: string;
@@ -26,7 +28,7 @@ interface Order {
   totalAmount: number;
   subtotal: number;
   deliveryFee: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'out_for_delivery';
   orderDate: string;
   estimatedDelivery?: string;
   deliveryAddress: string;
@@ -45,16 +47,32 @@ export default function OrderDetails() {
   const { id } = useLocalSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [showLiveTracking, setShowLiveTracking] = useState(false);
+  const [userRole, setUserRole] = useState<'consumer' | 'driver'>('consumer');
+
 
   useEffect(() => {
     loadOrderDetails();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
 
     return () => subscription?.remove();
   }, [id]);
+
+  useEffect(() => {
+    // Load order details based on ID
+    console.log('Loading order details for ID:', id);
+    loadUserRole();
+  }, [id]);
+
+  const loadUserRole = async () => {
+    const role = await AsyncStorage.getItem('userRole');
+    if (role === 'driver' || role === 'consumer') {
+      setUserRole(role);
+    }
+  };
 
   // Calculate responsive dimensions
   const isSmallScreen = screenDimensions.width < 400;
@@ -90,6 +108,11 @@ export default function OrderDetails() {
         deliveryTime: '05:00pm',
         driverName: 'Mike',
       };
+      // Simulate a status change for demonstration purposes
+      if (id === '1001') { // Example ID for an order that is out for delivery
+        mockOrder.status = 'out_for_delivery';
+        mockOrder.driverName = 'John Doe';
+      }
       setOrder(mockOrder);
     } catch (error) {
       console.error('Error loading order details:', error);
@@ -139,7 +162,7 @@ export default function OrderDetails() {
       Alert.alert('Cannot Modify', 'This order cannot be modified at this stage.');
       return;
     }
-    
+
     Alert.alert('Modify Order', 'Order modification feature coming soon.');
   };
 
@@ -167,6 +190,7 @@ export default function OrderDetails() {
       case 'pending': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
       case 'preparing': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
       case 'confirmed': return { bg: 'transparent', text: '#3498db', border: '#3498db' };
+      case 'out_for_delivery': return { bg: '#28a745', text: '#fff', border: '#28a745'};
       default: return { bg: 'transparent', text: '#95a5a6', border: '#95a5a6' };
     }
   };
@@ -178,6 +202,7 @@ export default function OrderDetails() {
       case 'pending': return 'Pending';
       case 'preparing': return 'Preparing';
       case 'confirmed': return 'Confirmed';
+      case 'out_for_delivery': return 'Out for Delivery';
       default: return status;
     }
   };
@@ -188,12 +213,12 @@ export default function OrderDetails() {
       { status: 'confirmed', title: 'Order Confirmed', time: 'Pending...', completed: false, current: false },
       { status: 'preparing', title: 'Preparing Order', time: 'Pending...', completed: false, current: false },
       { status: 'ready', title: 'Ready for Pickup/Delivery', time: 'Pending...', completed: false, current: false },
-      { status: 'delivered', title: 'Order Completed', time: order.deliveryTime || 'Pending...', completed: false, current: false }
+      { status: 'delivered', time: order.deliveryTime || 'Pending...', completed: false, current: false }
     ];
 
     const statusOrder = ['pending', 'confirmed', 'preparing', 'ready', 'delivered'];
     const currentIndex = statusOrder.indexOf(order.status);
-    
+
     if (order.status === 'cancelled') {
       return [{
         status: 'cancelled',
@@ -236,12 +261,12 @@ export default function OrderDetails() {
       month: 'long',
       year: 'numeric',
     };
-    
+
     const day = date.getDate();
     const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
                   day === 2 || day === 22 ? 'nd' :
                   day === 3 || day === 23 ? 'rd' : 'th';
-    
+
     return date.toLocaleDateString('en-US', options).replace(/\d+/, `${day}${suffix}`);
   };
 
@@ -298,21 +323,21 @@ export default function OrderDetails() {
               {order.location}
             </Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { fontSize: responsiveFontSize.regular }]}>Time taken</Text>
             <Text style={[styles.detailValue, { fontSize: responsiveFontSize.regular }]}>
               {order.timeTaken || 'N/A'}
             </Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { fontSize: responsiveFontSize.regular }]}>Date</Text>
             <Text style={[styles.detailValue, { fontSize: responsiveFontSize.regular }]}>
               {formatDate(order.orderDate)}
             </Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { fontSize: responsiveFontSize.regular }]}>Time of Delivery</Text>
             <Text style={[styles.detailValue, { fontSize: responsiveFontSize.regular }]}>
@@ -329,21 +354,21 @@ export default function OrderDetails() {
           <Text style={[styles.summaryTitle, { fontSize: isSmallScreen ? 16 : 18 }]}>
             Purchase Summary
           </Text>
-          
+
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { fontSize: responsiveFontSize.regular }]}>Subtotal</Text>
             <Text style={[styles.summaryValue, { fontSize: responsiveFontSize.regular }]}>
               ₦{order.subtotal.toLocaleString()}.00
             </Text>
           </View>
-          
+
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { fontSize: responsiveFontSize.regular }]}>Delivery fee</Text>
             <Text style={[styles.summaryValue, { fontSize: responsiveFontSize.regular }]}>
               ₦{order.deliveryFee.toLocaleString()}.00
             </Text>
           </View>
-          
+
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={[styles.totalLabel, { fontSize: responsiveFontSize.regular }]}>Total</Text>
             <Text style={[styles.totalValue, { fontSize: responsiveFontSize.regular }]}>
@@ -400,7 +425,9 @@ export default function OrderDetails() {
               height: isSmallScreen ? 25 : 30,
               borderRadius: isSmallScreen ? 12.5 : 15 
             }]}>
-              <Text style={[styles.driverAvatarText, { fontSize: responsiveFontSize.small }]}>M</Text>
+              <Text style={[styles.driverAvatarText, { fontSize: responsiveFontSize.small }]}>
+                {order.driverName?.charAt(0) || 'M'}
+              </Text>
             </View>
             <Text style={[styles.driverName, { fontSize: responsiveFontSize.small }]}>
               {order.driverName || 'Mike'}
@@ -488,7 +515,7 @@ export default function OrderDetails() {
               </TouchableOpacity>
             </View>
           )}
-          
+
           {/* Secondary Actions Row */}
           <View style={[styles.secondaryActions, {
             flexDirection: isSmallScreen ? 'column' : 'row',
@@ -511,8 +538,36 @@ export default function OrderDetails() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {order.status === 'out_for_delivery' && (
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.trackButton]}
+              onPress={() => setShowLiveTracking(true)}
+            >
+              <Ionicons name="location-outline" size={20} color="white" />
+              <Text style={styles.actionButtonText}>Live Tracking</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="chatbubble-outline" size={20} color="white" />
+            <Text style={styles.actionButtonText}>Contact Driver</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Live Tracking Modal */}
+      <Modal
+        visible={showLiveTracking}
+        animationType="slide"
+        onRequestClose={() => setShowLiveTracking(false)}
+      >
+        <LiveOrderTracker
+          orderId={id as string}
+          userRole={userRole}
+          onClose={() => setShowLiveTracking(false)}
+        />
+      </Modal>
     </View>
   );
 }
@@ -625,7 +680,6 @@ const styles = StyleSheet.create({
   summary: {
     marginTop: 25,
     marginBottom: 25,
-    padding: 20,
     backgroundColor: '#2f75c2',
     borderRadius: 12,
   },
@@ -846,5 +900,23 @@ const styles = StyleSheet.create({
   timelineTime: {
     fontSize: 12,
     color: '#666',
+  },
+  actionButton: {
+    backgroundColor: '#0b1437',
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  trackButton: {
+    backgroundColor: '#28a745',
   },
 });
