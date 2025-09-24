@@ -51,10 +51,6 @@ export default ({ config }) => {
       "expo-router",
       "expo-web-browser"
     ],
-    entryPoint:
-      variant === "admin"
-        ? "./app/admin-panel/admin-panel.tsx"
-        : "./app/main-app/main-app.tsx",
     platforms: variant === "admin" ? ["web"] : ["ios", "android", "web"],
   };
 };

@@ -99,7 +99,7 @@ export default function SplashScreen() {
         console.error('Error verifying token:', error);
 
         // Handle different types of errors
-        if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        if ((error as Error).message?.includes('network') || (error as Error).message?.includes('fetch')) {
           console.log('Network error, using cached data');
           // On network error, try to navigate based on stored role if token hasn't expired
           if (!isTokenExpired) {
@@ -154,7 +154,7 @@ export default function SplashScreen() {
         >
           <Image
             source={require('../assets/images/logo.png')}
-            style={styles.logoImage}
+            style={styles.logoImage as any}
             resizeMode="contain"
           />
         </Animated.View>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
-    minHeight: '100vh',
+    minHeight: '100%',
     width: '100%',
   },
   content: {
