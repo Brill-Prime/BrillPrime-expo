@@ -15,31 +15,51 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { useAlert } from '../../components/AlertProvider';
 
-interface UserProfile {
-  firstName: string;
-  lastName: string;
+interface MerchantProfile {
+  businessName: string;
+  category: string;
   email: string;
   phone: string;
   address: string;
   profileImage?: string;
+  operatingHours: {
+    monday: string;
+    tuesday: string;
+    wednesday: string;
+    thursday: string;
+    friday: string;
+    saturday: string;
+    sunday: string;
+  };
 }
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile>({
-    firstName: '',
-    lastName: '',
+  const { showSuccess, showError } = useAlert();
+  const [profile, setProfile] = useState<MerchantProfile>({
+    businessName: '',
+    category: '',
     email: '',
     phone: '',
     address: '',
     profileImage: undefined,
+    operatingHours: {
+      monday: '8:00am - 6:00pm',
+      tuesday: '8:00am - 6:00pm',
+      wednesday: '8:00am - 6:00pm',
+      thursday: '8:00am - 6:00pm',
+      friday: '8:00am - 6:00pm',
+      saturday: '8:00am - 6:00pm',
+      sunday: 'Closed',
+    },
   });
   const [loading, setLoading] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
-    loadUserProfile();
+    loadMerchantProfile();
     
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
@@ -48,39 +68,55 @@ export default function EditProfileScreen() {
     return () => subscription?.remove();
   }, []);
 
-  const loadUserProfile = async () => {
+  const loadMerchantProfile = async () => {
     try {
       const email = await AsyncStorage.getItem('userEmail');
       const phone = await AsyncStorage.getItem('userPhone');
-      const name = await AsyncStorage.getItem('userName');
+      const businessName = await AsyncStorage.getItem('merchantBusinessName') || await AsyncStorage.getItem('userName');
+      const category = await AsyncStorage.getItem('merchantCategory');
       const address = await AsyncStorage.getItem('userAddress');
       const profileImage = await AsyncStorage.getItem('userProfileImage');
-      
-      // Split name into first and last
-      const nameParts = (name || 'John Doe').split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
+      const operatingHours = await AsyncStorage.getItem('merchantOperatingHours');
 
       setProfile({
-        firstName,
-        lastName,
-        email: email || '',
-        phone: phone || '',
-        address: address || '',
+        businessName: businessName || 'Total Energy',
+        category: category || 'Oil & Gas',
+        email: email || 'info@totalenergies.com',
+        phone: phone || '+234 8100 0000 00',
+        address: address || 'Wuse II, Abuja',
         profileImage: profileImage || undefined,
+        operatingHours: operatingHours ? JSON.parse(operatingHours) : {
+          monday: '8:00am - 6:00pm',
+          tuesday: '8:00am - 6:00pm',
+          wednesday: '8:00am - 6:00pm',
+          thursday: '8:00am - 6:00pm',
+          friday: '8:00am - 6:00pm',
+          saturday: '8:00am - 6:00pm',
+          sunday: 'Closed',
+        },
       });
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('Error loading merchant profile:', error);
     }
   };
 
-  const updateProfile = (field: keyof UserProfile, value: string) => {
+  const updateProfile = (field: keyof MerchantProfile, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
   };
 
+  const updateOperatingHours = (day: string, time: string) => {
+    setProfile(prev => ({
+      ...prev,
+      operatingHours: {
+        ...prev.operatingHours,
+        [day]: time,
+      },
+    }));
+  };
+
   const validateForm = () => {
-    if (!profile.firstName.trim()) {
-      Alert.alert('Validation Error', 'First name is required');
+    if (!profile.businessName.trim()) {
+      Alert.alert('Validation Error', 'Business name is required');
       return false;
     }
     if (!profile.email.trim()) {
@@ -178,14 +214,6 @@ export default function EditProfileScreen() {
     setProfile(prev => ({ ...prev, profileImage: undefined }));
   };
 
-  const handleChangePassword = () => {
-    router.push('/profile/change-password');
-  };
-
-  const handlePrivacySettings = () => {
-    router.push('/profile/privacy-settings');
-  };
-
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -193,12 +221,16 @@ export default function EditProfileScreen() {
 
     try {
       // Save to AsyncStorage
-      await AsyncStorage.setItem('userName', `${profile.firstName} ${profile.lastName}`.trim());
+      await AsyncStorage.setItem('merchantBusinessName', profile.businessName);
+      await AsyncStorage.setItem('userName', profile.businessName);
+      await AsyncStorage.setItem('merchantCategory', profile.category);
       await AsyncStorage.setItem('userEmail', profile.email);
       await AsyncStorage.setItem('userPhone', profile.phone);
       if (profile.address) {
         await AsyncStorage.setItem('userAddress', profile.address);
       }
+      await AsyncStorage.setItem('merchantOperatingHours', JSON.stringify(profile.operatingHours));
+      
       if (profile.profileImage) {
         await AsyncStorage.setItem('userProfileImage', profile.profileImage);
       } else {
@@ -209,8 +241,8 @@ export default function EditProfileScreen() {
       try {
         const { userService } = await import('../../services/userService');
         await userService.updateProfile({
-          firstName: profile.firstName,
-          lastName: profile.lastName,
+          firstName: profile.businessName,
+          lastName: '',
           email: profile.email,
           phone: profile.phone,
           address: profile.address,
@@ -220,14 +252,11 @@ export default function EditProfileScreen() {
         console.log('API call failed, but local storage updated:', apiError);
       }
 
-      Alert.alert(
-        'Success',
-        'Profile updated successfully',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      showSuccess('Success', 'Profile updated successfully');
+      router.back();
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      showError('Error', 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -240,18 +269,10 @@ export default function EditProfileScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
+          <Ionicons name="chevron-back" size={24} color="#1C1B1F" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>
-            {loading ? 'Saving...' : 'Save'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerCenter} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -269,98 +290,122 @@ export default function EditProfileScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <Image 
-                  source={require('../../assets/images/account_circle.svg')}
-                  style={styles.profileImage}
-                  resizeMode="contain"
-                />
+                <View style={styles.defaultProfileImage}>
+                  <Image 
+                    source={require('../../assets/images/logo.png')}
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
+                </View>
               )}
-              <TouchableOpacity style={styles.cameraButton} onPress={handleChangePhoto}>
-                <Ionicons name="camera" size={16} color="#fff" />
-              </TouchableOpacity>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleChangePhoto}>
-              <Text style={styles.changePhotoText}>Tap to change photo</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Form Fields */}
+          {/* Business Name */}
           <View style={styles.formSection}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>First Name *</Text>
+            <Text style={styles.inputLabel}>Business Name</Text>
+            <View style={styles.inputField}>
               <TextInput
                 style={styles.textInput}
-                value={profile.firstName}
-                onChangeText={(text) => updateProfile('firstName', text)}
-                placeholder="Enter your first name"
-                placeholderTextColor="#999"
+                value={profile.businessName}
+                onChangeText={(text) => updateProfile('businessName', text)}
+                placeholder="Enter business name"
+                placeholderTextColor="#B7B7B7"
               />
             </View>
+          </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Last Name</Text>
+          {/* Category */}
+          <View style={styles.formSection}>
+            <Text style={styles.inputLabel}>Category</Text>
+            <View style={styles.inputField}>
               <TextInput
                 style={styles.textInput}
-                value={profile.lastName}
-                onChangeText={(text) => updateProfile('lastName', text)}
-                placeholder="Enter your last name"
-                placeholderTextColor="#999"
+                value={profile.category}
+                onChangeText={(text) => updateProfile('category', text)}
+                placeholder="Enter business category"
+                placeholderTextColor="#B7B7B7"
               />
             </View>
+          </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email Address *</Text>
+          {/* Email */}
+          <View style={styles.formSection}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <View style={styles.inputField}>
               <TextInput
                 style={styles.textInput}
                 value={profile.email}
                 onChangeText={(text) => updateProfile('email', text)}
-                placeholder="Enter your email"
-                placeholderTextColor="#999"
+                placeholder="Enter email address"
+                placeholderTextColor="#B7B7B7"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
+          </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Phone Number *</Text>
+          {/* Phone Number */}
+          <View style={styles.formSection}>
+            <Text style={styles.inputLabel}>Number</Text>
+            <View style={styles.inputField}>
               <TextInput
                 style={styles.textInput}
                 value={profile.phone}
                 onChangeText={(text) => updateProfile('phone', text)}
-                placeholder="Enter your phone number"
-                placeholderTextColor="#999"
+                placeholder="Enter phone number"
+                placeholderTextColor="#B7B7B7"
                 keyboardType="phone-pad"
               />
             </View>
+          </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Address</Text>
+          {/* Address */}
+          <View style={styles.formSection}>
+            <Text style={styles.inputLabel}>Address</Text>
+            <View style={styles.inputField}>
               <TextInput
-                style={[styles.textInput, styles.textArea]}
+                style={styles.textInput}
                 value={profile.address}
                 onChangeText={(text) => updateProfile('address', text)}
-                placeholder="Enter your address"
-                placeholderTextColor="#999"
-                multiline
-                numberOfLines={3}
+                placeholder="Enter business address"
+                placeholderTextColor="#B7B7B7"
               />
             </View>
           </View>
 
-          {/* Additional Options */}
-          <View style={styles.optionsSection}>
-            <TouchableOpacity style={styles.optionItem} onPress={handleChangePassword}>
-              <Ionicons name="key-outline" size={20} color="#4682B4" />
-              <Text style={styles.optionText}>Change Password</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionItem} onPress={handlePrivacySettings}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#4682B4" />
-              <Text style={styles.optionText}>Privacy Settings</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
+          {/* Operating Hours */}
+          <View style={styles.operatingHoursSection}>
+            <Text style={styles.sectionTitle}>Opening Hours</Text>
+            
+            {Object.entries(profile.operatingHours).map(([day, time]) => (
+              <View key={day} style={styles.dayRow}>
+                <Text style={styles.dayLabel}>
+                  {day.charAt(0).toUpperCase() + day.slice(1)}
+                </Text>
+                <View style={styles.timeField}>
+                  <TextInput
+                    style={styles.timeInput}
+                    value={time}
+                    onChangeText={(text) => updateOperatingHours(day, text)}
+                    placeholder="8:00am - 6:00pm"
+                    placeholderTextColor="#B7B7B7"
+                  />
+                </View>
+              </View>
+            ))}
           </View>
+
+          {/* Edit Button */}
+          <TouchableOpacity 
+            style={[styles.editButton, loading && styles.disabledButton]}
+            onPress={handleSave}
+            disabled={loading}
+          >
+            <Text style={styles.editButtonText}>
+              {loading ? 'Saving...' : 'Edit'}
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.bottomSpacing} />
         </View>
@@ -372,53 +417,35 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
+    paddingTop: 50,
     paddingBottom: 15,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   backButton: {
     padding: 8,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1b1b1b',
+  headerCenter: {
     flex: 1,
-    textAlign: 'center',
   },
-  saveButton: {
-    backgroundColor: '#4682B4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  disabledButton: {
-    backgroundColor: '#bdc3c7',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+  headerSpacer: {
+    width: 40,
   },
   content: {
     flex: 1,
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 30,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    marginBottom: 20,
+    marginBottom: 40,
+    marginTop: 20,
   },
   profileImageContainer: {
     position: 'relative',
-    marginBottom: 10,
   },
   profileImage: {
     width: 100,
@@ -426,67 +453,108 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: '#f0f0f0',
   },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#4682B4',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
+  defaultProfileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  changePhotoText: {
-    fontSize: 14,
-    color: '#4682B4',
-    fontWeight: '500',
+  logoImage: {
+    width: 75,
+    height: 55,
   },
   formSection: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
+    marginBottom: 25,
   },
   inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1b1b1b',
-    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'black',
+    marginBottom: 12,
+    fontFamily: 'Montserrat-Bold',
+  },
+  inputField: {
+    height: 59,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    justifyContent: 'center',
   },
   textInput: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    padding: 15,
     fontSize: 16,
     color: '#333',
+    fontFamily: 'Montserrat-Regular',
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
+  operatingHoursSection: {
+    marginBottom: 40,
   },
-  optionsSection: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    overflow: 'hidden',
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'black',
+    marginBottom: 20,
+    fontFamily: 'Montserrat-Bold',
   },
-  optionItem: {
+  dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 18,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f0f0f0',
+    marginBottom: 15,
   },
-  optionText: {
+  dayLabel: {
     fontSize: 16,
-    color: '#1b1b1b',
-    marginLeft: 15,
+    fontWeight: '600',
+    color: 'black',
+    width: 100,
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  timeField: {
     flex: 1,
+    height: 33,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    backgroundColor: 'white',
+    paddingHorizontal: 15,
+    justifyContent: 'center',
+    marginLeft: 15,
+  },
+  timeInput: {
+    fontSize: 14,
+    color: '#333',
+    fontFamily: 'Montserrat-Regular',
+    textAlign: 'center',
+  },
+  editButton: {
+    backgroundColor: '#4682B4',
+    borderRadius: 30,
+    paddingVertical: 16,
+    paddingHorizontal: 58,
+    alignSelf: 'center',
+    marginBottom: 20,
+    shadowColor: '#4682B4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  disabledButton: {
+    backgroundColor: '#bdc3c7',
+    shadowColor: '#bdc3c7',
+  },
+  editButtonText: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: '500',
+    fontFamily: 'Montserrat-Medium',
   },
   bottomSpacing: {
     height: 30,
