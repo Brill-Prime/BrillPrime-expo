@@ -190,8 +190,7 @@ export default function MapViewWeb({
     const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey || 
                    Constants.expoConfig?.web?.config?.googleMapsApiKey ||
                    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-                   process.env.GOOGLE_MAPS_API_KEY ||
-                   "AIzaSyBMtl3oNtP2tZsuOxJanCcHYJfs8Ksq3DM";
+                   process.env.GOOGLE_MAPS_API_KEY;
 
     if (!window.google) {
       console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
@@ -244,19 +243,13 @@ export default function MapViewWeb({
           new google.maps.LatLng(9.0765, 7.3986), // Default to Nigeria
         zoom: region ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 6, // Adjusted zoom for Nigeria
         mapTypeId: mapType === 'satellite' ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP,
+        mapId: '8a42169807b0e4f056d1abfc', // Custom Map ID for brillprime styling
         disableDefaultUI: !toolbarEnabled,
         zoomControl: zoomEnabled !== false,
         scrollwheel: scrollEnabled !== false,
         draggable: scrollEnabled !== false,
         disableDoubleClickZoom: !zoomEnabled,
-        gestureHandling: scrollEnabled === false ? 'none' : 'auto',
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'on' }]
-          }
-        ]
+        gestureHandling: scrollEnabled === false ? 'none' : 'auto'
       };
 
       googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
@@ -593,8 +586,8 @@ export default function MapViewWeb({
     merchantMarkersRef.current = [];
 
     merchants.forEach((merchant) => {
-      if (merchant.liveLocation || (merchant.address?.coordinates)) {
-        const coords = merchant.liveLocation || merchant.address?.coordinates;
+      if (merchant.liveLocation || merchant.latitude) {
+        const coords = merchant.liveLocation || { latitude: merchant.latitude, longitude: merchant.longitude };
 
         const marker = new google.maps.Marker({
           position: new google.maps.LatLng(coords.latitude, coords.longitude),
@@ -616,7 +609,7 @@ export default function MapViewWeb({
           content: `
             <div style="max-width: 200px;">
               <h3 style="margin: 0 0 8px 0; color: #28a745;">${merchant.name}</h3>
-              <p style="margin: 0 0 8px 0; color: #757575;">${merchant.address?.street || 'Address not available'}</p>
+              <p style="margin: 0 0 8px 0; color: #757575;">${merchant.address || 'Address not available'}</p>
               <p style="margin: 0 0 8px 0; color: #757575;">Type: ${merchant.type}</p>
               ${merchant.isOpen ? '<span style="color: #28a745;">● Open</span>' : '<span style="color: #dc3545;">● Closed</span>'}
             </div>
