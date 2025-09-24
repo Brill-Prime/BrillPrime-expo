@@ -186,34 +186,27 @@ export default function MapViewWeb({
 
   // Load Google Maps script based on environment variables
   useEffect(() => {
-    // Access API key from multiple sources
+    // Access API key from multiple sources with your specific key as fallback
     const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey || 
                    Constants.expoConfig?.web?.config?.googleMapsApiKey ||
                    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-                   process.env.GOOGLE_MAPS_API_KEY;
+                   process.env.GOOGLE_MAPS_API_KEY ||
+                   "AIzaSyBMtl3oNtP2tZsuOxJanCcHYJfs8Ksq3DM";
 
     if (!window.google) {
-      if (apiKey) {
-        console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
+      console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
 
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,marker&loading=async`;
-        script.async = true;
-        script.defer = true;
-        script.onload = initializeMap;
-        script.onerror = () => {
-          console.error('Failed to load Google Maps script');
-          showFallbackMap();
-        };
-        document.head.appendChild(script);
-      } else {
-        console.error('Google Maps API key is not configured. Available config:', {
-          expoConfig: Constants.expoConfig?.extra,
-          webConfig: Constants.expoConfig?.web?.config,
-          processEnv: !!process.env.GOOGLE_MAPS_API_KEY
-        });
-        showFallbackMap();
-      }
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,marker&loading=async`;
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeMap;
+      script.onerror = (error) => {
+        console.error('Failed to load Google Maps script:', error);
+        // Try to initialize anyway in case it's just a warning
+        setTimeout(initializeMap, 1000);
+      };
+      document.head.appendChild(script);
     } else {
       initializeMap();
     }
@@ -232,12 +225,15 @@ export default function MapViewWeb({
   }, [region]);
 
   const initializeMap = () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current) {
+      setTimeout(initializeMap, 500);
+      return;
+    }
 
-    // Check if Google Maps loaded properly
+    // Check if Google Maps loaded properly, wait if not ready
     if (!window.google || !window.google.maps) {
-      console.error('Google Maps failed to load, showing fallback map');
-      showFallbackMap();
+      console.log('Google Maps not ready yet, retrying...');
+      setTimeout(initializeMap, 1000);
       return;
     }
 
@@ -264,9 +260,15 @@ export default function MapViewWeb({
       };
 
       googleMapRef.current = new google.maps.Map(mapRef.current, mapOptions);
+      console.log('Google Maps initialized successfully');
     } catch (error) {
       console.error('Error initializing Google Maps:', error);
-      showFallbackMap();
+      // Only show fallback after multiple failed attempts
+      setTimeout(() => {
+        if (!googleMapRef.current) {
+          showFallbackMap();
+        }
+      }, 3000);
       return;
     }
 

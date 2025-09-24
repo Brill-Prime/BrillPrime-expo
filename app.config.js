@@ -1,4 +1,3 @@
-
 // app.config.js
 export default ({ config }) => {
   const variant = process.env.APP_VARIANT || "main";
@@ -6,7 +5,7 @@ export default ({ config }) => {
   return {
     ...config,
     extra: {
-      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || "AIzaSyBMtl3oNtP2tZsuOxJanCcHYJfs8Ksq3DM",
       googleMapsAndroidApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY,
       googleMapsIosApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY,
     },
@@ -45,7 +44,7 @@ export default ({ config }) => {
       favicon: "./assets/images/logo.png",
       bundler: "metro",
       config: {
-        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || "AIzaSyBMtl3oNtP2tZsuOxJanCcHYJfs8Ksq3DM",
       }
     },
     plugins: [
