@@ -21,10 +21,10 @@ export default function ConsumerHome() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [region, setRegion] = useState({
-    latitude: 6.5244, // Default to Lagos, Nigeria coordinates
-    longitude: 3.3792,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
+    latitude: 9.0765, // Default to center of Nigeria
+    longitude: 7.3986,
+    latitudeDelta: 8.0, // Show most of Nigeria
+    longitudeDelta: 8.0,
   });
   const [nearbyMerchants] = useState([
     { id: 1, name: "Lagos Fuel Station", latitude: 6.5244, longitude: 3.3792, type: "fuel" },

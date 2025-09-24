@@ -94,7 +94,7 @@ export default function MapViewWeb({
                    Constants.expoConfig?.web?.config?.googleMapsApiKey ||
                    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
                    process.env.GOOGLE_MAPS_API_KEY;
-    
+
     if (!window.google) {
       if (apiKey) {
         console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
@@ -135,8 +135,8 @@ export default function MapViewWeb({
     const mapOptions: google.maps.MapOptions = {
       center: region ? 
         new google.maps.LatLng(region.latitude, region.longitude) : 
-        new google.maps.LatLng(6.5244, 3.3792), // Default to Lagos
-      zoom: region ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 10,
+        new google.maps.LatLng(9.0765, 7.3986), // Default to Nigeria
+      zoom: region ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 6, // Adjusted zoom for Nigeria
       mapTypeId: mapType === 'satellite' ? google.maps.MapTypeId.SATELLITE : google.maps.MapTypeId.ROADMAP,
       disableDefaultUI: !toolbarEnabled,
       zoomControl: zoomEnabled !== false,
@@ -244,7 +244,7 @@ export default function MapViewWeb({
 
     filteredLocations.forEach((location) => {
       let marker: any;
-      
+
       if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
         marker = new google.maps.marker.AdvancedMarkerElement({
           position: new google.maps.LatLng(location.coords.lat, location.coords.lng),
@@ -336,7 +336,7 @@ export default function MapViewWeb({
       // Clear existing markers
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
-      
+
       // Add updated markers
       addStoreLocatorMarkers();
       addMarkersFromChildren();
@@ -358,7 +358,7 @@ export default function MapViewWeb({
 
         if (coordinate) {
           let marker: any;
-          
+
           // Use modern AdvancedMarkerElement if available, fallback to classic Marker
           if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
             marker = new google.maps.marker.AdvancedMarkerElement({
@@ -478,7 +478,7 @@ export default function MapViewWeb({
     merchants.forEach((merchant) => {
       if (merchant.liveLocation || (merchant.address?.coordinates)) {
         const coords = merchant.liveLocation || merchant.address?.coordinates;
-        
+
         const marker = new google.maps.Marker({
           position: new google.maps.LatLng(coords.latitude, coords.longitude),
           map: googleMapRef.current,
