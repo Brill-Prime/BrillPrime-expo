@@ -427,13 +427,11 @@ export default function CommoditiesScreen() {
                       key={product.id}
                       style={styles.productCard}
                       onPress={() => handleProductPress(product)}
-                      onPressIn={(e) => {
-                        if (e.nativeEvent.source.module && e.nativeEvent.source.module.startsWith('TouchableOpacity')) {
-                          e.currentTarget.setNativeProps({ style: { backgroundColor: '#0B1A51' } });
-                        }
+                      onPressIn={() => {
+                        // Note: setNativeProps not available in web, handled by pressable state
                       }}
-                      onPressOut={(e) => {
-                        e.currentTarget.setNativeProps({ style: { backgroundColor: '#fff' } });
+                      onPressOut={() => {
+                        // Note: setNativeProps not available in web, handled by pressable state
                       }}
                     >
                       <View style={styles.productHeader}>

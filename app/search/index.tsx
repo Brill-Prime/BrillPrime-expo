@@ -230,13 +230,14 @@ export default function SearchScreen() {
   const [nearbyMerchants, setNearbyMerchants] = useState<Merchant[]>([]); // State for nearby merchants
   const [showCommunicationModal, setShowCommunicationModal] = useState(false); // State for communication modal
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null); // State for selected merchant for modal
+  const [userCoordinates, setUserCoordinates] = useState<{latitude: number; longitude: number} | null>(null); // User coordinates state
 
   // Enhanced filter states
   const [filters, setFilters] = useState({
     maxDistance: 10, // km
     minRating: 0,
     priceRange: 'all', // 'low', 'medium', 'high', 'all'
-    category: 'all', // 'fuel', 'groceries', 'electronics', 'retail', 'all'
+    category: 'all' as 'fuel' | 'groceries' | 'food' | 'all', // 'fuel', 'groceries', 'electronics', 'retail', 'all'
     sortBy: 'distance', // 'distance', 'rating', 'name', 'price'
     onlyOpen: false,
     hasFeatures: [] as string[]
@@ -582,27 +583,27 @@ export default function SearchScreen() {
       <View style={styles.resultContent}>
         <View style={styles.resultHeader}>
           <Text style={styles.resultTitle}>{merchant.name}</Text>
-          <TouchableOpacity onPress={() => toggleFavorite(merchant.id)}>
+          <TouchableOpacity onPress={() => toggleFavorite(merchant.id.toString())}>
             <Ionicons
-              name={favorites.includes(merchant.id) ? "heart" : "heart-outline"}
+              name={favorites.includes(merchant.id.toString()) ? "heart" : "heart-outline"}
               size={20}
-              color={favorites.includes(merchant.id) ? "#e74c3c" : "#ccc"}
+              color={favorites.includes(merchant.id.toString()) ? "#e74c3c" : "#ccc"}
             />
           </TouchableOpacity>
         </View>
-        <Text style={styles.resultSubtitle}>{merchant.location}</Text>
+        <Text style={styles.resultSubtitle}>{merchant.address}</Text>
         <View style={styles.resultMeta}>
-          <Text style={styles.resultDistance}>{merchant.distance}</Text>
+          <Text style={styles.resultDistance}>{"2.5 km"}</Text>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={14} color="#FFD700" />
-            <Text style={styles.ratingText}>{merchant.rating} ({merchant.reviews})</Text>
+            <Text style={styles.ratingText}>{merchant.rating} ({merchant.reviewCount})</Text>
           </View>
           <View style={[styles.statusDot, {
             backgroundColor: merchant.isOpen ? '#4CAF50' : '#f44336'
           }]} />
         </View>
         <View style={styles.featuresContainer}>
-          {merchant.features.slice(0, 2).map((feature: string, index: number) => (
+          {merchant.services.slice(0, 2).map((feature: string, index: number) => (
             <View key={index} style={styles.featureTag}>
               <Text style={styles.featureText}>{feature}</Text>
             </View>
@@ -1102,15 +1103,6 @@ export default function SearchScreen() {
         onChatPress={() => {
           if (selectedMerchant) {
             router.push(`/chat/conv_merchant_${selectedMerchant.id}`);
-          }
-          setShowCommunicationModal(false);
-        }}
-        onCallPress={() => {
-          if (selectedMerchant && selectedMerchant.phone) {
-            // Implement phone call functionality here, e.g., using Linking from react-native
-            Alert.alert("Call", `Calling ${selectedMerchant.name} at ${selectedMerchant.phone}`);
-          } else {
-            Alert.alert("Call Failed", "Phone number not available for this merchant.");
           }
           setShowCommunicationModal(false);
         }}
