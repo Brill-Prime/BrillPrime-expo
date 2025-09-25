@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from "react-native";
 import { useRouter } from "expo-router";
@@ -60,72 +61,66 @@ export default function ConsumerHome() {
     );
   };
 
-  const handleSetLocationAutomatically = () => {
-    showConfirmDialog(
-      "Location Access",
-      "Allow Brill Prime to access your location to find nearby merchants?",
-      async () => {
-        if (!isMountedRef.current) return;
+  const handleSetLocationAutomatically = async () => {
+    if (!isMountedRef.current) return;
 
-        setIsLoadingLocation(true);
-        try {
-          let { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') {
-            showError("Permission Denied", "Location permission is required to find nearby merchants.");
-            setIsLoadingLocation(false);
-            return;
-          }
-
-          let location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-
-          if (!isMountedRef.current) return;
-
-          const { latitude, longitude } = location.coords;
-          const newRegion = {
-            latitude,
-            longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          };
-
-          setRegion(newRegion);
-
-          let addressInfo = "Your Current Location";
-          try {
-            let reverseGeocode = await Location.reverseGeocodeAsync({
-              latitude,
-              longitude,
-            });
-
-            if (reverseGeocode.length > 0) {
-              const address = reverseGeocode[0];
-              addressInfo = `${address.city || address.subregion || address.region}, ${address.country}`;
-            }
-          } catch (geoError) {
-            console.log("Geocoding failed, using default address");
-          }
-
-          if (!isMountedRef.current) return;
-
-          setUserAddress(addressInfo);
-          setIsLocationSet(true);
-
-          await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
-          await AsyncStorage.setItem("userAddress", addressInfo);
-
-          setIsLoadingLocation(false);
-          showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
-        } catch (error) {
-          console.error("Error getting location:", error);
-          if (isMountedRef.current) {
-            setIsLoadingLocation(false);
-            showError("Location Error", "Unable to get your location. Please try again or set manually.");
-          }
-        }
+    setIsLoadingLocation(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        showError("Permission Denied", "Location permission is required to find nearby merchants.");
+        setIsLoadingLocation(false);
+        return;
       }
-    );
+
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      if (!isMountedRef.current) return;
+
+      const { latitude, longitude } = location.coords;
+      const newRegion = {
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+
+      setRegion(newRegion);
+
+      let addressInfo = "Your Current Location";
+      try {
+        let reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        if (reverseGeocode.length > 0) {
+          const address = reverseGeocode[0];
+          addressInfo = `${address.city || address.subregion || address.region}, ${address.country}`;
+        }
+      } catch (geoError) {
+        console.log("Geocoding failed, using default address");
+      }
+
+      if (!isMountedRef.current) return;
+
+      setUserAddress(addressInfo);
+      setIsLocationSet(true);
+
+      await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
+      await AsyncStorage.setItem("userAddress", addressInfo);
+
+      setIsLoadingLocation(false);
+      showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
+    } catch (error) {
+      console.error("Error getting location:", error);
+      if (isMountedRef.current) {
+        setIsLoadingLocation(false);
+        showError("Location Error", "Unable to get your location. Please try again or set manually.");
+      }
+    }
   };
 
   const handleSetLocationLater = () => {
@@ -159,7 +154,7 @@ export default function ConsumerHome() {
         />
       </MapView>
 
-      {/* Back Button */}
+      {/* Simple Back Button */}
       <TouchableOpacity 
         style={styles.backButton} 
         onPress={handleGoBack}
@@ -230,6 +225,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
+    backgroundColor: '#f5f5f5',
   },
   map: {
     width: '100%',
