@@ -112,13 +112,7 @@ export default function SplashScreen() {
     checkAuthState();
   }, [router, variant, fadeAnim, scaleAnim, pulseAnim]);
 
-  if (variant === "admin") {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Brill Prime Admin Panel</Text>
-      </View>
-    );
-  }
+  
 
   return (
     <View style={styles.container}>
