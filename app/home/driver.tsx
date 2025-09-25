@@ -25,6 +25,8 @@ export default function DriverHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [userEmail, setUserEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(getScreenDimensions());
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useState(new Animated.Value(-280))[0];
@@ -66,10 +68,35 @@ export default function DriverHome() {
 
   const loadUserData = async () => {
     try {
-      const email = await AsyncStorage.getItem("userEmail");
+      setIsLoading(true);
+      const [email, token, role] = await Promise.all([
+        AsyncStorage.getItem("userEmail"),
+        AsyncStorage.getItem("userToken"),
+        AsyncStorage.getItem("userRole")
+      ]);
+
+      console.log("Driver Home - Auth check:", { email, token: !!token, role });
+
+      if (!token) {
+        console.log("No token found, redirecting to auth");
+        router.replace("/auth/signin");
+        return;
+      }
+
+      if (role !== "driver") {
+        console.log("User is not a driver, redirecting to role selection");
+        router.replace("/auth/role-selection");
+        return;
+      }
+
       setUserEmail(email || "driver@brillprime.com");
+      setIsAuthenticated(true);
     } catch (error) {
       console.error("Error loading user data:", error);
+      showError("Error", "Failed to load user data. Please try signing in again.");
+      router.replace("/auth/signin");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -179,39 +206,78 @@ export default function DriverHome() {
 
   const styles = getResponsiveStyles(screenDimensions, progressSize, responsivePadding, responsiveFontSize);
 
+  // Show loading screen
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ fontSize: 18, color: '#4682B4', marginBottom: 10 }}>Loading...</Text>
+        <Text style={{ fontSize: 14, color: '#666' }}>Setting up driver dashboard</Text>
+      </View>
+    );
+  }
+
+  // Show error if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+        <Text style={{ fontSize: 18, color: '#e74c3c', marginBottom: 10, textAlign: 'center' }}>
+          Authentication Required
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 20 }}>
+          Please sign in to access the driver dashboard
+        </Text>
+        <TouchableOpacity 
+          style={{
+            backgroundColor: '#4682B4',
+            paddingHorizontal: 30,
+            paddingVertical: 12,
+            borderRadius: 25
+          }}
+          onPress={() => router.replace("/auth/signin")}
+        >
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>Sign In</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
       
       {/* Live Map Background */}
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.mapBackground}
-        region={region}
-        onRegionChangeComplete={setRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        mapType="standard"
-        pitchEnabled={false}
-        rotateEnabled={false}
-        scrollEnabled={true}
-        zoomEnabled={true}
-      >
-        {availableOrders.map((order) => (
-          <Marker
-            key={order.id}
-            coordinate={{
-              latitude: order.latitude,
-              longitude: order.longitude,
-            }}
-            title={order.name}
-            description={`${order.type} - ${order.amount}`}
-            pinColor={order.type === 'fuel' ? 'red' : order.type === 'delivery' ? 'green' : 'blue'}
-          />
-        ))}
-      </MapView>
+      <View style={styles.mapBackground}>
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={{ width: '100%', height: '100%' }}
+          region={region}
+          onRegionChangeComplete={setRegion}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          showsCompass={false}
+          toolbarEnabled={false}
+          mapType="standard"
+          pitchEnabled={false}
+          rotateEnabled={false}
+          scrollEnabled={true}
+          zoomEnabled={true}
+          onMapReady={() => console.log('Map is ready')}
+          onError={(error) => console.error('Map error:', error)}
+        >
+          {availableOrders.map((order) => (
+            <Marker
+              key={order.id}
+              coordinate={{
+                latitude: order.latitude,
+                longitude: order.longitude,
+              }}
+              title={order.name}
+              description={`${order.type} - ${order.amount}`}
+              pinColor={order.type === 'fuel' ? 'red' : order.type === 'delivery' ? 'green' : 'blue'}
+            />
+          ))}
+        </MapView>
+      </View>
 
       {/* Overlay Content */}
       <View style={styles.overlay}>
