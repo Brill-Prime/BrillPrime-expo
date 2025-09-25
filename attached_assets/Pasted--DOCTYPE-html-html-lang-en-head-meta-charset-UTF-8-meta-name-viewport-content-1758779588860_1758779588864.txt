@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Brill Prime - Set Location</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;500;800&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Montserrat', sans-serif;
+    }
+    body {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+      overflow: hidden;
+      position: relative;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 25px;
+    }
+    .map-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .back-button {
+      position: absolute;
+      top: 50px;
+      left: 20px;
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      cursor: pointer;
+    }
+    .back-arrow {
+      width: 16px;
+      height: 16px;
+      border: solid #333;
+      border-width: 0 2px 2px 0;
+      transform: rotate(135deg);
+    }
+    .rectangle-79 {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 450px;
+      background: white;
+      border-top-left-radius: 25px;
+      border-top-right-radius: 25px;
+      box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 60px;
+      padding-bottom: 40px;
+      padding-left: 30px;
+      padding-right: 30px;
+      z-index: 10;
+    }
+    .group-136 {
+      position: absolute;
+      top: -30px;
+      width: 80px;
+      height: 80px;
+      background: #4682B4;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(70, 130, 180, 0.3);
+    }
+    .ellipse-18 {
+      width: 50px;
+      height: 50px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .where-are-you-text {
+      color: #010E42;
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .set-your-location-text {
+      color: black;
+      font-size: 14px;
+      font-weight: 200;
+      margin-bottom: 30px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .frame-76 {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      max-width: 300px;
+    }
+    .frame-70 {
+      width: 100%;
+      height: 50px;
+      background: #4682B4;
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(70, 130, 180, 0.2);
+    }
+    .set-automatically-text {
+      color: white;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .frame-71 {
+      width: 100%;
+      height: 50px;
+      border: 1px solid #4682B4;
+      border-radius: 25px;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .set-later-text {
+      color: #131313;
+      font-size: 16px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <!-- Live Map Container -->
+  <div class="map-container">
+    <div id="map"></div>
+  </div>
+
+  <!-- Back Button -->
+  <div class="back-button" onclick="handleGoBack()">
+    <div class="back-arrow"></div>
+  </div>
+
+  <!-- Bottom Card -->
+  <div class="rectangle-79">
+    <div class="group-136">
+      <div class="ellipse-18">
+        <img src="https://cdn-icons-png.flaticon.com/512/447/447031.png" alt="Globe" style="width: 25px; height: 25px;">
+      </div>
+    </div>
+    <div class="where-are-you-text">Where are you?</div>
+    <div class="set-your-location-text">
+      Set your location so you can see merchants available around you
+    </div>
+    <div class="frame-76">
+      <div class="frame-70" onclick="handleSetAutomatically()">
+        <div class="set-automatically-text">Set automatically</div>
+      </div>
+      <div class="frame-71" onclick="handleSetLater()">
+        <div class="set-later-text">Set later</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize the map
+    const map = L.map('map', {
+      center: [9.0765, 7.3986], // Abuja, Nigeria
+      zoom: 12,
+      zoomControl: false,
+      attributionControl: false,
+      dragging: true,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      tap: false
+    });
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Add a marker at the default location
+    const marker = L.marker([9.0765, 7.3986]).addTo(map)
+      .bindPopup('You are here')
+      .openPopup();
+
+    // Functions
+    function handleGoBack() {
+      alert("Go back to dashboard");
+    }
+    function handleSetAutomatically() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            map.setView([latitude, longitude], 15);
+            marker.setLatLng([latitude, longitude]).update();
+            alert(`Location set to Lat: ${latitude}, Lng: ${longitude}`);
+          },
+          (error) => {
+            alert(`Error getting location: ${error.message}`);
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by this browser.");
+      }
+    }
+    function handleSetLater() {
+      alert("You can set your location later.");
+    }
+  </script>
+</body>
+</html>
