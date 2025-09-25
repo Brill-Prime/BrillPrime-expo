@@ -64,7 +64,7 @@ export default function SplashScreen() {
 
       if (!onboarding[1]) {
         console.log('First time user, navigating to onboarding');
-        setTimeout(() => router.replace('/onboarding/screen1'), 1500);
+        setTimeout(() => router.replace('/onboarding/screen1'), 2000);
         return;
       }
 
@@ -74,55 +74,38 @@ export default function SplashScreen() {
       if (!token[1] || isTokenExpired) {
         console.log('No valid token, clearing auth data and navigating to role selection');
         await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-        setTimeout(() => router.replace('/auth/role-selection'), 1500);
+        setTimeout(() => router.replace('/auth/role-selection'), 2000);
         return;
       }
 
-      // Verify token with backend
+      // For development, skip backend verification and use cached role
       try {
-        const { authService } = await import('../services/authService');
-        const userResponse = await authService.getCurrentUser();
-
-        if (userResponse.success && userResponse.data) {
-          // Token is valid, navigate to home page for all users
-          const role = userResponse.data.role;
-          console.log('Verified user role:', role);
-          console.log('Navigating to home page');
-          router.replace('/home/consumer');
-        } else {
-          // Token is invalid, clear storage and redirect to auth
-          console.log('Invalid token, clearing storage');
-          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-          router.replace('/auth/role-selection');
+        const role = await AsyncStorage.getItem('userRole');
+        if (role) {
+          console.log('Using cached role:', role);
+          if (role === 'consumer') {
+            setTimeout(() => router.replace('/home/consumer'), 2000);
+          } else if (role === 'merchant') {
+            setTimeout(() => router.replace('/home/merchant'), 2000);
+          } else if (role === 'driver') {
+            setTimeout(() => router.replace('/home/driver'), 2000);
+          } else {
+            setTimeout(() => router.replace('/home/consumer'), 2000);
+          }
+          return;
         }
       } catch (error) {
-        console.error('Error verifying token:', error);
-
-        // Handle different types of errors
-        if ((error as Error).message?.includes('network') || (error as Error).message?.includes('fetch')) {
-          console.log('Network error, using cached data');
-          // On network error, try to navigate based on stored role if token hasn't expired
-          if (!isTokenExpired) {
-            const role = await AsyncStorage.getItem('userRole');
-            if (role) {
-              if (role === 'consumer') {
-                router.replace('/home/consumer');
-              } else {
-                router.replace(`/dashboard/${role}`);
-              }
-              return;
-            }
-          }
-        }
-
-        // Clear invalid auth data and redirect to role selection
-        console.log('Clearing invalid auth data due to error');
-        await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-        router.replace('/auth/role-selection');
+        console.error('Error getting cached role:', error);
       }
+
+      // Fallback to role selection
+      console.log('No cached role found, redirecting to role selection');
+      await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
+      setTimeout(() => router.replace('/auth/role-selection'), 2000);
+
     } catch (error) {
       console.error('Error checking auth state:', error);
-      router.replace('/onboarding/screen1');
+      setTimeout(() => router.replace('/onboarding/screen1'), 2000);
     }
   };
 

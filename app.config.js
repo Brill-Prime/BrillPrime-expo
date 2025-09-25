@@ -8,6 +8,9 @@ export default ({ config }) => {
       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       googleMapsAndroidApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY,
       googleMapsIosApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY,
+      router: {
+        origin: false
+      }
     },
     name: variant === "admin" ? "Brill Prime Admin" : "Brill Prime",
     slug: variant === "admin" ? "brill-prime-admin" : "brill-prime",
