@@ -1,11 +1,9 @@
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView, 
   Dimensions, 
   Animated,
   StatusBar,
@@ -15,6 +13,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from '../../components/AlertProvider';
+import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,27 +26,27 @@ export default function MerchantHome() {
   const [merchantData, setMerchantData] = useState({
     userId: "23 AD647",
     companyName: "Total Energy",
-    tagline: "Your reliable, friendly fuel distributors.\nTrust us to deliver the best services.",
-    address: "Wuse II, Abuja",
-    email: "info@totalenergies.com",
-    phone: "+234 8100 0000 00",
-    rating: 4.2,
-    openingHours: "Monday - Saturday (8:00am - 6:00pm)",
-    status: "Open"
+    status: "Available"
   });
-  const [stats, setStats] = useState({
-    totalOrders: 47,
-    activeOrders: 8,
-    totalRevenue: 125000,
-    commoditiesListed: 15,
-    pendingNotifications: 2
-  });
+  const [activeTab, setActiveTab] = useState("Available");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const slideAnim = useState(new Animated.Value(-280))[0];
+  const slideAnim = useRef(new Animated.Value(-280)).current;
+  const [region, setRegion] = useState({
+    latitude: 9.0765, // Abuja, Nigeria
+    longitude: 7.3986,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
+  });
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadUserData();
-    loadMerchantStats();
+    loadCurrentLocation();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadUserData = async () => {
@@ -60,15 +60,20 @@ export default function MerchantHome() {
     }
   };
 
-  const loadMerchantStats = async () => {
+  const loadCurrentLocation = async () => {
     try {
-      // In a real app, this would load from API
-      const savedStats = await AsyncStorage.getItem("merchantStats");
-      if (savedStats) {
-        setStats(JSON.parse(savedStats));
+      const savedLocation = await AsyncStorage.getItem("userLocation");
+      if (savedLocation && isMountedRef.current) {
+        const location = JSON.parse(savedLocation);
+        setRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
       }
     } catch (error) {
-      console.error("Error loading merchant stats:", error);
+      console.error("Error loading saved location:", error);
     }
   };
 
@@ -83,21 +88,19 @@ export default function MerchantHome() {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleGoBack = () => {
-    router.back();
+  const handleTabPress = (tab: string) => {
+    setActiveTab(tab);
+    setMerchantData(prev => ({ ...prev, status: tab }));
+    showInfo("Status Updated", `You are now ${tab.toLowerCase()}`);
   };
 
-  const handleManageOrders = () => {
+  const handleViewOrders = () => {
     router.push('/orders/consumer-orders');
-  };
-
-  const handleManageCommodities = () => {
-    router.push('/merchant/commodities');
   };
 
   const handleMenuItemPress = (item: string) => {
     toggleMenu();
-    
+
     switch (item) {
       case "Profile":
         router.push("/profile");
@@ -136,31 +139,10 @@ export default function MerchantHome() {
     );
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-    
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<Ionicons key={i} name="star" size={16} color="#FFD700" />);
-    }
-    
-    if (hasHalfStar) {
-      stars.push(<Ionicons key="half" name="star-half" size={16} color="#FFD700" />);
-    }
-    
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<Ionicons key={`empty-${i}`} name="star-outline" size={16} color="#FFD700" />);
-    }
-    
-    return stars;
-  };
-
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={styles.companyName}>Loading...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -168,138 +150,83 @@ export default function MerchantHome() {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-          <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color="#000" />
-        </TouchableOpacity>
+
+      {/* Full Screen Map */}
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        style={styles.map}
+        region={region}
+        onRegionChangeComplete={setRegion}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        toolbarEnabled={false}
+        mapType="standard"
+        pitchEnabled={false}
+        rotateEnabled={false}
+        scrollEnabled={true}
+        zoomEnabled={true}
+      >
+        <Marker
+          coordinate={{
+            latitude: region.latitude,
+            longitude: region.longitude,
+          }}
+          title="Your Location"
+        />
+      </MapView>
+
+      {/* Menu Button */}
+      <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+        <View style={styles.menuLine} />
+        <View style={styles.menuLine} />
+        <View style={styles.menuLine} />
+      </TouchableOpacity>
+
+      {/* Status Tabs */}
+      <View style={styles.tabsContainer}>
+        {["Available", "On delivery", "Off duty"].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[
+              styles.tab,
+              activeTab === tab ? styles.activeTab : styles.inactiveTab
+            ]}
+            onPress={() => handleTabPress(tab)}
+          >
+            <Text style={[
+              styles.tabText,
+              activeTab === tab ? styles.activeTabText : styles.inactiveTabText
+            ]}>
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          <View style={styles.logoContainer}>
-            <Image 
-              source={require('../../assets/images/logo.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
+      {/* Circular Progress Container */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressRingOuter} />
+        <View style={styles.progressRingMiddle} />
+        <View style={styles.progressRingInner} />
 
-        {/* Profile Circle */}
-        <View style={styles.profileSection}>
-          <View style={styles.profileCircle}>
-            <Ionicons name="business" size={40} color="#4682B4" />
-          </View>
-          
-          <Text style={styles.userId}>User ID: {merchantData.userId}</Text>
-          <Text style={styles.companyName}>{merchantData.companyName}</Text>
-          <Text style={styles.tagline}>{merchantData.tagline}</Text>
+        {/* Truck Icon */}
+        <View style={styles.truckIconContainer}>
+          <Ionicons name="car" size={32} color="#4682B4" />
         </View>
-
-        {/* Rating Section */}
-        <View style={styles.ratingSection}>
-          <View style={styles.starsContainer}>
-            {renderStars(merchantData.rating)}
-          </View>
-          <Text style={styles.ratingText}>{merchantData.rating}/5.0</Text>
-        </View>
-
-        {/* Contact Information */}
-        <View style={styles.contactSection}>
-          <View style={styles.contactRow}>
-            <Ionicons name="location" size={16} color="#4682B4" />
-            <Text style={styles.contactLabel}>Address:</Text>
-            <Text style={styles.contactValue}>{merchantData.address}</Text>
-          </View>
-          
-          <View style={styles.contactRow}>
-            <Ionicons name="mail" size={16} color="#4682B4" />
-            <Text style={styles.contactLabel}>Email:</Text>
-            <Text style={styles.contactValue}>{merchantData.email}</Text>
-          </View>
-          
-          <View style={styles.contactRow}>
-            <Ionicons name="call" size={16} color="#4682B4" />
-            <Text style={styles.contactLabel}>Number:</Text>
-            <Text style={styles.contactValue}>{merchantData.phone}</Text>
-          </View>
-        </View>
-
-        {/* Opening Hours */}
-        <View style={styles.hoursSection}>
-          <Text style={styles.hoursTitle}>Opening Hours</Text>
-          <Text style={styles.hoursText}>{merchantData.openingHours}</Text>
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
-            <Text style={[styles.statusText, { color: '#4CAF50' }]}>{merchantData.status}</Text>
-          </View>
-        </View>
-
-        {/* Stats Dashboard */}
-        <View style={styles.statsSection}>
-          <Text style={styles.statsTitle}>Business Overview</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.totalOrders}</Text>
-              <Text style={styles.statLabel}>Total Orders</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.activeOrders}</Text>
-              <Text style={styles.statLabel}>Active Orders</Text>
-            </View>
-          </View>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>₦{(stats.totalRevenue / 1000).toFixed(0)}K</Text>
-              <Text style={styles.statLabel}>Revenue</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.commoditiesListed}</Text>
-              <Text style={styles.statLabel}>Commodities</Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={styles.manageOrdersBtn} 
-          onPress={handleManageOrders}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="receipt" size={20} color="white" />
-          <Text style={styles.buttonText}>Manage Orders</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.manageCommoditiesBtn} 
-          onPress={handleManageCommodities}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="cube" size={20} color="white" />
-          <Text style={styles.buttonText}>Manage Commodities</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Notification Badge */}
-      {stats.pendingNotifications > 0 && (
-        <TouchableOpacity 
-          style={styles.notificationBadge}
-          onPress={() => router.push('/notifications')}
-        >
-          <View style={styles.badgeCircle}>
-            <Text style={styles.badgeNumber}>{stats.pendingNotifications}</Text>
-          </View>
-        </TouchableOpacity>
-      )}
+      {/* Company Name */}
+      <Text style={styles.companyName}>Total Energy</Text>
+
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Bottom Button */}
+      <TouchableOpacity style={styles.bottomButton} onPress={handleViewOrders}>
+        <Ionicons name="cube-outline" size={20} color="white" style={styles.packageIcon} />
+        <Text style={styles.bottomButtonText}>View orders</Text>
+      </TouchableOpacity>
 
       {/* Navigation Sidebar */}
       <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
@@ -312,7 +239,7 @@ export default function MerchantHome() {
             <Text style={styles.sidebarProfileName}>{merchantData.companyName}</Text>
             <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
-          
+
           {/* Menu Items */}
           <View style={styles.menuList}>
             {['Profile', 'Analytics', 'Settings', 'Support'].map((item) => (
@@ -335,7 +262,7 @@ export default function MerchantHome() {
             >
               <Text style={styles.switchButtonText}>Switch to Consumer</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={styles.signOutButton} 
               onPress={handleSignOut}
@@ -361,285 +288,145 @@ export default function MerchantHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    position: 'relative',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 10,
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  logoSection: {
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: 'white',
-  },
-  logoContainer: {
-    width: 75,
-    height: 55,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logo: {
+  map: {
     width: '100%',
     height: '100%',
-  },
-  profileSection: {
-    alignItems: 'center',
-    backgroundColor: 'white',
-    paddingBottom: 20,
-  },
-  profileCircle: {
-    width: 100,
-    height: 100,
-    backgroundColor: 'white',
-    borderRadius: 50,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  userId: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-    fontFamily: 'Montserrat-Medium',
-  },
-  companyName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#0B1A51',
-    marginBottom: 10,
-    fontFamily: 'Montserrat-Bold',
-  },
-  tagline: {
-    fontSize: 14,
-    fontWeight: '300',
-    color: '#555',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 20,
-    fontFamily: 'Montserrat-Light',
-  },
-  ratingSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-    paddingVertical: 15,
-    gap: 8,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  ratingText: {
-    fontSize: 14,
-    color: '#666',
-    fontFamily: 'Montserrat-Regular',
-  },
-  contactSection: {
-    backgroundColor: 'white',
-    marginTop: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  contactLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 8,
-    minWidth: 80,
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  contactValue: {
-    fontSize: 14,
-    color: '#333',
-    marginLeft: 8,
-    flex: 1,
-    fontFamily: 'Montserrat-Regular',
-  },
-  hoursSection: {
-    backgroundColor: 'white',
-    marginTop: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  hoursTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0B1A51',
-    marginBottom: 8,
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  hoursText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-    fontFamily: 'Montserrat-Regular',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
-  },
-  statsSection: {
-    backgroundColor: 'white',
-    marginTop: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  statsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
-    textAlign: 'center',
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 15,
-    marginBottom: 15,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#4682B4',
-    padding: 15,
-    borderRadius: 15,
-    alignItems: 'center',
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
-    fontFamily: 'Montserrat-Bold',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontFamily: 'Montserrat-Regular',
-  },
-  actionButtons: {
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    paddingBottom: 30,
-    backgroundColor: 'white',
-    gap: 12,
-  },
-  manageOrdersBtn: {
-    width: '100%',
-    height: 54,
-    borderRadius: 30,
-    backgroundColor: '#4682B4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  manageCommoditiesBtn: {
-    width: '100%',
-    height: 54,
-    borderRadius: 30,
-    backgroundColor: '#0B1A51',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: '#0B1A51',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
-  },
-  notificationBadge: {
     position: 'absolute',
-    right: 30,
-    bottom: 150,
-    zIndex: 10,
+    top: 0,
+    left: 0,
   },
-  badgeCircle: {
+  loadingText: {
+    fontSize: 18,
+    color: '#333',
+    fontFamily: 'Montserrat-Medium',
+  },
+  menuButton: {
+    position: 'absolute',
+    left: 15,
+    top: 60,
     width: 24,
     height: 24,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    zIndex: 10,
+    justifyContent: 'space-between',
   },
-  badgeNumber: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#333',
-    fontFamily: 'Montserrat-Bold',
+  menuLine: {
+    width: '100%',
+    height: 2,
+    backgroundColor: '#333',
+  },
+  tabsContainer: {
+    position: 'absolute',
+    left: 15,
+    top: 120,
+    flexDirection: 'row',
+    gap: 10,
+    zIndex: 10,
+  },
+  tab: {
+    width: 120,
+    height: 35,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#4682B4',
+  },
+  inactiveTab: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#4682B4',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Montserrat-Medium',
+  },
+  activeTabText: {
+    color: 'white',
+  },
+  inactiveTabText: {
+    color: '#4682B4',
+  },
+  progressContainer: {
+    position: 'absolute',
+    left: width * 0.13,
+    top: height * 0.33,
+    width: width * 0.85,
+    height: width * 0.85,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  progressRingOuter: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: width * 0.425,
+    backgroundColor: 'rgba(70, 130, 180, 0.25)',
+  },
+  progressRingMiddle: {
+    position: 'absolute',
+    width: '62%',
+    height: '62%',
+    borderRadius: width * 0.264,
+    backgroundColor: 'rgba(70, 130, 180, 0.5)',
+  },
+  progressRingInner: {
+    position: 'absolute',
+    width: '24%',
+    height: '24%',
+    borderRadius: width * 0.102,
+    backgroundColor: 'rgba(70, 130, 180, 0.75)',
+  },
+  truckIconContainer: {
+    position: 'absolute',
+    transform: [{ rotate: '-47deg' }],
+  },
+  companyName: {
+    position: 'absolute',
+    left: 45,
+    top: height * 0.56,
+    fontSize: 8,
+    fontWeight: '600',
+    color: 'black',
+    zIndex: 10,
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  divider: {
+    position: 'absolute',
+    left: width * 0.43,
+    top: height * 0.62,
+    width: 60,
+    height: 5,
+    backgroundColor: '#D9D9D9',
+    borderRadius: 5,
+    zIndex: 10,
+  },
+  bottomButton: {
+    position: 'absolute',
+    left: 30,
+    bottom: 60,
+    width: width - 60,
+    height: 54,
+    backgroundColor: '#4682B4',
+    borderRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    gap: 10,
+  },
+  bottomButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '400',
+    fontFamily: 'Montserrat-Regular',
+  },
+  packageIcon: {
+    marginRight: 5,
   },
   sidebar: {
     position: 'absolute',
