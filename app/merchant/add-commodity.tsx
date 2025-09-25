@@ -17,43 +17,17 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 import * as ImagePicker from 'expo-image-picker';
+import { 
+  validateCommodityForm, 
+  CATEGORIES, 
+  UNITS, 
+  generateCommodityId,
+  formatPrice,
+  type Commodity,
+  type CommodityFormData 
+} from '../../utils/commodityUtils';
 
 const { width } = Dimensions.get('window');
-
-interface Commodity {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  unit: string;
-  price: number;
-  image: string;
-  inStock: boolean;
-  createdAt: string;
-  merchantId: string;
-}
-
-const CATEGORIES = [
-  { id: 'petrol', name: 'Petrol', color: '#4682B4' },
-  { id: 'lubricant', name: 'Car Lubricant', color: '#4682B4' },
-  { id: 'aviation', name: 'Aviation', color: '#4682B4' },
-  { id: 'industrial', name: 'Industrial', color: '#4682B4' },
-  { id: 'food', name: 'Food & Beverages', color: '#4682B4' },
-  { id: 'electronics', name: 'Electronics', color: '#4682B4' },
-];
-
-const UNITS = [
-  'Litres',
-  'Kilograms',
-  'Pieces',
-  'Boxes',
-  'Gallons',
-  'Tons',
-  'Meters',
-  'Grams',
-  'Bottles',
-  'Packets',
-];
 
 export default function AddCommodityScreen() {
   const router = useRouter();
@@ -119,31 +93,13 @@ export default function AddCommodityScreen() {
   };
 
   const validateForm = () => {
-    const newErrors = {
-      name: '',
-      description: '',
-      price: '',
-    };
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Commodity name is required';
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-
-    if (!formData.price.trim()) {
-      newErrors.price = 'Price is required';
-    } else {
-      const price = parseFloat(formData.price);
-      if (isNaN(price) || price <= 0) {
-        newErrors.price = 'Please enter a valid price';
-      }
-    }
-
-    setErrors(newErrors);
-    return !Object.values(newErrors).some(error => error !== '');
+    const validation = validateCommodityForm(formData);
+    setErrors({
+      name: validation.errors.name,
+      description: validation.errors.description,
+      price: validation.errors.price,
+    });
+    return validation.isValid;
   };
 
   const handleSelectImage = async () => {
@@ -235,18 +191,22 @@ export default function AddCommodityScreen() {
         );
         showSuccess('Success', 'Commodity updated successfully');
       } else {
+        // Get merchant ID from storage or default
+        const merchantData = await AsyncStorage.getItem('merchantProfile');
+        const merchantId = merchantData ? JSON.parse(merchantData).id : 'merchant1';
+
         // Add new commodity
         const newCommodity: Commodity = {
-          id: Date.now().toString(),
+          id: generateCommodityId(),
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
           unit: formData.unit,
           price: price,
-          image: formData.image || require('../../assets/images/consumer_order_fuel_icon.png'),
+          image: formData.image || '',
           inStock: true,
           createdAt: new Date().toISOString(),
-          merchantId: 'merchant1',
+          merchantId: merchantId,
         };
 
         commodities.push(newCommodity);
@@ -254,7 +214,23 @@ export default function AddCommodityScreen() {
       }
 
       await AsyncStorage.setItem('merchantCommodities', JSON.stringify(commodities));
-      router.back();
+      
+      // Clear form after successful save
+      if (!isEditing) {
+        setFormData({
+          name: '',
+          description: '',
+          category: 'petrol',
+          unit: 'Litres',
+          price: '',
+          image: '',
+        });
+      }
+      
+      // Navigate back with a small delay to ensure the success message is seen
+      setTimeout(() => {
+        router.back();
+      }, 1500);
     } catch (error) {
       console.error('Error saving commodity:', error);
       showError('Error', 'Failed to save commodity');
@@ -323,7 +299,7 @@ export default function AddCommodityScreen() {
           <TouchableOpacity style={styles.imagePickerContainer} onPress={showImageOptions}>
             {formData.image ? (
               <Image 
-                source={typeof formData.image === 'string' ? { uri: formData.image } : formData.image}
+                source={formData.image.startsWith('http') || formData.image.startsWith('file') ? { uri: formData.image } : { uri: formData.image }}
                 style={styles.selectedImage}
                 resizeMode="cover"
               />
@@ -334,9 +310,11 @@ export default function AddCommodityScreen() {
                 <Text style={styles.imagePickerSubtext}>Tap to select from gallery or take photo</Text>
               </View>
             )}
-            <View style={styles.imageEditOverlay}>
-              <Ionicons name="camera" size={20} color="white" />
-            </View>
+            {formData.image && (
+              <View style={styles.imageEditOverlay}>
+                <Ionicons name="camera" size={20} color="white" />
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Form Fields */}
