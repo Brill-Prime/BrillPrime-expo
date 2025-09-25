@@ -112,7 +112,7 @@ export default function SplashScreen() {
     checkAuthState();
   }, [router, variant, fadeAnim, scaleAnim, pulseAnim]);
 
-  
+
 
   return (
     <View style={styles.container}>
