@@ -25,116 +25,228 @@ const { width } = Dimensions.get('window');
 // Enhanced mock data with more detailed information
 const MOCK_MERCHANTS = [
   {
-    id: 1,
+    id: "1",
     name: "Lagos Fuel Station",
-    type: "fuel",
+    type: "fuel" as const,
     category: "fuel",
-    location: "Victoria Island, Lagos",
+    address: "Victoria Island, Lagos",
+    phone: "+234-800-123-4567",
+    email: "info@lagosfuel.com",
+    description: "Premium fuel station with 24/7 service",
     distance: "2.3 km",
     rating: 4.5,
-    reviews: 124,
-    coordinates: { latitude: 6.4281, longitude: 3.4219 },
+    reviewCount: 124,
+    latitude: 6.4281,
+    longitude: 3.4219,
     priceRange: "medium",
     isOpen: true,
-    features: ["24/7", "Car Wash", "ATM"]
+    operatingHours: {
+      "Monday": "24 hours",
+      "Tuesday": "24 hours",
+      "Wednesday": "24 hours",
+      "Thursday": "24 hours",
+      "Friday": "24 hours",
+      "Saturday": "24 hours",
+      "Sunday": "24 hours"
+    },
+    services: ["24/7", "Car Wash", "ATM"],
+    images: []
   },
   {
-    id: 2,
+    id: "2",
     name: "Victoria Island Market",
-    type: "market",
+    type: "market" as const,
     category: "groceries",
-    location: "Victoria Island, Lagos",
+    address: "Victoria Island, Lagos",
+    phone: "+234-800-123-4568",
+    email: "info@vimarket.com",
+    description: "Local market with fresh produce",
     distance: "1.8 km",
     rating: 4.2,
-    reviews: 89,
-    coordinates: { latitude: 6.4241, longitude: 3.4189 },
+    reviewCount: 89,
+    latitude: 6.4241,
+    longitude: 3.4189,
     priceRange: "low",
     isOpen: true,
-    features: ["Fresh Produce", "Local Vendors"]
+    operatingHours: {
+      "Monday": "6:00 AM - 8:00 PM",
+      "Tuesday": "6:00 AM - 8:00 PM",
+      "Wednesday": "6:00 AM - 8:00 PM",
+      "Thursday": "6:00 AM - 8:00 PM",
+      "Friday": "6:00 AM - 8:00 PM",
+      "Saturday": "6:00 AM - 9:00 PM",
+      "Sunday": "7:00 AM - 7:00 PM"
+    },
+    services: ["Fresh Produce", "Local Vendors"],
+    images: []
   },
   {
-    id: 3,
+    id: "3",
     name: "Ikeja Shopping Mall",
-    type: "shopping",
+    type: "shopping" as const,
     category: "retail",
-    location: "Ikeja, Lagos",
+    address: "Ikeja, Lagos",
+    phone: "+234-800-123-4569",
+    email: "info@ikejamall.com",
+    description: "Modern shopping mall with diverse stores",
     distance: "5.1 km",
     rating: 4.7,
-    reviews: 203,
-    coordinates: { latitude: 6.5927, longitude: 3.3615 },
+    reviewCount: 203,
+    latitude: 6.5927,
+    longitude: 3.3615,
     priceRange: "high",
     isOpen: true,
-    features: ["Air Conditioned", "Food Court", "Parking"]
+    operatingHours: {
+      "Monday": "10:00 AM - 10:00 PM",
+      "Tuesday": "10:00 AM - 10:00 PM",
+      "Wednesday": "10:00 AM - 10:00 PM",
+      "Thursday": "10:00 AM - 10:00 PM",
+      "Friday": "10:00 AM - 11:00 PM",
+      "Saturday": "9:00 AM - 11:00 PM",
+      "Sunday": "11:00 AM - 9:00 PM"
+    },
+    services: ["Air Conditioned", "Food Court", "Parking"],
+    images: []
   },
   {
-    id: 4,
+    id: "4",
     name: "Lekki Phase 1 Fuel",
-    type: "fuel",
+    type: "fuel" as const,
     category: "fuel",
-    location: "Lekki, Lagos",
+    address: "Lekki, Lagos",
+    phone: "+234-800-123-4570",
+    email: "info@lekkifuel.com",
+    description: "Premium fuel station in Lekki",
     distance: "4.2 km",
     rating: 4.3,
-    reviews: 67,
-    coordinates: { latitude: 6.4474, longitude: 3.5614 },
+    reviewCount: 67,
+    latitude: 6.4474,
+    longitude: 3.5614,
     priceRange: "medium",
     isOpen: false,
-    features: ["Premium Fuel", "Quick Service"]
+    operatingHours: {
+      "Monday": "6:00 AM - 10:00 PM",
+      "Tuesday": "6:00 AM - 10:00 PM",
+      "Wednesday": "6:00 AM - 10:00 PM",
+      "Thursday": "6:00 AM - 10:00 PM",
+      "Friday": "6:00 AM - 10:00 PM",
+      "Saturday": "6:00 AM - 10:00 PM",
+      "Sunday": "7:00 AM - 9:00 PM"
+    },
+    services: ["Premium Fuel", "Quick Service"],
+    images: []
   },
   {
-    id: 5,
+    id: "5",
     name: "Computer Village",
-    type: "electronics",
+    type: "shopping" as const,
     category: "electronics",
-    location: "Ikeja, Lagos",
+    address: "Ikeja, Lagos",
+    phone: "+234-800-123-4571",
+    email: "info@compvillage.com",
+    description: "Electronics and tech hub",
     distance: "6.8 km",
     rating: 4.1,
-    reviews: 156,
-    coordinates: { latitude: 6.5492, longitude: 3.3619 },
+    reviewCount: 156,
+    latitude: 6.5492,
+    longitude: 3.3619,
     priceRange: "medium",
     isOpen: true,
-    features: ["Tech Repair", "Wholesale", "Gadgets"]
+    operatingHours: {
+      "Monday": "8:00 AM - 8:00 PM",
+      "Tuesday": "8:00 AM - 8:00 PM",
+      "Wednesday": "8:00 AM - 8:00 PM",
+      "Thursday": "8:00 AM - 8:00 PM",
+      "Friday": "8:00 AM - 8:00 PM",
+      "Saturday": "8:00 AM - 9:00 PM",
+      "Sunday": "10:00 AM - 6:00 PM"
+    },
+    services: ["Tech Repair", "Wholesale", "Gadgets"],
+    images: []
   },
   {
-    id: 6,
+    id: "6",
     name: "Palms Shopping Mall",
-    type: "shopping",
+    type: "shopping" as const,
     category: "retail",
-    location: "Lekki, Lagos",
+    address: "Lekki, Lagos",
+    phone: "+234-800-123-4572",
+    email: "info@palmsmall.com",
+    description: "Premium shopping destination",
     distance: "3.9 km",
     rating: 4.6,
-    reviews: 298,
-    coordinates: { latitude: 6.4167, longitude: 3.5405 },
+    reviewCount: 298,
+    latitude: 6.4167,
+    longitude: 3.5405,
     priceRange: "high",
     isOpen: true,
-    features: ["Cinema", "Restaurants", "Brand Stores"]
+    operatingHours: {
+      "Monday": "10:00 AM - 10:00 PM",
+      "Tuesday": "10:00 AM - 10:00 PM",
+      "Wednesday": "10:00 AM - 10:00 PM",
+      "Thursday": "10:00 AM - 10:00 PM",
+      "Friday": "10:00 AM - 11:00 PM",
+      "Saturday": "9:00 AM - 11:00 PM",
+      "Sunday": "11:00 AM - 9:00 PM"
+    },
+    services: ["Cinema", "Restaurants", "Brand Stores"],
+    images: []
   },
   {
-    id: 7,
+    id: "7",
     name: "Mainland Market",
-    type: "market",
+    type: "market" as const,
     category: "groceries",
-    location: "Yaba, Lagos",
+    address: "Yaba, Lagos",
+    phone: "+234-800-123-4573",
+    email: "info@mainlandmarket.com",
+    description: "Local market for bulk purchases",
     distance: "7.2 km",
     rating: 3.9,
-    reviews: 45,
-    coordinates: { latitude: 6.5158, longitude: 3.3696 },
+    reviewCount: 45,
+    latitude: 6.5158,
+    longitude: 3.3696,
     priceRange: "low",
     isOpen: true,
-    features: ["Bulk Purchase", "Local Items"]
+    operatingHours: {
+      "Monday": "6:00 AM - 7:00 PM",
+      "Tuesday": "6:00 AM - 7:00 PM",
+      "Wednesday": "6:00 AM - 7:00 PM",
+      "Thursday": "6:00 AM - 7:00 PM",
+      "Friday": "6:00 AM - 7:00 PM",
+      "Saturday": "6:00 AM - 8:00 PM",
+      "Sunday": "7:00 AM - 6:00 PM"
+    },
+    services: ["Bulk Purchase", "Local Items"],
+    images: []
   },
   {
-    id: 8,
+    id: "8",
     name: "Express Fuel Stop",
-    type: "fuel",
+    type: "fuel" as const,
     category: "fuel",
-    location: "Surulere, Lagos",
+    address: "Surulere, Lagos",
+    phone: "+234-800-123-4574",
+    email: "info@expressfuel.com",
+    description: "Quick fuel service station",
     distance: "8.5 km",
     rating: 4.0,
-    reviews: 78,
-    coordinates: { latitude: 6.4969, longitude: 3.3515 },
+    reviewCount: 78,
+    latitude: 6.4969,
+    longitude: 3.3515,
     priceRange: "low",
     isOpen: true,
-    features: ["Quick Fill", "Mobile Payment"]
+    operatingHours: {
+      "Monday": "6:00 AM - 9:00 PM",
+      "Tuesday": "6:00 AM - 9:00 PM",
+      "Wednesday": "6:00 AM - 9:00 PM",
+      "Thursday": "6:00 AM - 9:00 PM",
+      "Friday": "6:00 AM - 9:00 PM",
+      "Saturday": "6:00 AM - 9:00 PM",
+      "Sunday": "7:00 AM - 8:00 PM"
+    },
+    services: ["Quick Fill", "Mobile Payment"],
+    images: []
   }
 ];
 
@@ -334,8 +446,8 @@ export default function SearchScreen() {
     let filtered = MOCK_MERCHANTS.filter(merchant =>
       merchant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       merchant.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      merchant.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      merchant.features.some(feature => feature.toLowerCase().includes(searchQuery.toLowerCase()))
+      merchant.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      merchant.services.some((feature: string) => feature.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     if (selectedCategory !== 'all') {
@@ -367,8 +479,8 @@ export default function SearchScreen() {
         const realDistance = calculateDistance(
           userCoordinates.latitude,
           userCoordinates.longitude,
-          merchant.coordinates.latitude,
-          merchant.coordinates.longitude
+          merchant.latitude,
+          merchant.longitude
         );
         return {
           ...merchant,
@@ -583,7 +695,7 @@ export default function SearchScreen() {
       <View style={styles.resultContent}>
         <View style={styles.resultHeader}>
           <Text style={styles.resultTitle}>{merchant.name}</Text>
-          <TouchableOpacity onPress={() => toggleFavorite(merchant.id)}>
+          <TouchableOpacity onPress={() => toggleFavorite(parseInt(merchant.id))}>
             <Ionicons
               name={favorites.includes(merchant.id) ? "heart" : "heart-outline"}
               size={20}
@@ -593,7 +705,7 @@ export default function SearchScreen() {
         </View>
         <Text style={styles.resultSubtitle}>{merchant.address}</Text>
         <View style={styles.resultMeta}>
-          <Text style={styles.resultDistance}>{"2.5 km"}</Text>
+          <Text style={styles.resultDistance}>{merchant.distance}</Text>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={14} color="#FFD700" />
             <Text style={styles.ratingText}>{merchant.rating} ({merchant.reviewCount})</Text>
@@ -648,14 +760,7 @@ export default function SearchScreen() {
     try {
       setLoading(true);
       // Simulate API call with mock data if actual service is not available
-      const response = { success: true, data: MOCK_MERCHANTS };
-
-      if (response.success && response.data) {
-        setFilteredMerchants(response.data);
-      } else {
-        console.error('Failed to load merchants:', response.error);
-        setFilteredMerchants(MOCK_MERCHANTS); // Fallback
-      }
+      setFilteredMerchants(MOCK_MERCHANTS);
     } catch (error) {
       console.error('Error loading merchants:', error);
       setFilteredMerchants(MOCK_MERCHANTS); // Fallback on error
@@ -668,14 +773,7 @@ export default function SearchScreen() {
     try {
       setLoading(true);
       // Simulate API call with mock data
-      const response = { success: true, data: MOCK_COMMODITIES };
-
-      if (response.success && response.data) {
-        setFilteredCommodities(response.data);
-      } else {
-        console.error('Failed to load commodities:', response.error);
-        setFilteredCommodities(MOCK_COMMODITIES); // Fallback
-      }
+      setFilteredCommodities(MOCK_COMMODITIES);
     } catch (error) {
       console.error('Error loading commodities:', error);
       setFilteredCommodities(MOCK_COMMODITIES); // Fallback on error
