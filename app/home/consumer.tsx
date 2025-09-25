@@ -1,73 +1,48 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Animated, Image } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from '@expo/vector-icons';
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
 
-// Get initial screen dimensions
-const getScreenDimensions = () => Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function ConsumerHome() {
   const router = useRouter();
-  const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
-  const [userEmail, setUserEmail] = useState("");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [screenDimensions, setScreenDimensions] = useState(getScreenDimensions());
-  const slideAnim = useState(new Animated.Value(-280))[0];
+  const { showConfirmDialog, showError, showSuccess } = useAlert();
   const [isLocationSet, setIsLocationSet] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [region, setRegion] = useState({
-    latitude: 9.0765, // Default to center of Nigeria
+    latitude: 9.0765, // Abuja, Nigeria
     longitude: 7.3986,
-    latitudeDelta: 8.0, // Show most of Nigeria
-    longitudeDelta: 8.0,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
   });
-  const [nearbyMerchants] = useState([
-    { id: 1, name: "Lagos Fuel Station", latitude: 6.5244, longitude: 3.3792, type: "fuel" },
-    { id: 2, name: "Victoria Island Market", latitude: 6.4281, longitude: 3.4219, type: "market" },
-    { id: 3, name: "Ikeja Shopping Mall", latitude: 6.5927, longitude: 3.3615, type: "shopping" },
-  ]);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    loadUserData();
+    isMountedRef.current = true;
     checkSavedLocation();
-    
-    // Listen for screen dimension changes (orientation, window resize)
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-      // Adjust sidebar animation value based on new screen width
-      const sidebarWidth = Math.min(280, window.width * 0.8);
-      slideAnim.setValue(isMenuOpen ? 0 : -sidebarWidth);
-    });
 
-    return () => subscription?.remove();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
-
-  const loadUserData = async () => {
-    try {
-      const email = await AsyncStorage.getItem("userEmail");
-      setUserEmail(email || "user@brillprime.com");
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    }
-  };
 
   const checkSavedLocation = async () => {
     try {
       const savedLocation = await AsyncStorage.getItem("userLocation");
       const savedAddress = await AsyncStorage.getItem("userAddress");
-      
-      if (savedLocation) {
+
+      if (savedLocation && isMountedRef.current) {
         const location = JSON.parse(savedLocation);
         setRegion({
           latitude: location.latitude,
           longitude: location.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
@@ -90,143 +65,79 @@ export default function ConsumerHome() {
       "Location Access",
       "Allow Brill Prime to access your location to find nearby merchants?",
       async () => {
-            setIsLoadingLocation(true);
-            try {
-              // Request location permissions
-              let { status } = await Location.requestForegroundPermissionsAsync();
-              if (status !== 'granted') {
-                showError("Permission Denied", "Location permission is required to find nearby merchants.");
-                setIsLoadingLocation(false);
-                return;
-              }
+        if (!isMountedRef.current) return;
 
-              // Get current location
-              let location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-              });
-              
-              const { latitude, longitude } = location.coords;
-              const newRegion = {
-                latitude,
-                longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              };
-              
-              setRegion(newRegion);
-              
-              // Get address from coordinates
-              let addressInfo = "Your Current Location";
-              try {
-                let reverseGeocode = await Location.reverseGeocodeAsync({
-                  latitude,
-                  longitude,
-                });
-                
-                if (reverseGeocode.length > 0) {
-                  const address = reverseGeocode[0];
-                  addressInfo = `${address.city || address.subregion || address.region}, ${address.country}`;
-                }
-              } catch (geoError) {
-                console.log("Geocoding failed, using default address");
-              }
-              
-              setUserAddress(addressInfo);
-              setIsLocationSet(true);
-              
-              // Save location to storage
-              await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
-              await AsyncStorage.setItem("userAddress", addressInfo);
-              
-              setIsLoadingLocation(false);
-              showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
-            } catch (error) {
-              console.error("Error getting location:", error);
-              setIsLoadingLocation(false);
-              
-              let errorMessage = "Unable to get your location. Please try again or set manually.";
-              const err = error as any;
-              if (err.code === 'E_LOCATION_TIMEOUT') {
-                errorMessage = "Location request timed out. Please check your GPS and try again.";
-              } else if (err.code === 'E_LOCATION_UNAVAILABLE') {
-                errorMessage = "Location services are not available. Please enable GPS and try again.";
-              }
-              
-              showError("Location Error", errorMessage);
-            }
-      }
-    );
-  };
-
-  const handleSetLocationLater = () => {
-    // Navigate to search screen where user can search for merchants and commodities
-    router.push("/search");
-  };
-
-  const toggleMenu = () => {
-    const sidebarWidth = Math.min(280, screenDimensions.width * 0.8);
-    const toValue = isMenuOpen ? -sidebarWidth : 0;
-    Animated.timing(slideAnim, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const handleMenuItemPress = (item: string) => {
-    toggleMenu();
-    
-    switch (item) {
-      case "Account":
-        router.push("/account");
-        break;
-      case "Notifications":
-        router.push("/notifications");
-        break;
-      case "Transaction History":
-        router.push("/transactions");
-        break;
-      case "Order History":
-        router.push("/orders/consumer-orders");
-        break;
-      case "Support":
-        router.push("/support");
-        break;
-      case "About":
-        router.push("/about");
-        break;
-      case "Switch to Merchant":
-        showInfo("Switch Role", "This feature will allow you to switch to merchant mode!");
-        break;
-      default:
-        showInfo("Navigation", `Navigating to ${item}`);
-    }
-  };
-
-  const handleSignOut = async () => {
-    showConfirmDialog(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      async () => {
+        setIsLoadingLocation(true);
         try {
-          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
-          router.replace("/");
-          showSuccess("Signed Out", "You have been successfully signed out.");
+          let { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            showError("Permission Denied", "Location permission is required to find nearby merchants.");
+            setIsLoadingLocation(false);
+            return;
+          }
+
+          let location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+
+          if (!isMountedRef.current) return;
+
+          const { latitude, longitude } = location.coords;
+          const newRegion = {
+            latitude,
+            longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+
+          setRegion(newRegion);
+
+          let addressInfo = "Your Current Location";
+          try {
+            let reverseGeocode = await Location.reverseGeocodeAsync({
+              latitude,
+              longitude,
+            });
+
+            if (reverseGeocode.length > 0) {
+              const address = reverseGeocode[0];
+              addressInfo = `${address.city || address.subregion || address.region}, ${address.country}`;
+            }
+          } catch (geoError) {
+            console.log("Geocoding failed, using default address");
+          }
+
+          if (!isMountedRef.current) return;
+
+          setUserAddress(addressInfo);
+          setIsLocationSet(true);
+
+          await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
+          await AsyncStorage.setItem("userAddress", addressInfo);
+
+          setIsLoadingLocation(false);
+          showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
         } catch (error) {
-          console.error("Error signing out:", error);
-          showError("Sign Out Error", "There was an error signing out. Please try again.");
+          console.error("Error getting location:", error);
+          if (isMountedRef.current) {
+            setIsLoadingLocation(false);
+            showError("Location Error", "Unable to get your location. Please try again or set manually.");
+          }
         }
       }
     );
   };
 
+  const handleSetLocationLater = () => {
+    router.push("/search");
+  };
+
   return (
     <View style={styles.container}>
-      {/* Real Map Background */}
+      {/* Full Screen Map */}
       <MapView
         provider={PROVIDER_GOOGLE}
-        style={styles.mapBackground}
+        style={styles.map}
         region={region}
         onRegionChangeComplete={setRegion}
         showsUserLocation={true}
@@ -239,169 +150,65 @@ export default function ConsumerHome() {
         scrollEnabled={true}
         zoomEnabled={true}
       >
-        {nearbyMerchants.map((merchant) => (
-          <Marker
-            key={merchant.id}
-            coordinate={{
-              latitude: merchant.latitude,
-              longitude: merchant.longitude,
-            }}
-            title={merchant.name}
-            description={`${merchant.type} location`}
-            pinColor={merchant.type === 'fuel' ? 'red' : merchant.type === 'market' ? 'green' : 'blue'}
-          />
-        ))}
-      </MapView>
-      
-      {/* Back Button */}
-      <View style={styles.backButtonContainer}>
-        <TouchableOpacity 
-          style={styles.backButtonCircle} 
-          onPress={handleGoBack}
-          activeOpacity={0.8}
-        >
-          <Image source={require('../../assets/images/back_arrow.svg')} style={{ width: 24, height: 24 }} resizeMode="contain" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Hamburger Menu Button */}
-      <View style={styles.hamburgerButtonContainer}>
-        <TouchableOpacity 
-          style={styles.hamburgerButton} 
-          onPress={toggleMenu}
-          activeOpacity={0.8}
-        >
-          <Ionicons name={isMenuOpen ? "close" : "menu"} size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-      
-      {/* Navigation Sidebar */}
-      <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
-        <View style={styles.sidebarContent}>
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            <View style={styles.profileImageContainer}>
-              <Image source={require('../../assets/images/account_circle.svg')} style={{ width: 50, height: 50 }} resizeMode="contain" />
-            </View>
-            <Text style={styles.profileName}>Hi, ANTHONY</Text>
-          </View>
-          
-          {/* Menu Items */}
-          <View style={styles.menuList}>
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Account")}
-            >
-              <Text style={styles.menuItemText}>Account</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Notifications")}
-            >
-              <Text style={styles.menuItemText}>Notifications</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Transaction History")}
-            >
-              <Text style={styles.menuItemText}>Transaction History</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Order History")}
-            >
-              <Text style={styles.menuItemText}>Order History</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("Support")}
-            >
-              <Text style={styles.menuItemText}>Support</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleMenuItemPress("About")}
-            >
-              <Text style={styles.menuItemText}>About</Text>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Bottom Buttons */}
-          <View style={styles.bottomButtons}>
-            <TouchableOpacity 
-              style={styles.merchantButton} 
-              onPress={() => handleMenuItemPress("Switch to Merchant")}
-            >
-              <Text style={styles.merchantButtonText}>Switch to Merchant</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.signOutButton} 
-              onPress={handleSignOut}
-            >
-              <Text style={styles.signOutButtonText}>Sign out</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Menu Overlay */}
-      {isMenuOpen && (
-        <TouchableOpacity 
-          style={styles.menuOverlay} 
-          onPress={toggleMenu}
-          activeOpacity={1}
+        <Marker
+          coordinate={{
+            latitude: region.latitude,
+            longitude: region.longitude,
+          }}
+          title="You are here"
         />
-      )}
+      </MapView>
 
-      {/* Location Setup Modal */}
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={handleGoBack}
+        activeOpacity={0.8}
+      >
+        <View style={styles.backArrow} />
+      </TouchableOpacity>
+
+      {/* Location Setup Modal - Only show if location not set */}
       {!isLocationSet && (
-        <View style={styles.locationModalOverlay}>
-          <View style={styles.locationModal}>
-            {/* Location Icon */}
-            <View style={styles.locationIcon}>
-              <View style={styles.locationIconInner}>
-                <Image source={require('../../assets/images/globe_img.png')} style={styles.globeIcon} resizeMode="cover" />
-              </View>
+        <View style={styles.bottomCard}>
+          {/* Location Icon */}
+          <View style={styles.locationIconContainer}>
+            <View style={styles.locationIconInner}>
+              <Image 
+                source={require('../../assets/images/globe_img.png')} 
+                style={styles.globeIcon} 
+                resizeMode="cover" 
+              />
             </View>
-            
-            {/* Modal Content */}
-            <View style={styles.modalContent}>
-              <Text style={styles.whereAreYouText}>Where are you?</Text>
-              <Text style={styles.descriptionText}>
-                Set your location so you can see merchants available around you
+          </View>
+
+          {/* Content */}
+          <Text style={styles.whereAreYouText}>Where are you?</Text>
+          <Text style={styles.descriptionText}>
+            Set your location so you can see merchants available around you
+          </Text>
+
+          {/* Buttons */}
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity 
+              style={styles.setAutomaticallyButton} 
+              onPress={handleSetLocationAutomatically}
+              activeOpacity={0.9}
+              disabled={isLoadingLocation}
+            >
+              <Text style={styles.setAutomaticallyText}>
+                {isLoadingLocation ? "Getting location..." : "Set automatically"}
               </Text>
-              
-              {/* Button Container */}
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity 
-                  style={styles.setAutomaticallyBtn} 
-                  onPress={handleSetLocationAutomatically}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.setAutomaticallyText}>Set automatically</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.setLaterBtn} 
-                  onPress={handleSetLocationLater}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.setLaterText}>Set later</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.setLaterButton} 
+              onPress={handleSetLocationLater}
+              activeOpacity={0.9}
+              disabled={isLoadingLocation}
+            >
+              <Text style={styles.setLaterText}>Set later</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -422,187 +229,67 @@ export default function ConsumerHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
     position: 'relative',
   },
-  mapBackground: {
+  map: {
     width: '100%',
     height: '100%',
     position: 'absolute',
+    top: 0,
     left: 0,
-    top: 0,
   },
-  backButtonContainer: {
-    width: 60,
-    height: 60,
+  backButton: {
     position: 'absolute',
-    left: 30,
-    top: 60,
-    zIndex: 10,
-  },
-  backButtonCircle: {
-    width: 60,
-    height: 60,
-    backgroundColor: 'white',
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hamburgerButtonContainer: {
-    width: 60,
-    height: 60,
-    position: 'absolute',
-    right: 30,
-    top: 60,
-    zIndex: 10,
-  },
-  hamburgerButton: {
-    width: 60,
-    height: 60,
-    backgroundColor: 'white',
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sidebar: {
-    position: 'absolute',
-    top: 0,
-    width: Math.min(280, Dimensions.get('window').width * 0.8),
-    height: '100%',
-    backgroundColor: 'white',
-    zIndex: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 15,
-  },
-  sidebarContent: {
-    flex: 1,
-    paddingTop: 40,
-    paddingHorizontal: 20,
-  },
-  profileSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  profileImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  menuList: {
-    flex: 1,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '600',
-  },
-  bottomButtons: {
-    position: 'absolute',
-    bottom: 30,
+    top: 50,
     left: 20,
-    right: 20,
-  },
-  merchantButton: {
+    width: 40,
+    height: 40,
     backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#2f75c2',
-    borderRadius: 25,
-    paddingVertical: 12,
+    borderRadius: 20,
     alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+    zIndex: 10,
   },
-  merchantButtonText: {
-    color: '#2f75c2',
-    fontSize: 16,
-    fontWeight: '500',
+  backArrow: {
+    width: 16,
+    height: 16,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#333',
+    transform: [{ rotate: '225deg' }],
   },
-  signOutButton: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e74c3c',
-    borderRadius: 25,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  signOutButtonText: {
-    color: '#e74c3c',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  menuOverlay: {
+  bottomCard: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    zIndex: 15,
-  },
-  locationModalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
-    zIndex: 25,
-  },
-  locationModal: {
+    height: 450,
     backgroundColor: 'white',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowRadius: 20,
     elevation: 10,
-    paddingHorizontal: '8%',
-    paddingTop: 80,
-    paddingBottom: 40,
     alignItems: 'center',
-    minHeight: '50%',
-    maxHeight: '60%',
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 30,
+    zIndex: 20,
   },
-  locationIcon: {
-    width: 100,
-    height: 100,
+  locationIconContainer: {
     position: 'absolute',
-    top: -50,
-    alignSelf: 'center',
+    top: -30,
+    width: 80,
+    height: 80,
     backgroundColor: '#4682B4',
-    borderRadius: 50,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#4682B4',
@@ -612,22 +299,16 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   locationIconInner: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     backgroundColor: 'white',
-    borderRadius: 20,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
   globeIcon: {
-    width: '100%',
-    height: '100%',
-  },
-  modalContent: {
-    alignItems: 'center',
-    width: '100%',
-    flex: 1,
-    justifyContent: 'center',
+    width: 25,
+    height: 25,
   },
   whereAreYouText: {
     color: '#010E42',
@@ -635,53 +316,56 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 15,
     textAlign: 'center',
+    fontFamily: 'Montserrat-ExtraBold',
   },
   descriptionText: {
     color: 'black',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '200',
-    marginBottom: 40,
+    marginBottom: 30,
     textAlign: 'center',
-    lineHeight: 21,
-    paddingHorizontal: 10,
+    lineHeight: 20,
+    fontFamily: 'Montserrat-Light',
   },
-  buttonContainer: {
+  buttonsContainer: {
     width: '100%',
     maxWidth: 300,
-    gap: 20,
+    gap: 15,
   },
-  setAutomaticallyBtn: {
+  setAutomaticallyButton: {
     width: '100%',
-    height: 52,
+    height: 50,
     backgroundColor: '#4682B4',
-    borderRadius: 30,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#4682B4',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 5,
+    shadowRadius: 10,
     elevation: 3,
   },
   setAutomaticallyText: {
     color: 'white',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '500',
+    fontFamily: 'Montserrat-Medium',
   },
-  setLaterBtn: {
+  setLaterButton: {
     width: '100%',
-    height: 52,
-    borderRadius: 30,
+    height: 50,
     borderWidth: 1,
     borderColor: '#4682B4',
+    borderRadius: 25,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
   setLaterText: {
     color: '#131313',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '500',
+    fontFamily: 'Montserrat-Medium',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -708,10 +392,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
     textAlign: 'center',
+    fontFamily: 'Montserrat-SemiBold',
   },
   loadingSubtext: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    fontFamily: 'Montserrat-Regular',
   },
 });
