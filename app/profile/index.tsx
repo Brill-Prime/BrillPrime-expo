@@ -220,6 +220,12 @@ export default function ProfileScreen() {
             onPress={() => router.push('/profile/payment-methods')}
           />
           <MenuItem
+            icon="shield-checkmark-outline"
+            title="Identity Verification"
+            subtitle="Verify your identity for enhanced security"
+            onPress={() => router.push('/kyc')}
+          />
+          <MenuItem
             icon="receipt-outline"
             title="Order History"
             subtitle="View your past orders"

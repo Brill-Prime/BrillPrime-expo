@@ -113,3 +113,76 @@ export const formatPrice = (price: number): string => {
 export const generateCommodityId = (): string => {
   return `commodity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
+export interface Commodity {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  images: string[];
+  merchantId: string;
+  stock: number;
+  unit: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommodityFormData {
+  name: string;
+  description: string;
+  price: string;
+  category: string;
+  stock: string;
+  unit: string;
+  images: string[];
+}
+
+export const commodityCategories = [
+  'Food & Beverages',
+  'Electronics',
+  'Clothing & Fashion',
+  'Home & Garden',
+  'Health & Beauty',
+  'Sports & Outdoors',
+  'Books & Media',
+  'Automotive',
+  'Toys & Games',
+  'Other'
+];
+
+export const validateCommodityForm = (data: CommodityFormData): string[] => {
+  const errors: string[] = [];
+
+  if (!data.name.trim()) {
+    errors.push('Product name is required');
+  }
+
+  if (!data.description.trim()) {
+    errors.push('Product description is required');
+  }
+
+  if (!data.price || parseFloat(data.price) <= 0) {
+    errors.push('Valid price is required');
+  }
+
+  if (!data.category) {
+    errors.push('Category is required');
+  }
+
+  if (!data.stock || parseInt(data.stock) < 0) {
+    errors.push('Valid stock quantity is required');
+  }
+
+  if (!data.unit.trim()) {
+    errors.push('Unit is required');
+  }
+
+  return errors;
+};
+
+export const formatPrice = (price: number): string => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN'
+  }).format(price);
+};
