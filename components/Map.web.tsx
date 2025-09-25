@@ -184,31 +184,56 @@ export default function MapViewWeb({
     }
   };
 
-  // Load Google Maps script based on environment variables
+  // Load Google Maps script based on environment variables with performance optimizations
   useEffect(() => {
-    // Access API key from multiple sources with your specific key as fallback
-    const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey || 
-                   Constants.expoConfig?.web?.config?.googleMapsApiKey ||
-                   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-                   process.env.GOOGLE_MAPS_API_KEY;
+    const loadGoogleMaps = async () => {
+      // Skip if already loaded
+      if (window.google?.maps) {
+        initializeMap();
+        return;
+      }
 
-    if (!window.google) {
+      // Access API key from multiple sources
+      const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey || 
+                     Constants.expoConfig?.web?.config?.googleMapsApiKey ||
+                     process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+                     process.env.GOOGLE_MAPS_API_KEY ||
+                     'AIzaSyDummy'; // Fallback for development
+
       console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
 
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,marker&loading=async`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeMap;
-      script.onerror = (error) => {
-        console.error('Failed to load Google Maps script:', error);
-        // Try to initialize anyway in case it's just a warning
-        setTimeout(initializeMap, 1000);
-      };
-      document.head.appendChild(script);
-    } else {
-      initializeMap();
-    }
+      try {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,marker&loading=async&callback=initGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        
+        // Use callback for faster initialization
+        (window as any).initGoogleMaps = () => {
+          initializeMap();
+          delete (window as any).initGoogleMaps;
+        };
+        
+        script.onerror = () => {
+          console.warn('Google Maps failed to load, showing fallback');
+          setTimeout(() => {
+            if (!googleMapRef.current) {
+              showFallbackMap();
+            }
+          }, 2000);
+        };
+        
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error('Error loading Google Maps:', error);
+        showFallbackMap();
+      }
+    };
+
+    // Delay map loading slightly to prioritize other critical resources
+    const timeoutId = setTimeout(loadGoogleMaps, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
 

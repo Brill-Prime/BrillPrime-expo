@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { 
   View, 
   Text, 
@@ -17,6 +17,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
+import { useAuth } from '../../hooks/useAuth';
+import { PerformanceOptimizer } from '../../utils/performance';
 
 // Get initial screen dimensions
 const getScreenDimensions = () => Dimensions.get('window');
@@ -25,8 +27,7 @@ export default function DriverHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [userEmail, setUserEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, isLoading, requireRole } = useAuth();
   const [screenDimensions, setScreenDimensions] = useState(getScreenDimensions());
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useState(new Animated.Value(-280))[0];
@@ -53,29 +54,56 @@ export default function DriverHome() {
   });
 
   useEffect(() => {
-    loadUserData();
-    getCurrentLocation();
+    // Check role and load location only after auth is determined
+    if (!isLoading) {
+      if (requireRole('driver')) {
+        getCurrentLocation();
+      }
+    }
+  }, [isLoading, requireRole, getCurrentLocation]);
+
+  useEffect(() => {
+    // Debounce screen dimension changes to prevent excessive re-renders
+    let timeoutId: NodeJS.Timeout;
     
-    // Listen for screen dimension changes
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-      const sidebarWidth = Math.min(280, window.width * 0.8);
-      slideAnim.setValue(isMenuOpen ? 0 : -sidebarWidth);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setScreenDimensions(window);
+        const sidebarWidth = Math.min(280, window.width * 0.8);
+        slideAnim.setValue(isMenuOpen ? 0 : -sidebarWidth);
+      }, 150); // 150ms debounce
     });
 
-    return () => subscription?.remove();
-  }, []);
+    return () => {
+      clearTimeout(timeoutId);
+      subscription?.remove();
+    };
+  }, [isMenuOpen, slideAnim]);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [email, token, role] = await Promise.all([
-        AsyncStorage.getItem("userEmail"),
-        AsyncStorage.getItem("userToken"),
-        AsyncStorage.getItem("userRole")
-      ]);
+      
+      // Batch AsyncStorage operations for better performance
+      const keys = ["userEmail", "userToken", "userRole", "tokenExpiry"];
+      const values = await AsyncStorage.multiGet(keys);
+      const data = Object.fromEntries(values);
+      
+      const email = data.userEmail;
+      const token = data.userToken;
+      const role = data.userRole;
+      const tokenExpiry = data.tokenExpiry;
 
       console.log("Driver Home - Auth check:", { email, token: !!token, role });
+
+      // Check token expiry first
+      if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+        console.log("Token expired, redirecting to auth");
+        await AsyncStorage.multiRemove(keys);
+        router.replace("/auth/signin");
+        return;
+      }
 
       if (!token) {
         console.log("No token found, redirecting to auth");
@@ -98,31 +126,49 @@ export default function DriverHome() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router, showError]);
 
-  const getCurrentLocation = async () => {
+  const getCurrentLocation = useCallback(async () => {
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      // Check if location permissions are already granted
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+      
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        console.log('Location permission not granted');
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+      // Use lower accuracy for faster response
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Low,
+        maximumAge: 60000, // Use cached location if less than 1 minute old
       });
       
       const { latitude, longitude } = location.coords;
-      setRegion({
+      setRegion(prevRegion => ({
+        ...prevRegion,
         latitude,
         longitude,
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
-      });
+      }));
       setIsLocationSet(true);
     } catch (error) {
       console.error("Error getting location:", error);
+      // Set default Nigeria location on error
+      setRegion(prevRegion => ({
+        ...prevRegion,
+        latitude: 9.0765,
+        longitude: 7.3986,
+      }));
     }
-  };
+  }, []);
 
   const toggleMenu = () => {
     const sidebarWidth = Math.min(280, screenDimensions.width * 0.8);
@@ -192,19 +238,26 @@ export default function DriverHome() {
     );
   };
 
-  // Calculate responsive dimensions
-  const isSmallScreen = screenDimensions.width < 400;
-  const isMediumScreen = screenDimensions.width >= 400 && screenDimensions.width < 600;
-  const responsivePadding = Math.max(15, screenDimensions.width * 0.04);
-  const progressSize = Math.min(screenDimensions.width * 0.7, 300);
-  const responsiveFontSize = {
-    title: isSmallScreen ? 16 : 18,
-    regular: isSmallScreen ? 14 : 16,
-    small: isSmallScreen ? 12 : 14,
-    large: isSmallScreen ? 20 : 24,
-  };
+  // Memoize responsive calculations to prevent unnecessary recalculations
+  const responsiveValues = useMemo(() => {
+    const isSmallScreen = screenDimensions.width < 400;
+    const isMediumScreen = screenDimensions.width >= 400 && screenDimensions.width < 600;
+    const responsivePadding = Math.max(15, screenDimensions.width * 0.04);
+    const progressSize = Math.min(screenDimensions.width * 0.7, 300);
+    const responsiveFontSize = {
+      title: isSmallScreen ? 16 : 18,
+      regular: isSmallScreen ? 14 : 16,
+      small: isSmallScreen ? 12 : 14,
+      large: isSmallScreen ? 20 : 24,
+    };
+    
+    return { isSmallScreen, isMediumScreen, responsivePadding, progressSize, responsiveFontSize };
+  }, [screenDimensions.width]);
 
-  const styles = getResponsiveStyles(screenDimensions, progressSize, responsivePadding, responsiveFontSize);
+  const styles = useMemo(() => 
+    getResponsiveStyles(screenDimensions, responsiveValues.progressSize, responsiveValues.responsivePadding, responsiveValues.responsiveFontSize),
+    [screenDimensions, responsiveValues]
+  );
 
   // Show loading screen
   if (isLoading) {
