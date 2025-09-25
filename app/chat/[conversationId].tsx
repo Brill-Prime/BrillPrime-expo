@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -7,13 +6,16 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  SafeAreaView,
+  Image,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AttachmentUploader, { Attachment } from '../../components/AttachmentUploader';
 import { communicationService, ChatMessage, Conversation } from '../../services/communicationService';
 
 export default function ChatScreen() {
@@ -26,6 +28,8 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [showAttachmentUploader, setShowAttachmentUploader] = useState(false);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -121,7 +125,7 @@ export default function ChatScreen() {
   const initializeCommunication = async () => {
     try {
       await communicationService.initializeConnection();
-      
+
       // Subscribe to new messages
       const unsubscribe = communicationService.onMessage((message) => {
         if (message.conversationId === conversationId) {
@@ -140,11 +144,8 @@ export default function ChatScreen() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || sending) return;
-
-    setSending(true);
-    try {
-      const tempMessage: ChatMessage = {
+    if (newMessage.trim() || attachments.length > 0) {
+      const message: ChatMessage = {
         id: Date.now().toString(),
         conversationId: conversationId!,
         senderId: 'user1',
@@ -154,23 +155,21 @@ export default function ChatScreen() {
         messageType: 'text',
         timestamp: new Date().toISOString(),
         read: false,
+        attachments: attachments.length > 0 ? [...attachments] : undefined,
       };
 
-      setMessages(prev => [...prev, tempMessage]);
+      setMessages(prev => [...prev, message]);
       setNewMessage('');
+      setAttachments([]);
+      setShowAttachmentUploader(false);
 
-      // Auto-scroll to bottom
+      // Scroll to bottom
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
 
       // Send to backend (mock for now)
       // const response = await communicationService.sendMessage(conversationId!, newMessage.trim());
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
-    } finally {
-      setSending(false);
     }
   };
 
@@ -206,7 +205,7 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isOwnMessage = item.senderRole === 'consumer';
-    
+
     return (
       <View style={[
         styles.messageContainer,
@@ -219,12 +218,34 @@ export default function ChatScreen() {
           {!isOwnMessage && (
             <Text style={styles.senderName}>{item.senderName}</Text>
           )}
-          <Text style={[
-            styles.messageText,
-            isOwnMessage ? styles.ownMessageText : styles.otherMessageText
-          ]}>
-            {item.message}
-          </Text>
+          {item.message && (
+            <Text style={[
+              styles.messageText,
+              isOwnMessage ? styles.ownMessageText : styles.otherMessageText
+            ]}>
+              {item.message}
+            </Text>
+          )}
+
+          {item.attachments && item.attachments.length > 0 && (
+            <View style={styles.messageAttachments}>
+              {item.attachments.map((attachment: Attachment) => (
+                <View key={attachment.id} style={styles.messageAttachment}>
+                  {attachment.type === 'image' ? (
+                    <Image source={{ uri: attachment.uri }} style={styles.messageImage} />
+                  ) : (
+                    <View style={styles.messageDocument}>
+                      <Ionicons name="document" size={20} color="#4682B4" />
+                      <Text style={styles.documentName} numberOfLines={1}>
+                        {attachment.name}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+
           <Text style={[
             styles.messageTime,
             isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime
@@ -247,7 +268,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -256,7 +277,7 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>
             {conversation?.participants.find(p => p.role !== 'consumer')?.name || 'Chat'}
@@ -282,23 +303,62 @@ export default function ChatScreen() {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
 
-      {/* Input */}
+      {/* Attachment Uploader */}
+      {showAttachmentUploader && (
+        <View style={styles.attachmentSection}>
+          <AttachmentUploader
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
+            maxAttachments={3}
+            allowedTypes={['image', 'document']}
+            maxFileSize={5}
+            placeholder="Add images or documents"
+            style={styles.chatAttachmentUploader}
+          />
+        </View>
+      )}
+
+      {/* Input Area */}
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Type a message..."
-          multiline
-          maxLength={1000}
-        />
-        <TouchableOpacity 
-          onPress={sendMessage}
-          style={[styles.sendButton, (!newMessage.trim() || sending) && styles.sendButtonDisabled]}
-          disabled={!newMessage.trim() || sending}
-        >
-          <Ionicons name="send" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.inputWrapper}>
+          <TouchableOpacity
+            style={styles.attachmentButton}
+            onPress={() => setShowAttachmentUploader(!showAttachmentUploader)}
+          >
+            <Ionicons
+              name={showAttachmentUploader ? "close" : "attach"}
+              size={20}
+              color="#4682B4"
+            />
+          </TouchableOpacity>
+
+          <TextInput
+            style={styles.textInput}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Type a message..."
+            placeholderTextColor="#999"
+            multiline
+            maxLength={500}
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!newMessage.trim() && attachments.length === 0) && styles.sendButtonDisabled
+            ]}
+            onPress={sendMessage}
+            disabled={!newMessage.trim() && attachments.length === 0}
+          >
+            <Ionicons name="send" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        {attachments.length > 0 && (
+          <Text style={styles.attachmentCount}>
+            {attachments.length} attachment{attachments.length > 1 ? 's' : ''} selected
+          </Text>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -401,13 +461,16 @@ const getResponsiveStyles = (screenData: any) => {
       color: '#999',
     },
     inputContainer: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
+      flexDirection: 'column',
       backgroundColor: '#fff',
       paddingHorizontal: Math.max(16, width * 0.04),
       paddingVertical: 12,
       borderTopWidth: 1,
       borderTopColor: '#e0e0e0',
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     textInput: {
       flex: 1,
@@ -420,13 +483,62 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
     },
     sendButton: {
-      backgroundColor: '#667eea',
+      backgroundColor: '#4682B4',
       borderRadius: 20,
-      padding: 10,
-      marginLeft: 8,
+      padding: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     sendButtonDisabled: {
       backgroundColor: '#ccc',
+    },
+    attachmentButton: {
+      padding: 8,
+      marginRight: 8,
+    },
+    attachmentSection: {
+      backgroundColor: 'white',
+      padding: 15,
+      borderTopWidth: 1,
+      borderTopColor: '#eee',
+    },
+    chatAttachmentUploader: {
+      marginVertical: 0,
+    },
+    attachmentCount: {
+      fontSize: 12,
+      color: '#4682B4',
+      marginTop: 5,
+      marginLeft: 40,
+      fontFamily: 'Montserrat-Regular',
+    },
+    messageAttachments: {
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    messageAttachment: {
+      marginBottom: 8,
+    },
+    messageImage: {
+      width: 200,
+      height: 150,
+      borderRadius: 8,
+      resizeMode: 'cover',
+    },
+    messageDocument: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(70, 130, 180, 0.1)',
+      padding: 8,
+      borderRadius: 8,
+      maxWidth: 200,
+    },
+    documentName: {
+      marginLeft: 8,
+      fontSize: 12,
+      color: '#4682B4',
+      flex: 1,
+      fontFamily: 'Montserrat-Regular',
     },
   });
 };

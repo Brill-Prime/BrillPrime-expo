@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -24,7 +23,8 @@ import {
   generateCommodityId,
   formatPrice,
   type Commodity,
-  type CommodityFormData 
+  type CommodityFormData,
+  type Attachment
 } from '../../utils/commodityUtils';
 
 const { width } = Dimensions.get('window');
@@ -46,6 +46,8 @@ export default function AddCommodityScreen() {
     price: '',
     image: '',
   });
+
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const [errors, setErrors] = useState({
     name: '',
@@ -82,6 +84,7 @@ export default function AddCommodityScreen() {
             price: commodity.price.toString(),
             image: commodity.image,
           });
+          setAttachments(commodity.attachments || []);
         }
       }
     } catch (error) {
@@ -186,27 +189,25 @@ export default function AddCommodityScreen() {
                 unit: formData.unit,
                 price: price,
                 image: formData.image || c.image,
+                attachments: attachments,
               }
             : c
         );
         showSuccess('Success', 'Commodity updated successfully');
       } else {
-        // Get merchant ID from storage or default
-        const merchantData = await AsyncStorage.getItem('merchantProfile');
-        const merchantId = merchantData ? JSON.parse(merchantData).id : 'merchant1';
-
         // Add new commodity
         const newCommodity: Commodity = {
-          id: generateCommodityId(),
+          id: Date.now().toString(),
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
           unit: formData.unit,
           price: price,
-          image: formData.image || '',
+          image: formData.image || require('../../assets/images/consumer_order_fuel_icon.png'),
           inStock: true,
           createdAt: new Date().toISOString(),
-          merchantId: merchantId,
+          merchantId: 'merchant1',
+          attachments: attachments,
         };
 
         commodities.push(newCommodity);
@@ -214,7 +215,7 @@ export default function AddCommodityScreen() {
       }
 
       await AsyncStorage.setItem('merchantCommodities', JSON.stringify(commodities));
-      
+
       // Clear form after successful save
       if (!isEditing) {
         setFormData({
@@ -225,8 +226,9 @@ export default function AddCommodityScreen() {
           price: '',
           image: '',
         });
+        setAttachments([]);
       }
-      
+
       // Navigate back with a small delay to ensure the success message is seen
       setTimeout(() => {
         router.back();
@@ -316,6 +318,24 @@ export default function AddCommodityScreen() {
               </View>
             )}
           </TouchableOpacity>
+
+          {/* Attachments Section */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.attachmentTitle}>Attachments</Text>
+            <TouchableOpacity style={styles.addAttachmentButton} onPress={() => { /* TODO: Implement attachment picker */ }}>
+              <Ionicons name="attach" size={20} color="#4682B4" />
+              <Text style={styles.addAttachmentButtonText}>Add Attachment</Text>
+            </TouchableOpacity>
+            {attachments.map((att, index) => (
+              <View key={index} style={styles.attachmentItem}>
+                <Ionicons name={att.type === 'image' ? 'image-outline' : 'document-text-outline'} size={20} color="#4682B4" />
+                <Text style={styles.attachmentName} numberOfLines={1} ellipsizeMode="tail">{att.name}</Text>
+                <TouchableOpacity onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}>
+                  <Ionicons name="close-circle" size={20} color="#e74c3c" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
 
           {/* Form Fields */}
           <View style={styles.inputContainer}>
@@ -528,6 +548,48 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
+  },
+  attachmentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Montserrat-SemiBold',
+    color: '#131313',
+    marginBottom: 10,
+  },
+  addAttachmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 50,
+    backgroundColor: 'white',
+    marginBottom: 15,
+  },
+  addAttachmentButtonText: {
+    color: '#4682B4',
+    fontSize: 16,
+    fontFamily: 'Montserrat-Medium',
+    marginLeft: 10,
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  attachmentName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    fontFamily: 'Montserrat-Regular',
+    marginHorizontal: 10,
   },
   textInput: {
     borderWidth: 1,
