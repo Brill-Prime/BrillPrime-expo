@@ -39,8 +39,8 @@ config.resolver.assetExts.push(
   'db'
 );
 
-// Add resolver configuration
-config.resolver.assetExts = [...config.resolver.assetExts, 'png', 'jpg', 'jpeg', 'svg', 'ttf'];
+// Add resolver configuration for better asset handling
+config.resolver.assetExts = [...config.resolver.assetExts, 'png', 'jpg', 'jpeg', 'svg', 'ttf', 'otf', 'woff', 'woff2'];
 
 config.resolver.sourceExts.push(
   'jsx',
@@ -51,5 +51,22 @@ config.resolver.sourceExts.push(
   'wasm',
   'svg'
 );
+
+// Add web-specific optimizations
+if (config.transformer.getTransformOptions) {
+  const originalGetTransformOptions = config.transformer.getTransformOptions;
+  config.transformer.getTransformOptions = async (...args) => {
+    const options = await originalGetTransformOptions(...args);
+    return {
+      ...options,
+      transform: {
+        ...options.transform,
+        // Optimize for web font loading
+        experimentalImportSupport: true,
+        inlineRequires: true,
+      },
+    };
+  };
+}
 
 module.exports = config;

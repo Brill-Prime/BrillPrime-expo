@@ -29,21 +29,44 @@ export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
+    // For web, we can add a quick check if fonts are even needed
+    if (typeof window !== 'undefined' && window.document) {
+      // Check if we're running in a web environment
+      const isWeb = true;
+      if (isWeb) {
+        // On web, fonts might load slower, so we add fallback CSS
+        const style = document.createElement('style');
+        style.textContent = `
+          * {
+            font-family: 'Montserrat-Regular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
     loadFonts();
   }, []);
 
   const loadFonts = async () => {
     try {
-      await Font.loadAsync({
+      // Set a shorter timeout for font loading
+      const fontLoadPromise = Font.loadAsync({
         'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
         'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
         'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
         'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
       });
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Font loading timeout')), 3000)
+      );
+
+      await Promise.race([fontLoadPromise, timeoutPromise]);
       setFontsLoaded(true);
     } catch (error) {
       console.log('Font loading error:', error);
-      // Continue without custom fonts
+      // Continue without custom fonts - this is important for web compatibility
       setFontsLoaded(true);
     }
   };
