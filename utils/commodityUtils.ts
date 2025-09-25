@@ -1,128 +1,19 @@
-
-export interface CommodityFormData {
-  name: string;
-  description: string;
-  category: string;
-  unit: string;
-  price: string;
-  image: string;
-}
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Commodity {
   id: string;
-  name: string;
-  description: string;
-  category: string;
-  unit: string;
-  price: number;
-  image: string;
-  inStock: boolean;
-  createdAt: string;
   merchantId: string;
-}
-
-export const CATEGORIES = [
-  { id: 'petrol', name: 'Petrol', color: '#4682B4' },
-  { id: 'lubricant', name: 'Car Lubricant', color: '#4682B4' },
-  { id: 'aviation', name: 'Aviation', color: '#4682B4' },
-  { id: 'industrial', name: 'Industrial', color: '#4682B4' },
-  { id: 'food', name: 'Food & Beverages', color: '#4682B4' },
-  { id: 'electronics', name: 'Electronics', color: '#4682B4' },
-  { id: 'automotive', name: 'Automotive', color: '#4682B4' },
-  { id: 'chemicals', name: 'Chemicals', color: '#4682B4' },
-];
-
-export const UNITS = [
-  'Litres',
-  'Kilograms',
-  'Pieces',
-  'Boxes',
-  'Gallons',
-  'Tons',
-  'Meters',
-  'Grams',
-  'Bottles',
-  'Packets',
-  'Dozen',
-  'Cartons',
-];
-
-export const validateCommodityForm = (formData: CommodityFormData) => {
-  const errors = {
-    name: '',
-    description: '',
-    price: '',
-    category: '',
-    unit: '',
-  };
-
-  // Name validation
-  if (!formData.name.trim()) {
-    errors.name = 'Commodity name is required';
-  } else if (formData.name.trim().length < 2) {
-    errors.name = 'Name must be at least 2 characters';
-  } else if (formData.name.trim().length > 50) {
-    errors.name = 'Name cannot exceed 50 characters';
-  }
-
-  // Description validation
-  if (!formData.description.trim()) {
-    errors.description = 'Description is required';
-  } else if (formData.description.trim().length < 10) {
-    errors.description = 'Description must be at least 10 characters';
-  } else if (formData.description.trim().length > 200) {
-    errors.description = 'Description cannot exceed 200 characters';
-  }
-
-  // Price validation
-  if (!formData.price.trim()) {
-    errors.price = 'Price is required';
-  } else {
-    const price = parseFloat(formData.price);
-    if (isNaN(price) || price <= 0) {
-      errors.price = 'Please enter a valid price greater than 0';
-    } else if (price > 1000000) {
-      errors.price = 'Price cannot exceed ₦1,000,000';
-    }
-  }
-
-  // Category validation
-  if (!formData.category) {
-    errors.category = 'Please select a category';
-  }
-
-  // Unit validation
-  if (!formData.unit) {
-    errors.unit = 'Please select a unit';
-  }
-
-  return {
-    errors,
-    isValid: !Object.values(errors).some(error => error !== ''),
-  };
-};
-
-export const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 0,
-  }).format(price);
-};
-
-export const generateCommodityId = (): string => {
-  return `commodity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-export interface Commodity {
-  id: string;
   name: string;
   description: string;
   price: number;
   category: string;
+  unit: string;
+  availableQuantity: number;
+  minOrderQuantity: number;
   images: string[];
-  merchantId: string;
-  stock: number;
-  unit: string;
+  specifications?: Record<string, any>;
+  tags?: string[];
+  status: 'active' | 'inactive' | 'out_of_stock';
   createdAt: string;
   updatedAt: string;
 }
@@ -132,22 +23,70 @@ export interface CommodityFormData {
   description: string;
   price: string;
   category: string;
-  stock: string;
   unit: string;
+  availableQuantity: string;
+  minOrderQuantity: string;
   images: string[];
+  specifications: Record<string, any>;
+  tags: string[];
 }
 
-export const commodityCategories = [
-  'Food & Beverages',
-  'Electronics',
-  'Clothing & Fashion',
-  'Home & Garden',
-  'Health & Beauty',
-  'Sports & Outdoors',
-  'Books & Media',
-  'Automotive',
-  'Toys & Games',
-  'Other'
+export const COMMODITY_CATEGORIES = [
+  { label: 'Electronics', value: 'electronics' },
+  { label: 'Clothing & Fashion', value: 'clothing' },
+  { label: 'Home & Garden', value: 'home_garden' },
+  { label: 'Sports & Recreation', value: 'sports' },
+  { label: 'Books & Media', value: 'books' },
+  { label: 'Automotive', value: 'automotive' },
+  { label: 'Health & Beauty', value: 'health_beauty' },
+  { label: 'Food & Beverages', value: 'food_beverages' },
+  { label: 'Toys & Games', value: 'toys' },
+  { label: 'Office Supplies', value: 'office' },
+  { label: 'Art & Crafts', value: 'art_crafts' },
+  { label: 'Pet Supplies', value: 'pet_supplies' },
+  { label: 'Travel & Luggage', value: 'travel' },
+  { label: 'Musical Instruments', value: 'music' },
+  { label: 'Industrial', value: 'industrial' },
+  { label: 'Services', value: 'services' },
+  { label: 'Other', value: 'other' }
+];
+
+export const COMMODITY_UNITS = [
+  { label: 'Piece(s)', value: 'piece' },
+  { label: 'Kilogram(s)', value: 'kg' },
+  { label: 'Gram(s)', value: 'g' },
+  { label: 'Liter(s)', value: 'l' },
+  { label: 'Milliliter(s)', value: 'ml' },
+  { label: 'Meter(s)', value: 'm' },
+  { label: 'Centimeter(s)', value: 'cm' },
+  { label: 'Pack(s)', value: 'pack' },
+  { label: 'Box(es)', value: 'box' },
+  { label: 'Dozen(s)', value: 'dozen' },
+  { label: 'Set(s)', value: 'set' },
+  { label: 'Pair(s)', value: 'pair' },
+  { label: 'Bundle(s)', value: 'bundle' },
+  { label: 'Bottle(s)', value: 'bottle' },
+  { label: 'Can(s)', value: 'can' },
+  { label: 'Bag(s)', value: 'bag' },
+  { label: 'Roll(s)', value: 'roll' },
+  { label: 'Sheet(s)', value: 'sheet' },
+  { label: 'Yard(s)', value: 'yard' },
+  { label: 'Foot/Feet', value: 'ft' },
+  { label: 'Inch(es)', value: 'inch' },
+  { label: 'Gallon(s)', value: 'gallon' },
+  { label: 'Pound(s)', value: 'lb' },
+  { label: 'Ounce(s)', value: 'oz' },
+  { label: 'Square Meter(s)', value: 'sqm' },
+  { label: 'Square Foot/Feet', value: 'sqft' },
+  { label: 'Cubic Meter(s)', value: 'cbm' },
+  { label: 'Cubic Foot/Feet', value: 'cbft' },
+  { label: 'Ton(s)', value: 'ton' },
+  { label: 'Hour(s)', value: 'hour' },
+  { label: 'Day(s)', value: 'day' },
+  { label: 'Week(s)', value: 'week' },
+  { label: 'Month(s)', value: 'month' },
+  { label: 'Year(s)', value: 'year' },
+  { label: 'Service', value: 'service' }
 ];
 
 export const validateCommodityForm = (data: CommodityFormData): string[] => {
@@ -169,12 +108,20 @@ export const validateCommodityForm = (data: CommodityFormData): string[] => {
     errors.push('Category is required');
   }
 
-  if (!data.stock || parseInt(data.stock) < 0) {
-    errors.push('Valid stock quantity is required');
+  if (!data.unit) {
+    errors.push('Unit is required');
   }
 
-  if (!data.unit.trim()) {
-    errors.push('Unit is required');
+  if (!data.availableQuantity || parseInt(data.availableQuantity) < 0) {
+    errors.push('Available quantity must be 0 or greater');
+  }
+
+  if (!data.minOrderQuantity || parseInt(data.minOrderQuantity) <= 0) {
+    errors.push('Minimum order quantity must be greater than 0');
+  }
+
+  if (data.images.length === 0) {
+    errors.push('At least one product image is required');
   }
 
   return errors;
@@ -183,6 +130,36 @@ export const validateCommodityForm = (data: CommodityFormData): string[] => {
 export const formatPrice = (price: number): string => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
-    currency: 'NGN'
+    currency: 'NGN',
   }).format(price);
+};
+
+export const generateCommodityId = (): string => {
+  return 'commodity_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+};
+
+export const saveCommodityDraft = async (data: Partial<CommodityFormData>): Promise<void> => {
+  try {
+    await AsyncStorage.setItem('commodity_draft', JSON.stringify(data));
+  } catch (error) {
+    console.error('Error saving commodity draft:', error);
+  }
+};
+
+export const loadCommodityDraft = async (): Promise<Partial<CommodityFormData> | null> => {
+  try {
+    const draft = await AsyncStorage.getItem('commodity_draft');
+    return draft ? JSON.parse(draft) : null;
+  } catch (error) {
+    console.error('Error loading commodity draft:', error);
+    return null;
+  }
+};
+
+export const clearCommodityDraft = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem('commodity_draft');
+  } catch (error) {
+    console.error('Error clearing commodity draft:', error);
+  }
 };
