@@ -49,7 +49,14 @@ export default function RootLayout() {
 
   const loadFonts = async () => {
     try {
-      // Set a shorter timeout for font loading
+      // For web, just skip font loading to avoid timeout issues
+      if (typeof window !== 'undefined') {
+        console.log('Web environment detected, skipping font loading');
+        setFontsLoaded(true);
+        return;
+      }
+
+      // Set a very short timeout for font loading on native
       const fontLoadPromise = Font.loadAsync({
         'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
         'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
@@ -57,9 +64,9 @@ export default function RootLayout() {
         'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
       });
 
-      // Add timeout to prevent hanging
+      // Add very short timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Font loading timeout')), 3000)
+        setTimeout(() => reject(new Error('Font loading timeout')), 1000)
       );
 
       await Promise.race([fontLoadPromise, timeoutPromise]);

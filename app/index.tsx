@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Text, View, StyleSheet, Animated, Image, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ DEPLOYMENT READY - DO NOT EDIT WITHOUT TEAM APPROVAL
@@ -162,20 +162,32 @@ export default function SplashScreen() {
     );
   }
 
-  // If onboarding was not seen, the logic inside useEffect would have already redirected.
-  // This part is a safeguard or for cases where the redirect logic might fail.
-  if (hasSeenOnboarding === false) {
-    return <Redirect href="/onboarding/screen1" />;
-  }
-
-  // If onboarding was seen but auth check failed or no user, this part handles redirection.
-  // The actual redirection happens within the useEffect, so this return might not be reached
-  // unless the useEffect logic is bypassed or modified.
-  // For safety, we can return a loading indicator or a default redirect.
+  // This should not be reached due to useEffect redirects, but keeping as fallback
   return (
-    <View style={[styles.container, { backgroundColor: '#fff' }]}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={{ marginTop: 10, fontSize: 16, color: '#666' }}>Initializing...</Text>
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <Animated.View
+          style={[
+            styles.logoContainer,
+            {
+              opacity: fadeAnim,
+              transform: [
+                { scale: Animated.multiply(scaleAnim, pulseAnim) }
+              ],
+            },
+          ]}
+        >
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.logoImage as any}
+            resizeMode="contain"
+          />
+        </Animated.View>
+
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#3b82f6" />
+        </View>
+      </View>
     </View>
   );
 }
