@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Dimensions } from 'react-native';
 import { ArrowLeft, Users, FileText, Shield, DollarSign, Activity, AlertTriangle, Bell } from 'lucide-react';
@@ -59,7 +58,7 @@ export default function AdminPanel() {
             <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 8 }}>Total Users</Text>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1E293B' }}>12,543</Text>
           </View>
-          
+
           <View style={{ 
             backgroundColor: 'white', 
             borderRadius: 12, 
@@ -76,7 +75,7 @@ export default function AdminPanel() {
             <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 8 }}>Active Orders</Text>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1E293B' }}>1,287</Text>
           </View>
-          
+
           <View style={{ 
             backgroundColor: 'white', 
             borderRadius: 12, 
@@ -93,7 +92,7 @@ export default function AdminPanel() {
             <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 8 }}>Revenue Today</Text>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1E293B' }}>₦2.4M</Text>
           </View>
-          
+
           <View style={{ 
             backgroundColor: 'white', 
             borderRadius: 12, 
@@ -126,7 +125,7 @@ export default function AdminPanel() {
           <Text style={{ fontSize: 18, fontWeight: '600', color: '#1E293B', marginBottom: 16 }}>
             Quick Actions
           </Text>
-          
+
           <View style={{ gap: 12 }}>
             {menuItems.slice(1, 5).map((item) => {
               const IconComponent = item.icon;
@@ -194,7 +193,7 @@ export default function AdminPanel() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1E293B' }}>
       <StatusBar backgroundColor="#1E293B" barStyle="light-content" />
-      
+
       <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ 
@@ -215,12 +214,12 @@ export default function AdminPanel() {
               Admin Panel
             </Text>
           </View>
-          
+
           <ScrollView>
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = currentPage === item.id;
-              
+
               return (
                 <TouchableOpacity
                   key={item.id}

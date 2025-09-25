@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { KycReviewModal } from '../components/kyc-review-modal';
+import { KycReviewModal } from '../../components/kyc-review-modal';
 import { BatchKycActions } from '../components/batch-kyc-actions';
 
 interface MerchantKycSubmission {
