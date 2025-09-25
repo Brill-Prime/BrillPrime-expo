@@ -29,7 +29,10 @@ export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    // For web environment, set up CSS fallbacks immediately
+    // Skip all font loading to prevent timeouts and crashes
+    console.log('Skipping font loading to prevent timeouts');
+    
+    // Set up CSS fallbacks for web
     if (typeof window !== 'undefined' && window.document) {
       const style = document.createElement('style');
       style.textContent = `
@@ -40,53 +43,8 @@ export default function RootLayout() {
       document.head.appendChild(style);
     }
     
-    // Load fonts asynchronously without blocking
-    const loadFontsAsync = async () => {
-      await loadFonts();
-    };
-    
-    loadFontsAsync();
+    setFontsLoaded(true);
   }, []);
-
-  const loadFonts = async () => {
-    try {
-      // For web environment, skip font loading entirely
-      if (typeof window !== 'undefined') {
-        console.log('Web environment detected, skipping font loading');
-        setFontsLoaded(true);
-        return;
-      }
-
-      // For native, try to load fonts with very short timeout
-      const fontLoadPromise = Font.loadAsync({
-        'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
-        'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
-        'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
-        'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
-      });
-
-      // Very aggressive timeout to prevent any hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Font loading timeout')), 500)
-      );
-
-      await Promise.race([fontLoadPromise, timeoutPromise]);
-      console.log('Fonts loaded successfully');
-      setFontsLoaded(true);
-    } catch (error) {
-      console.log('Font loading error, continuing without custom fonts:', error);
-      // Always continue without custom fonts to prevent app crashes
-      setFontsLoaded(true);
-    }
-  };
-
-  if (!fontsLoaded) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>

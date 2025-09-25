@@ -22,17 +22,20 @@ export default function SplashScreen() {
     let isMounted = true;
     let navigationTimeout: NodeJS.Timeout;
 
+    // Disable native driver on web to prevent warnings
+    const useNativeDriver = typeof window === 'undefined';
+    
     // Start animations immediately
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]).start();
 
@@ -42,12 +45,12 @@ export default function SplashScreen() {
         Animated.timing(pulseAnim, {
           toValue: 1.05,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     );
@@ -75,9 +78,10 @@ export default function SplashScreen() {
           if (isMounted) {
             console.log('Navigation timeout, forcing redirect to onboarding');
             try {
-              router.push('/onboarding/screen1');
+              router.replace('/onboarding/screen1');
             } catch (e) {
               console.error('Navigation error:', e);
+              router.replace('/(tabs)');
             }
           }
         }, 2000);
@@ -86,7 +90,12 @@ export default function SplashScreen() {
         if (onboardingStatus !== 'true') {
           console.log('User has not seen onboarding, navigating to onboarding');
           clearTimeout(navigationTimeout);
-          router.push('/onboarding/screen1');
+          try {
+            router.replace('/onboarding/screen1');
+          } catch (e) {
+            console.error('Navigation error, trying alternative route:', e);
+            router.replace('/(tabs)');
+          }
           return;
         }
 
@@ -101,7 +110,12 @@ export default function SplashScreen() {
           console.log('No valid token or token expired, navigating to signin');
           await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
           clearTimeout(navigationTimeout);
-          router.push('/auth/signin');
+          try {
+            router.replace('/auth/signin');
+          } catch (e) {
+            console.error('Navigation error:', e);
+            router.replace('/(tabs)');
+          }
           return;
         }
 
@@ -110,23 +124,33 @@ export default function SplashScreen() {
         if (role && isMounted) {
           console.log('Using cached role:', role);
           clearTimeout(navigationTimeout);
-          switch (role) {
-            case 'consumer':
-              router.push('/home/consumer');
-              break;
-            case 'merchant':
-              router.push('/home/merchant');
-              break;
-            case 'driver':
-              router.push('/home/driver');
-              break;
-            default:
-              router.push('/auth/role-selection');
+          try {
+            switch (role) {
+              case 'consumer':
+                router.replace('/home/consumer');
+                break;
+              case 'merchant':
+                router.replace('/home/merchant');
+                break;
+              case 'driver':
+                router.replace('/home/driver');
+                break;
+              default:
+                router.replace('/auth/role-selection');
+            }
+          } catch (e) {
+            console.error('Role navigation error:', e);
+            router.replace('/(tabs)');
           }
         } else {
           console.log('No cached role found, redirecting to role selection');
           clearTimeout(navigationTimeout);
-          router.push('/auth/role-selection');
+          try {
+            router.replace('/auth/role-selection');
+          } catch (e) {
+            console.error('Navigation error:', e);
+            router.replace('/(tabs)');
+          }
         }
 
       } catch (error) {
@@ -134,7 +158,12 @@ export default function SplashScreen() {
         if (isMounted) {
           clearTimeout(navigationTimeout);
           // Fallback to onboarding if any error occurs during auth check
-          router.push('/onboarding/screen1');
+          try {
+            router.replace('/onboarding/screen1');
+          } catch (e) {
+            console.error('Fallback navigation error:', e);
+            router.replace('/(tabs)');
+          }
         }
       } finally {
         if (isMounted) {
