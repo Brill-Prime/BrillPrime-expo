@@ -206,10 +206,12 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   statusCard: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
     padding: 25,
     borderRadius: 25,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   statusTitle: {
     fontSize: 16,
@@ -266,10 +268,12 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     width: "47%",
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
     padding: 20,
     borderRadius: 25,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   featureIcon: {
     width: 50,
@@ -303,25 +307,29 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#4682B4",
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 20,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   statNumber: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: "#4682B4",
   },
   statLabel: {
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "#2c3e50",
     marginTop: 2,
   },
   recentDeliveries: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
     padding: 20,
     borderRadius: 25,
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   deliveryItem: {
     flexDirection: "row",
