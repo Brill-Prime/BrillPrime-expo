@@ -47,6 +47,7 @@
     "expo-web-browser": "~14.2.0",
     "express": "^5.1.0",
     "http-proxy-middleware": "^3.0.5",
+    "lucide-react": "^0.544.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
