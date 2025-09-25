@@ -50,67 +50,67 @@ export default function SplashScreen() {
     startPulse();
 
     const checkAuthState = async () => {
-    try {
-      const [onboarding, token, tokenExpiry, selectedRole] = await AsyncStorage.multiGet([
-        'hasSeenOnboarding', 
-        'userToken', 
-        'tokenExpiry',
-        'selectedRole'
-      ]);
-
-      console.log('hasSeenOnboarding:', onboarding[1]);
-      console.log('userToken:', token[1]);
-      console.log('selectedRole:', selectedRole[1]);
-
-      if (!onboarding[1]) {
-        console.log('First time user, navigating to onboarding');
-        setTimeout(() => router.replace('/onboarding/screen1'), 2000);
-        return;
-      }
-
-      // Check if token exists and is not expired
-      const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
-
-      if (!token[1] || isTokenExpired) {
-        console.log('No valid token, clearing auth data and navigating to role selection');
-        await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-        setTimeout(() => router.replace('/auth/role-selection'), 2000);
-        return;
-      }
-
-      // For development, skip backend verification and use cached role
       try {
-        const role = await AsyncStorage.getItem('userRole');
-        if (role) {
-          console.log('Using cached role:', role);
-          if (role === 'consumer') {
-            setTimeout(() => router.replace('/home/consumer'), 2000);
-          } else if (role === 'merchant') {
-            setTimeout(() => router.replace('/home/merchant'), 2000);
-          } else if (role === 'driver') {
-            setTimeout(() => router.replace('/home/driver'), 2000);
-          } else {
-            setTimeout(() => router.replace('/home/consumer'), 2000);
-          }
+        const [onboarding, token, tokenExpiry, selectedRole] = await AsyncStorage.multiGet([
+          'hasSeenOnboarding', 
+          'userToken', 
+          'tokenExpiry',
+          'selectedRole'
+        ]);
+
+        console.log('hasSeenOnboarding:', onboarding[1]);
+        console.log('userToken:', token[1]);
+        console.log('selectedRole:', selectedRole[1]);
+
+        if (!onboarding[1]) {
+          console.log('First time user, navigating to onboarding');
+          setTimeout(() => router.replace('/onboarding/screen1'), 2000);
           return;
         }
+
+        // Check if token exists and is not expired
+        const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
+
+        if (!token[1] || isTokenExpired) {
+          console.log('No valid token, clearing auth data and navigating to role selection');
+          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
+          setTimeout(() => router.replace('/auth/role-selection'), 2000);
+          return;
+        }
+
+        // For development, skip backend verification and use cached role
+        try {
+          const role = await AsyncStorage.getItem('userRole');
+          if (role) {
+            console.log('Using cached role:', role);
+            if (role === 'consumer') {
+              setTimeout(() => router.replace('/home/consumer'), 2000);
+            } else if (role === 'merchant') {
+              setTimeout(() => router.replace('/home/merchant'), 2000);
+            } else if (role === 'driver') {
+              setTimeout(() => router.replace('/home/driver'), 2000);
+            } else {
+              setTimeout(() => router.replace('/home/consumer'), 2000);
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('Error getting cached role:', error);
+        }
+
+        // Fallback to role selection
+        console.log('No cached role found, redirecting to role selection');
+        await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
+        setTimeout(() => router.replace('/auth/role-selection'), 2000);
+
       } catch (error) {
-        console.error('Error getting cached role:', error);
+        console.error('Error checking auth state:', error);
+        setTimeout(() => router.replace('/onboarding/screen1'), 2000);
       }
-
-      // Fallback to role selection
-      console.log('No cached role found, redirecting to role selection');
-      await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-      setTimeout(() => router.replace('/auth/role-selection'), 2000);
-
-    } catch (error) {
-      console.error('Error checking auth state:', error);
-      setTimeout(() => router.replace('/onboarding/screen1'), 2000);
-    }
-  };
+    };
 
     checkAuthState();
-  }, [router, variant, fadeAnim, scaleAnim, pulseAnim]);
+  }, []);
 
 
 
