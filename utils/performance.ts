@@ -1,126 +1,240 @@
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+interface CacheItem {
+  data: any;
+  timestamp: number;
+  ttl: number; // Time to live in milliseconds
+}
 
-// Cache for storing frequently accessed data
-const memoryCache = new Map();
+class PerformanceOptimizerClass {
+  private cache = new Map<string, CacheItem>();
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
-export class PerformanceOptimizer {
-  // Debounce function calls to prevent excessive executions
-  static debounce<T extends (...args: any[]) => any>(
+  // Cache management
+  setCache(key: string, data: any, ttl: number = this.DEFAULT_TTL): void {
+    try {
+      this.cache.set(key, {
+        data,
+        timestamp: Date.now(),
+        ttl
+      });
+    } catch (error) {
+      console.warn('Failed to set cache:', error);
+    }
+  }
+
+  getCache(key: string): any {
+    try {
+      const item = this.cache.get(key);
+      if (!item) return null;
+
+      const isExpired = Date.now() - item.timestamp > item.ttl;
+      if (isExpired) {
+        this.cache.delete(key);
+        return null;
+      }
+
+      return item.data;
+    } catch (error) {
+      console.warn('Failed to get cache:', error);
+      return null;
+    }
+  }
+
+  clearCache(key?: string): void {
+    try {
+      if (key) {
+        this.cache.delete(key);
+      } else {
+        this.cache.clear();
+      }
+    } catch (error) {
+      console.warn('Failed to clear cache:', error);
+    }
+  }
+
+  // Cleanup expired cache entries
+  cleanupCache(): void {
+    try {
+      const now = Date.now();
+      for (const [key, item] of this.cache.entries()) {
+        if (now - item.timestamp > item.ttl) {
+          this.cache.delete(key);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup cache:', error);
+    }
+  }
+
+  // Memory management
+  debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
   ): (...args: Parameters<T>) => void {
     let timeout: NodeJS.Timeout;
     return (...args: Parameters<T>) => {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
+      timeout = setTimeout(() => func.apply(this, args), wait);
     };
   }
 
-  // Throttle function calls
-  static throttle<T extends (...args: any[]) => any>(
+  throttle<T extends (...args: any[]) => any>(
     func: T,
     limit: number
   ): (...args: Parameters<T>) => void {
     let inThrottle: boolean;
     return (...args: Parameters<T>) => {
       if (!inThrottle) {
-        func(...args);
+        func.apply(this, args);
         inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
+        setTimeout(() => (inThrottle = false), limit);
       }
     };
   }
 
-  // Batch AsyncStorage operations
-  static async batchAsyncStorage(operations: Array<{
-    type: 'get' | 'set' | 'remove';
-    key: string;
-    value?: string;
-  }>) {
-    const getOps = operations.filter(op => op.type === 'get').map(op => op.key);
-    const setOps = operations.filter(op => op.type === 'set').map(op => [op.key, op.value!]);
-    const removeOps = operations.filter(op => op.type === 'remove').map(op => op.key);
-
-    const results = await Promise.all([
-      getOps.length > 0 ? AsyncStorage.multiGet(getOps) : Promise.resolve([]),
-      setOps.length > 0 ? AsyncStorage.multiSet(setOps as [string, string][]) : Promise.resolve(),
-      removeOps.length > 0 ? AsyncStorage.multiRemove(removeOps) : Promise.resolve()
-    ]);
-
-    return results[0]; // Return get results
-  }
-
-  // Memory cache with TTL
-  static setCache(key: string, value: any, ttlMs: number = 300000) { // 5 min default
-    const expiry = Date.now() + ttlMs;
-    memoryCache.set(key, { value, expiry });
-  }
-
-  static getCache(key: string) {
-    const cached = memoryCache.get(key);
-    if (!cached) return null;
-    
-    if (Date.now() > cached.expiry) {
-      memoryCache.delete(key);
-      return null;
-    }
-    
-    return cached.value;
-  }
-
-  // Preload critical data
-  static async preloadCriticalData() {
+  // Preload critical data from AsyncStorage
+  async preloadCriticalData(): Promise<{
+    userToken: string | null;
+    userRole: string | null;
+    userEmail: string | null;
+    tokenExpiry: string | null;
+  }> {
     try {
-      const criticalKeys = [
-        'userToken', 'userEmail', 'userRole', 
-        'tokenExpiry', 'hasSeenOnboarding'
-      ];
+      const cachedData = this.getCache('criticalUserData');
+      if (cachedData) {
+        return cachedData;
+      }
+
+      // Dynamic import to avoid circular dependencies
+      const AsyncStorage = await import('@react-native-async-storage/async-storage');
       
-      const data = await AsyncStorage.multiGet(criticalKeys);
+      const [userToken, userRole, userEmail, tokenExpiry] = await Promise.all([
+        AsyncStorage.default.getItem('userToken'),
+        AsyncStorage.default.getItem('userRole'),
+        AsyncStorage.default.getItem('userEmail'),
+        AsyncStorage.default.getItem('tokenExpiry')
+      ]);
+
+      const data = {
+        userToken,
+        userRole,
+        userEmail,
+        tokenExpiry
+      };
+
+      // Cache for 1 minute
+      this.setCache('criticalUserData', data, 60 * 1000);
       
-      // Cache in memory for instant access
-      data.forEach(([key, value]) => {
-        if (value) {
-          this.setCache(key, value, 600000); // 10 minute cache
-        }
-      });
-      
-      return Object.fromEntries(data);
+      return data;
     } catch (error) {
-      console.error('Error preloading critical data:', error);
-      return {};
+      console.error('Failed to preload critical data:', error);
+      return {
+        userToken: null,
+        userRole: null,
+        userEmail: null,
+        tokenExpiry: null
+      };
     }
   }
 
-  // Image lazy loading helper
-  static createImagePreloader(sources: string[]) {
+  // Batch API calls
+  async batchApiCalls<T>(
+    calls: Array<() => Promise<T>>
+  ): Promise<Array<T | Error>> {
+    try {
+      const results = await Promise.allSettled(calls.map(call => call()));
+      return results.map(result => 
+        result.status === 'fulfilled' ? result.value : new Error('API call failed')
+      );
+    } catch (error) {
+      console.error('Batch API calls failed:', error);
+      return calls.map(() => new Error('Batch operation failed'));
+    }
+  }
+
+  // Image loading optimization
+  preloadImages(imageUrls: string[]): Promise<void[]> {
     return Promise.all(
-      sources.map(src => 
-        new Promise((resolve, reject) => {
-          const img = new Image();
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = src;
-        })
-      )
+      imageUrls.map(url => {
+        return new Promise<void>((resolve, reject) => {
+          if (typeof window !== 'undefined') {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+            img.src = url;
+          } else {
+            // For React Native, images are handled differently
+            resolve();
+          }
+        });
+      })
     );
+  }
+
+  // Component memoization helper
+  createMemoizedComponent<P extends object>(
+    Component: React.ComponentType<P>
+  ): React.ComponentType<P> {
+    return React.memo(Component, (prevProps, nextProps) => {
+      return JSON.stringify(prevProps) === JSON.stringify(nextProps);
+    });
+  }
+
+  // Performance monitoring
+  measurePerformance<T>(
+    operation: () => T,
+    operationName: string
+  ): T {
+    const startTime = performance.now();
+    try {
+      const result = operation();
+      const endTime = performance.now();
+      console.log(`${operationName} took ${endTime - startTime} milliseconds`);
+      return result;
+    } catch (error) {
+      const endTime = performance.now();
+      console.error(`${operationName} failed after ${endTime - startTime} milliseconds:`, error);
+      throw error;
+    }
+  }
+
+  // Async performance monitoring
+  async measureAsyncPerformance<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    const startTime = performance.now();
+    try {
+      const result = await operation();
+      const endTime = performance.now();
+      console.log(`${operationName} took ${endTime - startTime} milliseconds`);
+      return result;
+    } catch (error) {
+      const endTime = performance.now();
+      console.error(`${operationName} failed after ${endTime - startTime} milliseconds:`, error);
+      throw error;
+    }
+  }
+
+  // Initialize performance optimizer
+  initialize(): void {
+    try {
+      // Cleanup cache every 10 minutes
+      setInterval(() => {
+        this.cleanupCache();
+      }, 10 * 60 * 1000);
+
+      console.log('PerformanceOptimizer initialized');
+    } catch (error) {
+      console.error('Failed to initialize PerformanceOptimizer:', error);
+    }
   }
 }
 
-// React hook for performance monitoring
-export const usePerformanceMonitor = () => {
-  const [metrics, setMetrics] = React.useState({
-    renderCount: 0,
-    lastRenderTime: Date.now()
-  });
+export const PerformanceOptimizer = new PerformanceOptimizerClass();
 
-  React.useEffect(() => {
-    setMetrics(prev => ({
-      renderCount: prev.renderCount + 1,
-      lastRenderTime: Date.now()
-    }));
-  });
+// Initialize on module load
+PerformanceOptimizer.initialize();
 
-  return metrics;
-};
+// React import for memoization
+import React from 'react';

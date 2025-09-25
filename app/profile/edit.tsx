@@ -271,7 +271,7 @@ export default function EditProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="#1C1B1F" />
         </TouchableOpacity>
-        <View style={styles.headerCenter} />
+        <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -291,14 +291,14 @@ export default function EditProfileScreen() {
                 />
               ) : (
                 <View style={styles.defaultProfileImage}>
-                  <Image 
-                    source={require('../../assets/images/logo.png')}
-                    style={styles.logoImage}
-                    resizeMode="contain"
-                  />
+                  <Ionicons name="business" size={50} color="#4682B4" />
                 </View>
               )}
+              <View style={styles.editIconContainer}>
+                <Ionicons name="camera" size={16} color="#fff" />
+              </View>
             </TouchableOpacity>
+            <Text style={styles.changePhotoText}>Tap to change photo</Text>
           </View>
 
           {/* Business Name */}
@@ -425,13 +425,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 50,
     paddingBottom: 15,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1B1F',
+    fontFamily: 'Montserrat-SemiBold',
   },
   backButton: {
     padding: 8,
-  },
-  headerCenter: {
-    flex: 1,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
   },
   headerSpacer: {
     width: 40,
@@ -441,52 +448,82 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    marginBottom: 40,
-    marginTop: 20,
+    marginBottom: 30,
+    marginTop: 30,
+    backgroundColor: '#fff',
+    paddingVertical: 30,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
   },
   profileImageContainer: {
     position: 'relative',
+    marginBottom: 10,
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#f0f0f0',
+    borderWidth: 3,
+    borderColor: '#4682B4',
   },
   defaultProfileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'white',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0f8ff',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#4682B4',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
   },
-  logoImage: {
-    width: 75,
-    height: 55,
+  editIconContainer: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: '#4682B4',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  changePhotoText: {
+    fontSize: 14,
+    color: '#4682B4',
+    fontFamily: 'Montserrat-Medium',
+    marginTop: 8,
   },
   formSection: {
-    marginBottom: 25,
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginHorizontal: -20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   inputLabel: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: 'black',
-    marginBottom: 12,
-    fontFamily: 'Montserrat-Bold',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    fontFamily: 'Montserrat-SemiBold',
   },
   inputField: {
-    height: 59,
-    borderRadius: 30,
+    height: 50,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4682B4',
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
     justifyContent: 'center',
   },
   textInput: {
@@ -495,35 +532,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Regular',
   },
   operatingHoursSection: {
-    marginBottom: 40,
+    marginBottom: 30,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginHorizontal: -20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: 'black',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 20,
-    fontFamily: 'Montserrat-Bold',
+    fontFamily: 'Montserrat-SemiBold',
   },
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
+    paddingVertical: 5,
   },
   dayLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'black',
-    width: 100,
-    fontFamily: 'Montserrat-SemiBold',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
+    width: 80,
+    fontFamily: 'Montserrat-Medium',
   },
   timeField: {
     flex: 1,
-    height: 33,
-    borderRadius: 30,
+    height: 40,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4682B4',
-    backgroundColor: 'white',
-    paddingHorizontal: 15,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
     justifyContent: 'center',
     marginLeft: 15,
   },
@@ -531,20 +573,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     fontFamily: 'Montserrat-Regular',
-    textAlign: 'center',
   },
   editButton: {
     backgroundColor: '#4682B4',
-    borderRadius: 30,
+    borderRadius: 25,
     paddingVertical: 16,
-    paddingHorizontal: 58,
+    paddingHorizontal: 60,
     alignSelf: 'center',
+    marginTop: 20,
     marginBottom: 20,
     shadowColor: '#4682B4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowRadius: 8,
     elevation: 5,
+    minWidth: 200,
   },
   disabledButton: {
     backgroundColor: '#bdc3c7',
@@ -552,9 +595,10 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: 'white',
-    fontSize: 22,
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'Montserrat-SemiBold',
+    textAlign: 'center',
   },
   bottomSpacing: {
     height: 30,
