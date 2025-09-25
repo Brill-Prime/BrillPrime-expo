@@ -2,6 +2,9 @@
 // Environment Configuration
 // Centralized configuration for different environments
 
+// Type declarations for global variables
+declare const __DEV__: boolean;
+
 interface EnvironmentConfig {
   apiBaseUrl: string;
   environment: 'development' | 'staging' | 'production';
@@ -15,7 +18,7 @@ interface EnvironmentConfig {
 }
 
 const getEnvironmentConfig = (): EnvironmentConfig => {
-  const isDevelopment = __DEV__;
+  const isDevelopment = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
   const environment = process.env.NODE_ENV || 'development';
 
   // Base configuration
@@ -33,9 +36,11 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
 
   // Environment-specific overrides
   if (isDevelopment) {
-    config.apiBaseUrl = config.apiBaseUrl || 'http://localhost:3000';
+    // Use Replit's dynamic URL for development
+    const replitUrl = process.env.REPLIT_DEV_DOMAIN;
+    config.apiBaseUrl = config.apiBaseUrl || (replitUrl ? `https://${replitUrl}` : 'http://localhost:3000');
   } else {
-    // Production - use your Render backend URL
+    // Production - use your deployed backend URL
     config.apiBaseUrl = config.apiBaseUrl || 'https://your-backend-app.onrender.com';
   }
 
