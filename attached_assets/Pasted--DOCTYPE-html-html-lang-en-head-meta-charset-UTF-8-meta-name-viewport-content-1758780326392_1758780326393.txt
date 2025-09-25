@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Refueler Dashboard</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Montserrat Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;500;600;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Montserrat', sans-serif;
+    }
+    body {
+      width: 399px;
+      height: 896px;
+      overflow: hidden;
+      position: relative;
+    }
+    /* Map Container */
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    /* Overlay for UI elements */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+    /* Menu Icon */
+    .menu {
+      position: absolute;
+      left: 15px;
+      top: 15px;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 2;
+    }
+    .menu span {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background: #333;
+      margin: 4px 0;
+    }
+    /* Tabs */
+    .tabs {
+      position: absolute;
+      left: 15px;
+      top: 110px;
+      display: flex;
+      gap: 10px;
+      z-index: 2;
+      pointer-events: auto;
+    }
+    .tab {
+      width: 120px;
+      height: 35px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      pointer-events: auto;
+    }
+    .tab.available {
+      background: white;
+      color: #4682B4;
+      border: 1px solid #4682B4;
+    }
+    .tab.on-delivery {
+      background: #4682B4;
+      color: white;
+    }
+    .tab.off-duty {
+      background: white;
+      color: #4682B4;
+      border: 1px solid #4682B4;
+    }
+    /* Circular Progress */
+    .progress-container {
+      position: absolute;
+      left: 52.46px;
+      top: 295px;
+      width: 340px;
+      height: 340px;
+      transform: rotate(4deg);
+      transform-origin: top left;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .progress-ring {
+      position: absolute;
+      border-radius: 50%;
+    }
+    .progress-ring.outer {
+      width: 340px;
+      height: 340px;
+      background: rgba(70, 130, 180, 0.25);
+    }
+    .progress-ring.middle {
+      width: 210px;
+      height: 210px;
+      left: 65px;
+      top: 65px;
+      background: rgba(70, 130, 180, 0.5);
+    }
+    .progress-ring.inner {
+      width: 80px;
+      height: 80px;
+      left: 130px;
+      top: 130px;
+      background: rgba(70, 130, 180, 0.75);
+    }
+    /* Truck Icon */
+    .truck-icon {
+      position: absolute;
+      left: 179.39px;
+      top: 474.37px;
+      width: 42.63px;
+      height: 47.76px;
+      transform: rotate(-47deg);
+      transform-origin: top left;
+      background: url('https://cdn-icons-png.flaticon.com/512/447/447031.png') no-repeat center;
+      background-size: contain;
+      z-index: 2;
+      pointer-events: none;
+    }
+    /* Total Energy Text */
+    .total-energy {
+      position: absolute;
+      left: 45px;
+      top: 444px;
+      font-size: 8px;
+      font-weight: 600;
+      color: black;
+      z-index: 2;
+      pointer-events: none;
+    }
+    /* Divider Line */
+    .divider {
+      position: absolute;
+      left: 170px;
+      top: 532px;
+      width: 60px;
+      height: 5px;
+      background: #D9D9D9;
+      border-radius: 5px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    /* Bottom Button */
+    .bottom-button {
+      position: absolute;
+      left: 30px;
+      top: 782px;
+      width: 339px;
+      height: 54px;
+      background: #4682B4;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+      pointer-events: auto;
+    }
+    .bottom-button-text {
+      color: white;
+      font-size: 16px;
+      font-weight: 400;
+    }
+    /* Package Icon */
+    .package-icon {
+      position: absolute;
+      left: 133px;
+      top: 795px;
+      width: 27px;
+      height: 27px;
+      background: url('https://cdn-icons-png.flaticon.com/512/3278/3278774.png') no-repeat center;
+      background-size: contain;
+      z-index: 2;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Map Container -->
+  <div id="map"></div>
+  <!-- Overlay for UI elements -->
+  <div class="overlay">
+    <!-- Menu Icon -->
+    <div class="menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab available">Available</div>
+      <div class="tab on-delivery">On delivery</div>
+      <div class="tab off-duty">Off duty</div>
+    </div>
+    <!-- Circular Progress -->
+    <div class="progress-container">
+      <div class="progress-ring outer"></div>
+      <div class="progress-ring middle"></div>
+      <div class="progress-ring inner"></div>
+    </div>
+    <!-- Truck Icon -->
+    <div class="truck-icon"></div>
+    <!-- Total Energy Text -->
+    <div class="total-energy">Total energy</div>
+    <!-- Divider Line -->
+    <div class="divider"></div>
+    <!-- Bottom Button -->
+    <div class="bottom-button">
+      <div class="bottom-button-text">View orders</div>
+    </div>
+    <!-- Package Icon -->
+    <div class="package-icon"></div>
+  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize the map
+    const map = L.map('map').setView([51.505, -0.09], 13); // Default to London
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Add interactivity
+    document.querySelector('.menu').addEventListener('click', () => {
+      alert('Menu clicked');
+    });
+    document.querySelector('.bottom-button').addEventListener('click', () => {
+      alert('View orders clicked');
+    });
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        alert(`${tab.textContent} tab clicked`);
+      });
+    });
+  </script>
+</body>
+</html>
