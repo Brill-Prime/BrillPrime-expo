@@ -75,8 +75,7 @@ export default function MapViewWeb({ style, initialRegion, markers }: MapProps) 
           <Text style={styles.coordinatesText}>
             {initialRegion ? 
               `${initialRegion.latitude.toFixed(4)}, ${initialRegion.longitude.toFixed(4)}` :
-              '6.5244, 3.3792'
-            }
+              '6.5244, 3.3792'}
           </Text>
         </View>
       </View>

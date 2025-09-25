@@ -22,6 +22,7 @@ export default function MerchantHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [userEmail, setUserEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [merchantData, setMerchantData] = useState({
     userId: "23 AD647",
     companyName: "Total Energy",
@@ -52,8 +53,10 @@ export default function MerchantHome() {
     try {
       const email = await AsyncStorage.getItem("userEmail");
       setUserEmail(email || "merchant@brillprime.com");
+      setIsLoading(false);
     } catch (error) {
       console.error("Error loading user data:", error);
+      setIsLoading(false);
     }
   };
 
@@ -81,7 +84,7 @@ export default function MerchantHome() {
   };
 
   const handleGoBack = () => {
-    router.push('/dashboard/merchant');
+    router.back();
   };
 
   const handleManageOrders = () => {
@@ -153,6 +156,14 @@ export default function MerchantHome() {
     
     return stars;
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={styles.companyName}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
