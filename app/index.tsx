@@ -15,56 +15,60 @@ export default function SplashScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    let isMounted = true;
+
     // Start animations immediately
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
 
     // Start pulse animation
-    const startPulse = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1000,
-            useNativeDriver: false,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: false,
-          }),
-        ])
-      ).start();
-    };
-
-    startPulse();
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseAnimation.start();
 
     const checkAuthState = async () => {
+      if (!isMounted) return;
+
       try {
-        const [onboarding, token, tokenExpiry, selectedRole] = await AsyncStorage.multiGet([
+        const [onboarding, token, tokenExpiry] = await AsyncStorage.multiGet([
           'hasSeenOnboarding', 
           'userToken', 
-          'tokenExpiry',
-          'selectedRole'
+          'tokenExpiry'
         ]);
 
         console.log('hasSeenOnboarding:', onboarding[1]);
         console.log('userToken:', token[1]);
-        console.log('selectedRole:', selectedRole[1]);
+
+        // Wait for animations to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        if (!isMounted) return;
 
         if (!onboarding[1]) {
           console.log('First time user, navigating to onboarding');
-          setTimeout(() => router.replace('/onboarding/screen1'), 2000);
+          router.replace('/onboarding/screen1');
           return;
         }
 
@@ -72,45 +76,49 @@ export default function SplashScreen() {
         const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
 
         if (!token[1] || isTokenExpired) {
-          console.log('No valid token, clearing auth data and navigating to role selection');
+          console.log('No valid token, navigating to role selection');
           await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-          setTimeout(() => router.replace('/auth/role-selection'), 2000);
+          router.replace('/auth/role-selection');
           return;
         }
 
-        // For development, skip backend verification and use cached role
-        try {
-          const role = await AsyncStorage.getItem('userRole');
-          if (role) {
-            console.log('Using cached role:', role);
-            if (role === 'consumer') {
-              setTimeout(() => router.replace('/home/consumer'), 2000);
-            } else if (role === 'merchant') {
-              setTimeout(() => router.replace('/home/merchant'), 2000);
-            } else if (role === 'driver') {
-              setTimeout(() => router.replace('/home/driver'), 2000);
-            } else {
-              setTimeout(() => router.replace('/home/consumer'), 2000);
-            }
-            return;
+        // Check cached role
+        const role = await AsyncStorage.getItem('userRole');
+        if (role && isMounted) {
+          console.log('Using cached role:', role);
+          switch (role) {
+            case 'consumer':
+              router.replace('/home/consumer');
+              break;
+            case 'merchant':
+              router.replace('/home/merchant');
+              break;
+            case 'driver':
+              router.replace('/home/driver');
+              break;
+            default:
+              router.replace('/auth/role-selection');
           }
-        } catch (error) {
-          console.error('Error getting cached role:', error);
+        } else {
+          console.log('No cached role found, redirecting to role selection');
+          router.replace('/auth/role-selection');
         }
-
-        // Fallback to role selection
-        console.log('No cached role found, redirecting to role selection');
-        await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-        setTimeout(() => router.replace('/auth/role-selection'), 2000);
 
       } catch (error) {
         console.error('Error checking auth state:', error);
-        setTimeout(() => router.replace('/onboarding/screen1'), 2000);
+        if (isMounted) {
+          router.replace('/onboarding/screen1');
+        }
       }
     };
 
     checkAuthState();
-  }, []);
+
+    return () => {
+      isMounted = false;
+      pulseAnimation.stop();
+    };
+  }, [router]);
 
 
 
@@ -123,8 +131,7 @@ export default function SplashScreen() {
             {
               opacity: fadeAnim,
               transform: [
-                { scale: scaleAnim },
-                { scale: pulseAnim }
+                { scale: Animated.multiply(scaleAnim, pulseAnim) }
               ],
             },
           ]}
