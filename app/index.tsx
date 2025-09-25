@@ -20,17 +20,18 @@ export default function SplashScreen() {
 
   useEffect(() => {
     let isMounted = true;
+    let navigationTimeout: NodeJS.Timeout;
 
     // Start animations immediately
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 800,
         useNativeDriver: true,
       }),
     ]).start();
@@ -40,12 +41,12 @@ export default function SplashScreen() {
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.05,
-          duration: 1000,
+          duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: 800,
           useNativeDriver: true,
         }),
       ])
@@ -58,19 +59,34 @@ export default function SplashScreen() {
       try {
         // Check onboarding status first
         const onboardingStatus = await AsyncStorage.getItem('hasSeenOnboarding');
+        console.log('hasSeenOnboarding:', onboardingStatus);
+        
         if (isMounted) {
           setHasSeenOnboarding(onboardingStatus === 'true');
         }
 
-        // Wait for animations to complete or a reasonable time
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Adjusted delay
+        // Shorter delay to prevent timeout
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         if (!isMounted) return;
+
+        // Set up timeout for navigation
+        navigationTimeout = setTimeout(() => {
+          if (isMounted) {
+            console.log('Navigation timeout, forcing redirect to onboarding');
+            try {
+              router.push('/onboarding/screen1');
+            } catch (e) {
+              console.error('Navigation error:', e);
+            }
+          }
+        }, 2000);
 
         // If onboarding hasn't been seen, redirect to onboarding
         if (onboardingStatus !== 'true') {
           console.log('User has not seen onboarding, navigating to onboarding');
-          router.replace('/onboarding/screen1');
+          clearTimeout(navigationTimeout);
+          router.push('/onboarding/screen1');
           return;
         }
 
@@ -84,7 +100,8 @@ export default function SplashScreen() {
         if (!token[1] || isTokenExpired) {
           console.log('No valid token or token expired, navigating to signin');
           await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
-          router.replace('/auth/signin'); // Changed from role-selection to signin
+          clearTimeout(navigationTimeout);
+          router.push('/auth/signin');
           return;
         }
 
@@ -92,44 +109,52 @@ export default function SplashScreen() {
         const role = await AsyncStorage.getItem('userRole');
         if (role && isMounted) {
           console.log('Using cached role:', role);
+          clearTimeout(navigationTimeout);
           switch (role) {
             case 'consumer':
-              router.replace('/home/consumer');
+              router.push('/home/consumer');
               break;
             case 'merchant':
-              router.replace('/home/merchant');
+              router.push('/home/merchant');
               break;
             case 'driver':
-              router.replace('/home/driver');
+              router.push('/home/driver');
               break;
             default:
-              router.replace('/auth/role-selection'); // Fallback
+              router.push('/auth/role-selection');
           }
         } else {
           console.log('No cached role found, redirecting to role selection');
-          router.replace('/auth/role-selection');
+          clearTimeout(navigationTimeout);
+          router.push('/auth/role-selection');
         }
 
       } catch (error) {
         console.error('Error checking auth state:', error);
         if (isMounted) {
+          clearTimeout(navigationTimeout);
           // Fallback to onboarding if any error occurs during auth check
-          router.replace('/onboarding/screen1');
+          router.push('/onboarding/screen1');
         }
       } finally {
         if (isMounted) {
-          setAuthChecked(true); // Mark authentication check as complete
+          setAuthChecked(true);
         }
       }
     };
 
-    checkAuthStateAndOnboarding();
+    // Add delay before starting auth check to allow router to initialize
+    const initTimeout = setTimeout(() => {
+      checkAuthStateAndOnboarding();
+    }, 100);
 
     return () => {
       isMounted = false;
       pulseAnimation.stop();
+      clearTimeout(navigationTimeout);
+      clearTimeout(initTimeout);
     };
-  }, [router, fadeAnim, scaleAnim, pulseAnim]); // Added dependencies
+  }, [router, fadeAnim, scaleAnim, pulseAnim])
 
   // Render loading state until auth and onboarding are checked
   if (hasSeenOnboarding === null || !authChecked) {

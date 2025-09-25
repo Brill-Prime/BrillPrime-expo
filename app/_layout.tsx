@@ -29,34 +29,35 @@ export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    // For web, we can add a quick check if fonts are even needed
+    // For web environment, set up CSS fallbacks immediately
     if (typeof window !== 'undefined' && window.document) {
-      // Check if we're running in a web environment
-      const isWeb = true;
-      if (isWeb) {
-        // On web, fonts might load slower, so we add fallback CSS
-        const style = document.createElement('style');
-        style.textContent = `
-          * {
-            font-family: 'Montserrat-Regular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-          }
-        `;
-        document.head.appendChild(style);
-      }
+      const style = document.createElement('style');
+      style.textContent = `
+        * {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }
+      `;
+      document.head.appendChild(style);
     }
-    loadFonts();
+    
+    // Load fonts asynchronously without blocking
+    const loadFontsAsync = async () => {
+      await loadFonts();
+    };
+    
+    loadFontsAsync();
   }, []);
 
   const loadFonts = async () => {
     try {
-      // For web, just skip font loading to avoid timeout issues
+      // For web environment, skip font loading entirely
       if (typeof window !== 'undefined') {
         console.log('Web environment detected, skipping font loading');
         setFontsLoaded(true);
         return;
       }
 
-      // Set a very short timeout for font loading on native
+      // For native, try to load fonts with very short timeout
       const fontLoadPromise = Font.loadAsync({
         'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
         'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
@@ -64,16 +65,17 @@ export default function RootLayout() {
         'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
       });
 
-      // Add very short timeout to prevent hanging
+      // Very aggressive timeout to prevent any hanging
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Font loading timeout')), 1000)
+        setTimeout(() => reject(new Error('Font loading timeout')), 500)
       );
 
       await Promise.race([fontLoadPromise, timeoutPromise]);
+      console.log('Fonts loaded successfully');
       setFontsLoaded(true);
     } catch (error) {
-      console.log('Font loading error:', error);
-      // Continue without custom fonts - this is important for web compatibility
+      console.log('Font loading error, continuing without custom fonts:', error);
+      // Always continue without custom fonts to prevent app crashes
       setFontsLoaded(true);
     }
   };
