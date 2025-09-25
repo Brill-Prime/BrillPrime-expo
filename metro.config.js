@@ -1,4 +1,3 @@
-
 const { getDefaultConfig } = require('expo/metro-config');
 
 /** @type {import('expo/metro-config').MetroConfig} */
@@ -19,14 +18,16 @@ config.server = {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', '*');
-      
+
       // Handle preflight requests
       if (req.method === 'OPTIONS') {
         res.writeHead(200);
         res.end();
         return;
       }
-      
+
+      // Set longer timeout for requests
+      res.setTimeout(30000);
       return middleware(req, res, next);
     };
   },
@@ -38,10 +39,13 @@ config.resolver.assetExts.push(
   'db'
 );
 
+// Add resolver configuration
+config.resolver.assetExts = [...config.resolver.assetExts, 'png', 'jpg', 'jpeg', 'svg', 'ttf'];
+
 config.resolver.sourceExts.push(
   'jsx',
-  'js', 
-  'ts', 
+  'js',
+  'ts',
   'tsx',
   'json',
   'wasm',

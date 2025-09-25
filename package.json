@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
@@ -51,6 +51,7 @@
     "lucide-react": "^0.544.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-error-boundary": "^6.0.0",
     "react-native": "0.79.5",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "^1.11.0",
