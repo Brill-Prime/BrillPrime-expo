@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AccountCircleIcon } from '../../components/AccountCircleIcon';
 
 interface UserProfile {
   name: string;
@@ -178,10 +179,9 @@ export default function ProfileScreen() {
         {/* Profile Card */}
         <View style={[styles.profileCard, { marginHorizontal: responsivePadding }]}>
           <View style={styles.profileImageContainer}>
-            <Image 
-              source={require('../../assets/images/account_circle.svg')}
-              style={styles.profileImage}
-            />
+            <View style={styles.profileImage}>
+              <AccountCircleIcon size={80} color="#8E8E93" />
+            </View>
             <TouchableOpacity style={styles.cameraButton}>
               <Ionicons name="camera" size={16} color="#fff" />
             </TouchableOpacity>
