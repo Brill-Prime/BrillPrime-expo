@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AccountCircleIcon } from '../../components/AccountCircleIcon';
+import { ArrowForwardIcon } from '../../components/ArrowForwardIcon';
 
 interface UserProfile {
   name: string;
@@ -152,7 +153,7 @@ export default function ProfileScreen() {
       </View>
 
       {rightElement || (showArrow && (
-        <Ionicons name="chevron-forward" size={20} color="#666" />
+        <ArrowForwardIcon size={20} color="#666" />
       ))}
     </TouchableOpacity>
   );
@@ -171,7 +172,11 @@ export default function ProfileScreen() {
           style={styles.editButton}
           onPress={() => router.push('/profile/edit')}
         >
-          <Ionicons name="create-outline" size={24} color="#4682B4" />
+          <Image 
+            source={require('../../assets/images/edit_icon_white.png')}
+            style={{ width: 24, height: 24 }}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
 
@@ -183,7 +188,11 @@ export default function ProfileScreen() {
               <AccountCircleIcon size={80} color="#8E8E93" />
             </View>
             <TouchableOpacity style={styles.cameraButton}>
-              <Ionicons name="camera" size={16} color="#fff" />
+              <Image 
+                source={require('../../assets/images/camera_icon.png')}
+                style={{ width: 16, height: 16 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
 
