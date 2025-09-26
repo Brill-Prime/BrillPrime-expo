@@ -8,7 +8,7 @@ interface ArrowForwardIconProps {
   style?: ViewStyle;
 }
 
-export const ArrowForwardIcon: React.FC<ArrowForwardIconProps> = ({ 
+const ArrowForwardIcon: React.FC<ArrowForwardIconProps> = ({ 
   size = 20, 
   color = 'white',
   style 
@@ -32,3 +32,6 @@ export const ArrowForwardIcon: React.FC<ArrowForwardIconProps> = ({
     </View>
   );
 };
+
+export default ArrowForwardIcon;
+export { ArrowForwardIcon };

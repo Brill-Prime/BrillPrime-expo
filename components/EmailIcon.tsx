@@ -8,7 +8,7 @@ interface EmailIconProps {
   style?: ViewStyle;
 }
 
-export const EmailIcon: React.FC<EmailIconProps> = ({ 
+const EmailIcon: React.FC<EmailIconProps> = ({ 
   size = 20, 
   color = '#B7B7B7',
   style 
@@ -34,3 +34,6 @@ export const EmailIcon: React.FC<EmailIconProps> = ({
     </View>
   );
 };
+
+export default EmailIcon;
+export { EmailIcon };

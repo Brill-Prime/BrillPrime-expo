@@ -7,7 +7,7 @@ interface QRScannerIconProps {
   color?: string;
 }
 
-export const QRScannerIcon: React.FC<QRScannerIconProps> = ({ 
+const QRScannerIcon: React.FC<QRScannerIconProps> = ({ 
   size = 50, 
   color = '#4682b4' 
 }) => {
@@ -36,3 +36,6 @@ export const QRScannerIcon: React.FC<QRScannerIconProps> = ({
     </View>
   );
 };
+
+export default QRScannerIcon;
+export { QRScannerIcon };
