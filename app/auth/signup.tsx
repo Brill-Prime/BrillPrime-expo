@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
+import { EmailIcon } from "../../components/EmailIcon";
+import { LockIcon } from "../../components/LockIcon";
 
 export default function SignUp() {
   const router = useRouter();
@@ -177,7 +179,7 @@ export default function SignUp() {
           {/* Email Field */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <EmailIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.email}
@@ -209,7 +211,7 @@ export default function SignUp() {
           {/* Password Field */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <LockIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.password}
@@ -234,7 +236,7 @@ export default function SignUp() {
           {/* Confirm Password Field */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <LockIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.confirmPassword}

@@ -1,21 +1,23 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 interface ArrowForwardIconProps {
   size?: number;
   color?: string;
+  style?: ViewStyle;
 }
 
 export const ArrowForwardIcon: React.FC<ArrowForwardIconProps> = ({ 
   size = 20, 
-  color = 'white' 
+  color = 'white',
+  style 
 }) => {
   const scale = size / 34; // Original width is 34
   const scaledHeight = 21 * scale; // Original height is 21
   
   return (
-    <View style={{ width: size, height: scaledHeight }}>
+    <View style={[{ width: size, height: scaledHeight }, style]}>
       <Svg 
         width={size} 
         height={scaledHeight} 

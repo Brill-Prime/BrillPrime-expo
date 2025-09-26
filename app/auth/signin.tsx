@@ -167,7 +167,7 @@ export default function SignIn() {
           {/* Email */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <EmailIcon size={20} color="#9CA3AF" />
+              <EmailIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.email}
@@ -183,7 +183,7 @@ export default function SignIn() {
           {/* Password */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <LockIcon size={20} color="#9CA3AF" />
+              <LockIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.password}

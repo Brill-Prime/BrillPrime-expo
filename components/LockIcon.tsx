@@ -1,21 +1,23 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 interface LockIconProps {
   size?: number;
   color?: string;
+  style?: ViewStyle;
 }
 
 export const LockIcon: React.FC<LockIconProps> = ({ 
   size = 20, 
-  color = '#B7B7B7' 
+  color = '#B7B7B7',
+  style 
 }) => {
   const scale = size / 14; // Original width is 14
   const scaledHeight = 19 * scale; // Original height is 19
   
   return (
-    <View style={{ width: size, height: scaledHeight }}>
+    <View style={[{ width: size, height: scaledHeight }, style]}>
       <Svg 
         width={size} 
         height={scaledHeight} 

@@ -1,18 +1,20 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import Svg, { Mask, Rect, G, Path } from 'react-native-svg';
 
 interface EmailIconProps {
   size?: number;
   color?: string;
+  style?: ViewStyle;
 }
 
 export const EmailIcon: React.FC<EmailIconProps> = ({ 
   size = 20, 
-  color = '#B7B7B7' 
+  color = '#B7B7B7',
+  style 
 }) => {
   return (
-    <View style={{ width: size, height: size }}>
+    <View style={[{ width: size, height: size }, style]}>
       <Svg 
         width={size} 
         height={size} 
