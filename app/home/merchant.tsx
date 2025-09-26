@@ -1,12 +1,14 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  Dimensions, 
+  Dimensions,
   Animated,
   StatusBar,
+  ScrollView,
   Image
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -24,11 +26,15 @@ export default function MerchantHome() {
   const [userEmail, setUserEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [merchantData, setMerchantData] = useState({
-    userId: "23 AD647",
-    companyName: "Total Energy",
-    status: "Available"
+    userId: "MER123456",
+    businessName: "Total Energy Station",
+    category: "Fuel Station",
+    status: "Open",
+    todaysOrders: 12,
+    pendingOrders: 3,
+    revenue: 156000
   });
-  const [activeTab, setActiveTab] = useState("Available");
+  const [activeTab, setActiveTab] = useState("Open");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-280)).current;
   const [region, setRegion] = useState({
@@ -91,11 +97,19 @@ export default function MerchantHome() {
   const handleTabPress = (tab: string) => {
     setActiveTab(tab);
     setMerchantData(prev => ({ ...prev, status: tab }));
-    showInfo("Status Updated", `You are now ${tab.toLowerCase()}`);
+    showInfo("Status Updated", `Your business is now ${tab.toLowerCase()}`);
   };
 
   const handleViewOrders = () => {
     router.push('/orders/consumer-orders');
+  };
+
+  const handleManageCommodities = () => {
+    router.push('/merchant/commodities');
+  };
+
+  const handleViewAnalytics = () => {
+    router.push('/transactions');
   };
 
   const handleMenuItemPress = (item: string) => {
@@ -116,6 +130,9 @@ export default function MerchantHome() {
         break;
       case "Switch to Consumer":
         router.push("/home/consumer");
+        break;
+      case "Switch to Driver":
+        router.push("/home/driver");
         break;
       default:
         showInfo("Navigation", `Navigating to ${item}`);
@@ -151,82 +168,141 @@ export default function MerchantHome() {
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Full Screen Map */}
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={region}
-        onRegionChangeComplete={setRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        mapType="standard"
-        pitchEnabled={false}
-        rotateEnabled={false}
-        scrollEnabled={true}
-        zoomEnabled={true}
-      >
-        <Marker
-          coordinate={{
-            latitude: region.latitude,
-            longitude: region.longitude,
-          }}
-          title="Your Location"
-        />
-      </MapView>
-
-      {/* Menu Button */}
-      <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-        <View style={styles.menuLine} />
-        <View style={styles.menuLine} />
-        <View style={styles.menuLine} />
-      </TouchableOpacity>
-
-      {/* Status Tabs */}
-      <View style={styles.tabsContainer}>
-        {["Available", "On delivery", "Off duty"].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tab,
-              activeTab === tab ? styles.activeTab : styles.inactiveTab
-            ]}
-            onPress={() => handleTabPress(tab)}
-          >
-            <Text style={[
-              styles.tabText,
-              activeTab === tab ? styles.activeTabText : styles.inactiveTabText
-            ]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>Merchant Dashboard</Text>
+        
+        <TouchableOpacity style={styles.notificationButton}>
+          <Ionicons name="notifications-outline" size={24} color="#333" />
+          {merchantData.pendingOrders > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationText}>{merchantData.pendingOrders}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Circular Progress Container */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressRingOuter} />
-        <View style={styles.progressRingMiddle} />
-        <View style={styles.progressRingInner} />
-
-        {/* Truck Icon */}
-        <View style={styles.truckIconContainer}>
-          <Ionicons name="car" size={32} color="#4682B4" />
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Business Info Card */}
+        <View style={styles.businessCard}>
+          <View style={styles.businessIcon}>
+            <Ionicons name="business" size={40} color="#4682B4" />
+          </View>
+          <View style={styles.businessInfo}>
+            <Text style={styles.businessName}>{merchantData.businessName}</Text>
+            <Text style={styles.businessCategory}>{merchantData.category}</Text>
+            <Text style={styles.businessId}>ID: {merchantData.userId}</Text>
+          </View>
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusDot, { 
+              backgroundColor: activeTab === "Open" ? '#4CAF50' : '#f44336' 
+            }]} />
+            <Text style={[styles.statusText, {
+              color: activeTab === "Open" ? '#4CAF50' : '#f44336'
+            }]}>{activeTab}</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Company Name */}
-      <Text style={styles.companyName}>Total Energy</Text>
+        {/* Status Tabs */}
+        <View style={styles.tabsContainer}>
+          {["Open", "Closed", "Busy"].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.tab,
+                activeTab === tab ? styles.activeTab : styles.inactiveTab
+              ]}
+              onPress={() => handleTabPress(tab)}
+            >
+              <Text style={[
+                styles.tabText,
+                activeTab === tab ? styles.activeTabText : styles.inactiveTabText
+              ]}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      {/* Divider */}
-      <View style={styles.divider} />
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{merchantData.todaysOrders}</Text>
+              <Text style={styles.statLabel}>Today's Orders</Text>
+              <Ionicons name="receipt-outline" size={24} color="#4682B4" />
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{merchantData.pendingOrders}</Text>
+              <Text style={styles.statLabel}>Pending Orders</Text>
+              <Ionicons name="time-outline" size={24} color="#FF9500" />
+            </View>
+          </View>
+          <View style={styles.revenueCard}>
+            <Text style={styles.revenueLabel}>Today's Revenue</Text>
+            <Text style={styles.revenueAmount}>₦{merchantData.revenue.toLocaleString()}</Text>
+            <Ionicons name="trending-up" size={28} color="#4CAF50" />
+          </View>
+        </View>
 
-      {/* Bottom Button */}
-      <TouchableOpacity style={styles.bottomButton} onPress={handleViewOrders}>
-        <Ionicons name="cube-outline" size={20} color="white" style={styles.packageIcon} />
-        <Text style={styles.bottomButtonText}>View orders</Text>
-      </TouchableOpacity>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={handleViewOrders}>
+              <Ionicons name="cube-outline" size={32} color="#4682B4" />
+              <Text style={styles.actionText}>View Orders</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={handleManageCommodities}>
+              <Ionicons name="grid-outline" size={32} color="#4682B4" />
+              <Text style={styles.actionText}>Manage Products</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={handleViewAnalytics}>
+              <Ionicons name="analytics-outline" size={32} color="#4682B4" />
+              <Text style={styles.actionText}>Analytics</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/profile/edit')}>
+              <Ionicons name="settings-outline" size={32} color="#4682B4" />
+              <Text style={styles.actionText}>Settings</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Map Section */}
+        <View style={styles.mapSection}>
+          <Text style={styles.sectionTitle}>Business Location</Text>
+          <MapView
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            region={region}
+            onRegionChangeComplete={setRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={false}
+            showsCompass={false}
+            toolbarEnabled={false}
+            mapType="standard"
+            pitchEnabled={false}
+            rotateEnabled={false}
+            scrollEnabled={true}
+            zoomEnabled={true}
+          >
+            <Marker
+              coordinate={{
+                latitude: region.latitude,
+                longitude: region.longitude,
+              }}
+              title={merchantData.businessName}
+              description="Your business location"
+            />
+          </MapView>
+        </View>
+      </ScrollView>
 
       {/* Navigation Sidebar */}
       <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
@@ -236,7 +312,7 @@ export default function MerchantHome() {
             <View style={styles.sidebarProfileImage}>
               <Ionicons name="business" size={30} color="#4682B4" />
             </View>
-            <Text style={styles.sidebarProfileName}>{merchantData.companyName}</Text>
+            <Text style={styles.sidebarProfileName}>{merchantData.businessName}</Text>
             <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
 
@@ -264,6 +340,13 @@ export default function MerchantHome() {
             </TouchableOpacity>
 
             <TouchableOpacity 
+              style={styles.switchButton} 
+              onPress={() => handleMenuItemPress("Switch to Driver")}
+            >
+              <Text style={styles.switchButtonText}>Switch to Driver</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
               style={styles.signOutButton} 
               onPress={handleSignOut}
             >
@@ -288,27 +371,30 @@ export default function MerchantHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    position: 'relative',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
+    backgroundColor: '#f8f9fa',
   },
   loadingText: {
     fontSize: 18,
     color: '#333',
     fontFamily: 'Montserrat-Medium',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   menuButton: {
-    position: 'absolute',
-    left: 15,
-    top: 60,
     width: 24,
     height: 24,
-    zIndex: 10,
     justifyContent: 'space-between',
   },
   menuLine: {
@@ -316,18 +402,103 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#333',
   },
-  tabsContainer: {
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  notificationButton: {
+    position: 'relative',
+  },
+  notificationBadge: {
     position: 'absolute',
-    left: 15,
-    top: 120,
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: 'Montserrat-Bold',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  businessCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 15,
+    marginVertical: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  businessIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f0f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  businessInfo: {
+    flex: 1,
+  },
+  businessName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  businessCategory: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 3,
+    fontFamily: 'Montserrat-Regular',
+  },
+  businessId: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: 'Montserrat-Regular',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Montserrat-Medium',
+  },
+  tabsContainer: {
     flexDirection: 'row',
     gap: 10,
-    zIndex: 10,
+    marginBottom: 20,
   },
   tab: {
-    width: 120,
-    height: 35,
-    borderRadius: 30,
+    flex: 1,
+    height: 45,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -350,83 +521,104 @@ const styles = StyleSheet.create({
   inactiveTabText: {
     color: '#4682B4',
   },
-  progressContainer: {
-    position: 'absolute',
-    left: width * 0.13,
-    top: height * 0.33,
-    width: width * 0.85,
-    height: width * 0.85,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
+  statsContainer: {
+    marginBottom: 25,
   },
-  progressRingOuter: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: width * 0.425,
-    backgroundColor: 'rgba(70, 130, 180, 0.25)',
-  },
-  progressRingMiddle: {
-    position: 'absolute',
-    width: '62%',
-    height: '62%',
-    borderRadius: width * 0.264,
-    backgroundColor: 'rgba(70, 130, 180, 0.5)',
-  },
-  progressRingInner: {
-    position: 'absolute',
-    width: '24%',
-    height: '24%',
-    borderRadius: width * 0.102,
-    backgroundColor: 'rgba(70, 130, 180, 0.75)',
-  },
-  truckIconContainer: {
-    position: 'absolute',
-    transform: [{ rotate: '-47deg' }],
-  },
-  companyName: {
-    position: 'absolute',
-    left: 45,
-    top: height * 0.56,
-    fontSize: 8,
-    fontWeight: '600',
-    color: 'black',
-    zIndex: 10,
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  divider: {
-    position: 'absolute',
-    left: width * 0.43,
-    top: height * 0.62,
-    width: 60,
-    height: 5,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 5,
-    zIndex: 10,
-  },
-  bottomButton: {
-    position: 'absolute',
-    left: 30,
-    bottom: 60,
-    width: width - 60,
-    height: 54,
-    backgroundColor: '#4682B4',
-    borderRadius: 30,
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
     gap: 10,
+    marginBottom: 10,
   },
-  bottomButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '400',
+  statCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Montserrat-Bold',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 10,
     fontFamily: 'Montserrat-Regular',
   },
-  packageIcon: {
-    marginRight: 5,
+  revenueCard: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  revenueLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'Montserrat-Regular',
+  },
+  revenueAmount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    fontFamily: 'Montserrat-Bold',
+  },
+  quickActions: {
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15,
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  actionCard: {
+    width: (width - 50) / 2,
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionText: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 10,
+    textAlign: 'center',
+    fontFamily: 'Montserrat-Medium',
+  },
+  mapSection: {
+    marginBottom: 20,
+  },
+  map: {
+    height: 200,
+    borderRadius: 15,
   },
   sidebar: {
     position: 'absolute',
