@@ -295,7 +295,11 @@ export default function EditProfileScreen() {
                 </View>
               )}
               <View style={styles.editIconContainer}>
-                <Ionicons name="camera" size={16} color="#fff" />
+                <Image 
+                  source={require('../../assets/images/camera_icon.png')}
+                  style={{ width: 16, height: 16 }}
+                  resizeMode="contain"
+                />
               </View>
             </TouchableOpacity>
             <Text style={styles.changePhotoText}>Tap to change photo</Text>

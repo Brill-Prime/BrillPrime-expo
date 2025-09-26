@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
+import { ArrowForwardIcon } from '../../components/ArrowForwardIcon';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
@@ -722,7 +723,7 @@ export default function SearchScreen() {
           ))}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#999" />
+      <ArrowForwardIcon size={20} color="#999" />
     </TouchableOpacity>
   );
 
@@ -752,7 +753,7 @@ export default function SearchScreen() {
         <Text style={styles.merchantsText}>Available at {commodity.merchants.length} location(s)</Text>
         <Text style={styles.priceText}>{commodity.price}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#999" />
+      <ArrowForwardIcon size={20} color="#999" />
     </TouchableOpacity>
   );
 
@@ -848,7 +849,11 @@ export default function SearchScreen() {
           />
           {searchQuery.length > 0 ? (
             <TouchableOpacity onPress={() => { setSearchQuery(""); filterResults(); }}>
-              <Ionicons name="close-circle" size={20} color="#999" />
+              <Image 
+                source={require('../../assets/images/delete_icon_white.png')}
+                style={{ width: 20, height: 20 }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => setShowHistory(!showHistory)}>

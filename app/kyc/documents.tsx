@@ -255,12 +255,20 @@ export default function DocumentsScreen() {
               setBackImage(null);
             }
           }}>
-            <Ionicons name="close" size={16} color="white" />
+            <Image 
+              source={require('../../assets/images/delete_icon_white.png')}
+              style={{ width: 16, height: 16 }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.uploadPlaceholder}>
-          <Ionicons name="camera" size={32} color="#9CA3AF" />
+          <Image 
+            source={require('../../assets/images/camera_icon.png')}
+            style={{ width: 32, height: 32 }}
+            resizeMode="contain"
+          />
           <Text style={styles.uploadText}>{title}</Text>
           {isRequired && <Text style={styles.requiredText}>*Required</Text>}
         </View>
