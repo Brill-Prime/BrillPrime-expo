@@ -4,13 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Dimensions,
   Animated,
   StatusBar,
-  Alert,
   ActivityIndicator,
-  RefreshControl,
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -27,21 +24,21 @@ const SafeMapComponent = React.memo(() => {
   try {
     if (Platform.OS === "web") {
       return (
-        <View style={refuelerStyles.mapPlaceholder}>
+        <View style={styles.mapPlaceholder}>
           <Ionicons name="map" size={40} color="#4682B4" />
-          <Text style={refuelerStyles.mapPlaceholderText}>Map View</Text>
+          <Text style={styles.mapPlaceholderText}>Map View</Text>
         </View>
       );
     }
 
     const Map = require("../../components/Map").default;
-    return <Map style={refuelerStyles.map} />;
+    return <Map style={styles.map} />;
   } catch (error) {
     console.warn("Map component failed to load:", error);
     return (
-      <View style={refuelerStyles.mapPlaceholder}>
+      <View style={styles.mapPlaceholder}>
         <Ionicons name="map" size={40} color="#4682B4" />
-        <Text style={refuelerStyles.mapPlaceholderText}>Map Unavailable</Text>
+        <Text style={styles.mapPlaceholderText}>Map Unavailable</Text>
       </View>
     );
   }
@@ -56,8 +53,8 @@ export default function DriverHome() {
 
   // State management
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [activeTab, setActiveTab] = useState("Available");
   const [driverData, setDriverData] = useState({
     userId: "DR456789",
     name: "John Doe",
@@ -153,16 +150,6 @@ export default function DriverHome() {
     }
   }, [loadUserData, loadDriverStats, checkAuth, showError]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      PerformanceOptimizer.clearCache();
-      await initializeData();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [initializeData]);
-
   useEffect(() => {
     initializeData();
   }, [initializeData]);
@@ -209,6 +196,9 @@ export default function DriverHome() {
         case "Switch to Consumer":
           router.push("/home/consumer");
           break;
+        case "Switch to Merchant":
+          router.push("/home/merchant");
+          break;
         default:
           showInfo("Navigation", `Navigating to ${item}`);
       }
@@ -241,218 +231,164 @@ export default function DriverHome() {
     );
   }, [showConfirmDialog, showSuccess, showError, router]);
 
-  const renderStars = useCallback((rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<Ionicons key={i} name="star" size={16} color="#FFD700" />);
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <Ionicons key="half" name="star-half" size={16} color="#FFD700" />,
-      );
-    }
-
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <Ionicons
-          key={`empty-${i}`}
-          name="star-outline"
-          size={16}
-          color="#FFD700"
-        />,
-      );
-    }
-
-    return stars;
-  }, []);
+  const handleTabPress = useCallback((tab) => {
+    setActiveTab(tab);
+    showInfo("Status Update", `Switched to ${tab} mode`);
+  }, [showInfo]);
 
   if (authLoading || isLoading) {
     return (
-      <View style={[refuelerStyles.container, refuelerStyles.centerContent]}>
+      <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#4682B4" />
-        <Text style={refuelerStyles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <View style={[refuelerStyles.container, refuelerStyles.centerContent]}>
+      <View style={[styles.container, styles.centerContent]}>
         <Ionicons name="lock-closed" size={64} color="#ccc" />
-        <Text style={refuelerStyles.errorText}>Please sign in to continue</Text>
+        <Text style={styles.errorText}>Please sign in to continue</Text>
         <TouchableOpacity
-          style={refuelerStyles.retryButton}
+          style={styles.retryButton}
           onPress={() => router.replace("/auth/signin")}
         >
-          <Text style={refuelerStyles.retryText}>Sign In</Text>
+          <Text style={styles.retryText}>Sign In</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={refuelerStyles.container}>
+    <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Menu Icon */}
-      <TouchableOpacity onPress={toggleMenu} style={refuelerStyles.menu}>
-        <View style={refuelerStyles.menuLines}>
-          <View style={refuelerStyles.menuLine} />
-          <View style={refuelerStyles.menuLine} />
-          <View style={refuelerStyles.menuLine} />
-        </View>
-      </TouchableOpacity>
+      {/* Full Screen Map */}
+      <SafeMapComponent />
 
-      {/* Tabs */}
-      <View style={refuelerStyles.tabs}>
-        <TouchableOpacity
-          style={[refuelerStyles.tab, refuelerStyles.tabAvailable]}
-        >
-          <Text style={[refuelerStyles.tabText, { color: "#4682B4" }]}>
-            Available
-          </Text>
+      {/* Overlay for UI elements */}
+      <View style={styles.overlay}>
+        {/* Menu Icon */}
+        <TouchableOpacity onPress={toggleMenu} style={styles.menu}>
+          <View style={styles.menuLines}>
+            <View style={styles.menuLine} />
+            <View style={styles.menuLine} />
+            <View style={styles.menuLine} />
+          </View>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[refuelerStyles.tab, refuelerStyles.tabOnDelivery]}
-        >
-          <Text style={[refuelerStyles.tabText, { color: "white" }]}>
-            On delivery
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[refuelerStyles.tab, refuelerStyles.tabOffDuty]}
-        >
-          <Text style={[refuelerStyles.tabText, { color: "#4682B4" }]}>
-            Off duty
-          </Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Circular Progress */}
-      <View style={refuelerStyles.progressContainer}>
-        <View
-          style={[
-            refuelerStyles.progressRing,
-            refuelerStyles.progressRingOuter,
-          ]}
-        />
-        <View
-          style={[
-            refuelerStyles.progressRing,
-            refuelerStyles.progressRingMiddle,
-          ]}
-        />
-        <View
-          style={[
-            refuelerStyles.progressRing,
-            refuelerStyles.progressRingInner,
-          ]}
-        />
-        <Ionicons
-          name="car-sport"
-          size={30}
-          color="black"
-          style={refuelerStyles.truckIcon}
-        />
-      </View>
-
-      {/* Total Energy Text */}
-      <Text style={refuelerStyles.totalEnergy}>Total energy</Text>
-      <View style={refuelerStyles.divider} />
-
-      {/* Bottom Button */}
-      <TouchableOpacity
-        style={refuelerStyles.bottomButton}
-        onPress={handleManageTrips}
-      >
-        <Ionicons
-          name="cube"
-          size={20}
-          color="white"
-          style={refuelerStyles.packageIcon}
-        />
-        <Text style={refuelerStyles.bottomButtonText}>View orders</Text>
-      </TouchableOpacity>
-
-      {/* Map Section */}
-      <View style={refuelerStyles.mapSection}>
-        <Text style={refuelerStyles.sectionTitle}>Current Location</Text>
-        <SafeMapComponent />
-      </View>
-
-      {/* Stats Section */}
-      <View style={refuelerStyles.statsSection}>
-        <Text style={refuelerStyles.statsTitle}>Today's Overview</Text>
-        <View style={refuelerStyles.statsGrid}>
-          <View style={refuelerStyles.statCard}>
-            <Text style={refuelerStyles.statNumber}>{stats.totalTrips}</Text>
-            <Text style={refuelerStyles.statLabel}>Total Trips</Text>
-          </View>
-          <View style={refuelerStyles.statCard}>
-            <Text style={refuelerStyles.statNumber}>{stats.activeOrders}</Text>
-            <Text style={refuelerStyles.statLabel}>Active Orders</Text>
-          </View>
+        {/* Tabs */}
+        <View style={styles.tabs}>
+          {["Available", "On delivery", "Off duty"].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.tab,
+                activeTab === tab ? styles.activeTab : styles.inactiveTab,
+              ]}
+              onPress={() => handleTabPress(tab)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: activeTab === tab ? "white" : "#4682B4" },
+                ]}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <View style={refuelerStyles.statsGrid}>
-          <View style={refuelerStyles.statCard}>
-            <Text style={refuelerStyles.statNumber}>
-              ₦{(stats.todaysEarnings / 1000).toFixed(0)}K
-            </Text>
-            <Text style={refuelerStyles.statLabel}>Today's Earnings</Text>
-          </View>
-          <View style={refuelerStyles.statCard}>
-            <Text style={refuelerStyles.statNumber}>{stats.weeklyRating}</Text>
-            <Text style={refuelerStyles.statLabel}>Weekly Rating</Text>
-          </View>
+
+        {/* Circular Progress */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressRing, styles.progressRingOuter]} />
+          <View style={[styles.progressRing, styles.progressRingMiddle]} />
+          <View style={[styles.progressRing, styles.progressRingInner]} />
         </View>
+
+        {/* Truck Icon */}
+        <View style={styles.truckIconContainer}>
+          <Ionicons
+            name="car-sport"
+            size={30}
+            color="black"
+            style={styles.truckIcon}
+          />
+        </View>
+
+        {/* Total Energy Text */}
+        <Text style={styles.totalEnergy}>Total energy</Text>
+
+        {/* Divider Line */}
+        <View style={styles.divider} />
+
+        {/* Bottom Button */}
+        <TouchableOpacity
+          style={styles.bottomButton}
+          onPress={handleManageTrips}
+        >
+          <Ionicons
+            name="cube"
+            size={20}
+            color="white"
+            style={styles.packageIcon}
+          />
+          <Text style={styles.bottomButtonText}>View orders</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Sidebar and Overlay (unchanged) */}
-      <Animated.View style={[refuelerStyles.sidebar, { right: slideAnim }]}>
-        <View style={refuelerStyles.sidebarContent}>
-          <View style={refuelerStyles.sidebarProfile}>
-            <View style={refuelerStyles.sidebarProfileImage}>
+      {/* Sidebar */}
+      <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
+        <View style={styles.sidebarContent}>
+          <View style={styles.sidebarProfile}>
+            <View style={styles.sidebarProfileImage}>
               <Ionicons name="car" size={30} color="#4682B4" />
             </View>
-            <Text style={refuelerStyles.sidebarProfileName}>
+            <Text style={styles.sidebarProfileName}>
               {driverData.name}
             </Text>
-            <Text style={refuelerStyles.sidebarProfileEmail}>{userEmail}</Text>
+            <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
 
-          <View style={refuelerStyles.menuList}>
+          <View style={styles.menuList}>
             {["Profile", "Earnings", "Settings", "Support"].map((item) => (
               <TouchableOpacity
                 key={item}
-                style={refuelerStyles.menuItem}
+                style={styles.menuItem}
                 onPress={() => handleMenuItemPress(item)}
               >
-                <Text style={refuelerStyles.menuItemText}>{item}</Text>
+                <Text style={styles.menuItemText}>{item}</Text>
                 <Ionicons name="chevron-forward" size={20} color="#666" />
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={refuelerStyles.sidebarBottom}>
+          <View style={styles.sidebarBottom}>
             <TouchableOpacity
-              style={refuelerStyles.switchButton}
+              style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Consumer")}
             >
-              <Text style={refuelerStyles.switchButtonText}>
+              <Text style={styles.switchButtonText}>
                 Switch to Consumer
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={refuelerStyles.signOutButton}
+              style={styles.switchButton}
+              onPress={() => handleMenuItemPress("Switch to Merchant")}
+            >
+              <Text style={styles.switchButtonText}>
+                Switch to Merchant
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.signOutButton}
               onPress={handleSignOut}
             >
-              <Text style={refuelerStyles.signOutButtonText}>Sign out</Text>
+              <Text style={styles.signOutButtonText}>Sign out</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -460,7 +396,7 @@ export default function DriverHome() {
 
       {isMenuOpen && (
         <TouchableOpacity
-          style={refuelerStyles.menuOverlay}
+          style={styles.menuOverlay}
           onPress={toggleMenu}
           activeOpacity={1}
         />
@@ -469,7 +405,7 @@ export default function DriverHome() {
   );
 }
 
-const refuelerStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "white",
@@ -506,6 +442,39 @@ const refuelerStyles = StyleSheet.create({
     color: "white",
     fontFamily: "Montserrat-Medium",
   },
+  map: {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    zIndex: -1,
+  },
+  mapPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f0f8ff",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    zIndex: -1,
+  },
+  mapPlaceholderText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#4682B4",
+    fontFamily: "Montserrat-Medium",
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 1,
+  },
   menu: {
     position: "absolute",
     left: 15,
@@ -541,13 +510,10 @@ const refuelerStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#4682B4",
   },
-  tabAvailable: {
-    backgroundColor: "white",
-  },
-  tabOnDelivery: {
+  activeTab: {
     backgroundColor: "#4682B4",
   },
-  tabOffDuty: {
+  inactiveTab: {
     backgroundColor: "white",
   },
   tabText: {
@@ -586,10 +552,13 @@ const refuelerStyles = StyleSheet.create({
     top: 130,
     backgroundColor: "rgba(70, 130, 180, 0.75)",
   },
-  truckIcon: {
+  truckIconContainer: {
     position: "absolute",
     left: 179.39,
     top: 474.37,
+    transform: [{ rotate: "-47deg" }],
+  },
+  truckIcon: {
     transform: [{ rotate: "-47deg" }],
   },
   totalEnergy: {
@@ -631,83 +600,6 @@ const refuelerStyles = StyleSheet.create({
   },
   packageIcon: {
     marginRight: 10,
-  },
-  mapSection: {
-    position: "absolute",
-    top: 600,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    zIndex: 5,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 10,
-    fontFamily: "Montserrat-SemiBold",
-  },
-  map: {
-    height: 200,
-    borderRadius: 15,
-  },
-  mapPlaceholder: {
-    height: 200,
-    backgroundColor: "#f0f8ff",
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  mapPlaceholderText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#4682B4",
-    fontFamily: "Montserrat-Medium",
-  },
-  statsSection: {
-    position: "absolute",
-    top: 820,
-    left: 0,
-    right: 0,
-    backgroundColor: "white",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    zIndex: 5,
-  },
-  statsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 10,
-    textAlign: "center",
-    fontFamily: "Montserrat-SemiBold",
-  },
-  statsGrid: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#4682B4",
-    padding: 10,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 5,
-    fontFamily: "Montserrat-Bold",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
-    fontFamily: "Montserrat-Regular",
   },
   sidebar: {
     position: "absolute",
