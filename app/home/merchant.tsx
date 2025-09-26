@@ -9,7 +9,7 @@ import {
   Animated,
   StatusBar,
   ScrollView,
-  Image
+  FlatList
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
@@ -27,14 +27,14 @@ export default function MerchantHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [merchantData, setMerchantData] = useState({
     userId: "MER123456",
-    businessName: "Total Energy Station",
-    category: "Fuel Station",
+    businessName: "Prime Merchant",
+    category: "General Store",
+    address: "Jahi, Abuja",
     status: "Open",
-    todaysOrders: 12,
-    pendingOrders: 3,
-    revenue: 156000
+    activeOrders: 24,
+    todaysSales: 45000,
+    rating: 4.8
   });
-  const [activeTab, setActiveTab] = useState("Open");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-280)).current;
   const [region, setRegion] = useState({
@@ -43,6 +43,13 @@ export default function MerchantHome() {
     latitudeDelta: 0.1,
     longitudeDelta: 0.1,
   });
+  const [recentOrders] = useState([
+    { id: "ORD1234", customer: "John Doe", items: 2, status: "Processing" },
+    { id: "ORD1233", customer: "Jane Smith", items: 1, status: "Delivered" },
+    { id: "ORD1232", customer: "Alex Johnson", items: 3, status: "Cancelled" },
+    { id: "ORD1231", customer: "Sarah Wilson", items: 1, status: "Processing" },
+    { id: "ORD1230", customer: "Mike Brown", items: 4, status: "Delivered" },
+  ]);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -94,24 +101,6 @@ export default function MerchantHome() {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleTabPress = (tab: string) => {
-    setActiveTab(tab);
-    setMerchantData(prev => ({ ...prev, status: tab }));
-    showInfo("Status Updated", `Your business is now ${tab.toLowerCase()}`);
-  };
-
-  const handleViewOrders = () => {
-    router.push('/orders/consumer-orders');
-  };
-
-  const handleManageCommodities = () => {
-    router.push('/merchant/commodities');
-  };
-
-  const handleViewAnalytics = () => {
-    router.push('/transactions');
-  };
-
   const handleMenuItemPress = (item: string) => {
     toggleMenu();
 
@@ -156,6 +145,31 @@ export default function MerchantHome() {
     );
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Processing":
+        return "#FFA500";
+      case "Delivered":
+        return "#28A745";
+      case "Cancelled":
+        return "#DC3545";
+      default:
+        return "#666";
+    }
+  };
+
+  const renderOrderItem = ({ item }: { item: any }) => (
+    <View style={styles.orderItem}>
+      <View style={styles.orderInfo}>
+        <Text style={styles.orderId}>#{item.id}</Text>
+        <Text style={styles.orderCustomer}>{item.customer} • {item.items} items</Text>
+      </View>
+      <Text style={[styles.orderStatus, { color: getStatusColor(item.status) }]}>
+        {item.status}
+      </Text>
+    </View>
+  );
+
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -168,141 +182,126 @@ export default function MerchantHome() {
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
+      {/* Map Background */}
+      <View style={styles.mapContainer}>
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={region}
+          onRegionChangeComplete={setRegion}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          showsCompass={false}
+          toolbarEnabled={false}
+          mapType="standard"
+          pitchEnabled={false}
+          rotateEnabled={false}
+          scrollEnabled={true}
+          zoomEnabled={true}
+        >
+          <Marker
+            coordinate={{
+              latitude: region.latitude,
+              longitude: region.longitude,
+            }}
+            title={merchantData.businessName}
+            description="Your business location"
+          />
+        </MapView>
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
+        <TouchableOpacity 
+          onPress={() => router.push('/dashboard/merchant')} 
+          style={styles.headerButton}
+        >
+          <Ionicons name="arrow-back" size={20} color="#333" />
         </TouchableOpacity>
         
-        <Text style={styles.headerTitle}>Merchant Dashboard</Text>
-        
-        <TouchableOpacity style={styles.notificationButton}>
-          <Ionicons name="notifications-outline" size={24} color="#333" />
-          {merchantData.pendingOrders > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>{merchantData.pendingOrders}</Text>
-            </View>
-          )}
+        <TouchableOpacity onPress={toggleMenu} style={styles.headerButton}>
+          <Ionicons name="menu" size={20} color="#333" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Business Info Card */}
-        <View style={styles.businessCard}>
-          <View style={styles.businessIcon}>
-            <Ionicons name="business" size={40} color="#4682B4" />
-          </View>
-          <View style={styles.businessInfo}>
-            <Text style={styles.businessName}>{merchantData.businessName}</Text>
-            <Text style={styles.businessCategory}>{merchantData.category}</Text>
-            <Text style={styles.businessId}>ID: {merchantData.userId}</Text>
-          </View>
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, { 
-              backgroundColor: activeTab === "Open" ? '#4CAF50' : '#f44336' 
-            }]} />
-            <Text style={[styles.statusText, {
-              color: activeTab === "Open" ? '#4CAF50' : '#f44336'
-            }]}>{activeTab}</Text>
-          </View>
+      {/* Merchant Info Card */}
+      <View style={styles.merchantCard}>
+        <View style={styles.merchantIcon}>
+          <Ionicons name="business" size={20} color="white" />
         </View>
+        <View style={styles.merchantInfo}>
+          <Text style={styles.merchantName}>{merchantData.businessName}</Text>
+          <Text style={styles.merchantAddress}>{merchantData.address}</Text>
+        </View>
+      </View>
 
-        {/* Status Tabs */}
-        <View style={styles.tabsContainer}>
-          {["Open", "Closed", "Busy"].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab ? styles.activeTab : styles.inactiveTab
-              ]}
-              onPress={() => handleTabPress(tab)}
-            >
-              <Text style={[
-                styles.tabText,
-                activeTab === tab ? styles.activeTabText : styles.inactiveTabText
-              ]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {/* Stats Cards */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{merchantData.activeOrders}</Text>
+          <Text style={styles.statLabel}>Active Orders</Text>
         </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>₦{(merchantData.todaysSales / 1000).toFixed(0)}K</Text>
+          <Text style={styles.statLabel}>Today's Sales</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{merchantData.rating}</Text>
+          <Text style={styles.statLabel}>Rating</Text>
+        </View>
+      </View>
 
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{merchantData.todaysOrders}</Text>
-              <Text style={styles.statLabel}>Today's Orders</Text>
-              <Ionicons name="receipt-outline" size={24} color="#4682B4" />
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{merchantData.pendingOrders}</Text>
-              <Text style={styles.statLabel}>Pending Orders</Text>
-              <Ionicons name="time-outline" size={24} color="#FF9500" />
-            </View>
-          </View>
-          <View style={styles.revenueCard}>
-            <Text style={styles.revenueLabel}>Today's Revenue</Text>
-            <Text style={styles.revenueAmount}>₦{merchantData.revenue.toLocaleString()}</Text>
-            <Ionicons name="trending-up" size={28} color="#4CAF50" />
-          </View>
-        </View>
+      {/* Recent Orders List */}
+      <View style={styles.orderListContainer}>
+        <Text style={styles.orderListTitle}>Recent Orders</Text>
+        <FlatList
+          data={recentOrders}
+          renderItem={renderOrderItem}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          style={styles.orderList}
+        />
+      </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard} onPress={handleViewOrders}>
-              <Ionicons name="cube-outline" size={32} color="#4682B4" />
-              <Text style={styles.actionText}>View Orders</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={handleManageCommodities}>
-              <Ionicons name="grid-outline" size={32} color="#4682B4" />
-              <Text style={styles.actionText}>Manage Products</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={handleViewAnalytics}>
-              <Ionicons name="analytics-outline" size={32} color="#4682B4" />
-              <Text style={styles.actionText}>Analytics</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/profile/edit')}>
-              <Ionicons name="settings-outline" size={32} color="#4682B4" />
-              <Text style={styles.actionText}>Settings</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => router.push('/merchant/add-commodity')}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </TouchableOpacity>
 
-        {/* Map Section */}
-        <View style={styles.mapSection}>
-          <Text style={styles.sectionTitle}>Business Location</Text>
-          <MapView
-            provider={PROVIDER_GOOGLE}
-            style={styles.map}
-            region={region}
-            onRegionChangeComplete={setRegion}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-            showsCompass={false}
-            toolbarEnabled={false}
-            mapType="standard"
-            pitchEnabled={false}
-            rotateEnabled={false}
-            scrollEnabled={true}
-            zoomEnabled={true}
-          >
-            <Marker
-              coordinate={{
-                latitude: region.latitude,
-                longitude: region.longitude,
-              }}
-              title={merchantData.businessName}
-              description="Your business location"
-            />
-          </MapView>
-        </View>
-      </ScrollView>
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
+          <Ionicons name="home" size={24} color="#4682B4" />
+          <Text style={[styles.navLabel, styles.activeNavLabel]}>Home</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/orders/consumer-orders')}
+        >
+          <Ionicons name="receipt-outline" size={24} color="#666" />
+          <Text style={styles.navLabel}>Orders</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/merchant/commodities')}
+        >
+          <Ionicons name="grid-outline" size={24} color="#666" />
+          <Text style={styles.navLabel}>Products</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/profile')}
+        >
+          <Ionicons name="person-outline" size={24} color="#666" />
+          <Text style={styles.navLabel}>Account</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Navigation Sidebar */}
       <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
@@ -378,247 +377,221 @@ const styles = StyleSheet.create({
     color: '#333',
     fontFamily: 'Montserrat-Medium',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  menuButton: {
-    width: 24,
-    height: 24,
-    justifyContent: 'space-between',
-  },
-  menuLine: {
-    width: '100%',
-    height: 2,
-    backgroundColor: '#333',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  notificationButton: {
-    position: 'relative',
-  },
-  notificationBadge: {
+  mapContainer: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.4,
+    zIndex: 1,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  header: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  notificationText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  businessCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 15,
-    marginVertical: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 10,
     elevation: 3,
   },
-  businessIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f0f8ff',
+  merchantCard: {
+    position: 'absolute',
+    top: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    zIndex: 10,
+  },
+  merchantIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#4682B4',
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 15,
   },
-  businessInfo: {
+  merchantInfo: {
     flex: 1,
   },
-  businessName: {
-    fontSize: 18,
+  merchantName: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 5,
     fontFamily: 'Montserrat-SemiBold',
   },
-  businessCategory: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
-    fontFamily: 'Montserrat-Regular',
-  },
-  businessId: {
+  merchantAddress: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
     fontFamily: 'Montserrat-Regular',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    height: 45,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeTab: {
-    backgroundColor: '#4682B4',
-  },
-  inactiveTab: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#4682B4',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
-  },
-  activeTabText: {
-    color: 'white',
-  },
-  inactiveTabText: {
-    color: '#4682B4',
   },
   statsContainer: {
-    marginBottom: 25,
-  },
-  statsRow: {
+    position: 'absolute',
+    top: 200,
+    left: 20,
+    right: 20,
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 10,
+    zIndex: 10,
   },
   statCard: {
     flex: 1,
     backgroundColor: 'white',
-    padding: 20,
     borderRadius: 15,
+    padding: 15,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 15,
     elevation: 3,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4682B4',
     marginBottom: 5,
     fontFamily: 'Montserrat-Bold',
   },
   statLabel: {
     fontSize: 12,
     color: '#666',
-    textAlign: 'center',
-    marginBottom: 10,
     fontFamily: 'Montserrat-Regular',
   },
-  revenueCard: {
+  orderListContainer: {
+    position: 'absolute',
+    top: 300,
+    left: 20,
+    right: 20,
+    bottom: 120,
     backgroundColor: 'white',
-    padding: 20,
     borderRadius: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 15,
     elevation: 3,
+    zIndex: 10,
   },
-  revenueLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontFamily: 'Montserrat-Regular',
-  },
-  revenueAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    fontFamily: 'Montserrat-Bold',
-  },
-  quickActions: {
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  orderListTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: 10,
+    paddingLeft: 5,
     fontFamily: 'Montserrat-SemiBold',
   },
-  actionsGrid: {
+  orderList: {
+    flex: 1,
+  },
+  orderItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  actionCard: {
-    width: (width - 50) / 2,
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 15,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  actionText: {
+  orderInfo: {
+    flex: 1,
+  },
+  orderId: {
     fontSize: 14,
+    fontWeight: '500',
     color: '#333',
-    marginTop: 10,
-    textAlign: 'center',
     fontFamily: 'Montserrat-Medium',
   },
-  mapSection: {
-    marginBottom: 20,
+  orderCustomer: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 3,
+    fontFamily: 'Montserrat-Regular',
   },
-  map: {
-    height: 200,
-    borderRadius: 15,
+  orderStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 90,
+    right: 30,
+    width: 60,
+    height: 60,
+    backgroundColor: '#4682B4',
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4682B4',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    zIndex: 10,
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 25,
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    zIndex: 10,
+  },
+  navItem: {
+    alignItems: 'center',
+  },
+  activeNavItem: {
+    // Active state styling
+  },
+  navLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
+    fontFamily: 'Montserrat-Regular',
+  },
+  activeNavLabel: {
+    color: '#4682B4',
+    fontWeight: '600',
+    fontFamily: 'Montserrat-SemiBold',
   },
   sidebar: {
     position: 'absolute',
