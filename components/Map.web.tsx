@@ -4,6 +4,63 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface MapProps {
   style?: ViewStyle;
+  region?: any;
+  onRegionChangeComplete?: (region: any) => void;
+  showsUserLocation?: boolean;
+  showsMyLocationButton?: boolean;
+  showsCompass?: boolean;
+  toolbarEnabled?: boolean;
+  mapType?: string;
+  pitchEnabled?: boolean;
+  rotateEnabled?: boolean;
+  scrollEnabled?: boolean;
+  zoomEnabled?: boolean;
+  children?: React.ReactNode;
+  provider?: any;
+}
+
+const MapWeb: React.FC<MapProps> = ({ style, children, ...props }) => {
+  return (
+    <View style={[styles.mapContainer, style]}>
+      <View style={styles.mapPlaceholder}>
+        <Ionicons name="map" size={40} color="#4682B4" />
+        <Text style={styles.mapText}>Map View (Web)</Text>
+        <Text style={styles.mapSubtext}>Interactive map not available in web view</Text>
+      </View>
+      {children}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  mapContainer: {
+    flex: 1,
+    backgroundColor: '#f0f8ff',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f8ff',
+  },
+  mapText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#4682B4',
+    fontWeight: '600',
+  },
+  mapSubtext: {
+    marginTop: 5,
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+});
+
+export default MapWeb;
+
+interface MapProps {
+  style?: ViewStyle;
   initialRegion?: {
     latitude: number;
     longitude: number;
