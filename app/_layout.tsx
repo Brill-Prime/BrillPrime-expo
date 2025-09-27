@@ -33,8 +33,10 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Keep the splash screen visible while we fetch resources
-        await SplashScreen.preventAutoHideAsync();
+        // Keep the splash screen visible while we fetch resources (skip on web)
+        if (typeof window === 'undefined') {
+          await SplashScreen.preventAutoHideAsync();
+        }
 
         // Load fonts, including Ionicons
         await Font.loadAsync({
@@ -58,7 +60,9 @@ export default function RootLayout() {
       } finally {
         // Tell the application to render the child components
         setFontsLoaded(true);
-        await SplashScreen.hideAsync();
+        if (typeof window === 'undefined') {
+          await SplashScreen.hideAsync();
+        }
       }
     }
 
