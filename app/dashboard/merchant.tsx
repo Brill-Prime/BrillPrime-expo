@@ -84,7 +84,7 @@ export default function MerchantDashboard() {
       title: "Analytics", 
       description: "Sales insights", 
       icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'), 
-      route: "/transactions" 
+      route: "/merchant/analytics" 
     },
     { 
       title: "Store Settings", 

@@ -32,34 +32,9 @@ const MapWeb: React.FC<MapProps> = ({ style, children, ...props }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  mapContainer: {
-    flex: 1,
-    backgroundColor: '#f0f8ff',
-  },
-  mapPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f8ff',
-  },
-  mapText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#4682B4',
-    fontWeight: '600',
-  },
-  mapSubtext: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-});
-
 export default MapWeb;
 
-interface MapProps {
+interface MapViewProps {
   style?: ViewStyle;
   initialRegion?: {
     latitude: number;
@@ -74,7 +49,7 @@ interface MapProps {
   }>;
 }
 
-export default function MapViewWeb({ style, initialRegion, markers }: MapProps) {
+export default function MapViewWeb({ style, initialRegion, markers }: MapViewProps) {
   const [mapError, setMapError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -112,7 +87,7 @@ export default function MapViewWeb({ style, initialRegion, markers }: MapProps) 
 
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.mapContainer}>
+      <View style={styles.mapContentContainer}>
         <View style={styles.mapHeader}>
           <Ionicons name="location" size={20} color="#4682B4" />
           <Text style={styles.locationText}>Current Location</Text>
@@ -130,7 +105,7 @@ export default function MapViewWeb({ style, initialRegion, markers }: MapProps) 
           </View>
 
           <Text style={styles.coordinatesText}>
-            {initialRegion ? 
+            {initialRegion ?
               `${initialRegion.latitude.toFixed(4)}, ${initialRegion.longitude.toFixed(4)}` :
               '6.5244, 3.3792'}
           </Text>
@@ -178,6 +153,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   mapContainer: {
+    flex: 1,
+    backgroundColor: '#f0f8ff',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f8ff',
+  },
+  mapText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#4682B4',
+    fontWeight: '600',
+  },
+  mapSubtext: {
+    marginTop: 5,
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  mapContentContainer: {
     flex: 1,
     minHeight: 200,
   },

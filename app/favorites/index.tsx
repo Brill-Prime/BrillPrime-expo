@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -6,99 +5,75 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
   Alert,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FavoriteItem {
   id: string;
   name: string;
-  description: string;
-  price: string;
-  unit: string;
-  merchantName: string;
-  merchantLocation: string;
+  price: number;
+  image: string;
+  merchant: string;
+  rating: number;
   category: string;
-  dateAdded: string;
-  inStock: boolean;
 }
 
-export default function FavoritesScreen() {
+export default function Favorites() {
   const router = useRouter();
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([
+    {
+      id: '1',
+      name: 'Premium Rice',
+      price: 2500,
+      image: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'),
+      merchant: 'Prime Store',
+      rating: 4.8,
+      category: 'Groceries'
+    },
+    {
+      id: '2',
+      name: 'Cooking Oil',
+      price: 1200,
+      image: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'),
+      merchant: 'Fresh Market',
+      rating: 4.5,
+      category: 'Groceries'
+    },
+    {
+      id: '3',
+      name: 'Organic Beans',
+      price: 800,
+      image: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'),
+      merchant: 'Green Farm',
+      rating: 4.7,
+      category: 'Groceries'
+    }
+  ]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadFavorites();
-    
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
+      setScreenData(window);
     });
 
-    const unsubscribe = router.addListener?.('focus', () => {
-      loadFavorites();
-    });
+    loadFavorites();
 
-    return () => {
-      subscription?.remove();
-      unsubscribe?.();
-    };
+    return () => subscription?.remove();
   }, []);
 
   const loadFavorites = async () => {
     try {
       setLoading(true);
-      const savedFavorites = await AsyncStorage.getItem('favoriteItems');
+      const savedFavorites = await AsyncStorage.getItem('userFavorites');
       if (savedFavorites) {
-        const favoritesData = JSON.parse(savedFavorites);
-        setFavorites(favoritesData);
-      } else {
-        // Mock data for demonstration
-        const mockFavorites: FavoriteItem[] = [
-          {
-            id: '1',
-            name: 'Premium Petrol',
-            description: 'High-quality unleaded petrol with engine cleaning additives',
-            price: '650',
-            unit: 'liter',
-            merchantName: 'Lagos Fuel Station',
-            merchantLocation: 'Victoria Island, Lagos',
-            category: 'fuel',
-            dateAdded: '2024-01-15',
-            inStock: true,
-          },
-          {
-            id: '2',
-            name: 'Fresh Tomatoes',
-            description: 'Farm-fresh locally sourced tomatoes, perfect for cooking',
-            price: '800',
-            unit: 'kg',
-            merchantName: 'Victoria Island Market',
-            merchantLocation: 'Victoria Island, Lagos',
-            category: 'food',
-            dateAdded: '2024-01-14',
-            inStock: true,
-          },
-          {
-            id: '3',
-            name: 'iPhone 15 Pro',
-            description: 'Latest iPhone with advanced camera and A17 Pro chip',
-            price: '1200000',
-            unit: 'piece',
-            merchantName: 'Tech World Nigeria',
-            merchantLocation: 'Computer Village, Lagos',
-            category: 'electronics',
-            dateAdded: '2024-01-13',
-            inStock: false,
-          }
-        ];
-        setFavorites(mockFavorites);
-        await AsyncStorage.setItem('favoriteItems', JSON.stringify(mockFavorites));
+        setFavorites(JSON.parse(savedFavorites));
       }
     } catch (error) {
       console.error('Error loading favorites:', error);
@@ -107,9 +82,9 @@ export default function FavoritesScreen() {
     }
   };
 
-  const removeFavorite = async (itemId: string) => {
+  const removeFromFavorites = async (itemId: string) => {
     Alert.alert(
-      'Remove Favorite',
+      'Remove from Favorites',
       'Are you sure you want to remove this item from your favorites?',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -120,9 +95,10 @@ export default function FavoritesScreen() {
             try {
               const updatedFavorites = favorites.filter(item => item.id !== itemId);
               setFavorites(updatedFavorites);
-              await AsyncStorage.setItem('favoriteItems', JSON.stringify(updatedFavorites));
+              await AsyncStorage.setItem('userFavorites', JSON.stringify(updatedFavorites));
             } catch (error) {
               console.error('Error removing favorite:', error);
+              Alert.alert('Error', 'Failed to remove item from favorites');
             }
           }
         }
@@ -130,333 +106,279 @@ export default function FavoritesScreen() {
     );
   };
 
-  const handleItemPress = (item: FavoriteItem) => {
-    router.push({
-      pathname: '/order',
-      params: {
-        commodityId: item.id,
-        commodityName: item.name,
-        commodityType: item.category,
-        merchantId: 'merchant1',
-        merchantName: item.merchantName,
-        unitPrice: item.price,
-        unit: item.unit,
+  const addToCart = async (item: FavoriteItem) => {
+    try {
+      const cartItems = await AsyncStorage.getItem('cartItems');
+      const cart = cartItems ? JSON.parse(cartItems) : [];
+
+      const existingItem = cart.find((cartItem: any) => cartItem.id === item.id);
+
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.push({ ...item, quantity: 1 });
       }
-    });
-  };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'fuel': return 'car-outline';
-      case 'food': return 'restaurant-outline';
-      case 'electronics': return 'phone-portrait-outline';
-      case 'groceries': return 'bag-outline';
-      default: return 'cube-outline';
+      await AsyncStorage.setItem('cartItems', JSON.stringify(cart));
+      Alert.alert('Success', 'Item added to cart!');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      Alert.alert('Error', 'Failed to add item to cart');
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'fuel': return '#FF6B6B';
-      case 'food': return '#4ECDC4';
-      case 'electronics': return '#45B7D1';
-      case 'groceries': return '#96CEB4';
-      default: return '#FECA57';
-    }
+  const viewProduct = (itemId: string) => {
+    router.push(`/commodity/${itemId}`);
   };
 
-  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+  const styles = getResponsiveStyles(screenData);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.loadingText}>Loading favorites...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#0c1a2a" />
+    <LinearGradient
+      colors={['#0B1A51', '#1e3a8a']}
+      style={styles.container}
+    >
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Favorites</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>My Favorites</Text>
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={() => router.push('/cart')}
+        >
+          <Ionicons name="cart-outline" size={24} color="white" />
+        </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2e67c7" />
-          <Text style={styles.loadingText}>Loading favorites...</Text>
-        </View>
-      ) : favorites.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="heart-outline" size={80} color="#bdc3c7" />
-          <Text style={styles.emptyStateTitle}>No favorites yet</Text>
-          <Text style={styles.emptyStateText}>
-            Start browsing products and add items to your favorites
-          </Text>
-          <TouchableOpacity 
-            style={styles.browseButton}
-            onPress={() => router.push('/commodity/commodities')}
-          >
-            <Text style={styles.browseButtonText}>Browse Products</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={{ paddingHorizontal: responsivePadding }}>
-            <Text style={styles.sectionTitle}>
-              {favorites.length} item{favorites.length !== 1 ? 's' : ''} saved
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {favorites.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="heart-outline" size={80} color="#ccc" />
+            <Text style={styles.emptyTitle}>No Favorites Yet</Text>
+            <Text style={styles.emptyDescription}>
+              Start adding items to your favorites by tapping the heart icon on products you love!
             </Text>
-
+            <TouchableOpacity
+              style={styles.browseButton}
+              onPress={() => router.push('/commodity/commodities')}
+            >
+              <Text style={styles.browseButtonText}>Browse Products</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.favoritesGrid}>
             {favorites.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.favoriteCard}
-                onPress={() => handleItemPress(item)}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.itemInfo}>
-                    <View style={[
-                      styles.categoryIcon, 
-                      { backgroundColor: getCategoryColor(item.category) + '20' }
-                    ]}>
-                      <Ionicons 
-                        name={getCategoryIcon(item.category) as any} 
-                        size={24} 
-                        color={getCategoryColor(item.category)} 
-                      />
-                    </View>
-                    
-                    <View style={styles.itemDetails}>
-                      <View style={styles.itemHeader}>
-                        <Text style={styles.itemName} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <View style={[
-                          styles.stockBadge,
-                          { backgroundColor: item.inStock ? '#e8f5e8' : '#f5e8e8' }
-                        ]}>
-                          <Text style={[
-                            styles.stockText,
-                            { color: item.inStock ? '#2d5a2d' : '#8b0000' }
-                          ]}>
-                            {item.inStock ? 'In Stock' : 'Out of Stock'}
-                          </Text>
-                        </View>
-                      </View>
-                      
-                      <Text style={styles.itemDescription} numberOfLines={2}>
-                        {item.description}
-                      </Text>
-                      
-                      <View style={styles.priceContainer}>
-                        <Text style={styles.price}>₦{parseFloat(item.price).toLocaleString()}</Text>
-                        <Text style={styles.unit}>/ {item.unit}</Text>
-                      </View>
-                      
-                      <View style={styles.merchantInfo}>
-                        <Ionicons name="storefront-outline" size={14} color="#666" />
-                        <Text style={styles.merchantName}>{item.merchantName}</Text>
-                      </View>
-                      
-                      <Text style={styles.dateAdded}>
-                        Added {new Date(item.dateAdded).toLocaleDateString()}
-                      </Text>
-                    </View>
+              <View key={item.id} style={styles.favoriteCard}>
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeFromFavorites(item.id)}
+                >
+                  <Ionicons name="heart" size={20} color="#e74c3c" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.productInfo}
+                  onPress={() => viewProduct(item.id)}
+                >
+                  <Image source={item.image} style={styles.productImage} />
+                  <Text style={styles.productName}>{item.name}</Text>
+                  <Text style={styles.merchantName}>{item.merchant}</Text>
+
+                  <View style={styles.ratingContainer}>
+                    <Ionicons name="star" size={14} color="#ffd700" />
+                    <Text style={styles.rating}>{item.rating}</Text>
                   </View>
-                  
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removeFavorite(item.id)}
-                  >
-                    <Ionicons name="heart" size={24} color="#e74c3c" />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
+
+                  <Text style={styles.price}>₦{item.price.toLocaleString()}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.addToCartButton}
+                  onPress={() => addToCart(item)}
+                >
+                  <Ionicons name="cart-outline" size={16} color="white" />
+                  <Text style={styles.addToCartText}>Add to Cart</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
-        </ScrollView>
-      )}
-    </View>
+        )}
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: 'Montserrat-Bold',
-  },
-  placeholder: {
-    width: 40,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 10,
-    fontFamily: 'Montserrat-Regular',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#7f8c8d',
-    marginTop: 20,
-    marginBottom: 8,
-    fontFamily: 'Montserrat-Bold',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#bdc3c7',
-    textAlign: 'center',
-    marginBottom: 30,
-    fontFamily: 'Montserrat-Regular',
-  },
-  browseButton: {
-    backgroundColor: '#2e67c7',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-  },
-  browseButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
-  },
-  content: {
-    flex: 1,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    marginTop: 20,
-    marginBottom: 15,
-    fontFamily: 'Montserrat-Bold',
-  },
-  favoriteCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  itemInfo: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  itemDetails: {
-    flex: 1,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 5,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    flex: 1,
-    marginRight: 10,
-    fontFamily: 'Montserrat-Bold',
-  },
-  stockBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  stockText: {
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  itemDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    lineHeight: 18,
-    fontFamily: 'Montserrat-Regular',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 5,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2e67c7',
-    fontFamily: 'Montserrat-Bold',
-  },
-  unit: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 3,
-    fontFamily: 'Montserrat-Regular',
-  },
-  merchantInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  merchantName: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 5,
-    fontFamily: 'Montserrat-Regular',
-  },
-  dateAdded: {
-    fontSize: 11,
-    color: '#999',
-    fontFamily: 'Montserrat-Regular',
-  },
-  removeButton: {
-    padding: 5,
-  },
-});
+const getResponsiveStyles = (screenData: any) => {
+  const { width, height } = screenData;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 350;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    centered: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      color: 'white',
+      fontSize: 16,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: Math.max(16, width * 0.05),
+      paddingTop: Math.max(50, height * 0.07),
+    },
+    backButton: {
+      padding: Math.max(8, width * 0.02),
+    },
+    headerTitle: {
+      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
+      fontWeight: "bold",
+      color: "white",
+    },
+    cartButton: {
+      padding: Math.max(8, width * 0.02),
+    },
+    content: {
+      flex: 1,
+      backgroundColor: "white",
+      borderTopLeftRadius: 35,
+      borderTopRightRadius: 35,
+      paddingHorizontal: Math.max(16, width * 0.05),
+      paddingTop: Math.max(24, height * 0.03),
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Math.max(60, height * 0.1),
+    },
+    emptyTitle: {
+      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
+      fontWeight: 'bold',
+      color: '#2c3e50',
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    emptyDescription: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      color: '#7f8c8d',
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 30,
+      paddingHorizontal: 20,
+    },
+    browseButton: {
+      backgroundColor: '#4682B4',
+      paddingHorizontal: Math.max(24, width * 0.08),
+      paddingVertical: Math.max(12, height * 0.015),
+      borderRadius: 25,
+    },
+    browseButtonText: {
+      color: 'white',
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+    },
+    favoritesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Math.max(12, width * 0.03),
+      paddingBottom: Math.max(24, height * 0.04),
+    },
+    favoriteCard: {
+      width: isTablet ? '31%' : '47%',
+      backgroundColor: 'white',
+      borderRadius: 15,
+      padding: Math.max(12, width * 0.03),
+      borderWidth: 1,
+      borderColor: '#e9ecef',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      position: 'relative',
+    },
+    removeButton: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      zIndex: 1,
+      backgroundColor: 'white',
+      borderRadius: 15,
+      padding: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    productInfo: {
+      alignItems: 'center',
+    },
+    productImage: {
+      width: isTablet ? 80 : 60,
+      height: isTablet ? 80 : 60,
+      borderRadius: 10,
+      marginBottom: 8,
+    },
+    productName: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+      color: '#2c3e50',
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    merchantName: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+      color: '#7f8c8d',
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    ratingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: 8,
+    },
+    rating: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+      color: '#7f8c8d',
+    },
+    price: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: 'bold',
+      color: '#4682B4',
+      marginBottom: 12,
+    },
+    addToCartButton: {
+      backgroundColor: '#4682B4',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Math.max(8, height * 0.01),
+      borderRadius: 20,
+      gap: 4,
+    },
+    addToCartText: {
+      color: 'white',
+      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+      fontWeight: '600',
+    },
+  });
+};

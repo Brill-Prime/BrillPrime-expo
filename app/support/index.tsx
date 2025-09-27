@@ -4,227 +4,245 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ScrollView,
+  TextInput,
   Alert,
+  Linking,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 
-interface SupportTicket {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
+interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+  expanded: boolean;
 }
 
-export default function SupportScreen() {
+export default function Support() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [formData, setFormData] = useState<SupportTicket>({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const [faqs, setFaqs] = useState<FAQItem[]>([
+    {
+      id: '1',
+      question: 'How do I place an order?',
+      answer: 'You can place an order by browsing products, adding items to your cart, and proceeding to checkout. Make sure to provide accurate delivery information.',
+      expanded: false
+    },
+    {
+      id: '2',
+      question: 'What payment methods do you accept?',
+      answer: 'We accept various payment methods including bank transfers, card payments, and mobile money. All transactions are secure and encrypted.',
+      expanded: false
+    },
+    {
+      id: '3',
+      question: 'How can I track my order?',
+      answer: 'You can track your order in real-time through the "My Orders" section. You\'ll receive notifications about order status updates.',
+      expanded: false
+    },
+    {
+      id: '4',
+      question: 'What is your refund policy?',
+      answer: 'We offer refunds for damaged or incorrect items. Contact support within 24 hours of delivery to initiate a refund request.',
+      expanded: false
+    },
+    {
+      id: '5',
+      question: 'How do I become a merchant?',
+      answer: 'You can register as a merchant by selecting the merchant role during signup and completing the KYC verification process.',
+      expanded: false
+    }
+  ]);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
 
-    loadUserData();
-
     return () => subscription?.remove();
   }, []);
 
-  const loadUserData = async () => {
-    try {
-      const email = await AsyncStorage.getItem('userEmail');
-      if (email) {
-        setFormData(prev => ({ ...prev, email }));
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    }
+  const toggleFAQ = (id: string) => {
+    setFaqs(prev => prev.map(faq => 
+      faq.id === id ? { ...faq, expanded: !faq.expanded } : faq
+    ));
   };
 
-  const handleInputChange = (field: keyof SupportTicket, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const sendMessage = () => {
+    if (!message.trim()) {
+      Alert.alert('Error', 'Please enter your message');
+      return;
+    }
+
+    Alert.alert(
+      'Message Sent',
+      'Thank you for contacting us! We will get back to you within 24 hours.',
+      [
+        {
+          text: 'OK',
+          onPress: () => setMessage('')
+        }
+      ]
+    );
   };
 
-  const validateForm = () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Validation Error', 'Please enter your name');
-      return false;
-    }
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      Alert.alert('Validation Error', 'Please enter a valid email address');
-      return false;
-    }
-    if (!formData.subject.trim()) {
-      Alert.alert('Validation Error', 'Please enter a subject');
-      return false;
-    }
-    if (!formData.message.trim()) {
-      Alert.alert('Validation Error', 'Please enter your message');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      Alert.alert(
-        'Support Ticket Submitted',
-        'Your support request has been submitted successfully. Our team will review your ticket and respond within 24 hours.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Reset form
-              setFormData({
-                name: '',
-                email: formData.email, // Keep email
-                subject: '',
-                message: '',
-              });
-              router.back();
-            }
+  const callSupport = () => {
+    const phoneNumber = '+2348012345678';
+    Alert.alert(
+      'Call Support',
+      `Would you like to call our support team?\n${phoneNumber}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call Now',
+          onPress: () => {
+            const phoneUrl = `tel:${phoneNumber}`;
+            Linking.canOpenURL(phoneUrl).then((supported) => {
+              if (supported) {
+                Linking.openURL(phoneUrl);
+              } else {
+                Alert.alert('Error', 'Phone calling is not supported on this device');
+              }
+            });
           }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Submission Failed', 'Failed to submit your support ticket. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+        }
+      ]
+    );
+  };
+
+  const emailSupport = () => {
+    const email = 'support@brillprime.com';
+    const emailUrl = `mailto:${email}?subject=Support Request&body=Hello, I need help with...`;
+    
+    Linking.canOpenURL(emailUrl).then((supported) => {
+      if (supported) {
+        Linking.openURL(emailUrl);
+      } else {
+        Alert.alert('Error', 'Email client is not available on this device');
+      }
+    });
   };
 
   const styles = getResponsiveStyles(screenData);
 
   return (
-    <KeyboardAvoidingView 
+    <LinearGradient
+      colors={['#0B1A51', '#1e3a8a']}
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Support</Text>
+        <Text style={styles.headerTitle}>Support & Help</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Form Fields */}
-        <View style={styles.formContainer}>
-          {/* Name Field */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Name</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={formData.name}
-                onChangeText={(value) => handleInputChange('name', value)}
-                placeholder="Enter your name"
-                placeholderTextColor="#B7B7B7"
-              />
+        {/* Quick Actions */}
+        <Text style={styles.sectionTitle}>Get Help</Text>
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.actionCard} onPress={callSupport}>
+            <View style={[styles.actionIcon, { backgroundColor: '#28a745' }]}>
+              <Ionicons name="call" size={24} color="white" />
             </View>
-          </View>
-
-          {/* Email Field */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Email</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={formData.email}
-                onChangeText={(value) => handleInputChange('email', value)}
-                placeholder="Enter your email"
-                placeholderTextColor="#B7B7B7"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          {/* Subject Field */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Subject</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={formData.subject}
-                onChangeText={(value) => handleInputChange('subject', value)}
-                placeholder="Enter subject"
-                placeholderTextColor="#B7B7B7"
-              />
-            </View>
-          </View>
-
-          {/* Message Field */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Message</Text>
-            <View style={[styles.inputContainer, styles.messageContainer]}>
-              <TextInput
-                style={[styles.textInput, styles.messageInput]}
-                value={formData.message}
-                onChangeText={(value) => handleInputChange('message', value)}
-                placeholder="Describe your issue or question..."
-                placeholderTextColor="#B7B7B7"
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Submit'}
-            </Text>
+            <Text style={styles.actionTitle}>Call Us</Text>
+            <Text style={styles.actionSubtitle}>Talk to our support team</Text>
           </TouchableOpacity>
 
-          {/* Quick Help Options */}
-          <View style={styles.quickHelpContainer}>
-            <Text style={styles.quickHelpTitle}>Need quick help?</Text>
-            <View style={styles.quickHelpOptions}>
-              <TouchableOpacity style={styles.quickHelpOption}>
-                <Ionicons name="help-circle-outline" size={20} color="#667eea" />
-                <Text style={styles.quickHelpText}>FAQ</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickHelpOption}>
-                <Ionicons name="chatbubble-outline" size={20} color="#667eea" />
-                <Text style={styles.quickHelpText}>Live Chat</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickHelpOption}>
-                <Ionicons name="call-outline" size={20} color="#667eea" />
-                <Text style={styles.quickHelpText}>Call Us</Text>
-              </TouchableOpacity>
+          <TouchableOpacity style={styles.actionCard} onPress={emailSupport}>
+            <View style={[styles.actionIcon, { backgroundColor: '#007bff' }]}>
+              <Ionicons name="mail" size={24} color="white" />
             </View>
+            <Text style={styles.actionTitle}>Email Us</Text>
+            <Text style={styles.actionSubtitle}>Send us an email</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionCard} 
+            onPress={() => router.push('/chat')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#6f42c1' }]}>
+              <Ionicons name="chatbubble" size={24} color="white" />
+            </View>
+            <Text style={styles.actionTitle}>Live Chat</Text>
+            <Text style={styles.actionSubtitle}>Chat with support</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Contact Form */}
+        <Text style={styles.sectionTitle}>Send us a Message</Text>
+        <View style={styles.messageContainer}>
+          <TextInput
+            style={styles.messageInput}
+            value={message}
+            onChangeText={setMessage}
+            placeholder="Describe your issue or question..."
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+            <Text style={styles.sendButtonText}>Send Message</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* FAQ Section */}
+        <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+        <View style={styles.faqContainer}>
+          {faqs.map((faq) => (
+            <View key={faq.id} style={styles.faqItem}>
+              <TouchableOpacity
+                style={styles.faqQuestion}
+                onPress={() => toggleFAQ(faq.id)}
+              >
+                <Text style={styles.questionText}>{faq.question}</Text>
+                <Ionicons
+                  name={faq.expanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#666"
+                />
+              </TouchableOpacity>
+              {faq.expanded && (
+                <View style={styles.faqAnswer}>
+                  <Text style={styles.answerText}>{faq.answer}</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+
+        {/* Contact Info */}
+        <Text style={styles.sectionTitle}>Contact Information</Text>
+        <View style={styles.contactInfo}>
+          <View style={styles.contactItem}>
+            <Ionicons name="call" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>+234 801 234 5678</Text>
+          </View>
+          <View style={styles.contactItem}>
+            <Ionicons name="mail" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>support@brillprime.com</Text>
+          </View>
+          <View style={styles.contactItem}>
+            <Ionicons name="time" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>Mon - Fri: 8:00 AM - 6:00 PM</Text>
+          </View>
+          <View style={styles.contactItem}>
+            <Ionicons name="location" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>Abuja, Nigeria</Text>
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
@@ -236,110 +254,157 @@ const getResponsiveStyles = (screenData: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#fff',
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: Math.max(16, width * 0.04),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: Math.max(16, width * 0.05),
       paddingTop: Math.max(50, height * 0.07),
-      paddingBottom: 16,
-      backgroundColor: 'white',
-      borderBottomWidth: 1,
-      borderBottomColor: '#e9ecef',
     },
     backButton: {
-      padding: 8,
+      padding: Math.max(8, width * 0.02),
     },
     headerTitle: {
       fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
-      fontWeight: 'bold',
-      color: '#333',
+      fontWeight: "bold",
+      color: "white",
     },
     placeholder: {
       width: 40,
     },
     content: {
       flex: 1,
+      backgroundColor: "white",
+      borderTopLeftRadius: 35,
+      borderTopRightRadius: 35,
+      paddingHorizontal: Math.max(16, width * 0.05),
+      paddingTop: Math.max(24, height * 0.03),
     },
-    formContainer: {
-      padding: Math.max(20, width * 0.05),
+    sectionTitle: {
+      fontSize: isTablet ? 22 : isSmallScreen ? 16 : 18,
+      fontWeight: "bold",
+      color: "#2c3e50",
+      marginBottom: Math.max(16, height * 0.025),
+      marginTop: Math.max(8, height * 0.01),
     },
-    fieldContainer: {
-      marginBottom: 24,
+    quickActions: {
+      flexDirection: 'row',
+      gap: Math.max(12, width * 0.03),
+      marginBottom: Math.max(24, height * 0.04),
     },
-    fieldLabel: {
-      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
-      fontWeight: '600',
-      color: '#000',
-      textAlign: 'center',
-      marginBottom: 8,
-      fontFamily: 'Montserrat',
-    },
-    inputContainer: {
+    actionCard: {
+      flex: 1,
+      backgroundColor: 'white',
+      padding: Math.max(16, width * 0.04),
+      borderRadius: 15,
+      alignItems: 'center',
       borderWidth: 1,
-      borderColor: '#4682B4',
-      borderRadius: 30,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      borderColor: '#e9ecef',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    actionIcon: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    actionTitle: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+      color: '#2c3e50',
+      marginBottom: 4,
+    },
+    actionSubtitle: {
+      fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
+      color: '#7f8c8d',
+      textAlign: 'center',
     },
     messageContainer: {
-      height: 120,
-    },
-    textInput: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
-      color: '#000',
-      fontFamily: 'Montserrat',
-      fontWeight: '500',
+      backgroundColor: 'white',
+      borderRadius: 15,
+      padding: Math.max(16, width * 0.04),
+      marginBottom: Math.max(24, height * 0.04),
+      borderWidth: 1,
+      borderColor: '#e9ecef',
     },
     messageInput: {
-      height: 88,
-      textAlignVertical: 'top',
-    },
-    submitButton: {
-      backgroundColor: '#4682B4',
-      borderRadius: 30,
-      paddingVertical: 16,
-      alignItems: 'center',
-      marginTop: 20,
-      marginBottom: 30,
-    },
-    submitButtonDisabled: {
-      backgroundColor: '#ccc',
-    },
-    submitButtonText: {
-      fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
-      fontWeight: '600',
-      color: '#fff',
-      fontFamily: 'Montserrat',
-    },
-    quickHelpContainer: {
-      marginTop: 20,
-      padding: 20,
-      backgroundColor: '#f8f9fa',
-      borderRadius: 12,
-    },
-    quickHelpTitle: {
-      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
-      fontWeight: '600',
+      borderWidth: 1,
+      borderColor: '#ddd',
+      borderRadius: 10,
+      padding: Math.max(12, width * 0.03),
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
       color: '#333',
-      textAlign: 'center',
       marginBottom: 16,
+      minHeight: 100,
     },
-    quickHelpOptions: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-    },
-    quickHelpOption: {
+    sendButton: {
+      backgroundColor: '#4682B4',
+      paddingVertical: Math.max(12, height * 0.015),
+      borderRadius: 10,
       alignItems: 'center',
-      padding: 12,
     },
-    quickHelpText: {
+    sendButtonText: {
+      color: 'white',
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+    },
+    faqContainer: {
+      backgroundColor: 'white',
+      borderRadius: 15,
+      marginBottom: Math.max(24, height * 0.04),
+      borderWidth: 1,
+      borderColor: '#e9ecef',
+    },
+    faqItem: {
+      borderBottomWidth: 1,
+      borderBottomColor: '#f8f9fa',
+    },
+    faqQuestion: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: Math.max(16, width * 0.04),
+    },
+    questionText: {
+      flex: 1,
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+      color: '#2c3e50',
+      marginRight: 12,
+    },
+    faqAnswer: {
+      paddingHorizontal: Math.max(16, width * 0.04),
+      paddingBottom: Math.max(16, height * 0.02),
+    },
+    answerText: {
       fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      color: '#667eea',
-      marginTop: 4,
-      fontWeight: '500',
+      color: '#7f8c8d',
+      lineHeight: 20,
+    },
+    contactInfo: {
+      backgroundColor: 'white',
+      borderRadius: 15,
+      padding: Math.max(16, width * 0.04),
+      marginBottom: Math.max(24, height * 0.04),
+      borderWidth: 1,
+      borderColor: '#e9ecef',
+    },
+    contactItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: Math.max(12, height * 0.015),
+      gap: 12,
+    },
+    contactText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      color: '#2c3e50',
     },
   });
 };

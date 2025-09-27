@@ -54,12 +54,12 @@ export default function DriverDashboard() {
   };
 
   const features = [
-    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4" },
-    { title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb" },
-    { title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe" },
-    { title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f" },
-    { title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf" },
-    { title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d" }
+    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4", route: "/orders/driver-orders" },
+    { title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb", route: "/orders/driver-orders" },
+    { title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe", route: "/transactions" },
+    { title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f", route: "/map" },
+    { title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf", route: "/profile/vehicle" },
+    { title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d", route: "/support" }
   ];
 
   return (
@@ -103,7 +103,17 @@ export default function DriverDashboard() {
 
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
-            <TouchableOpacity key={index} style={styles.featureCard}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.featureCard}
+              onPress={() => {
+                if (feature.route) {
+                  router.push(feature.route as any);
+                } else {
+                  Alert.alert("Coming Soon", `${feature.title} feature will be available soon!`);
+                }
+              }}
+            >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
                 <Text style={styles.featureEmoji}>{feature.emoji}</Text>
               </View>
