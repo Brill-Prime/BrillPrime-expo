@@ -382,8 +382,13 @@ const getResponsiveStyles = (screenData: any) => {
     },
   });
 };
-import React, { useState, useEffect } from 'react';
-import {
+
+const getResponsiveStyles = (screenData: any) => {
+  const { width, height } = screenData;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 350;
+
+  return StyleSheet.create({
   View,
   Text,
   StyleSheet,

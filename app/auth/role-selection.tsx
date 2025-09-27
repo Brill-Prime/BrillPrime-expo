@@ -51,8 +51,12 @@ export default function RoleSelection() {
               
               // Check if stored role matches selected role
               if (userRole === role) {
-                // Roles match, navigate to home screen
-                router.replace("/home/consumer");
+                // Roles match, navigate to appropriate screen
+                if (role === 'admin') {
+                  router.replace("/admin");
+                } else {
+                  router.replace("/home/consumer");
+                }
                 return;
               } else {
                 // Role mismatch - update stored role and continue
@@ -100,7 +104,12 @@ export default function RoleSelection() {
       // Check if user has account (stored email indicates previous registration)
         const storedEmail = await AsyncStorage.getItem("userEmail");
         
-        if (storedEmail) {
+        if (role === 'admin') {
+          // For admin role, go directly to admin dashboard
+          await AsyncStorage.setItem("userRole", "admin");
+          await AsyncStorage.setItem("userEmail", "admin@brillprime.com");
+          router.replace("/admin");
+        } else if (storedEmail) {
           // User has registered before → Sign in
           router.push("/auth/signin");
         } else {
@@ -152,6 +161,17 @@ export default function RoleSelection() {
         >
           <Text style={styles.roleButtonText}>Driver</Text>
         </TouchableOpacity>
+
+        {/* Admin role (development only) */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={[styles.roleButton, { backgroundColor: "#dc2626" }]}
+            onPress={() => handleSelect("admin" as any)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.roleButtonText}>Admin (Dev)</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Info text */}
         <View style={{ marginTop: 20 }}>
