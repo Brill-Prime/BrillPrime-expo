@@ -4,6 +4,11 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Icons are assumed to be in components directory and are imported as default exports
+import QRScannerIcon from '../../components/QRScannerIcon';
+import SimpleArrowIcon from '../../components/SimpleArrowIcon';
+
+
 export default function DriverDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");

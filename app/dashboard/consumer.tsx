@@ -149,7 +149,7 @@ export default function ConsumerDashboard() {
           <TouchableOpacity
             style={[styles.serviceCard]}
             onPress={() => router.push('/order/fuel')}
-            
+
           >
             <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
               <Image

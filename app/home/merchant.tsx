@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { 
   View, 
@@ -17,6 +16,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from '../../components/AlertProvider';
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import * as Location from 'expo-location';
+import QRScannerIcon from '../../components/QRScannerIcon';
+import SimpleArrowIcon from '../../components/SimpleArrowIcon';
 
 const { width, height } = Dimensions.get('window');
 
@@ -218,7 +219,7 @@ export default function MerchantHome() {
         >
           <Ionicons name="arrow-back" size={20} color="#333" />
         </TouchableOpacity>
-        
+
         <TouchableOpacity onPress={toggleMenu} style={styles.headerButton}>
           <Ionicons name="menu" size={20} color="#333" />
         </TouchableOpacity>
@@ -277,7 +278,7 @@ export default function MerchantHome() {
           <Ionicons name="home" size={24} color="#4682B4" />
           <Text style={[styles.navLabel, styles.activeNavLabel]}>Home</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => router.push('/orders/consumer-orders')}
@@ -285,7 +286,7 @@ export default function MerchantHome() {
           <Ionicons name="receipt-outline" size={24} color="#666" />
           <Text style={styles.navLabel}>Orders</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => router.push('/merchant/commodities')}
@@ -293,7 +294,7 @@ export default function MerchantHome() {
           <Ionicons name="grid-outline" size={24} color="#666" />
           <Text style={styles.navLabel}>Products</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity 
           style={styles.navItem}
           onPress={() => router.push('/profile')}
