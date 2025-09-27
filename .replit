@@ -14,7 +14,7 @@ run = ["npx", "serve", "dist", "-s", "-l"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Project"
+runButton = "Start App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -36,6 +36,19 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "Start App"
+author = 48040949
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --web --port 5000"
 
 [[ports]]
 localPort = 5000
