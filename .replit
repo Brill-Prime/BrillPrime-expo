@@ -29,18 +29,18 @@ args = "Frontend"
 name = "Frontend"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx expo start --web --port 5000 --host lan"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 32781
+localPort = 34059
 externalPort = 3000
