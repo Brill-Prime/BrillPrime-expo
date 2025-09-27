@@ -1,36 +1,74 @@
 // Authentication Service
-// Handles all authentication-related API calls
+// Handles user authentication, session management, and user state
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient, ApiResponse } from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../config/firebase';
 import { 
-  AuthResponse, 
-  SignUpRequest, 
-  SignInRequest, 
-  ResetPasswordRequest,
-  ConfirmPasswordResetRequest,
-  VerifyOTPRequest,
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
   User
-} from './types';
+} from 'firebase/auth';
 
 class AuthService {
   private readonly TOKEN_KEY = 'userToken';
   private readonly USER_KEY = 'userData';
   private readonly ROLE_KEY = 'userRole';
+  private currentUser: any = null;
+  private authToken: string | null = null;
+
+  constructor() {
+    // Listen to Firebase auth state changes
+    onAuthStateChanged(auth, (user: User | null) => {
+      if (user) {
+        this.currentUser = user;
+        this.authToken = user.accessToken;
+      } else {
+        this.currentUser = null;
+        this.authToken = null;
+      }
+    });
+  }
 
   // Sign up new user
   async signUp(data: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
     try {
-      const response = await apiClient.post<AuthResponse>('/api/auth/signup', data);
+      // First, try to sign up using Firebase
+      const firebaseUserCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const firebaseUser = firebaseUserCredential.user;
+
+      // Then, register the user with your backend API to store additional details like role, name, etc.
+      // The backend will then return a token and user data that you'll store locally.
+      const response = await apiClient.post<AuthResponse>('/api/auth/signup', {
+        ...data,
+        firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
+      });
 
       if (response.success && response.data) {
-        // Store user data locally
+        // Store user data locally, including the token from your backend
         await this.storeAuthData(response.data);
+        // Note: We don't set firebaseUser or firebaseUser.accessToken here as we are relying on the backend token for API calls.
       }
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('SignUp error:', error);
+
+      // Handle Firebase specific errors
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            return { success: false, error: 'That email address is already in use!' };
+          case 'auth/invalid-email':
+            return { success: false, error: 'That email address is invalid!' };
+          case 'auth/weak-password':
+            return { success: false, error: 'Password should be at least 6 characters long.' };
+          default:
+            return { success: false, error: `Firebase authentication error: ${error.message}` };
+        }
+      }
 
       // Handle network errors gracefully - create offline demo account
       if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
@@ -77,7 +115,16 @@ class AuthService {
   // Sign in user
   async signIn(data: SignInRequest & { role?: string }): Promise<ApiResponse<AuthResponse>> {
     try {
-      const response = await apiClient.post<AuthResponse>('/api/auth/signin', data);
+      // First, try to sign in with Firebase
+      const firebaseUserCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const firebaseUser = firebaseUserCredential.user;
+
+      // Then, authenticate with your backend using the Firebase UID or a token
+      // For simplicity, we'll assume your backend can verify the Firebase UID and return your internal token
+      const response = await apiClient.post<AuthResponse>('/api/auth/signin', {
+        email: data.email, // Pass email to backend for role verification if needed
+        firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
+      });
 
       if (response.success && response.data) {
         // Validate role if provided
@@ -88,13 +135,25 @@ class AuthService {
           };
         }
 
-        // Store user data locally with expiry
+        // Store user data locally with expiry, using the token from your backend
         await this.storeAuthData(response.data);
       }
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('SignIn error:', error);
+
+      // Handle Firebase specific errors
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+            return { success: false, error: 'No user found with that email.' };
+          case 'auth/wrong-password':
+            return { success: false, error: 'Incorrect password provided.' };
+          default:
+            return { success: false, error: `Firebase authentication error: ${error.message}` };
+        }
+      }
 
       // Handle network errors - check if user exists in offline storage
       if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
@@ -205,6 +264,7 @@ class AuthService {
         }
       }
 
+      // Use the token from local storage to authenticate with the backend API
       const response = await apiClient.get<User>('/api/auth/user', {
         Authorization: `Bearer ${token}`,
       });
@@ -268,6 +328,8 @@ class AuthService {
           Authorization: `Bearer ${token}`,
         });
       }
+      // Sign out from Firebase as well
+      await signOut(auth);
     } catch (error) {
       console.error('Error during API signout:', error);
     } finally {
@@ -286,7 +348,9 @@ class AuthService {
         [this.USER_KEY, JSON.stringify(authData.user)],
         [this.ROLE_KEY, authData.user.role],
         ['tokenExpiry', tokenExpiry.toString()],
-        ['selectedRole', authData.user.role] // Update selected role to match actual user role
+        ['selectedRole', authData.user.role], // Update selected role to match actual user role
+        ['userEmail', authData.user.email], // Store email for offline use
+        // We don't store firebaseUid here as it's implicitly handled by Firebase auth state
       ]);
     } catch (error) {
       console.error('Error storing auth data:', error);
@@ -304,7 +368,8 @@ class AuthService {
         'pendingUserData',
         'tempUserEmail',
         'tempUserRole',
-        'isOfflineMode' // Also clear offline mode flag
+        'isOfflineMode', // Also clear offline mode flag
+        'userEmail' // Clear stored email as well
       ]);
     } catch (error) {
       console.error('Error clearing auth data:', error);
@@ -313,6 +378,10 @@ class AuthService {
 
   async getToken(): Promise<string | null> {
     try {
+      // Prefer token from Firebase if available and valid, otherwise use stored token
+      if (this.authToken) {
+        return this.authToken;
+      }
       return await AsyncStorage.getItem(this.TOKEN_KEY);
     } catch (error) {
       console.error('Error getting token:', error);
@@ -341,7 +410,8 @@ class AuthService {
       return false;
     }
 
-    return true;
+    // Additionally, check if Firebase user is authenticated
+    return !!this.currentUser;
   }
 
   // Check if token needs refresh (expires in next hour)

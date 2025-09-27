@@ -28,9 +28,8 @@ export default ({ config }) => {
     ],
     ios: {
       supportsTablet: true,
-      config: {
-        googleMapsApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY
-      }
+      bundleIdentifier: "com.brillprime",
+      googleServicesFile: "./ios/GoogleService-Info.plist",
     },
     android: {
       adaptiveIcon: {
