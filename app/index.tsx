@@ -95,9 +95,7 @@ export default function SplashScreenComponent() {
         if (onboardingStatus !== 'true') {
           console.log('User has not seen onboarding, navigating to onboarding');
           clearTimeout(navigationTimeout);
-          if (typeof window === 'undefined') {
-            await SplashScreen.hideAsync();
-          }
+          await SplashScreen.hideAsync();
           try {
             router.replace('/onboarding/screen1');
           } catch (e) {
@@ -118,9 +116,7 @@ export default function SplashScreenComponent() {
           console.log('No valid token or token expired, navigating to signin');
           await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
           clearTimeout(navigationTimeout);
-          if (typeof window === 'undefined') {
-            await SplashScreen.hideAsync();
-          }
+          await SplashScreen.hideAsync();
           try {
             router.replace('/auth/signin');
           } catch (e) {
@@ -135,9 +131,7 @@ export default function SplashScreenComponent() {
         if (role && isMounted) {
           console.log('Using cached role:', role);
           clearTimeout(navigationTimeout);
-          if (typeof window === 'undefined') {
-            await SplashScreen.hideAsync();
-          }
+          await SplashScreen.hideAsync();
           try {
             switch (role) {
               case 'consumer':
@@ -159,9 +153,7 @@ export default function SplashScreenComponent() {
         } else {
           console.log('No cached role found, redirecting to role selection');
           clearTimeout(navigationTimeout);
-          if (typeof window === 'undefined') {
-            await SplashScreen.hideAsync();
-          }
+          await SplashScreen.hideAsync();
           try {
             router.replace('/auth/role-selection');
           } catch (e) {
@@ -174,9 +166,7 @@ export default function SplashScreenComponent() {
         console.error('Error checking auth state:', error);
         if (isMounted) {
           clearTimeout(navigationTimeout);
-          if (typeof window === 'undefined') {
-            await SplashScreen.hideAsync();
-          }
+          await SplashScreen.hideAsync();
           // Fallback to onboarding if any error occurs during auth check
           try {
             router.replace('/onboarding/screen1');
