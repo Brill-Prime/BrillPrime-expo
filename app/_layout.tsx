@@ -4,6 +4,7 @@ import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
 import * as Font from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Ionicons } from '@expo/vector-icons';
 

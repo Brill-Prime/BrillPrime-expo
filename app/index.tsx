@@ -2,10 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Text, View, StyleSheet, Animated, Image, ActivityIndicator } from "react-native";
 import { useRouter, Redirect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SplashScreen from 'expo-splash-screen';
 
 // ✅ DEPLOYMENT READY - DO NOT EDIT WITHOUT TEAM APPROVAL
 // This splash screen component is complete and tested
-export default function SplashScreen() {
+// Prevent the splash screen from auto-hiding before asset loading is complete
+SplashScreen.preventAutoHideAsync();
+
+export default function SplashScreenComponent() {
   const router = useRouter();
   const variant = process.env.APP_VARIANT || "main";
 
@@ -74,9 +78,10 @@ export default function SplashScreen() {
         if (!isMounted) return;
 
         // Set up timeout for navigation
-        navigationTimeout = setTimeout(() => {
+        navigationTimeout = setTimeout(async () => {
           if (isMounted) {
             console.log('Navigation timeout, forcing redirect to onboarding');
+            await SplashScreen.hideAsync();
             try {
               router.replace('/onboarding/screen1');
             } catch (e) {
@@ -90,6 +95,7 @@ export default function SplashScreen() {
         if (onboardingStatus !== 'true') {
           console.log('User has not seen onboarding, navigating to onboarding');
           clearTimeout(navigationTimeout);
+          await SplashScreen.hideAsync();
           try {
             router.replace('/onboarding/screen1');
           } catch (e) {
@@ -110,6 +116,7 @@ export default function SplashScreen() {
           console.log('No valid token or token expired, navigating to signin');
           await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
           clearTimeout(navigationTimeout);
+          await SplashScreen.hideAsync();
           try {
             router.replace('/auth/signin');
           } catch (e) {
@@ -124,6 +131,7 @@ export default function SplashScreen() {
         if (role && isMounted) {
           console.log('Using cached role:', role);
           clearTimeout(navigationTimeout);
+          await SplashScreen.hideAsync();
           try {
             switch (role) {
               case 'consumer':
@@ -145,6 +153,7 @@ export default function SplashScreen() {
         } else {
           console.log('No cached role found, redirecting to role selection');
           clearTimeout(navigationTimeout);
+          await SplashScreen.hideAsync();
           try {
             router.replace('/auth/role-selection');
           } catch (e) {
@@ -157,6 +166,7 @@ export default function SplashScreen() {
         console.error('Error checking auth state:', error);
         if (isMounted) {
           clearTimeout(navigationTimeout);
+          await SplashScreen.hideAsync();
           // Fallback to onboarding if any error occurs during auth check
           try {
             router.replace('/onboarding/screen1');
