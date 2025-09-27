@@ -34,4 +34,3 @@ const ArrowForwardIcon: React.FC<ArrowForwardIconProps> = ({
 };
 
 export default ArrowForwardIcon;
-export { ArrowForwardIcon };

@@ -31,4 +31,3 @@ const AccountCircleIcon: React.FC<AccountCircleIconProps> = ({
 };
 
 export default AccountCircleIcon;
-export { AccountCircleIcon };

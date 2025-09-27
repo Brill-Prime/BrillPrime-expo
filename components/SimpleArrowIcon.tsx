@@ -39,4 +39,3 @@ const SimpleArrowIcon: React.FC<SimpleArrowIconProps> = ({
 };
 
 export default SimpleArrowIcon;
-export { SimpleArrowIcon };

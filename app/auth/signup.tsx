@@ -4,8 +4,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
-import { EmailIcon } from "../../components/EmailIcon";
-import { LockIcon } from "../../components/LockIcon";
+import EmailIcon from '../../components/EmailIcon';
+import LockIcon from '../../components/LockIcon';
 
 export default function SignUp() {
   const router = useRouter();
@@ -112,7 +112,7 @@ export default function SignUp() {
         const errorMessage = response.error || "Registration failed";
         if (errorMessage.includes("email already exists") || errorMessage.includes("already registered")) {
           showConfirmDialog(
-            "Account Exists", 
+            "Account Exists",
             "An account with this email already exists. Would you like to sign in instead?",
             () => router.push("/auth/signin")
           );

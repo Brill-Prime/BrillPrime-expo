@@ -38,4 +38,3 @@ const QRScannerIcon: React.FC<QRScannerIconProps> = ({
 };
 
 export default QRScannerIcon;
-export { QRScannerIcon };

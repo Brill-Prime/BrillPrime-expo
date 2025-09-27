@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
+import ArrowForwardIcon from '../../components/ArrowForwardIcon';
 
 export default function OnboardingScreen1() {
   const router = useRouter();
@@ -26,26 +27,26 @@ export default function OnboardingScreen1() {
             resizeMode="contain"
           />
         </View>
-        
+
         <Text style={styles.title}>Welcome to{"\n"}Brill Prime</Text>
         <Text style={styles.description}>
           Your trusted financial partner for secure transactions and seamless money management
         </Text>
-        
+
       </View>
-      
+
       <View style={styles.footer}>
         <View style={styles.pagination}>
           <View style={[styles.dot, styles.activeDot]} />
           <View style={styles.dot} />
           <View style={styles.dot} />
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.nextButton}
           onPress={() => router.push("/onboarding/screen2")}
         >
-          <Text style={{ color: 'white', fontSize: screenData.width >= 768 ? 24 : 20, fontWeight: 'bold' }}>→</Text>
+          <ArrowForwardIcon size={screenData.width >= 768 ? 32 : 24} color="white" />
         </TouchableOpacity>
       </View>
     </View>
@@ -56,7 +57,7 @@ const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
   const isTablet = width >= 768;
   const isSmallScreen = width < 350;
-  
+
   return StyleSheet.create({
     container: {
       flex: 1,

@@ -15,8 +15,8 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useAlert } from "../../components/AlertProvider";
-import { EmailIcon } from "../../components/EmailIcon";
-import { LockIcon } from "../../components/LockIcon";
+import EmailIcon from '../../components/EmailIcon';
+import LockIcon from '../../components/LockIcon';
 
 export default function SignIn() {
   const router = useRouter();
@@ -113,7 +113,7 @@ export default function SignIn() {
           setError('Unable to connect to server. Trying offline mode...');
         } else if (errorMessage.includes("account not found")) {
           showConfirmDialog(
-            "Account Not Found", 
+            "Account Not Found",
             "No account found with this email. Would you like to sign up?",
             () => router.push("/auth/signup")
           );

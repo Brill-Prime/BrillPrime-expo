@@ -36,4 +36,3 @@ const EmailIcon: React.FC<EmailIconProps> = ({
 };
 
 export default EmailIcon;
-export { EmailIcon };

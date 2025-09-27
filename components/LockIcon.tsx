@@ -34,4 +34,3 @@ const LockIcon: React.FC<LockIconProps> = ({
 };
 
 export default LockIcon;
-export { LockIcon };
