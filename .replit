@@ -10,7 +10,7 @@ channel = "stable-25_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npx", "serve", "dist", "-s", "-l", "5000"]
+run = ["npx", "serve", "dist", "-s", "-l"]
 build = ["npm", "run", "build"]
 
 [workflows]
