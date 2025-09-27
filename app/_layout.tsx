@@ -5,6 +5,7 @@ import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
 import * as Font from 'expo-font';
 import { ErrorBoundary } from 'react-error-boundary';
+import { Ionicons } from '@expo/vector-icons';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -15,7 +16,7 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
       <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
         {error.message}
       </Text>
-      <Text 
+      <Text
         style={{ color: '#007AFF', fontSize: 16 }}
         onPress={resetErrorBoundary}
       >
@@ -29,22 +30,47 @@ export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    // Skip all font loading to prevent timeouts and crashes
-    console.log('Skipping font loading to prevent timeouts');
-    
-    // Set up CSS fallbacks for web
-    if (typeof window !== 'undefined' && window.document) {
-      const style = document.createElement('style');
-      style.textContent = `
-        * {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+    async function prepare() {
+      try {
+        // Keep the splash screen visible while we fetch resources
+        await SplashScreen.preventAutoHideAsync();
+
+        // Load fonts, including Ionicons
+        await Font.loadAsync({
+          ...Ionicons.font, // Load Ionicons fonts
+        });
+
+        // Set up CSS fallbacks for web
+        if (typeof window !== 'undefined' && window.document) {
+          const style = document.createElement('style');
+          style.textContent = `
+            * {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+            }
+          `;
+          document.head.appendChild(style);
         }
-      `;
-      document.head.appendChild(style);
+
+      } catch (e) {
+        console.warn(e);
+        // Optionally, you could display an error message to the user here
+      } finally {
+        // Tell the application to render the child components
+        setFontsLoaded(true);
+        await SplashScreen.hideAsync();
+      }
     }
-    
-    setFontsLoaded(true);
+
+    prepare();
   }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -68,6 +94,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorContainer: {
     justifyContent: 'center',
