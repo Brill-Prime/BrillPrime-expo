@@ -53,7 +53,10 @@ export default ({ config }) => {
     },
     plugins: [
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/firestore"
     ],
     platforms: variant === "admin" ? ["web"] : ["ios", "android", "web"],
   };
