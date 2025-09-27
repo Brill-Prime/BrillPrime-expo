@@ -13,8 +13,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type UserRole = "consumer" | "merchant" | "driver";
 
-// ✅ DEPLOYMENT READY - DO NOT EDIT WITHOUT TEAM APPROVAL  
-// Role selection component is complete and tested
 export default function RoleSelection() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -27,6 +25,24 @@ export default function RoleSelection() {
 
     return () => subscription?.remove();
   }, []);
+
+  const proceedToAuth = async (role: UserRole) => {
+    try {
+      // Check if user has account (stored email indicates previous registration)
+      const storedEmail = await AsyncStorage.getItem("userEmail");
+      
+      if (storedEmail) {
+        // User has registered before → Sign in
+        router.push("/auth/signin");
+      } else {
+        // New user → Sign up
+        router.push("/auth/signup");
+      }
+    } catch (error) {
+      console.error("Error in proceedToAuth:", error);
+      Alert.alert("Error", "Failed to proceed with authentication. Please try again.");
+    }
+  };
 
   const handleSelect = async (role: UserRole) => {
     setSelectedRole(role);
@@ -43,49 +59,38 @@ export default function RoleSelection() {
           const authCheck = await authService.isAuthenticatedWithValidation();
           
           if (authCheck.isAuthenticated) {
-            // Get current user data to validate role
-            const userResponse = await authService.getCurrentUser();
-            
-            if (userResponse.success && userResponse.data) {
-              const userRole = userResponse.data.role;
-              
-              // Check if stored role matches selected role
-              if (userRole === role) {
-                // Roles match, navigate to appropriate screen
-                if (role === 'admin') {
-                  router.replace("/admin");
-                } else {
-                  router.replace("/home/consumer");
-                }
-                return;
-              } else {
-                // Role mismatch - update stored role and continue
-                await AsyncStorage.setItem("selectedRole", userRole);
-                Alert.alert(
-                  "Role Updated",
-                  `Your account role has been updated to ${userRole}. Please select your role again.`,
-                  [{ text: "OK", onPress: () => setSelectedRole(null) }]
-                );
-                return;
-              }
+            // User is already authenticated, navigate to appropriate home screen
+            switch (role) {
+              case 'consumer':
+                router.replace("/home/consumer");
+                break;
+              case 'merchant':
+                router.replace("/home/merchant");
+                break;
+              case 'driver':
+                router.replace("/home/driver");
+                break;
+              default:
+                router.replace("/home/consumer");
             }
+            return;
           }
           
           // Token is invalid or expired, clear it and proceed to auth
           console.log("Token validation failed, clearing auth data");
           await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole", "tokenExpiry"]);
           
-        } catch (tokenError) {
+        } catch (tokenError: any) {
           console.log("Token validation error:", tokenError);
           
           // Handle network errors gracefully
-          if (tokenError.message?.includes('network') || tokenError.message?.includes('fetch')) {
+          if (tokenError?.message?.includes('network') || tokenError?.message?.includes('fetch')) {
             Alert.alert(
               "Connection Error",
               "Unable to verify your authentication. Please check your internet connection.",
               [
                 { text: "Try Again", onPress: () => handleSelect(role) },
-                { text: "Continue Offline", onPress: () => proceedToAuth() }
+                { text: "Continue Offline", onPress: () => proceedToAuth(role) }
               ]
             );
             return;
@@ -97,26 +102,8 @@ export default function RoleSelection() {
       }
 
       // Proceed with normal authentication flow
-      proceedToAuth();
+      await proceedToAuth(role);
       
-      async function proceedToAuth() {
-
-      // Check if user has account (stored email indicates previous registration)
-        const storedEmail = await AsyncStorage.getItem("userEmail");
-        
-        if (role === 'admin') {
-          // For admin role, go directly to admin dashboard
-          await AsyncStorage.setItem("userRole", "admin");
-          await AsyncStorage.setItem("userEmail", "admin@brillprime.com");
-          router.replace("/admin");
-        } else if (storedEmail) {
-          // User has registered before → Sign in
-          router.push("/auth/signin");
-        } else {
-          // New user → Sign up
-          router.push("/auth/signup");
-        }
-      }
     } catch (error) {
       console.error("Error saving role:", error);
       Alert.alert("Error", "Failed to save role selection. Please try again.");
@@ -161,17 +148,6 @@ export default function RoleSelection() {
         >
           <Text style={styles.roleButtonText}>Driver</Text>
         </TouchableOpacity>
-
-        {/* Admin role (development only) */}
-        {__DEV__ && (
-          <TouchableOpacity
-            style={[styles.roleButton, { backgroundColor: "#dc2626" }]}
-            onPress={() => handleSelect("admin" as any)}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.roleButtonText}>Admin (Dev)</Text>
-          </TouchableOpacity>
-        )}
 
         {/* Info text */}
         <View style={{ marginTop: 20 }}>

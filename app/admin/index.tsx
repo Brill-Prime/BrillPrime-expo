@@ -34,14 +34,23 @@ export default function AdminDashboard() {
 
   const checkAdminAccess = async () => {
     try {
-      const userRole = await AsyncStorage.getItem('userRole');
-      if (userRole !== 'admin') {
-        Alert.alert('Access Denied', 'You do not have admin privileges', [
-          { text: 'OK', onPress: () => router.replace('/') }
+      const [adminToken, adminTokenExpiry] = await AsyncStorage.multiGet([
+        'adminToken',
+        'adminTokenExpiry'
+      ]);
+
+      const isTokenExpired = adminTokenExpiry[1] 
+        ? Date.now() > parseInt(adminTokenExpiry[1]) 
+        : true;
+
+      if (!adminToken[1] || isTokenExpired) {
+        Alert.alert('Session Expired', 'Please sign in to access admin panel', [
+          { text: 'OK', onPress: () => router.replace('/admin/auth') }
         ]);
       }
     } catch (error) {
       console.error('Error checking admin access:', error);
+      router.replace('/admin/auth');
     }
   };
 
@@ -56,8 +65,13 @@ export default function AdminDashboard() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole']);
-              router.replace('/');
+              await AsyncStorage.multiRemove([
+                'adminToken', 
+                'adminEmail', 
+                'adminRole', 
+                'adminTokenExpiry'
+              ]);
+              router.replace('/admin/auth');
             } catch (error) {
               console.error('Error signing out:', error);
             }
