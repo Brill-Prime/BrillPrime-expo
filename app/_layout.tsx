@@ -1,12 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { Stack } from "expo-router";
 import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
-import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Ionicons } from '@expo/vector-icons';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -36,11 +35,9 @@ export default function RootLayout() {
         // Keep the splash screen visible while we fetch resources
         await SplashScreen.preventAutoHideAsync();
 
-        // Load fonts, including Ionicons
-        await Font.loadAsync({
-          ...Ionicons.font, // Load Ionicons fonts
-        });
-
+        // Skip font loading to prevent timeouts and crashes
+        console.log('Skipping font loading to prevent timeouts');
+        
         // Set up CSS fallbacks for web
         if (typeof window !== 'undefined' && window.document) {
           const style = document.createElement('style');
@@ -54,7 +51,6 @@ export default function RootLayout() {
 
       } catch (e) {
         console.warn(e);
-        // Optionally, you could display an error message to the user here
       } finally {
         // Tell the application to render the child components
         setFontsLoaded(true);
@@ -95,8 +91,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   errorContainer: {
     justifyContent: 'center',

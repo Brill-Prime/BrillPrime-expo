@@ -27,7 +27,7 @@ export default function SplashScreenComponent() {
     let navigationTimeout: NodeJS.Timeout;
 
     // Disable native driver on web to prevent warnings
-    const useNativeDriver = typeof window === 'undefined';
+    const useNativeDriver = false;
     
     // Start animations immediately
     Animated.parallel([
