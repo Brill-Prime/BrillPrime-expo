@@ -13,8 +13,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AccountCircleIcon } from '../../components/AccountCircleIcon';
-import { ArrowForwardIcon } from '../../components/ArrowForwardIcon';
+import AccountCircleIcon from '../../components/AccountCircleIcon';
+import ArrowForwardIcon from '../../components/ArrowForwardIcon';
 
 interface UserProfile {
   name: string;
