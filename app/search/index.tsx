@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
-import { ArrowForwardIcon } from '../../components/ArrowForwardIcon';
+import ArrowForwardIcon from '../../components/ArrowForwardIcon';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';

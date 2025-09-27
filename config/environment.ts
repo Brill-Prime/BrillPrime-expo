@@ -1,4 +1,3 @@
-
 // Environment Configuration
 // Centralized configuration for different environments
 
@@ -47,4 +46,15 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
   return config;
 };
 
-export const ENV = getEnvironmentConfig();
+export const ENV = {
+  isDevelopment: process.env.NODE_ENV === 'development',
+  isProduction: process.env.NODE_ENV === 'production',
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.brillprime.com',
+  apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000'),
+  mapApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  enableAnalytics: process.env.EXPO_PUBLIC_ENABLE_ANALYTICS === 'true',
+  enableCrashReporting: process.env.EXPO_PUBLIC_ENABLE_CRASH_REPORTING === 'true',
+  maxRetries: parseInt(process.env.EXPO_PUBLIC_MAX_RETRIES || '3'),
+  cacheTimeout: parseInt(process.env.EXPO_PUBLIC_CACHE_TIMEOUT || '300000'), // 5 minutes
+};

@@ -132,3 +132,97 @@ class NotificationService {
 }
 
 export const notificationService = new NotificationService();
+// Notification Service
+// Handles push notifications and in-app notifications
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient, ApiResponse } from './api';
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'order' | 'payment' | 'system' | 'promotion';
+  timestamp: string;
+  read: boolean;
+  action?: string;
+  data?: any;
+}
+
+export interface NotificationSettings {
+  pushNotifications: boolean;
+  emailNotifications: boolean;
+  orderUpdates: boolean;
+  promotions: boolean;
+  merchantUpdates: boolean;
+}
+
+class NotificationService {
+  async getNotifications(): Promise<ApiResponse<Notification[]>> {
+    try {
+      const response = await apiClient.get('/notifications');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      // Return cached notifications as fallback
+      const cached = await AsyncStorage.getItem('userNotifications');
+      return { 
+        success: true, 
+        data: cached ? JSON.parse(cached) : [] 
+      };
+    }
+  }
+
+  async markAsRead(notificationId: string): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.put(`/notifications/${notificationId}/read`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return { success: false, error: 'Failed to mark notification as read' };
+    }
+  }
+
+  async updateSettings(settings: NotificationSettings): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.put('/notifications/settings', settings);
+      await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings));
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      return { success: false, error: 'Failed to update notification settings' };
+    }
+  }
+
+  async getSettings(): Promise<ApiResponse<NotificationSettings>> {
+    try {
+      const response = await apiClient.get('/notifications/settings');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error getting notification settings:', error);
+      // Return default settings
+      return {
+        success: true,
+        data: {
+          pushNotifications: true,
+          emailNotifications: true,
+          orderUpdates: true,
+          promotions: false,
+          merchantUpdates: true,
+        }
+      };
+    }
+  }
+
+  async registerForPushNotifications(token: string): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.post('/notifications/register', { token });
+      return { success: true };
+    } catch (error) {
+      console.error('Error registering for push notifications:', error);
+      return { success: false, error: 'Failed to register for push notifications' };
+    }
+  }
+}
+
+export const notificationService = new NotificationService();

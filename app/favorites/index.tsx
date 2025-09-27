@@ -382,3 +382,315 @@ const getResponsiveStyles = (screenData: any) => {
     },
   });
 };
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Dimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface FavoriteItem {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  unit: string;
+  merchantName: string;
+  merchantLocation: string;
+  category: string;
+  dateAdded: string;
+  inStock: boolean;
+}
+
+export default function FavoritesScreen() {
+  const router = useRouter();
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    loadFavorites();
+    
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const loadFavorites = async () => {
+    try {
+      const savedFavorites = await AsyncStorage.getItem('favoriteItems');
+      if (savedFavorites) {
+        setFavorites(JSON.parse(savedFavorites));
+      }
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeFavorite = async (itemId: string) => {
+    try {
+      const updatedFavorites = favorites.filter(item => item.id !== itemId);
+      setFavorites(updatedFavorites);
+      await AsyncStorage.setItem('favoriteItems', JSON.stringify(updatedFavorites));
+      
+      // Also update favorite IDs
+      const favoriteIds = updatedFavorites.map(item => item.id);
+      await AsyncStorage.setItem('favoriteItemIds', JSON.stringify(favoriteIds));
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+    }
+  };
+
+  const handleItemPress = (item: FavoriteItem) => {
+    router.push(`/commodity/${item.id}`);
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'fuel': return '⛽';
+      case 'food': return '🍽️';
+      case 'groceries': return '🛒';
+      case 'electronics': return '📱';
+      default: return '📦';
+    }
+  };
+
+  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Favorites</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text>Loading favorites...</Text>
+          </View>
+        ) : favorites.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="heart-outline" size={80} color="#ccc" />
+            <Text style={styles.emptyTitle}>No Favorites Yet</Text>
+            <Text style={styles.emptyDescription}>
+              Items you mark as favorites will appear here
+            </Text>
+            <TouchableOpacity 
+              style={styles.browseButton}
+              onPress={() => router.push('/commodity/commodities')}
+            >
+              <Text style={styles.browseButtonText}>Browse Products</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: responsivePadding }}>
+            {favorites.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.favoriteCard}
+                onPress={() => handleItemPress(item)}
+              >
+                <View style={styles.favoriteContent}>
+                  <Text style={styles.categoryIcon}>{getCategoryIcon(item.category)}</Text>
+                  
+                  <View style={styles.favoriteInfo}>
+                    <Text style={styles.favoriteName}>{item.name}</Text>
+                    <Text style={styles.favoriteDescription}>{item.description}</Text>
+                    <Text style={styles.favoriteMerchant}>From {item.merchantName}</Text>
+                    <Text style={styles.favoritePrice}>₦{item.price}/{item.unit}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Remove Favorite',
+                        'Remove this item from favorites?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', onPress: () => removeFavorite(item.id) }
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="heart" size={24} color="#e74c3c" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.favoriteFooter}>
+                  <Text style={styles.dateAdded}>
+                    Added {new Date(item.dateAdded).toLocaleDateString()}
+                  </Text>
+                  <View style={[
+                    styles.stockBadge,
+                    { backgroundColor: item.inStock ? '#e8f5e8' : '#fdeaea' }
+                  ]}>
+                    <Text style={[
+                      styles.stockText,
+                      { color: item.inStock ? '#2ecc71' : '#e74c3c' }
+                    ]}>
+                      {item.inStock ? 'In Stock' : 'Out of Stock'}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingBottom: 15,
+    backgroundColor: '#fff',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  emptyDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  browseButton: {
+    backgroundColor: '#4682B4',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+  },
+  browseButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  favoriteCard: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  favoriteContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  categoryIcon: {
+    fontSize: 40,
+    marginRight: 12,
+  },
+  favoriteInfo: {
+    flex: 1,
+  },
+  favoriteName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  favoriteDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  favoriteMerchant: {
+    fontSize: 14,
+    color: '#4682B4',
+    marginBottom: 8,
+  },
+  favoritePrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  removeButton: {
+    padding: 8,
+  },
+  favoriteFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  dateAdded: {
+    fontSize: 12,
+    color: '#999',
+  },
+  stockBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  stockText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});

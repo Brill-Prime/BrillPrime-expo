@@ -139,3 +139,92 @@ class MerchantService {
 }
 
 export const merchantService = new MerchantService();
+// Merchant Service
+// Handles merchant-related API calls
+
+import { apiClient, ApiResponse } from './api';
+
+export interface Merchant {
+  id: string;
+  businessName: string;
+  category: string;
+  email: string;
+  phone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  rating: number;
+  isVerified: boolean;
+  operatingHours: Record<string, string>;
+  services: string[];
+  priceRange: 'low' | 'medium' | 'high';
+  isOpen: boolean;
+}
+
+export interface MerchantProfile {
+  id: string;
+  businessName: string;
+  category: string;
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+  operatingHours: Record<string, string>;
+  services: string[];
+  documents: any[];
+  isVerified: boolean;
+  rating: number;
+  reviewCount: number;
+}
+
+class MerchantService {
+  async searchMerchants(query: string, location?: { latitude: number; longitude: number }): Promise<ApiResponse<Merchant[]>> {
+    try {
+      const response = await apiClient.get('/merchants/search', {
+        query,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error searching merchants:', error);
+      return { success: false, error: 'Failed to search merchants' };
+    }
+  }
+
+  async getMerchantProfile(merchantId: string): Promise<ApiResponse<MerchantProfile>> {
+    try {
+      const response = await apiClient.get(`/merchants/${merchantId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error getting merchant profile:', error);
+      return { success: false, error: 'Failed to get merchant profile' };
+    }
+  }
+
+  async updateMerchantProfile(profileData: Partial<MerchantProfile>): Promise<ApiResponse<MerchantProfile>> {
+    try {
+      const response = await apiClient.put('/merchants/profile', profileData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating merchant profile:', error);
+      return { success: false, error: 'Failed to update merchant profile' };
+    }
+  }
+
+  async getNearbyMerchants(location: { latitude: number; longitude: number }, radius: number = 10): Promise<ApiResponse<Merchant[]>> {
+    try {
+      const response = await apiClient.get('/merchants/nearby', {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radius,
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error getting nearby merchants:', error);
+      return { success: false, error: 'Failed to get nearby merchants' };
+    }
+  }
+}
+
+export const merchantService = new MerchantService();
