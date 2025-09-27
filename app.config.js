@@ -36,6 +36,8 @@ export default ({ config }) => {
         foregroundImage: "./assets/images/logo.png",
         backgroundColor: "#FFFFFF"
       },
+      package: "com.brillprime",
+      googleServicesFile: "./android/app/google-services.json",
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY

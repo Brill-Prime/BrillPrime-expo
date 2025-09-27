@@ -45,8 +45,53 @@ export default function RootLayout() {
             * {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
             }
+            
+            /* Ionicons fallback styles */
+            ion-icon {
+              display: inline-block;
+              font-size: inherit;
+              font-style: normal;
+              font-weight: normal;
+              font-variant: normal;
+              text-transform: none;
+              text-rendering: auto;
+              line-height: 1;
+              -webkit-font-smoothing: antialiased;
+            }
+            
+            /* Fallback for missing icons */
+            .icon-fallback {
+              display: inline-block;
+              width: 24px;
+              height: 24px;
+              background-color: currentColor;
+              mask-size: contain;
+              -webkit-mask-size: contain;
+              mask-repeat: no-repeat;
+              -webkit-mask-repeat: no-repeat;
+            }
           `;
           document.head.appendChild(style);
+          
+          // Preload common icons
+          const commonIcons = [
+            'chevron-back',
+            'home',
+            'person',
+            'notifications',
+            'settings',
+            'search',
+            'menu',
+            'close'
+          ];
+          
+          commonIcons.forEach(iconName => {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.href = `https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/svg/${iconName}.svg`;
+            link.as = 'image';
+            document.head.appendChild(link);
+          });
         }
 
       } catch (e) {

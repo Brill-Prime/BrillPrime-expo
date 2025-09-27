@@ -24,4 +24,25 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Icon fallback configuration for web
+if (typeof window !== 'undefined') {
+  // Add Ionicons CSS fallback
+  const ioniconsLink = document.createElement('link');
+  ioniconsLink.rel = 'stylesheet';
+  ioniconsLink.href = 'https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/collection/components/ion-icon/ion-icon.css';
+  document.head.appendChild(ioniconsLink);
+  
+  // Add Ionicons script
+  const ioniconsScript = document.createElement('script');
+  ioniconsScript.type = 'module';
+  ioniconsScript.src = 'https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js';
+  document.head.appendChild(ioniconsScript);
+  
+  const ioniconsNoModule = document.createElement('script');
+  ioniconsNoModule.setAttribute('nomodule', '');
+  ioniconsNoModule.src = 'https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.js';
+  document.head.appendChild(ioniconsNoModule);
+}
+
 export default app;
