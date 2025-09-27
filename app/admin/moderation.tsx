@@ -257,7 +257,7 @@ export default function AdminModeration() {
 
   return (
     <LinearGradient
-      colors={['#0B1A51', '#1e3a8a']}
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -384,7 +384,7 @@ export default function AdminModeration() {
                   <Ionicons 
                     name={selectedReports.includes(report.id) ? "checkbox" : "square-outline"} 
                     size={20} 
-                    color="#4682B4" 
+                    color="rgb(11, 26, 81)" 
                   />
                 </TouchableOpacity>
 
@@ -593,7 +593,7 @@ const getResponsiveStyles = (screenData: any) => {
     },
     batchText: {
       fontSize: 14,
-      color: '#4682B4',
+      color: 'rgb(11, 26, 81)',
       fontWeight: '600',
     },
     batchButtons: {
@@ -627,7 +627,7 @@ const getResponsiveStyles = (screenData: any) => {
       gap: 4,
     },
     activeFilterTab: {
-      backgroundColor: '#4682B4',
+      backgroundColor: 'rgb(11, 26, 81)',
     },
     filterTabText: {
       fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
@@ -742,7 +742,7 @@ const getResponsiveStyles = (screenData: any) => {
       color: '#6b7280',
     },
     actionButton: {
-      backgroundColor: '#4682B4',
+      backgroundColor: 'rgb(11, 26, 81)',
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 6,

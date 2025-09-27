@@ -196,7 +196,7 @@ export default function AdminEscrowManagement() {
 
   return (
     <LinearGradient
-      colors={['#0B1A51', '#1e3a8a']}
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -510,7 +510,7 @@ const getResponsiveStyles = (screenData: any) => {
       gap: 4,
     },
     activeFilterTab: {
-      backgroundColor: '#4682B4',
+      backgroundColor: 'rgb(11, 26, 81)',
     },
     filterTabText: {
       fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
@@ -623,7 +623,7 @@ const getResponsiveStyles = (screenData: any) => {
       fontStyle: 'italic',
     },
     actionButton: {
-      backgroundColor: '#4682B4',
+      backgroundColor: 'rgb(11, 26, 81)',
       paddingVertical: 10,
       borderRadius: 8,
       alignItems: 'center',

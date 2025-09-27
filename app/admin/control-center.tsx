@@ -159,7 +159,7 @@ export default function AdminControlCenter() {
 
   return (
     <LinearGradient
-      colors={['#0B1A51', '#1e3a8a']}
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -280,7 +280,7 @@ export default function AdminControlCenter() {
                 style={styles.actionCard}
                 onPress={() => handleQuickAction('escrow')}
               >
-                <Ionicons name="shield-checkmark" size={32} color="#4682B4" />
+                <Ionicons name="shield-checkmark" size={32} color="rgb(11, 26, 81)" />
                 <Text style={styles.actionTitle}>Escrow Management</Text>
                 <Text style={styles.actionDescription}>Manage escrow transactions</Text>
               </TouchableOpacity>
@@ -289,7 +289,7 @@ export default function AdminControlCenter() {
                 style={styles.actionCard}
                 onPress={() => handleQuickAction('kyc')}
               >
-                <Ionicons name="document-text" size={32} color="#4682B4" />
+                <Ionicons name="document-text" size={32} color="rgb(11, 26, 81)" />
                 <Text style={styles.actionTitle}>KYC Verification</Text>
                 <Text style={styles.actionDescription}>Review user documents</Text>
               </TouchableOpacity>
@@ -298,7 +298,7 @@ export default function AdminControlCenter() {
                 style={styles.actionCard}
                 onPress={() => handleQuickAction('moderation')}
               >
-                <Ionicons name="eye" size={32} color="#4682B4" />
+                <Ionicons name="eye" size={32} color="rgb(11, 26, 81)" />
                 <Text style={styles.actionTitle}>Content Moderation</Text>
                 <Text style={styles.actionDescription}>Review reported content</Text>
               </TouchableOpacity>
@@ -307,7 +307,7 @@ export default function AdminControlCenter() {
                 style={styles.actionCard}
                 onPress={() => handleQuickAction('announcement')}
               >
-                <Ionicons name="megaphone" size={32} color="#4682B4" />
+                <Ionicons name="megaphone" size={32} color="rgb(11, 26, 81)" />
                 <Text style={styles.actionTitle}>Send Announcement</Text>
                 <Text style={styles.actionDescription}>Platform-wide notifications</Text>
               </TouchableOpacity>
@@ -316,7 +316,7 @@ export default function AdminControlCenter() {
                 style={styles.actionCard}
                 onPress={() => handleQuickAction('maintenance')}
               >
-                <Ionicons name="settings" size={32} color="#4682B4" />
+                <Ionicons name="settings" size={32} color="rgb(11, 26, 81)" />
                 <Text style={styles.actionTitle}>Maintenance Mode</Text>
                 <Text style={styles.actionDescription}>System maintenance controls</Text>
               </TouchableOpacity>
@@ -325,7 +325,7 @@ export default function AdminControlCenter() {
                 style={styles.actionCard}
                 onPress={() => handleQuickAction('reports')}
               >
-                <Ionicons name="bar-chart" size={32} color="#4682B4" />
+                <Ionicons name="bar-chart" size={32} color="rgb(11, 26, 81)" />
                 <Text style={styles.actionTitle}>Generate Reports</Text>
                 <Text style={styles.actionDescription}>Analytics and reports</Text>
               </TouchableOpacity>
@@ -426,7 +426,7 @@ const getResponsiveStyles = (screenData: any) => {
       alignItems: 'center',
     },
     activeTab: {
-      backgroundColor: '#4682B4',
+      backgroundColor: 'rgb(11, 26, 81)',
     },
     tabText: {
       fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,

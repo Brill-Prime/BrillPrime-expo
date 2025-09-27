@@ -87,42 +87,42 @@ export default function AdminDashboard() {
       description: 'System overview and management',
       icon: 'speedometer',
       route: '/admin/control-center',
-      color: '#4682B4'
+      color: 'rgb(11, 26, 81)'
     },
     {
       title: 'Escrow Management',
       description: 'Monitor payment transactions',
       icon: 'shield-checkmark',
       route: '/admin/escrow-management',
-      color: '#10b981'
+      color: 'rgb(11, 26, 81)'
     },
     {
       title: 'KYC Verification',
       description: 'Review user documents',
       icon: 'document-text',
       route: '/admin/kyc-verification',
-      color: '#f59e0b'
+      color: 'rgb(11, 26, 81)'
     },
     {
       title: 'Content Moderation',
       description: 'Review reported content',
       icon: 'eye',
       route: '/admin/moderation',
-      color: '#8b5cf6'
+      color: 'rgb(11, 26, 81)'
     },
     {
       title: 'User Management',
       description: 'Manage user accounts',
       icon: 'people',
       route: '/admin/users',
-      color: '#06b6d4'
+      color: 'rgb(11, 26, 81)'
     },
     {
       title: 'Analytics & Reports',
       description: 'Platform insights',
       icon: 'bar-chart',
       route: '/admin/analytics',
-      color: '#ef4444'
+      color: 'rgb(11, 26, 81)'
     }
   ];
 
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
 
   return (
     <LinearGradient
-      colors={['#0B1A51', '#1e3a8a']}
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -328,7 +328,7 @@ const getResponsiveStyles = (screenData: any) => {
     statNumber: {
       fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
       fontWeight: 'bold',
-      color: '#4682B4',
+      color: 'rgb(11, 26, 81)',
       marginBottom: 4,
     },
     statLabel: {
