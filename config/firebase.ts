@@ -13,14 +13,27 @@ import { getStorage } from 'firebase/storage';
 // React Native Firebase imports (for mobile)
 let rnAuth: any, rnFirestore: any, rnStorage: any;
 if (Platform.OS !== 'web') {
-  rnAuth = require('@react-native-firebase/auth').default;
-  rnFirestore = require('@react-native-firebase/firestore').default;
-  rnStorage = require('@react-native-firebase/storage').default;
+  try {
+    rnAuth = require('@react-native-firebase/auth').default;
+    rnFirestore = require('@react-native-firebase/firestore').default;
+    rnStorage = require('@react-native-firebase/storage').default;
+  } catch (error) {
+    console.warn('React Native Firebase not available, using web SDK');
+  }
 }
 
-import { environment } from './environment';
+// Web Firebase configuration
+const webFirebaseConfig = {
+  apiKey: "AIzaSyDWy-NucthigIrHSNYo_nI-o2BY8Rwkod0",
+  authDomain: "brillprime.firebaseapp.com",
+  projectId: "brillprime",
+  storageBucket: "brillprime.firebasestorage.app",
+  messagingSenderId: "1064268711919",
+  appId: "1:1064268711919:web:de8f36a25600d553a2581a"
+};
 
-const firebaseConfig = {
+// iOS Firebase configuration (for reference)
+const iosFirebaseConfig = {
   apiKey: "AIzaSyADwNa-Tzmm-VIsk2jZXGfBjnzRfyRxgjs",
   authDomain: "brillprime.firebaseapp.com",
   projectId: "brillprime",
@@ -37,16 +50,24 @@ let storage: any;
 
 if (Platform.OS === 'web') {
   // Web Firebase initialization
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  app = getApps().length === 0 ? initializeApp(webFirebaseConfig) : getApps()[0];
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
 } else {
   // React Native Firebase (Android/iOS) - auto-initialized from google-services.json
-  auth = rnAuth();
-  db = rnFirestore();
-  storage = rnStorage();
-  app = null; // Not needed for React Native Firebase
+  if (rnAuth && rnFirestore && rnStorage) {
+    auth = rnAuth();
+    db = rnFirestore();
+    storage = rnStorage();
+    app = null; // Not needed for React Native Firebase
+  } else {
+    // Fallback to web SDK if React Native Firebase is not available
+    app = getApps().length === 0 ? initializeApp(webFirebaseConfig) : getApps()[0];
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  }
 }
 
 export { auth, db, storage };
