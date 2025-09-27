@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 export default function OnboardingScreen2() {
   const router = useRouter();
@@ -133,7 +132,7 @@ export default function OnboardingScreen2() {
           style={styles.nextButton}
           onPress={() => router.push("/onboarding/screen3")}
         >
-          <Ionicons name="arrow-forward" size={screenData.width >= 768 ? 24 : 20} color="white" />
+          <Text style={{ color: 'white', fontSize: screenData.width >= 768 ? 24 : 20, fontWeight: 'bold' }}>→</Text>
         </TouchableOpacity>
       </View>
     </View>
