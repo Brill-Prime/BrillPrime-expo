@@ -13,12 +13,43 @@ export default function MerchantAnalytics() {
     totalOrders: 243,
     averageOrderValue: 514,
     topSellingProducts: [
-      { name: "Rice", sales: 45, revenue: 18000 },
-      { name: "Cooking Oil", sales: 32, revenue: 12800 },
-      { name: "Beans", sales: 28, revenue: 8400 },
+      { name: "Premium Petrol", sales: 45, revenue: 29250, category: "fuel" },
+      { name: "Engine Oil", sales: 32, revenue: 272000, category: "lubricants" },
+      { name: "Diesel", sales: 28, revenue: 16240, category: "fuel" },
     ],
     monthlyGrowth: 15.6,
     customerRetention: 78.3,
+    dailySales: [
+      { date: '2024-01-15', sales: 15000, orders: 12 },
+      { date: '2024-01-16', sales: 18500, orders: 15 },
+      { date: '2024-01-17', sales: 22000, orders: 18 },
+      { date: '2024-01-18', sales: 19500, orders: 16 },
+      { date: '2024-01-19', sales: 25000, orders: 20 },
+      { date: '2024-01-20', sales: 21000, orders: 17 },
+      { date: '2024-01-21', sales: 23500, orders: 19 },
+    ],
+    categoryBreakdown: [
+      { category: 'fuel', percentage: 65, revenue: 81250 },
+      { category: 'lubricants', percentage: 25, revenue: 31250 },
+      { category: 'accessories', percentage: 10, revenue: 12500 },
+    ],
+    customerMetrics: {
+      newCustomers: 24,
+      returningCustomers: 67,
+      averageOrdersPerCustomer: 2.6,
+      customerSatisfaction: 4.7,
+    },
+    inventoryMetrics: {
+      totalItems: 45,
+      lowStockItems: 8,
+      outOfStockItems: 3,
+      turnoverRate: 12.5,
+    },
+    paymentMethods: [
+      { method: 'Card', percentage: 45, amount: 56250 },
+      { method: 'Bank Transfer', percentage: 35, amount: 43750 },
+      { method: 'Mobile Money', percentage: 20, amount: 25000 },
+    ]
   });
 
   useEffect(() => {
@@ -108,6 +139,134 @@ export default function MerchantAnalytics() {
           ))}
         </View>
 
+        {/* Sales Chart */}
+        <Text style={styles.sectionTitle}>Sales Trend (Last 7 Days)</Text>
+        <View style={styles.chartContainer}>
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>Daily Sales</Text>
+            <Text style={styles.chartSubtitle}>Total: ₦{analyticsData.dailySales.reduce((sum, day) => sum + day.sales, 0).toLocaleString()}</Text>
+          </View>
+          <View style={styles.chart}>
+            {analyticsData.dailySales.map((day, index) => (
+              <View key={index} style={styles.chartBar}>
+                <View 
+                  style={[
+                    styles.chartBarFill, 
+                    { height: `${(day.sales / 25000) * 100}%` }
+                  ]} 
+                />
+                <Text style={styles.chartBarLabel}>{new Date(day.date).getDate()}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Category Breakdown */}
+        <Text style={styles.sectionTitle}>Revenue by Category</Text>
+        <View style={styles.categoryContainer}>
+          {analyticsData.categoryBreakdown.map((category, index) => (
+            <View key={index} style={styles.categoryCard}>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryName}>{category.category.charAt(0).toUpperCase() + category.category.slice(1)}</Text>
+                <Text style={styles.categoryPercentage}>{category.percentage}%</Text>
+              </View>
+              <View style={styles.categoryBar}>
+                <View 
+                  style={[
+                    styles.categoryBarFill, 
+                    { width: `${category.percentage}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.categoryRevenue}>₦{(category.revenue / 1000).toFixed(0)}K</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Customer Metrics */}
+        <Text style={styles.sectionTitle}>Customer Insights</Text>
+        <View style={styles.customerMetricsContainer}>
+          <View style={styles.customerMetricCard}>
+            <Text style={styles.metricValue}>{analyticsData.customerMetrics.newCustomers}</Text>
+            <Text style={styles.metricLabel}>New Customers</Text>
+            <View style={styles.metricTrend}>
+              <Ionicons name="trending-up" size={14} color="#28a745" />
+              <Text style={styles.trendText}>+15%</Text>
+            </View>
+          </View>
+          <View style={styles.customerMetricCard}>
+            <Text style={styles.metricValue}>{analyticsData.customerMetrics.returningCustomers}</Text>
+            <Text style={styles.metricLabel}>Returning</Text>
+            <View style={styles.metricTrend}>
+              <Ionicons name="trending-up" size={14} color="#28a745" />
+              <Text style={styles.trendText}>+8%</Text>
+            </View>
+          </View>
+          <View style={styles.customerMetricCard}>
+            <Text style={styles.metricValue}>{analyticsData.customerMetrics.averageOrdersPerCustomer}</Text>
+            <Text style={styles.metricLabel}>Avg Orders</Text>
+            <View style={styles.metricTrend}>
+              <Ionicons name="trending-up" size={14} color="#28a745" />
+              <Text style={styles.trendText}>+12%</Text>
+            </View>
+          </View>
+          <View style={styles.customerMetricCard}>
+            <Text style={styles.metricValue}>{analyticsData.customerMetrics.customerSatisfaction}</Text>
+            <Text style={styles.metricLabel}>Satisfaction</Text>
+            <View style={styles.metricTrend}>
+              <Ionicons name="star" size={14} color="#ffc107" />
+              <Text style={styles.trendText}>4.7/5</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Inventory Status */}
+        <Text style={styles.sectionTitle}>Inventory Overview</Text>
+        <View style={styles.inventoryContainer}>
+          <View style={styles.inventoryCard}>
+            <Ionicons name="cube" size={24} color="#4682B4" />
+            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.totalItems}</Text>
+            <Text style={styles.inventoryLabel}>Total Items</Text>
+          </View>
+          <View style={styles.inventoryCard}>
+            <Ionicons name="warning" size={24} color="#ffc107" />
+            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.lowStockItems}</Text>
+            <Text style={styles.inventoryLabel}>Low Stock</Text>
+          </View>
+          <View style={styles.inventoryCard}>
+            <Ionicons name="alert-circle" size={24} color="#dc3545" />
+            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.outOfStockItems}</Text>
+            <Text style={styles.inventoryLabel}>Out of Stock</Text>
+          </View>
+          <View style={styles.inventoryCard}>
+            <Ionicons name="repeat" size={24} color="#28a745" />
+            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.turnoverRate}</Text>
+            <Text style={styles.inventoryLabel}>Turnover Rate</Text>
+          </View>
+        </View>
+
+        {/* Payment Methods */}
+        <Text style={styles.sectionTitle}>Payment Methods</Text>
+        <View style={styles.paymentContainer}>
+          {analyticsData.paymentMethods.map((payment, index) => (
+            <View key={index} style={styles.paymentMethod}>
+              <View style={styles.paymentInfo}>
+                <Text style={styles.paymentMethodName}>{payment.method}</Text>
+                <Text style={styles.paymentAmount}>₦{(payment.amount / 1000).toFixed(0)}K</Text>
+              </View>
+              <View style={styles.paymentBar}>
+                <View 
+                  style={[
+                    styles.paymentBarFill, 
+                    { width: `${payment.percentage}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.paymentPercentage}>{payment.percentage}%</Text>
+            </View>
+          ))}
+        </View>
+
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsContainer}>
@@ -129,10 +288,26 @@ export default function MerchantAnalytics() {
 
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={() => router.push('/orders/consumer-orders')}
+            onPress={() => router.push('/merchant/order-management')}
           >
             <Ionicons name="cube-outline" size={24} color="#4682B4" />
-            <Text style={styles.actionText}>View Orders</Text>
+            <Text style={styles.actionText}>Manage Orders</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/merchant/inventory')}
+          >
+            <Ionicons name="library-outline" size={24} color="#4682B4" />
+            <Text style={styles.actionText}>Inventory</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/chat')}
+          >
+            <Ionicons name="chatbubbles-outline" size={24} color="#4682B4" />
+            <Text style={styles.actionText}>Customer Chat</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -293,6 +468,182 @@ const getResponsiveStyles = (screenData: any) => {
       color: "#4682B4",
       fontWeight: "600",
       textAlign: "center",
+    },
+    chartContainer: {
+      backgroundColor: "white",
+      borderRadius: 15,
+      padding: Math.max(16, width * 0.04),
+      marginBottom: Math.max(24, height * 0.04),
+      borderWidth: 1,
+      borderColor: "#e9ecef",
+    },
+    chartHeader: {
+      marginBottom: 16,
+    },
+    chartTitle: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "bold",
+      color: "#2c3e50",
+    },
+    chartSubtitle: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+      color: "#7f8c8d",
+    },
+    chart: {
+      flexDirection: "row",
+      alignItems: "end",
+      height: 120,
+      justifyContent: "space-around",
+    },
+    chartBar: {
+      flex: 1,
+      alignItems: "center",
+    },
+    chartBarFill: {
+      backgroundColor: "#4682B4",
+      width: "60%",
+      minHeight: 10,
+      borderRadius: 2,
+      marginBottom: 8,
+    },
+    chartBarLabel: {
+      fontSize: isTablet ? 12 : 10,
+      color: "#666",
+    },
+    categoryContainer: {
+      backgroundColor: "white",
+      borderRadius: 15,
+      padding: Math.max(16, width * 0.04),
+      marginBottom: Math.max(24, height * 0.04),
+      borderWidth: 1,
+      borderColor: "#e9ecef",
+    },
+    categoryCard: {
+      marginBottom: 16,
+    },
+    categoryHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    categoryName: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: "600",
+      color: "#2c3e50",
+    },
+    categoryPercentage: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: "bold",
+      color: "#4682B4",
+    },
+    categoryBar: {
+      height: 8,
+      backgroundColor: "#f0f0f0",
+      borderRadius: 4,
+      marginBottom: 4,
+    },
+    categoryBarFill: {
+      height: "100%",
+      backgroundColor: "#4682B4",
+      borderRadius: 4,
+    },
+    categoryRevenue: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+      color: "#666",
+    },
+    customerMetricsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Math.max(12, width * 0.03),
+      marginBottom: Math.max(24, height * 0.04),
+    },
+    customerMetricCard: {
+      width: isTablet ? "48%" : "47%",
+      backgroundColor: "white",
+      padding: Math.max(16, width * 0.04),
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: "#e9ecef",
+      alignItems: "center",
+    },
+    metricTrend: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 4,
+    },
+    trendText: {
+      fontSize: isTablet ? 12 : 10,
+      color: "#28a745",
+      marginLeft: 4,
+      fontWeight: "600",
+    },
+    inventoryContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Math.max(12, width * 0.03),
+      marginBottom: Math.max(24, height * 0.04),
+    },
+    inventoryCard: {
+      width: isTablet ? "23%" : "47%",
+      backgroundColor: "white",
+      padding: Math.max(12, width * 0.03),
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: "#e9ecef",
+      alignItems: "center",
+    },
+    inventoryValue: {
+      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
+      fontWeight: "bold",
+      color: "#2c3e50",
+      marginVertical: 4,
+    },
+    inventoryLabel: {
+      fontSize: isTablet ? 12 : 10,
+      color: "#7f8c8d",
+      textAlign: "center",
+    },
+    paymentContainer: {
+      backgroundColor: "white",
+      borderRadius: 15,
+      padding: Math.max(16, width * 0.04),
+      marginBottom: Math.max(24, height * 0.04),
+      borderWidth: 1,
+      borderColor: "#e9ecef",
+    },
+    paymentMethod: {
+      marginBottom: 16,
+    },
+    paymentInfo: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    paymentMethodName: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: "600",
+      color: "#2c3e50",
+    },
+    paymentAmount: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: "bold",
+      color: "#4682B4",
+    },
+    paymentBar: {
+      height: 6,
+      backgroundColor: "#f0f0f0",
+      borderRadius: 3,
+      marginBottom: 4,
+    },
+    paymentBarFill: {
+      height: "100%",
+      backgroundColor: "#4682B4",
+      borderRadius: 3,
+    },
+    paymentPercentage: {
+      fontSize: isTablet ? 12 : 10,
+      color: "#666",
+      textAlign: "right",
     },
   });
 };

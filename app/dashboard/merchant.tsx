@@ -62,35 +62,35 @@ export default function MerchantDashboard() {
   };
 
   const features = [
-    { 
-      title: "Add Products", 
-      description: "List new items", 
-      icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), 
-      route: "/merchant/add-commodity" 
+    {
+      title: "Add Products",
+      description: "List new items",
+      icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'),
+      route: "/merchant/add-commodity"
     },
-    { 
-      title: "Manage Inventory", 
-      description: "Track your stock", 
-      icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'), 
-      route: "/merchant/commodities" 
+    {
+      title: "Manage Inventory",
+      description: "Track your stock",
+      icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'),
+      route: "/merchant/commodities"
     },
-    { 
-      title: "Orders", 
-      description: "View customer orders", 
-      icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'), 
-      route: "/orders/consumer-orders" 
+    {
+      title: "Orders",
+      description: "View customer orders",
+      icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'),
+      route: "/orders/consumer-orders"
     },
-    { 
-      title: "Analytics", 
-      description: "Sales insights", 
-      icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'), 
-      route: "/merchant/analytics" 
+    {
+      title: "Analytics",
+      description: "Sales insights",
+      icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'),
+      route: "/merchant/analytics"
     },
-    { 
-      title: "Store Settings", 
-      description: "Manage your store", 
-      icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'), 
-      route: "/profile/edit" 
+    {
+      title: "Store Settings",
+      description: "Manage your store",
+      icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'),
+      route: "/profile/edit"
     }
   ];
 
@@ -129,7 +129,7 @@ export default function MerchantDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Image 
+                <Image
                   source={feature.icon}
                   style={styles.featureIconImage}
                   resizeMode="contain"
@@ -166,8 +166,44 @@ export default function MerchantDashboard() {
           </TouchableOpacity>
         </View>
 
+        <Text style={styles.sectionTitle}>Quick Links</Text>
+        <View style={styles.actionCardsContainer}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/merchant/commodities")}
+          >
+            <Image source={require('../../assets/images/manange_commodities_icon.png')} style={styles.actionIcon} />
+            <Text style={styles.actionText}>Manage Commodities</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/merchant/order-management")}
+          >
+            <Image source={require('../../assets/images/manage_orders_icon.png')} style={styles.actionIcon} />
+            <Text style={styles.actionText}>Order Management</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/merchant/inventory")}
+          >
+            <Ionicons name="library" size={32} color="#4682B4" />
+            <Text style={styles.actionText}>Inventory</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/merchant/customer-communication")}
+          >
+            <Ionicons name="chatbubbles" size={32} color="#4682B4" />
+            <Text style={styles.actionText}>Customer Communication</Text>
+          </TouchableOpacity>
+        </View>
+
+
+        <Text style={styles.sectionTitle}>Business Overview</Text>
         <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Business Overview</Text>
           <View style={styles.statsRow}>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
               <Text style={styles.statNumber}>45</Text>
@@ -345,6 +381,36 @@ const getResponsiveStyles = (screenData: any) => {
     serviceDescription: {
       fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
       color: "#7f8c8d",
+      textAlign: "center",
+    },
+    actionCardsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Math.max(12, width * 0.03),
+      marginBottom: Math.max(24, height * 0.04),
+      justifyContent: "center",
+    },
+    actionCard: {
+      width: isTablet ? "47%" : "47%",
+      backgroundColor: "white",
+      padding: Math.max(16, width * 0.04),
+      borderRadius: 25,
+      alignItems: "center",
+      minHeight: isTablet ? 140 : 120,
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: "#4682B4",
+      marginBottom: Math.max(12, height * 0.02),
+    },
+    actionIcon: {
+      width: isTablet ? 40 : 32,
+      height: isTablet ? 40 : 32,
+      marginBottom: Math.max(8, height * 0.015),
+    },
+    actionText: {
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "600",
+      color: "#2c3e50",
       textAlign: "center",
     },
     statsContainer: {
