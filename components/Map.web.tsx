@@ -235,3 +235,6 @@ const styles = StyleSheet.create({
 });
 
 export default MapWeb;
+
+// Also export as named export for compatibility
+export { MapWeb };

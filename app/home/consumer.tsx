@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
@@ -253,10 +253,10 @@ export default function ConsumerHome() {
           {/* Location Icon */}
           <View style={styles.locationIconContainer}>
             <View style={styles.locationIconInner}>
-              <Image 
-                source={require('../../assets/images/globe_img.png')} 
-                style={styles.globeIcon} 
-                resizeMode="cover" 
+              <Image
+                source={require('../../assets/images/globe_img.png')}
+                style={styles.globeIcon}
+                resizeMode="cover"
               />
             </View>
           </View>
@@ -269,8 +269,8 @@ export default function ConsumerHome() {
 
           {/* Buttons */}
           <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              style={styles.setAutomaticallyButton} 
+            <TouchableOpacity
+              style={styles.setAutomaticallyButton}
               onPress={handleSetLocationAutomatically}
               activeOpacity={0.9}
               disabled={isLoadingLocation}
@@ -280,8 +280,8 @@ export default function ConsumerHome() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.setLaterButton} 
+            <TouchableOpacity
+              style={styles.setLaterButton}
               onPress={handleSetLocationLater}
               activeOpacity={0.9}
               disabled={isLoadingLocation}
@@ -307,9 +307,9 @@ export default function ConsumerHome() {
           {/* Menu Items */}
           <View style={styles.menuList}>
             {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={item}
-                style={styles.menuItem} 
+                style={styles.menuItem}
                 onPress={() => handleMenuItemPress(item)}
               >
                 <Text style={styles.menuItemText}>{item}</Text>
@@ -320,22 +320,22 @@ export default function ConsumerHome() {
 
           {/* Bottom Buttons */}
           <View style={styles.sidebarBottom}>
-            <TouchableOpacity 
-              style={styles.switchButton} 
+            <TouchableOpacity
+              style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Merchant")}
             >
               <Text style={styles.switchButtonText}>Switch to Merchant</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.switchButton} 
+            <TouchableOpacity
+              style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Driver")}
             >
               <Text style={styles.switchButtonText}>Switch to Driver</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.signOutButton} 
+            <TouchableOpacity
+              style={styles.signOutButton}
               onPress={handleSignOut}
             >
               <Text style={styles.signOutButtonText}>Sign out</Text>
@@ -346,8 +346,8 @@ export default function ConsumerHome() {
 
       {/* Menu Overlay */}
       {isMenuOpen && (
-        <TouchableOpacity 
-          style={styles.menuOverlay} 
+        <TouchableOpacity
+          style={styles.menuOverlay}
           onPress={toggleMenu}
           activeOpacity={1}
         />
@@ -396,10 +396,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+    }),
     elevation: 3,
   },
   menuButton: {
@@ -409,10 +413,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+    }),
     elevation: 3,
   },
   bottomCard: {
