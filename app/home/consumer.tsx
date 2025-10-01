@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -34,6 +34,12 @@ export default function ConsumerHome() {
     return () => {
       isMountedRef.current = false;
     };
+  }, []);
+
+  const handleRegionChange = useCallback((newRegion: typeof region) => {
+    if (isMountedRef.current) {
+      setRegion(newRegion);
+    }
   }, []);
 
   const loadUserData = async () => {
@@ -216,7 +222,7 @@ export default function ConsumerHome() {
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
-        onRegionChangeComplete={setRegion}
+        onRegionChangeComplete={handleRegionChange}
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}

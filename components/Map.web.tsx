@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,13 +36,13 @@ interface MapProps {
   onLiveLocationUpdate?: (location: any) => void;
 }
 
-const MapWeb: React.FC<MapProps> = ({ 
-  style, 
-  children, 
+const MapWeb: React.FC<MapProps> = ({
+  style,
+  children,
   region,
   initialRegion,
   onRegionChangeComplete,
-  ...props 
+  ...props
 }) => {
   const [mapError, setMapError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -231,6 +230,19 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginTop: 2,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
   },
 });
 
