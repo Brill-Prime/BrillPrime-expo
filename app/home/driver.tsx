@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
@@ -46,6 +47,23 @@ const SafeMapComponent = React.memo(() => {
 
 const { width, height } = Dimensions.get("window");
 
+// Default data to prevent dependency issues
+const defaultDriverData = {
+  userId: "DR456789",
+  name: "John Doe",
+  vehicle: "Honda Civic - ABC 123",
+  rating: 4.8,
+  status: "Online",
+};
+
+const defaultStats = {
+  totalTrips: 234,
+  activeOrders: 3,
+  todaysEarnings: 45000,
+  weeklyRating: 4.8,
+  pendingNotifications: 1,
+};
+
 export default function DriverHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
@@ -55,61 +73,54 @@ export default function DriverHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
   const [activeTab, setActiveTab] = useState("Available");
-  const [driverData, setDriverData] = useState({
-    userId: "DR456789",
-    name: "John Doe",
-    vehicle: "Honda Civic - ABC 123",
-    rating: 4.8,
-    status: "Online",
-  });
-
-  const [stats, setStats] = useState({
-    totalTrips: 234,
-    activeOrders: 3,
-    todaysEarnings: 45000,
-    weeklyRating: 4.8,
-    pendingNotifications: 1,
-  });
-
+  const [driverData, setDriverData] = useState(defaultDriverData);
+  const [stats, setStats] = useState(defaultStats);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useState(new Animated.Value(-280))[0];
 
   // Memoized values
-  const sidebarWidth = useMemo(() => Math.min(280, width * 0.8), [width]);
+  const sidebarWidth = useMemo(() => Math.min(280, width * 0.8), []);
 
-  // Load data with error handling
+  // Load data with error handling - fixed dependencies
   const loadUserData = useCallback(async () => {
     try {
       const cachedData = PerformanceOptimizer.getCache("driverData");
       if (cachedData) {
         setUserEmail(cachedData.email || "driver@brillprime.com");
-        setDriverData((prev) => ({ ...prev, ...cachedData.driver }));
-        setStats((prev) => ({ ...prev, ...cachedData.stats }));
+        setDriverData(cachedData.driver || defaultDriverData);
+        setStats(cachedData.stats || defaultStats);
         return;
       }
-      const email = await AsyncStorage.getItem("userEmail");
-      const driverName = await AsyncStorage.getItem("userName");
-      const savedStats = await AsyncStorage.getItem("driverStats");
 
-      setUserEmail(email || "driver@brillprime.com");
+      const [email, driverName, savedStats] = await Promise.all([
+        AsyncStorage.getItem("userEmail"),
+        AsyncStorage.getItem("userName"),
+        AsyncStorage.getItem("driverStats")
+      ]);
 
-      if (driverName) {
-        setDriverData((prev) => ({ ...prev, name: driverName }));
-      }
+      const emailValue = email || "driver@brillprime.com";
+      const driverInfo = driverName ? { ...defaultDriverData, name: driverName } : defaultDriverData;
+      const statsInfo = savedStats ? JSON.parse(savedStats) : defaultStats;
 
-      if (savedStats) {
-        setStats(JSON.parse(savedStats));
-      }
+      setUserEmail(emailValue);
+      setDriverData(driverInfo);
+      setStats(statsInfo);
+
+      // Cache the data
       PerformanceOptimizer.setCache("driverData", {
-        email: email || "driver@brillprime.com",
-        driver: driverData,
-        stats: savedStats ? JSON.parse(savedStats) : stats,
+        email: emailValue,
+        driver: driverInfo,
+        stats: statsInfo,
       });
     } catch (error) {
       console.error("Error loading user data:", error);
       showError("Loading Error", "Failed to load some data. Please refresh.");
+      // Set defaults on error
+      setUserEmail("driver@brillprime.com");
+      setDriverData(defaultDriverData);
+      setStats(defaultStats);
     }
-  }, [driverData, stats, showError]);
+  }, [showError]); // Only showError as dependency
 
   const loadDriverStats = useCallback(async () => {
     try {
@@ -118,6 +129,8 @@ export default function DriverHome() {
         setStats(cachedStats);
         return;
       }
+
+      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const newStats = {
@@ -132,8 +145,9 @@ export default function DriverHome() {
       PerformanceOptimizer.setCache("driverStats", newStats);
     } catch (error) {
       console.error("Error loading driver stats:", error);
+      setStats(defaultStats);
     }
-  }, []);
+  }, []); // No dependencies needed
 
   const initializeData = useCallback(async () => {
     setIsLoading(true);
