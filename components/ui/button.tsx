@@ -1,91 +1,108 @@
+
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, TextStyle } from 'react-native';
 
 interface ButtonProps {
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: 'default' | 'destructive' | 'outline';
+  variant?: 'default' | 'outline' | 'secondary' | 'destructive';
   size?: 'default' | 'sm' | 'lg';
-  icon?: React.ReactNode;
-  iconPosition?: 'left' | 'right';
-  [key: string]: any;
+  disabled?: boolean;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
+export function Button({ 
   children, 
   onPress, 
-  variant = 'default',
+  variant = 'default', 
   size = 'default',
-  icon,
-  iconPosition = 'left',
-  ...props 
-}) => {
+  disabled = false,
+  style,
+  textStyle
+}: ButtonProps) {
+  const buttonStyles = [
+    styles.base,
+    styles[variant],
+    styles[`size_${size}`],
+    disabled && styles.disabled,
+    style
+  ];
+
+  const textStyles = [
+    styles.text,
+    styles[`text_${variant}`],
+    disabled && styles.disabledText,
+    textStyle
+  ];
+
   return (
-    <TouchableOpacity style={[styles.button, styles[variant], styles[size]]} onPress={onPress} {...props}>
-      <View style={styles.content}>
-        {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
-        <Text style={[styles.text, styles[`${variant}Text`], styles[`${size}Text`]]}>{children}</Text>
-        {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
-      </View>
+    <TouchableOpacity 
+      style={buttonStyles} 
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      <Text style={textStyles}>{children}</Text>
     </TouchableOpacity>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  button: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+  base: {
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
   },
   default: {
-    backgroundColor: '#000',
-  },
-  destructive: {
-    backgroundColor: '#dc2626',
+    backgroundColor: '#4682B4',
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#4682B4',
   },
-  sm: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  secondary: {
+    backgroundColor: '#f8f9fa',
   },
-  lg: {
-    paddingHorizontal: 20,
+  destructive: {
+    backgroundColor: '#dc3545',
+  },
+  size_default: {
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  size_sm: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  iconLeft: {
-    marginRight: 8,
+  size_lg: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
-  iconRight: {
-    marginLeft: 8,
+  disabled: {
+    opacity: 0.5,
   },
   text: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
   },
-  smText: {
-    fontSize: 12,
+  text_default: {
+    color: 'white',
   },
-  lgText: {
-    fontSize: 16,
+  text_outline: {
+    color: '#4682B4',
   },
-  defaultText: {
-    color: '#fff',
+  text_secondary: {
+    color: '#333',
   },
-  destructiveText: {
-    color: '#fff',
+  text_destructive: {
+    color: 'white',
   },
-  outlineText: {
-    color: '#000',
+  disabledText: {
+    opacity: 0.7,
   },
 });
+
+export default Button;

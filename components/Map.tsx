@@ -1,16 +1,13 @@
 
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Default fallback component
 const FallbackMap = ({ children, style, ...props }: any) => {
-  const { View, Text } = require('react-native');
-  const { Ionicons } = require('@expo/vector-icons');
-  
-  return React.createElement(
-    View, 
-    { 
-      style: [
+  return (
+    <View 
+      style={[
         { 
           flex: 1, 
           justifyContent: 'center', 
@@ -20,13 +17,42 @@ const FallbackMap = ({ children, style, ...props }: any) => {
           minHeight: 200
         }, 
         style
-      ] 
-    },
-    React.createElement(Ionicons, { name: 'map', size: 32, color: '#4682B4' }),
-    React.createElement(Text, { style: { marginTop: 10, color: '#666' } }, 'Map loading...'),
-    children
+      ]}
+    >
+      <Ionicons name="map" size={32} color="#4682B4" />
+      <Text style={{ marginTop: 10, color: '#666' }}>Map loading...</Text>
+      {children}
+    </View>
   );
 };
+
+// Export Map component properly
+let MapComponent;
+
+try {
+  if (Platform.OS === 'web') {
+    MapComponent = FallbackMap;
+  } else {
+    // Try to load native map component
+    try {
+      const { default: NativeMap } = require('./Map.native');
+      MapComponent = NativeMap || FallbackMap;
+    } catch {
+      MapComponent = FallbackMap;
+    }
+  }
+} catch (error) {
+  console.warn('Map component error:', error);
+  MapComponent = FallbackMap;
+}
+
+export default MapComponent;
+export { FallbackMap };
+
+// Named exports for compatibility
+export const MapView = MapComponent;
+export const PROVIDER_GOOGLE = 'google';
+export const Marker = ({ children, ...props }: any) => children;
 
 const FallbackMarker = ({ children }: any) => children;
 

@@ -291,7 +291,7 @@ export default function ConsumerHome() {
           }}
           title="You are here"
         />
-        
+
         {/* Nearby drivers markers */}
         {nearbyDrivers.map((driver) => (
           <Marker

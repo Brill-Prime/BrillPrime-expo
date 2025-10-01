@@ -120,7 +120,7 @@ export default function DriverHome() {
       setDriverData(defaultDriverData);
       setStats(defaultStats);
     }
-  }, [showError]); // Only showError as dependency
+  }, []); // Remove showError dependency to prevent infinite loop
 
   const loadDriverStats = useCallback(async () => {
     try {

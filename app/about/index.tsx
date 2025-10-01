@@ -42,164 +42,102 @@ export default function About() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* App Logo and Info */}
-        <View style={styles.appInfoSection}>
-          <View style={styles.logoContainer}>
-            <Image 
-              source={require('../../assets/images/logo.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
+        {/* Logo and App Info */}
+        <View style={styles.logoSection}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.appName}>Brill Prime</Text>
-          <Text style={styles.appVersion}>Version 1.0.0</Text>
-          <Text style={styles.appTagline}>
-            Your ultimate marketplace for everything you need
+          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.tagline}>
+            Your trusted financial partner for secure transactions and seamless money management
           </Text>
         </View>
 
-        {/* Description Section */}
+        {/* About Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About Brill Prime</Text>
           <Text style={styles.description}>
-            Brill Prime is a revolutionary marketplace platform that connects consumers, merchants, and drivers in a seamless ecosystem. We're committed to providing exceptional service, quality products, and reliable delivery to make your shopping experience effortless and enjoyable.
-          </Text>
-          <Text style={styles.description}>
-            Our mission is to empower local businesses while providing consumers with convenient access to a wide variety of products and services. With our innovative technology and dedicated team, we're building the future of commerce.
-          </Text>
-        </View>
-
-        {/* Features Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What We Offer</Text>
-          <View style={styles.featuresList}>
-            <View style={styles.featureItem}>
-              <Ionicons name="storefront" size={24} color="#667eea" />
-              <Text style={styles.featureText}>Wide variety of products from trusted merchants</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="car" size={24} color="#667eea" />
-              <Text style={styles.featureText}>Fast and reliable delivery service</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="shield-checkmark" size={24} color="#667eea" />
-              <Text style={styles.featureText}>Secure payment processing</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="headset" size={24} color="#667eea" />
-              <Text style={styles.featureText}>24/7 customer support</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="star" size={24} color="#667eea" />
-              <Text style={styles.featureText}>Quality guarantee on all products</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Team Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Team</Text>
-          <Text style={styles.description}>
-            We're a passionate team of innovators, developers, and customer service professionals dedicated to creating the best marketplace experience possible. Our diverse backgrounds and shared vision drive us to continuously improve and expand our platform.
+            Brill Prime is a comprehensive mobile application designed to revolutionize the way you 
+            manage your financial transactions. We provide a secure, fast, and user-friendly platform 
+            for consumers, merchants, and drivers to connect and transact seamlessly.
           </Text>
         </View>
 
-        {/* Contact Section */}
+        {/* Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Get In Touch</Text>
-          <View style={styles.contactList}>
-            <TouchableOpacity 
-              style={styles.contactItem}
-              onPress={() => Linking.openURL('mailto:info@brillprime.com')}
-            >
-              <Ionicons name="mail" size={20} color="#667eea" />
-              <Text style={styles.contactText}>info@brillprime.com</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.contactItem}
-              onPress={() => Linking.openURL('tel:+1234567890')}
-            >
-              <Ionicons name="call" size={20} color="#667eea" />
-              <Text style={styles.contactText}>+1 (234) 567-8900</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.contactItem}
-              onPress={() => openLink('https://brillprime.com')}
-            >
-              <Ionicons name="globe" size={20} color="#667eea" />
-              <Text style={styles.contactText}>www.brillprime.com</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Key Features</Text>
+          {[
+            { icon: 'shield-checkmark', text: 'Bank-level security with end-to-end encryption' },
+            { icon: 'flash', text: 'Instant transactions and real-time updates' },
+            { icon: 'people', text: 'Multi-role platform for consumers, merchants, and drivers' },
+            { icon: 'analytics', text: 'Advanced analytics and financial insights' },
+            { icon: 'card', text: 'Multiple payment methods supported' },
+            { icon: 'location', text: 'GPS-enabled location services' },
+          ].map((feature, index) => (
+            <View key={index} style={styles.featureItem}>
+              <Ionicons name={feature.icon as any} size={20} color="#4682B4" />
+              <Text style={styles.featureText}>{feature.text}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Social Media Section */}
+        {/* Contact Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Follow Us</Text>
-          <View style={styles.socialContainer}>
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={() => openLink('https://facebook.com/brillprime')}
-            >
-              <Ionicons name="logo-facebook" size={24} color="#1877f2" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={() => openLink('https://twitter.com/brillprime')}
-            >
-              <Ionicons name="logo-twitter" size={24} color="#1da1f2" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={() => openLink('https://instagram.com/brillprime')}
-            >
-              <Ionicons name="logo-instagram" size={24} color="#e4405f" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={() => openLink('https://linkedin.com/company/brillprime')}
-            >
-              <Ionicons name="logo-linkedin" size={24} color="#0077b5" />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Contact Us</Text>
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={() => openLink('mailto:support@brillprime.com')}
+          >
+            <Ionicons name="mail" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>support@brillprime.com</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={() => openLink('tel:+2348001234567')}
+          >
+            <Ionicons name="call" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>+234 800 123 4567</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={() => openLink('https://www.brillprime.com')}
+          >
+            <Ionicons name="globe" size={20} color="#4682B4" />
+            <Text style={styles.contactText}>www.brillprime.com</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Legal Section */}
+        {/* Legal */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal</Text>
-          <TouchableOpacity 
-            style={styles.legalItem}
-            onPress={() => openLink('https://brillprime.com/terms')}
-          >
+          <TouchableOpacity style={styles.legalItem}>
             <Text style={styles.legalText}>Terms of Service</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color="#666" />
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={styles.legalItem}
-            onPress={() => openLink('https://brillprime.com/privacy')}
-          >
+          <TouchableOpacity style={styles.legalItem}>
             <Text style={styles.legalText}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color="#666" />
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={styles.legalItem}
-            onPress={() => openLink('https://brillprime.com/cookies')}
-          >
-            <Text style={styles.legalText}>Cookie Policy</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          <TouchableOpacity style={styles.legalItem}>
+            <Text style={styles.legalText}>License Agreement</Text>
+            <Ionicons name="chevron-forward" size={16} color="#666" />
           </TouchableOpacity>
         </View>
 
-        {/* Copyright */}
-        <View style={styles.copyrightSection}>
-          <Text style={styles.copyrightText}>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
             © 2024 Brill Prime. All rights reserved.
+          </Text>
+          <Text style={styles.footerSubtext}>
+            Made with ❤️ for seamless financial experiences
           </Text>
         </View>
       </ScrollView>
@@ -210,149 +148,126 @@ export default function About() {
 const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
   const isTablet = width >= 768;
-  const isSmallScreen = width < 350;
 
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#f8f9fa',
+      backgroundColor: '#fff',
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: Math.max(16, width * 0.04),
       paddingTop: Math.max(50, height * 0.07),
-      paddingBottom: Math.max(16, height * 0.02),
-      backgroundColor: 'white',
+      paddingBottom: 15,
+      paddingHorizontal: 20,
+      backgroundColor: '#fff',
       borderBottomWidth: 1,
-      borderBottomColor: '#e9ecef',
+      borderBottomColor: '#f0f0f0',
     },
     backButton: {
       padding: 8,
     },
     headerTitle: {
-      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
+      fontSize: isTablet ? 24 : 20,
       fontWeight: 'bold',
       color: '#333',
+      flex: 1,
+      textAlign: 'center',
     },
     placeholder: {
       width: 40,
     },
     content: {
       flex: 1,
-      paddingHorizontal: Math.max(16, width * 0.04),
+      paddingHorizontal: 20,
     },
-    appInfoSection: {
+    logoSection: {
       alignItems: 'center',
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: Math.max(24, width * 0.06),
-      marginVertical: 16,
-    },
-    logoContainer: {
-      width: isTablet ? 100 : 80,
-      height: isTablet ? 100 : 80,
-      borderRadius: isTablet ? 50 : 40,
-      backgroundColor: '#f8f9fa',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 16,
+      paddingVertical: 30,
     },
     logo: {
-      width: isTablet ? 60 : 50,
-      height: isTablet ? 60 : 50,
+      width: 80,
+      height: 80,
+      marginBottom: 15,
     },
     appName: {
-      fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
+      fontSize: isTablet ? 28 : 24,
       fontWeight: 'bold',
-      color: '#333',
-      marginBottom: 4,
+      color: '#0B1A51',
+      marginBottom: 5,
     },
-    appVersion: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+    version: {
+      fontSize: 14,
       color: '#666',
-      marginBottom: 8,
+      marginBottom: 15,
     },
-    appTagline: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
-      color: '#999',
+    tagline: {
+      fontSize: 16,
+      color: '#666',
       textAlign: 'center',
+      lineHeight: 22,
+      maxWidth: width * 0.8,
     },
     section: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: Math.max(16, width * 0.04),
-      marginBottom: 16,
+      marginBottom: 25,
     },
     sectionTitle: {
-      fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
+      fontSize: isTablet ? 20 : 18,
       fontWeight: 'bold',
       color: '#333',
-      marginBottom: 12,
+      marginBottom: 15,
     },
     description: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
+      fontSize: 15,
       color: '#666',
-      lineHeight: isTablet ? 24 : 22,
-      marginBottom: 12,
-    },
-    featuresList: {
-      gap: 12,
+      lineHeight: 22,
     },
     featureItem: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginBottom: 12,
     },
     featureText: {
-      flex: 1,
+      fontSize: 14,
+      color: '#666',
       marginLeft: 12,
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
-      color: '#333',
-    },
-    contactList: {
-      gap: 16,
+      flex: 1,
     },
     contactItem: {
       flexDirection: 'row',
       alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
     },
     contactText: {
+      fontSize: 15,
+      color: '#4682B4',
       marginLeft: 12,
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
-      color: '#667eea',
-    },
-    socialContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      paddingVertical: 8,
-    },
-    socialButton: {
-      width: isTablet ? 60 : 50,
-      height: isTablet ? 60 : 50,
-      borderRadius: isTablet ? 30 : 25,
-      backgroundColor: '#f8f9fa',
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     legalItem: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 12,
+      paddingVertical: 15,
       borderBottomWidth: 1,
       borderBottomColor: '#f0f0f0',
     },
     legalText: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 14 : 15,
+      fontSize: 15,
       color: '#333',
     },
-    copyrightSection: {
+    footer: {
       alignItems: 'center',
-      paddingVertical: 24,
+      paddingVertical: 30,
     },
-    copyrightText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
+    footerText: {
+      fontSize: 13,
+      color: '#666',
+      marginBottom: 5,
+    },
+    footerSubtext: {
+      fontSize: 12,
       color: '#999',
     },
   });
