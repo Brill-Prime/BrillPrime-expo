@@ -6,6 +6,8 @@ import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
 import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from 'react-error-boundary';
+import * as Font from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -35,67 +37,15 @@ export default function RootLayout() {
         // Keep the splash screen visible while we fetch resources
         await SplashScreen.preventAutoHideAsync();
 
-        // Skip font loading to prevent timeouts and crashes
-        console.log('Skipping font loading to prevent timeouts');
-        
-        // Set up CSS fallbacks for web
-        if (typeof window !== 'undefined' && window.document) {
-          const style = document.createElement('style');
-          style.textContent = `
-            * {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-            }
-            
-            /* Ionicons fallback styles */
-            ion-icon {
-              display: inline-block;
-              font-size: inherit;
-              font-style: normal;
-              font-weight: normal;
-              font-variant: normal;
-              text-transform: none;
-              text-rendering: auto;
-              line-height: 1;
-              -webkit-font-smoothing: antialiased;
-            }
-            
-            /* Fallback for missing icons */
-            .icon-fallback {
-              display: inline-block;
-              width: 24px;
-              height: 24px;
-              background-color: currentColor;
-              mask-size: contain;
-              -webkit-mask-size: contain;
-              mask-repeat: no-repeat;
-              -webkit-mask-repeat: no-repeat;
-            }
-          `;
-          document.head.appendChild(style);
-          
-          // Preload common icons
-          const commonIcons = [
-            'chevron-back',
-            'home',
-            'person',
-            'notifications',
-            'settings',
-            'search',
-            'menu',
-            'close'
-          ];
-          
-          commonIcons.forEach(iconName => {
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.href = `https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/svg/${iconName}.svg`;
-            link.as = 'image';
-            document.head.appendChild(link);
-          });
-        }
+        // Load Ionicons font
+        console.log('Loading Ionicons font...');
+        await Font.loadAsync({
+          ...Ionicons.font,
+        });
+        console.log('Ionicons font loaded successfully');
 
       } catch (e) {
-        console.warn(e);
+        console.warn('Error loading fonts:', e);
       } finally {
         // Tell the application to render the child components
         setFontsLoaded(true);
