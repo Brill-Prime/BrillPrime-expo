@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
@@ -90,7 +89,7 @@ export default function ConsumerHome() {
 
   const handleMenuItemPress = (item: string) => {
     toggleMenu();
-    
+
     switch (item) {
       case "Profile":
         router.push("/profile");
@@ -211,7 +210,7 @@ export default function ConsumerHome() {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
-      
+
       {/* Full Screen Map */}
       <MapView
         provider={PROVIDER_GOOGLE}
@@ -242,7 +241,7 @@ export default function ConsumerHome() {
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        
+
         <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
           <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color="#000" />
         </TouchableOpacity>
@@ -304,7 +303,7 @@ export default function ConsumerHome() {
             <Text style={styles.sidebarProfileName}>Consumer</Text>
             <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
-          
+
           {/* Menu Items */}
           <View style={styles.menuList}>
             {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
@@ -327,14 +326,14 @@ export default function ConsumerHome() {
             >
               <Text style={styles.switchButtonText}>Switch to Merchant</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={styles.switchButton} 
               onPress={() => handleMenuItemPress("Switch to Driver")}
             >
               <Text style={styles.switchButtonText}>Switch to Driver</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={styles.signOutButton} 
               onPress={handleSignOut}
@@ -397,10 +396,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   menuButton: {
@@ -410,10 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   bottomCard: {
@@ -425,10 +418,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
+    boxShadow: '0px -5px 20px rgba(0, 0, 0, 0.1)',
     elevation: 10,
     alignItems: 'center',
     paddingTop: 60,
@@ -445,10 +435,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
+    boxShadow: '0px 4px 15px rgba(70, 130, 180, 0.3)',
     elevation: 8,
   },
   locationIconInner: {
@@ -492,10 +479,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    boxShadow: '0px 3px 10px rgba(70, 130, 180, 0.2)',
     elevation: 3,
   },
   setAutomaticallyText: {
@@ -526,10 +510,7 @@ const styles = StyleSheet.create({
     width: Math.min(280, width * 0.8),
     height: '100%',
     backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    boxShadow: '-2px 0px 10px rgba(0, 0, 0, 0.25)',
     elevation: 10,
     zIndex: 1000,
   },
