@@ -137,28 +137,124 @@ class LocationService {
   // Live tracking functionality
   private trackingInterval: NodeJS.Timeout | null = null;
   private trackingCallbacks: Array<(location: LocationData) => void> = [];
+  private isTracking: boolean = false;
+  private lastLocationUpdate: number = 0;
+  private trackingErrorCount: number = 0;
+  private maxTrackingErrors: number = 5;
+  private trackingQueue: LocationData[] = [];
 
-  // Start live location tracking
+  // Start live location tracking with error recovery
   async startLiveTracking(intervalMs: number = 5000): Promise<void> {
     if (this.trackingInterval) {
       this.stopLiveTracking();
     }
 
-    this.trackingInterval = setInterval(async () => {
-      const location = await this.getCurrentLocation();
-      if (location) {
-        this.trackingCallbacks.forEach(callback => callback(location));
-        // Send location update to API
-        await this.updateLiveLocation(location);
+    this.isTracking = true;
+    this.trackingErrorCount = 0;
+
+    const trackLocation = async () => {
+      try {
+        const location = await this.getCurrentLocation();
+        if (location && this.isTracking) {
+          // Performance optimization: only update if location changed significantly
+          const lastLocation = this.currentLocation;
+          if (!lastLocation || 
+              this.calculateDistance(
+                lastLocation.latitude, 
+                lastLocation.longitude, 
+                location.latitude, 
+                location.longitude
+              ) > 0.001 || // ~100 meters
+              Date.now() - this.lastLocationUpdate > 30000) { // or 30 seconds passed
+            
+            this.lastLocationUpdate = Date.now();
+            this.trackingCallbacks.forEach(callback => {
+              try {
+                callback(location);
+              } catch (error) {
+                console.error('Tracking callback error:', error);
+              }
+            });
+
+            // Queue location for API update with retry mechanism
+            await this.queueLocationUpdate(location);
+          }
+          
+          this.trackingErrorCount = 0; // Reset error count on success
+        }
+      } catch (error) {
+        console.error('Live tracking error:', error);
+        this.trackingErrorCount++;
+        
+        if (this.trackingErrorCount >= this.maxTrackingErrors) {
+          console.warn('Max tracking errors reached, stopping live tracking');
+          this.stopLiveTracking();
+        }
       }
-    }, intervalMs);
+    };
+
+    // Initial location update
+    await trackLocation();
+
+    // Set up interval
+    this.trackingInterval = setInterval(trackLocation, intervalMs);
   }
 
   // Stop live location tracking
   stopLiveTracking(): void {
+    this.isTracking = false;
     if (this.trackingInterval) {
       clearInterval(this.trackingInterval);
       this.trackingInterval = null;
+    }
+    // Process any remaining queued locations
+    this.processLocationQueue();
+  }
+
+  // Queue location update with batching for performance
+  private async queueLocationUpdate(location: LocationData): Promise<void> {
+    this.trackingQueue.push(location);
+    
+    // Process queue when it reaches batch size or after timeout
+    if (this.trackingQueue.length >= 3) {
+      await this.processLocationQueue();
+    } else {
+      // Set timeout to process queue if not full
+      setTimeout(() => {
+        if (this.trackingQueue.length > 0) {
+          this.processLocationQueue();
+        }
+      }, 10000); // 10 seconds timeout
+    }
+  }
+
+  // Process queued location updates
+  private async processLocationQueue(): Promise<void> {
+    if (this.trackingQueue.length === 0) return;
+
+    const locationsToProcess = [...this.trackingQueue];
+    this.trackingQueue = [];
+
+    try {
+      const token = await authService.getToken();
+      if (token) {
+        // Send batch update or just the latest location
+        const latestLocation = locationsToProcess[locationsToProcess.length - 1];
+        await apiClient.put('/api/location/live', {
+          latitude: latestLocation.latitude,
+          longitude: latestLocation.longitude,
+          timestamp: latestLocation.timestamp,
+          accuracy: 'high'
+        }, {
+          Authorization: `Bearer ${token}`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to process location queue:', error);
+      // Re-queue failed locations for retry (keep only latest)
+      if (locationsToProcess.length > 0) {
+        this.trackingQueue.unshift(locationsToProcess[locationsToProcess.length - 1]);
+      }
     }
   }
 
@@ -191,20 +287,59 @@ class LocationService {
     }
   }
 
-  // Get live location of a specific user (driver/consumer)
+  // Enhanced live location cache
+  private liveLocationCache: Map<string, { location: LocationData; timestamp: number }> = new Map();
+  private cacheTimeout: number = 10000; // 10 seconds
+
+  // Get live location of a specific user with caching
   async getLiveLocation(userId: string): Promise<ApiResponse<LocationData>> {
     try {
+      // Check cache first
+      const cached = this.liveLocationCache.get(userId);
+      if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+        return { success: true, data: cached.location };
+      }
+
       const token = await authService.getToken();
       if (!token) {
         return { success: false, error: 'Authentication required' };
       }
 
-      return apiClient.get<LocationData>(`/api/location/live/${userId}`, {
+      const response = await apiClient.get<LocationData>(`/api/location/live/${userId}`, {
         Authorization: `Bearer ${token}`
       });
+
+      // Cache successful response
+      if (response.success && response.data) {
+        this.liveLocationCache.set(userId, {
+          location: response.data,
+          timestamp: Date.now()
+        });
+      }
+
+      return response;
     } catch (error) {
       console.error('Error getting live location:', error);
+      
+      // Return cached data if available during error
+      const cached = this.liveLocationCache.get(userId);
+      if (cached) {
+        return { 
+          success: true, 
+          data: { ...cached.location, isStale: true }
+        };
+      }
+      
       return { success: false, error: 'Failed to get live location' };
+    }
+  }
+
+  // Clear live location cache
+  clearLiveLocationCache(userId?: string): void {
+    if (userId) {
+      this.liveLocationCache.delete(userId);
+    } else {
+      this.liveLocationCache.clear();
     }
   }
 

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
+import { locationService } from '../../services/locationService';
 import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ export default function ConsumerHome() {
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
+  const [nearbyDrivers, setNearbyDrivers] = useState<any[]>([]);
   const slideAnim = useRef(new Animated.Value(-280)).current;
   const [region, setRegion] = useState({
     latitude: 9.0765, // Abuja, Nigeria
@@ -30,11 +33,42 @@ export default function ConsumerHome() {
     isMountedRef.current = true;
     checkSavedLocation();
     loadUserData();
+    initializeLiveTracking();
 
     return () => {
       isMountedRef.current = false;
+      locationService.stopLiveTracking();
     };
   }, []);
+
+  const initializeLiveTracking = async () => {
+    try {
+      // Start live tracking for consumer
+      await locationService.startLiveTracking(10000); // Update every 10 seconds
+      setIsLiveTrackingEnabled(true);
+
+      // Subscribe to location updates for nearby drivers
+      const unsubscribe = locationService.onLocationUpdate((location) => {
+        if (isMountedRef.current) {
+          // Update nearby drivers mock data
+          setNearbyDrivers(prev => [
+            ...prev.filter(d => d.id !== 'driver1'),
+            {
+              id: 'driver1',
+              latitude: location.latitude + 0.002,
+              longitude: location.longitude + 0.002,
+              name: 'Driver John',
+              eta: '5 mins'
+            }
+          ]);
+        }
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error('Failed to initialize live tracking:', error);
+    }
+  };
 
   const handleRegionChange = useCallback((newRegion: typeof region) => {
     if (isMountedRef.current) {
@@ -232,6 +266,23 @@ export default function ConsumerHome() {
         rotateEnabled={false}
         scrollEnabled={true}
         zoomEnabled={true}
+        enableLiveTracking={isLiveTrackingEnabled}
+        enableStoreLocator={true}
+        storeLocations={[
+          {
+            title: "NASCO FOODS",
+            address: "Yakubu Gowon Way, Jos",
+            coords: { lat: 9.868215, lng: 8.870632 }
+          },
+          {
+            title: "Airforce Masjid",
+            address: "Abattoir Rd, Jos",
+            coords: { lat: 9.882716, lng: 8.886276 }
+          }
+        ]}
+        onLocationSelect={(location) => {
+          showInfo("Store Selected", `Selected: ${location.title}`);
+        }}
       >
         <Marker
           coordinate={{
@@ -240,6 +291,19 @@ export default function ConsumerHome() {
           }}
           title="You are here"
         />
+        
+        {/* Nearby drivers markers */}
+        {nearbyDrivers.map((driver) => (
+          <Marker
+            key={driver.id}
+            coordinate={{
+              latitude: driver.latitude,
+              longitude: driver.longitude,
+            }}
+            title={driver.name}
+            description={`ETA: ${driver.eta}`}
+          />
+        ))}
       </MapView>
 
       {/* Header with Back Button and Menu */}
