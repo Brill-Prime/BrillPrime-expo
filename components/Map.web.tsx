@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,25 +18,6 @@ interface MapProps {
   zoomEnabled?: boolean;
   children?: React.ReactNode;
   provider?: any;
-}
-
-const MapWeb: React.FC<MapProps> = ({ style, children, ...props }) => {
-  return (
-    <View style={[styles.mapContainer, style]}>
-      <View style={styles.mapPlaceholder}>
-        <Ionicons name="map" size={40} color="#4682B4" />
-        <Text style={styles.mapText}>Map View (Web)</Text>
-        <Text style={styles.mapSubtext}>Interactive map not available in web view</Text>
-      </View>
-      {children}
-    </View>
-  );
-};
-
-export default MapWeb;
-
-interface MapViewProps {
-  style?: ViewStyle;
   initialRegion?: {
     latitude: number;
     longitude: number;
@@ -47,9 +29,22 @@ interface MapViewProps {
     title?: string;
     description?: string;
   }>;
+  enableStoreLocator?: boolean;
+  storeLocations?: any[];
+  onLocationSelect?: (location: any) => void;
+  enableLiveTracking?: boolean;
+  trackingUserId?: string;
+  onLiveLocationUpdate?: (location: any) => void;
 }
 
-export default function MapViewWeb({ style, initialRegion, markers }: MapViewProps) {
+const MapWeb: React.FC<MapProps> = ({ 
+  style, 
+  children, 
+  region,
+  initialRegion,
+  onRegionChangeComplete,
+  ...props 
+}) => {
   const [mapError, setMapError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,6 +56,8 @@ export default function MapViewWeb({ style, initialRegion, markers }: MapViewPro
 
     return () => clearTimeout(timer);
   }, []);
+
+  const displayRegion = region || initialRegion;
 
   if (mapError) {
     return (
@@ -105,15 +102,30 @@ export default function MapViewWeb({ style, initialRegion, markers }: MapViewPro
           </View>
 
           <Text style={styles.coordinatesText}>
-            {initialRegion ?
-              `${initialRegion.latitude.toFixed(4)}, ${initialRegion.longitude.toFixed(4)}` :
+            {displayRegion ?
+              `${displayRegion.latitude.toFixed(4)}, ${displayRegion.longitude.toFixed(4)}` :
               '6.5244, 3.3792'}
           </Text>
         </View>
+        {children}
       </View>
     </View>
   );
-}
+};
+
+// Marker component for web
+export const Marker: React.FC<any> = ({ coordinate, title, children }) => {
+  return (
+    <View style={styles.markerContainer}>
+      <Ionicons name="location" size={20} color="#e74c3c" />
+      {title && <Text style={styles.markerTitle}>{title}</Text>}
+      {children}
+    </View>
+  );
+};
+
+// Provider constant for web
+export const PROVIDER_GOOGLE = 'web';
 
 const styles = StyleSheet.create({
   container: {
@@ -151,28 +163,6 @@ const styles = StyleSheet.create({
     color: '#4682B4',
     marginTop: 10,
     fontWeight: '500',
-  },
-  mapContainer: {
-    flex: 1,
-    backgroundColor: '#f0f8ff',
-  },
-  mapPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f8ff',
-  },
-  mapText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#4682B4',
-    fontWeight: '600',
-  },
-  mapSubtext: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
   },
   mapContentContainer: {
     flex: 1,
@@ -228,4 +218,20 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
+  markerContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  markerTitle: {
+    fontSize: 12,
+    color: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 2,
+  },
 });
+
+export default MapWeb;
