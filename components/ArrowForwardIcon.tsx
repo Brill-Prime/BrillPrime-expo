@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -13,14 +14,11 @@ const ArrowForwardIcon: React.FC<ArrowForwardIconProps> = ({
   color = 'white',
   style 
 }) => {
-  const scale = size / 34; // Original width is 34
-  const scaledHeight = 21 * scale; // Original height is 21
-  
   return (
-    <View style={[{ width: size, height: scaledHeight }, style]}>
+    <View style={[{ width: size, height: size }, style]}>
       <Svg 
         width={size} 
-        height={scaledHeight} 
+        height={size} 
         viewBox="0 0 34 21" 
         fill="none"
       >

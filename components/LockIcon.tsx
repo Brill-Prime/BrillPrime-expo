@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -13,14 +14,11 @@ const LockIcon: React.FC<LockIconProps> = ({
   color = '#B7B7B7',
   style 
 }) => {
-  const scale = size / 14; // Original width is 14
-  const scaledHeight = 19 * scale; // Original height is 19
-  
   return (
-    <View style={[{ width: size, height: scaledHeight }, style]}>
+    <View style={[{ width: size, height: size }, style]}>
       <Svg 
         width={size} 
-        height={scaledHeight} 
+        height={size} 
         viewBox="0 0 14 19" 
         fill="none"
       >

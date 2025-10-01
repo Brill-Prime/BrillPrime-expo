@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
-import Svg, { Mask, Rect, G, Path } from 'react-native-svg';
+import Svg, { Mask, Rect, G, Path, Defs } from 'react-native-svg';
 
 interface EmailIconProps {
   size?: number;
@@ -13,6 +14,8 @@ const EmailIcon: React.FC<EmailIconProps> = ({
   color = '#B7B7B7',
   style 
 }) => {
+  const maskId = `mask_email_${Math.random().toString(36).substr(2, 9)}`;
+  
   return (
     <View style={[{ width: size, height: size }, style]}>
       <Svg 
@@ -21,10 +24,12 @@ const EmailIcon: React.FC<EmailIconProps> = ({
         viewBox="0 0 20 20" 
         fill="none"
       >
-        <Mask id="mask0_1_968" maskContentUnits="userSpaceOnUse" x="0" y="0" width="20" height="20">
-          <Rect width="20" height="20" fill={color}/>
-        </Mask>
-        <G mask="url(#mask0_1_968)">
+        <Defs>
+          <Mask id={maskId} maskContentUnits="userSpaceOnUse" x="0" y="0" width="20" height="20">
+            <Rect width="20" height="20" fill="white"/>
+          </Mask>
+        </Defs>
+        <G mask={`url(#${maskId})`}>
           <Path 
             d="M3.33341 16.6666C2.87508 16.6666 2.48272 16.5034 2.15633 16.177C1.82994 15.8506 1.66675 15.4583 1.66675 14.9999V4.99992C1.66675 4.54159 1.82994 4.14922 2.15633 3.82284C2.48272 3.49645 2.87508 3.33325 3.33341 3.33325H16.6667C17.1251 3.33325 17.5174 3.49645 17.8438 3.82284C18.1702 4.14922 18.3334 4.54159 18.3334 4.99992V14.9999C18.3334 15.4583 18.1702 15.8506 17.8438 16.177C17.5174 16.5034 17.1251 16.6666 16.6667 16.6666H3.33341ZM10.0001 10.8333L3.33341 6.66659V14.9999H16.6667V6.66659L10.0001 10.8333ZM10.0001 9.16658L16.6667 4.99992H3.33341L10.0001 9.16658ZM3.33341 6.66659V4.99992V14.9999V6.66659Z" 
             fill={color}
