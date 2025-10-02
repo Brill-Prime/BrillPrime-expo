@@ -1,14 +1,67 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
+import MapViewDirections from 'react-native-maps-directions';
 import { locationService } from '../../services/locationService';
 import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
 import { Ionicons } from '@expo/vector-icons';
+import { debounce } from 'lodash';
 
 const { width, height } = Dimensions.get('window');
+
+const theme = {
+  colors: {
+    primary: '#4682B4',
+    primaryDark: '#0B1A51',
+    background: '#fff',
+    text: '#333',
+    textLight: '#666',
+    white: '#fff',
+    error: '#e74c3c',
+    border: '#f0f0f0',
+    overlay: 'rgba(0, 0, 0, 0.5)',
+  },
+  shadows: {
+    small: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    medium: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+  },
+  typography: {
+    bold: 'Montserrat-ExtraBold',
+    semiBold: 'Montserrat-SemiBold',
+    medium: 'Montserrat-Medium',
+    regular: 'Montserrat-Regular',
+    light: 'Montserrat-Light',
+  },
+};
+
+interface StoreLocation {
+  title: string;
+  address: string;
+  coords: { lat: number; lng: number };
+}
+
+interface Driver {
+  id: string;
+  latitude: number;
+  longitude: number;
+  name: string;
+  eta: string;
+}
 
 export default function ConsumerHome() {
   const router = useRouter();
@@ -19,15 +72,72 @@ export default function ConsumerHome() {
   const [userEmail, setUserEmail] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
-  const [nearbyDrivers, setNearbyDrivers] = useState<any[]>([]);
-  const slideAnim = useRef(new Animated.Value(-280)).current;
+  const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
+  const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([
+    {
+      title: "NASCO FOODS",
+      address: "Yakubu Gowon Way, Jos",
+      coords: { lat: 9.868215, lng: 8.870632 }
+    },
+    {
+      title: "Airforce Masjid",
+      address: "Abattoir Rd, Jos",
+      coords: { lat: 9.882716, lng: 8.886276 }
+    }
+  ]);
   const [region, setRegion] = useState({
-    latitude: 9.0765, // Abuja, Nigeria
+    latitude: 9.0765,
     longitude: 7.3986,
-    latitudeDelta: 0.1,
-    longitudeDelta: 0.1,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
   });
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [mapError, setMapError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
+
+  const slideAnim = useRef(new Animated.Value(-280)).current;
+  const mapRef = useRef<MapView>(null);
   const isMountedRef = useRef(true);
+
+  // Calculate delta based on screen dimensions
+  const calculateDelta = (latitude: number) => {
+    const latitudeDelta = 0.0922 * (height / 800);
+    const aspectRatio = width / height;
+    const longitudeDelta = latitudeDelta * aspectRatio;
+    return { latitudeDelta, longitudeDelta };
+  };
+
+  // Fit map to show user location and nearby points
+  const fitToUserLocation = useCallback(() => {
+    if (mapRef.current && nearbyDrivers.length > 0) {
+      mapRef.current.fitToCoordinates(
+        [
+          { latitude: region.latitude, longitude: region.longitude },
+          ...nearbyDrivers.map(driver => ({
+            latitude: driver.latitude,
+            longitude: driver.longitude,
+          })),
+          ...storeLocations.map(store => store.coords)
+        ],
+        {
+          edgePadding: { top: 100, right: 20, bottom: 400, left: 20 },
+          animated: true
+        }
+      );
+    }
+  }, [region, nearbyDrivers, storeLocations]);
+
+  // Debounced region change handler
+  const handleRegionChange = useCallback(
+    debounce((newRegion) => {
+      if (isMountedRef.current) {
+        setRegion(newRegion);
+      }
+    }, 500),
+    []
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -43,14 +153,11 @@ export default function ConsumerHome() {
 
   const initializeLiveTracking = async () => {
     try {
-      // Start live tracking for consumer
-      await locationService.startLiveTracking(10000); // Update every 10 seconds
+      await locationService.startLiveTracking(30000); // Update every 30 seconds
       setIsLiveTrackingEnabled(true);
 
-      // Subscribe to location updates for nearby drivers
       const unsubscribe = locationService.onLocationUpdate((location) => {
         if (isMountedRef.current) {
-          // Update nearby drivers mock data
           setNearbyDrivers(prev => [
             ...prev.filter(d => d.id !== 'driver1'),
             {
@@ -64,22 +171,19 @@ export default function ConsumerHome() {
         }
       });
 
-      return unsubscribe;
+      return () => unsubscribe();
     } catch (error) {
       console.error('Failed to initialize live tracking:', error);
+      if (isMountedRef.current) {
+        showError("Tracking Error", "Failed to start live tracking. Some features may be limited.");
+      }
     }
   };
-
-  const handleRegionChange = useCallback((newRegion: typeof region) => {
-    if (isMountedRef.current) {
-      setRegion(newRegion);
-    }
-  }, []);
 
   const loadUserData = async () => {
     try {
       const email = await AsyncStorage.getItem("userEmail");
-      if (email) {
+      if (email && isMountedRef.current) {
         setUserEmail(email);
       }
     } catch (error) {
@@ -94,11 +198,11 @@ export default function ConsumerHome() {
 
       if (savedLocation && isMountedRef.current) {
         const location = JSON.parse(savedLocation);
+        const deltas = calculateDelta(location.latitude);
         setRegion({
           latitude: location.latitude,
           longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          ...deltas,
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
@@ -129,7 +233,6 @@ export default function ConsumerHome() {
 
   const handleMenuItemPress = (item: string) => {
     toggleMenu();
-
     switch (item) {
       case "Profile":
         router.push("/profile");
@@ -170,6 +273,7 @@ export default function ConsumerHome() {
           router.replace("/");
         } catch (error) {
           console.error("Error signing out:", error);
+          showError("Sign Out Failed", "Unable to sign out. Please try again.");
         }
       }
     );
@@ -181,8 +285,8 @@ export default function ConsumerHome() {
       "Allow Brill Prime to access your location to find nearby merchants?",
       async () => {
         if (!isMountedRef.current) return;
-
         setIsLoadingLocation(true);
+
         try {
           let { status } = await Location.requestForegroundPermissionsAsync();
           if (status !== 'granted') {
@@ -198,11 +302,11 @@ export default function ConsumerHome() {
           if (!isMountedRef.current) return;
 
           const { latitude, longitude } = location.coords;
+          const deltas = calculateDelta(latitude);
           const newRegion = {
             latitude,
             longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
+            ...deltas,
           };
 
           setRegion(newRegion);
@@ -247,16 +351,49 @@ export default function ConsumerHome() {
     router.push("/search");
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // Implement search logic here (filter storeLocations or call API)
+  };
+
+  const handleStoreSelect = (store: StoreLocation) => {
+    setSelectedDestination(store);
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        ...store.coords,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
+    }
+  };
+
+  const retryLoadMap = () => {
+    setMapError(false);
+    setIsMapLoading(true);
+  };
+
+  const MemoizedMarker = React.memo(Marker);
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Full Screen Map */}
+      {/* Map View */}
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
         onRegionChangeComplete={handleRegionChange}
+        onMapLoaded={() => {
+          setIsMapLoading(false);
+          setMapError(false);
+          fitToUserLocation();
+        }}
+        onMapError={() => {
+          setMapError(true);
+          setIsMapLoading(false);
+        }}
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}
@@ -266,61 +403,89 @@ export default function ConsumerHome() {
         rotateEnabled={false}
         scrollEnabled={true}
         zoomEnabled={true}
-        enableLiveTracking={isLiveTrackingEnabled}
-        enableStoreLocator={true}
-        storeLocations={[
-          {
-            title: "NASCO FOODS",
-            address: "Yakubu Gowon Way, Jos",
-            coords: { lat: 9.868215, lng: 8.870632 }
-          },
-          {
-            title: "Airforce Masjid",
-            address: "Abattoir Rd, Jos",
-            coords: { lat: 9.882716, lng: 8.886276 }
-          }
-        ]}
-        onLocationSelect={(location) => {
-          showInfo("Store Selected", `Selected: ${location.title}`);
-        }}
+        paddingAdjustmentBehavior="automatic"
+        padding={{ top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 }}
       >
-        <Marker
-          coordinate={{
-            latitude: region.latitude,
-            longitude: region.longitude,
-          }}
-          title="You are here"
-        />
+        {!isMapLoading && !mapError && (
+          <>
+            <MemoizedMarker
+              coordinate={region}
+              title="You are here"
+              pinColor="#4682B4"
+            />
 
-        {/* Nearby drivers markers */}
-        {nearbyDrivers.map((driver) => (
-          <Marker
-            key={driver.id}
-            coordinate={{
-              latitude: driver.latitude,
-              longitude: driver.longitude,
-            }}
-            title={driver.name}
-            description={`ETA: ${driver.eta}`}
-          />
-        ))}
+            {nearbyDrivers.map((driver) => (
+              <MemoizedMarker
+                key={driver.id}
+                coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
+                title={driver.name}
+                description={`ETA: ${driver.eta}`}
+              />
+            ))}
+
+            {storeLocations.map((store) => (
+              <MemoizedMarker
+                key={store.title}
+                coordinate={store.coords}
+                title={store.title}
+                description={store.address}
+                onPress={() => handleStoreSelect(store)}
+              />
+            ))}
+
+            {selectedDestination && (
+              <MapViewDirections
+                origin={region}
+                destination={selectedDestination.coords}
+                apikey="YOUR_GOOGLE_MAPS_API_KEY" // Replace with your actual API key
+                strokeWidth={4}
+                strokeColor={theme.colors.primary}
+                optimizeWaypoints={true}
+                onReady={(result) => {
+                  console.log(`Distance: ${result.distance} km`);
+                  console.log(`Duration: ${result.duration} min`);
+                }}
+                onError={(error) => {
+                  console.error("Directions error:", error);
+                  showError("Navigation Error", "Could not calculate route. Please try again.");
+                }}
+              />
+            )}
+          </>
+        )}
       </MapView>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search for merchants..."
+            placeholderTextColor={theme.colors.textLight}
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
+          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}>
+            <Ionicons name="options" size={22} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Header with Back Button and Menu */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-          <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color="#000" />
+          <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
       {/* Location Setup Modal - Only show if location not set */}
       {!isLocationSet && (
         <View style={styles.bottomCard}>
-          {/* Location Icon */}
           <View style={styles.locationIconContainer}>
             <View style={styles.locationIconInner}>
               <Image
@@ -331,13 +496,11 @@ export default function ConsumerHome() {
             </View>
           </View>
 
-          {/* Content */}
           <Text style={styles.whereAreYouText}>Where are you?</Text>
           <Text style={styles.descriptionText}>
             Set your location so you can see merchants available around you
           </Text>
 
-          {/* Buttons */}
           <View style={styles.buttonsContainer}>
             <TouchableOpacity
               style={styles.setAutomaticallyButton}
@@ -362,19 +525,43 @@ export default function ConsumerHome() {
         </View>
       )}
 
+      {/* Store List (when location is set) */}
+      {isLocationSet && (
+        <View style={styles.storeListContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.storeList}
+          >
+            {storeLocations.map((store) => (
+              <TouchableOpacity
+                key={store.title}
+                style={styles.storeCard}
+                onPress={() => handleStoreSelect(store)}
+              >
+                <View style={styles.storeCardIcon}>
+                  <Ionicons name="business" size={24} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.storeCardTitle}>{store.title}</Text>
+                <Text style={styles.storeCardAddress}>{store.address}</Text>
+                <Text style={styles.storeCardDistance}>2.5 km away</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Navigation Sidebar */}
       <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
         <View style={styles.sidebarContent}>
-          {/* Profile Section */}
           <View style={styles.sidebarProfile}>
             <View style={styles.sidebarProfileImage}>
-              <Ionicons name="person" size={30} color="#4682B4" />
+              <Ionicons name="person" size={30} color={theme.colors.primary} />
             </View>
             <Text style={styles.sidebarProfileName}>Consumer</Text>
             <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
 
-          {/* Menu Items */}
           <View style={styles.menuList}>
             {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
               <TouchableOpacity
@@ -383,12 +570,11 @@ export default function ConsumerHome() {
                 onPress={() => handleMenuItemPress(item)}
               >
                 <Text style={styles.menuItemText}>{item}</Text>
-                <Ionicons name="chevron-forward" size={20} color="#666" />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Bottom Buttons */}
           <View style={styles.sidebarBottom}>
             <TouchableOpacity
               style={styles.switchButton}
@@ -424,14 +610,99 @@ export default function ConsumerHome() {
       )}
 
       {/* Loading Overlay */}
-      {isLoadingLocation && (
+      {(isLoadingLocation || isMapLoading) && !mapError && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Getting your location...</Text>
-            <Text style={styles.loadingSubtext}>This may take a few seconds</Text>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading...</Text>
+            <Text style={styles.loadingSubtext}>
+              {isLoadingLocation ? "Getting your location" : "Loading map"}
+            </Text>
           </View>
         </View>
       )}
+
+      {/* Map Error View */}
+      {mapError && (
+        <View style={styles.errorContainer}>
+          <View style={styles.errorContent}>
+            <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
+            <Text style={styles.errorTitle}>Map Loading Error</Text>
+            <Text style={styles.errorMessage}>
+              Unable to load the map. Please check your internet connection.
+            </Text>
+            <TouchableOpacity style={styles.retryButton} onPress={retryLoadMap}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Filter Modal */}
+      <Modal
+        visible={isFilterModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsFilterModalOpen(false)}
+      >
+        <View style={styles.filterModalContainer}>
+          <View style={styles.filterModal}>
+            <Text style={styles.filterModalTitle}>Filter Options</Text>
+
+            <View style={styles.filterOption}>
+              <Text style={styles.filterOptionText}>Distance</Text>
+              <View style={styles.filterOptionValues}>
+                {['<1km', '<5km', '<10km', 'Any'].map((option) => (
+                  <TouchableOpacity key={option} style={styles.filterChip}>
+                    <Text style={styles.filterChipText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.filterOption}>
+              <Text style={styles.filterOptionText}>Category</Text>
+              <View style={styles.filterOptionValues}>
+                {['Food', 'Gas', 'Retail', 'All'].map((option) => (
+                  <TouchableOpacity key={option} style={styles.filterChip}>
+                    <Text style={styles.filterChipText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.filterOption}>
+              <Text style={styles.filterOptionText}>Rating</Text>
+              <View style={styles.ratingStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity key={star}>
+                    <Ionicons
+                      name={star <= 3 ? "star" : "star-outline"}
+                      size={24}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.filterModalButtons}>
+              <TouchableOpacity
+                style={[styles.filterModalButton, styles.filterModalButtonOutline]}
+                onPress={() => setIsFilterModalOpen(false)}
+              >
+                <Text style={styles.filterModalButtonOutlineText}>Reset</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterModalButton, styles.filterModalButtonFilled]}
+                onPress={() => setIsFilterModalOpen(false)}
+              >
+                <Text style={styles.filterModalButtonFilledText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -440,6 +711,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
+    backgroundColor: theme.colors.background,
   },
   map: {
     width: '100%',
@@ -447,6 +719,34 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.white,
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    ...theme.shadows.medium,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+  },
+  filterButton: {
+    padding: 8,
   },
   header: {
     position: 'absolute',
@@ -462,51 +762,31 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.white,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-    }),
-    elevation: 3,
+    ...theme.shadows.small,
   },
   menuButton: {
     width: 40,
     height: 40,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.white,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-    }),
-    elevation: 3,
+    ...theme.shadows.small,
   },
   bottomCard: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 450,
-    backgroundColor: 'white',
+    height: 400,
+    backgroundColor: theme.colors.white,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    ...theme.shadows.medium,
     alignItems: 'center',
     paddingTop: 60,
     paddingBottom: 40,
@@ -518,20 +798,16 @@ const styles = StyleSheet.create({
     top: -30,
     width: 80,
     height: 80,
-    backgroundColor: '#4682B4',
+    backgroundColor: theme.colors.primary,
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
+    ...theme.shadows.medium,
   },
   locationIconInner: {
     width: 50,
     height: 50,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.white,
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
@@ -541,21 +817,21 @@ const styles = StyleSheet.create({
     height: 25,
   },
   whereAreYouText: {
-    color: '#010E42',
+    color: theme.colors.primaryDark,
     fontSize: 20,
     fontWeight: '800',
     marginBottom: 15,
     textAlign: 'center',
-    fontFamily: 'Montserrat-ExtraBold',
+    fontFamily: theme.typography.bold,
   },
   descriptionText: {
-    color: 'black',
+    color: theme.colors.text,
     fontSize: 14,
     fontWeight: '200',
     marginBottom: 30,
     textAlign: 'center',
     lineHeight: 20,
-    fontFamily: 'Montserrat-Light',
+    fontFamily: theme.typography.light,
   },
   buttonsContainer: {
     width: '100%',
@@ -565,49 +841,42 @@ const styles = StyleSheet.create({
   setAutomaticallyButton: {
     width: '100%',
     height: 50,
-    backgroundColor: '#4682B4',
+    backgroundColor: theme.colors.primary,
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
+    ...theme.shadows.small,
   },
   setAutomaticallyText: {
-    color: 'white',
+    color: theme.colors.white,
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
+    fontFamily: theme.typography.medium,
   },
   setLaterButton: {
     width: '100%',
     height: 50,
     borderWidth: 1,
-    borderColor: '#4682B4',
+    borderColor: theme.colors.primary,
     borderRadius: 25,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
   setLaterText: {
-    color: '#131313',
+    color: theme.colors.text,
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
+    fontFamily: theme.typography.medium,
   },
   sidebar: {
     position: 'absolute',
     top: 0,
+    right: 0,
     width: Math.min(280, width * 0.8),
     height: '100%',
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    backgroundColor: theme.colors.white,
+    ...theme.shadows.medium,
     zIndex: 1000,
   },
   sidebarContent: {
@@ -618,7 +887,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 30,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   sidebarProfileImage: {
     width: 80,
@@ -632,14 +901,14 @@ const styles = StyleSheet.create({
   sidebarProfileName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
-    fontFamily: 'Montserrat-SemiBold',
+    fontFamily: theme.typography.semiBold,
   },
   sidebarProfileEmail: {
     fontSize: 14,
-    color: '#666',
-    fontFamily: 'Montserrat-Regular',
+    color: theme.colors.textLight,
+    fontFamily: theme.typography.regular,
   },
   menuList: {
     flex: 1,
@@ -652,17 +921,17 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
+    borderBottomColor: theme.colors.border,
   },
   menuItemText: {
     fontSize: 16,
-    color: '#333',
-    fontFamily: 'Montserrat-Medium',
+    color: theme.colors.text,
+    fontFamily: theme.typography.medium,
   },
   sidebarBottom: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: theme.colors.border,
   },
   switchButton: {
     backgroundColor: '#f8f9fa',
@@ -674,9 +943,9 @@ const styles = StyleSheet.create({
   },
   switchButtonText: {
     fontSize: 14,
-    color: '#4682B4',
+    color: theme.colors.primary,
     fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
+    fontFamily: theme.typography.medium,
   },
   signOutButton: {
     backgroundColor: '#ffe6e6',
@@ -687,9 +956,9 @@ const styles = StyleSheet.create({
   },
   signOutButtonText: {
     fontSize: 14,
-    color: '#e74c3c',
+    color: theme.colors.error,
     fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
+    fontFamily: theme.typography.medium,
   },
   menuOverlay: {
     position: 'absolute',
@@ -697,7 +966,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: theme.colors.overlay,
     zIndex: 999,
   },
   loadingOverlay: {
@@ -706,13 +975,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 30,
   },
   loadingContainer: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.white,
     padding: 30,
     borderRadius: 15,
     alignItems: 'center',
@@ -722,15 +991,186 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 8,
     textAlign: 'center',
-    fontFamily: 'Montserrat-SemiBold',
+    fontFamily: theme.typography.semiBold,
   },
   loadingSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textLight,
     textAlign: 'center',
-    fontFamily: 'Montserrat-Regular',
+    fontFamily: theme.typography.regular,
+  },
+  errorContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  errorContent: {
+    backgroundColor: theme.colors.white,
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    maxWidth: 280,
+    marginHorizontal: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.error,
+    marginBottom: 10,
+    fontFamily: theme.typography.semiBold,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: theme.typography.regular,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  storeListContainer: {
+    position: 'absolute',
+    bottom: 150,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    zIndex: 20,
+  },
+  storeList: {
+    gap: 15,
+  },
+  storeCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+    padding: 15,
+    width: 200,
+    ...theme.shadows.small,
+  },
+  storeCardIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  storeCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 5,
+    fontFamily: theme.typography.semiBold,
+  },
+  storeCardAddress: {
+    fontSize: 12,
+    color: theme.colors.textLight,
+    marginBottom: 8,
+    fontFamily: theme.typography.regular,
+  },
+  storeCardDistance: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontFamily: theme.typography.medium,
+  },
+  filterModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: theme.colors.overlay,
+  },
+  filterModal: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 20,
+    fontFamily: theme.typography.semiBold,
+    textAlign: 'center',
+  },
+  filterOption: {
+    marginBottom: 20,
+  },
+  filterOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.colors.text,
+    marginBottom: 10,
+    fontFamily: theme.typography.medium,
+  },
+  filterOptionValues: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: '#f0f8ff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#b3d9ff',
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontFamily: theme.typography.medium,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  filterModalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  filterModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  filterModalButtonOutline: {
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: 'transparent',
+  },
+  filterModalButtonOutlineText: {
+    color: theme.colors.primary,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  filterModalButtonFilled: {
+    backgroundColor: theme.colors.primary,
+  },
+  filterModalButtonFilledText: {
+    color: theme.colors.white,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
   },
 });
