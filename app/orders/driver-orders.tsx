@@ -131,7 +131,7 @@ export default function DriverOrders() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delivered',
-          onPress: () => {
+          onPress: async () => {
             setOrders(prev => 
               prev.map(order => 
                 order.id === orderId 
@@ -139,11 +139,29 @@ export default function DriverOrders() {
                   : order
               )
             );
+            
+            // Save completed delivery
+            try {
+              const completedOrders = await AsyncStorage.getItem('driverCompletedOrders');
+              const completed = completedOrders ? JSON.parse(completedOrders) : [];
+              const completedOrder = orders.find(o => o.id === orderId);
+              if (completedOrder) {
+                completed.push({ ...completedOrder, completedAt: new Date().toISOString() });
+                await AsyncStorage.setItem('driverCompletedOrders', JSON.stringify(completed));
+              }
+            } catch (error) {
+              console.error('Error saving completed order:', error);
+            }
+            
             Alert.alert('Success', 'Order marked as delivered! Earnings added to your account.');
           }
         }
       ]
     );
+  };
+
+  const viewOrderDetails = (orderId: string) => {
+    router.push(`/orders/order-details?id=${orderId}`);
   };
 
   const callCustomer = (phoneNumber: string, customerName: string) => {

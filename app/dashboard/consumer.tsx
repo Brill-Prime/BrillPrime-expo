@@ -194,6 +194,29 @@ export default function ConsumerDashboard() {
             </View>
           </View>
         </View>
+
+        <View style={styles.quickActionsContainer}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+              <TouchableOpacity
+                style={styles.quickActionCard}
+                onPress={async () => {
+                  // Check if there's a recent order to track
+                  const lastOrderId = await AsyncStorage.getItem('lastOrderId');
+                  if (lastOrderId) {
+                    router.push(`/orders/order-tracking?orderId=${lastOrderId}`);
+                  } else {
+                    router.push('/orders/consumer-orders');
+                  }
+                }}
+              >
+                <Ionicons name="receipt-outline" size={32} color="#4682B4" />
+                <Text style={styles.quickActionTitle}>My Orders</Text>
+                <Text style={styles.quickActionSubtitle}>View order history</Text>
+              </TouchableOpacity>
+          </View>
+        </View>
+
       </ScrollView>
     </LinearGradient>
   );
@@ -389,6 +412,35 @@ const getResponsiveStyles = (screenData: any) => {
     statLabel: {
       fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
       color: "rgba(255, 255, 255, 0.8)",
+      marginTop: 2,
+    },
+    quickActionsContainer: {
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    quickActionsRow: {
+      flexDirection: "row",
+      gap: Math.max(8, width * 0.02),
+    },
+    quickActionCard: {
+      flex: 1,
+      backgroundColor: "white",
+      padding: Math.max(12, width * 0.03),
+      borderRadius: 20,
+      alignItems: "center",
+      minHeight: isTablet ? 100 : 80,
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: "#e0e0e0",
+    },
+    quickActionTitle: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      fontWeight: "bold",
+      color: "#2c3e50",
+      marginTop: 5,
+    },
+    quickActionSubtitle: {
+      fontSize: isTablet ? 12 : isSmallScreen ? 9 : 10,
+      color: "#7f8c8d",
       marginTop: 2,
     },
   });

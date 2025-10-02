@@ -97,61 +97,66 @@ export default function CheckoutScreen() {
     setLoading(true);
 
     try {
-      // Create individual orders for each cart item
-      const orderPromises = cartItems.map(async (item) => {
-        const orderData = {
+      // Create orders for each cart item
+      const createdOrders = [];
+      
+      for (const item of cartItems) {
+        const orderId = `ORD${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const itemTotal = item.price * item.quantity;
+        
+        const order = {
+          id: orderId,
           commodityId: item.commodityId || item.id,
           commodityName: item.commodityName,
           commodityType: item.category || 'product',
           merchantId: item.merchantId,
           merchantName: item.merchantName,
-          deliveryType: 'yourself' as const,
+          deliveryType: 'yourself',
           quantity: item.quantity,
           unit: item.unit,
           unitPrice: item.price,
+          subtotal: itemTotal,
+          deliveryFee,
+          serviceFee,
+          totalAmount: itemTotal + deliveryFee + serviceFee,
+          deliveryAddress: selectedAddress.address,
           location: selectedAddress.address,
           notes: deliveryNotes,
-          paymentMethod,
-          totalAmount: (item.price * item.quantity),
-          deliveryFee: deliveryFee,
-          serviceFee: serviceFee,
-          grandTotal: (item.price * item.quantity) + deliveryFee + serviceFee
-        };
-
-        // Save individual order
-        const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        await AsyncStorage.setItem(`order_${orderId}`, JSON.stringify({
-          ...orderData,
-          id: orderId,
+          paymentMethod: paymentMethod === 'card' ? 'Card Payment' : 
+                        paymentMethod === 'bank' ? 'Bank Transfer' : 'Cash on Delivery',
           status: 'pending',
           orderDate: new Date().toISOString(),
-          estimatedDelivery: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        }));
+          estimatedDelivery: new Date(Date.now() + 45 * 60000).toISOString(),
+          itemType: item.category || 'product',
+        };
 
-        return orderId;
-      });
+        createdOrders.push(order);
+      }
 
-      const orderIds = await Promise.all(orderPromises);
+      // Save all orders
+      const existingOrders = await AsyncStorage.getItem('userOrders');
+      const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
+      allOrders.push(...createdOrders);
+      await AsyncStorage.setItem('userOrders', JSON.stringify(allOrders));
 
-      // Clear all cart-related storage
+      // Save last order ID for quick access
+      if (createdOrders.length > 0) {
+        await AsyncStorage.setItem('lastOrderId', createdOrders[0].id);
+      }
+
+      // Clear cart
       await AsyncStorage.multiRemove([
         'cartItems', 
         'checkoutItems', 
         'commoditiesCart'
       ]);
 
-      // Save order history
-      const existingOrders = await AsyncStorage.getItem('userOrders');
-      const orders = existingOrders ? JSON.parse(existingOrders) : [];
-      orders.push(...orderIds);
-      await AsyncStorage.setItem('userOrders', JSON.stringify(orders));
-
       Alert.alert(
         'Order Placed Successfully!',
-        `${orderIds.length} order(s) have been placed successfully. You will receive updates on their status.`,
+        `${createdOrders.length} order(s) placed successfully. You will receive updates on their status.`,
         [
-          { text: 'View Orders', onPress: () => router.push('/orders/consumer-orders') },
-          { text: 'Continue Shopping', onPress: () => router.push('/dashboard/consumer') }
+          { text: 'View Orders', onPress: () => router.replace('/orders/consumer-orders') },
+          { text: 'Continue Shopping', onPress: () => router.replace('/dashboard/consumer') }
         ]
       );
     } catch (error) {

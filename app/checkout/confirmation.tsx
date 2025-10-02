@@ -104,31 +104,48 @@ export default function ConfirmationScreen() {
     if (!orderData) return;
 
     setLoading(true);
-    setOrderStatus('idle'); // Reset status
+    setOrderStatus('idle');
 
     try {
-      // Real order submission
-      const { orderService } = await import('../../services/orderService');
-
-      const response = await orderService.createOrder({
+      // Create order with all details
+      const finalOrder = {
+        id: `ORD${Date.now()}`,
         commodityId: orderData.commodityId,
+        commodityName: orderData.commodityName,
+        commodityType: orderData.commodityType,
         merchantId: orderData.merchantId,
-        quantity: orderData.quantity,
-        deliveryAddress: orderData.location,
+        merchantName: orderData.merchantName,
         deliveryType: orderData.deliveryType,
         recipientName: orderData.recipientName,
         recipientPhone: orderData.recipientPhone,
-        specialInstructions: orderData.notes,
-        paymentMethodId: 'default' // TODO: Get from payment selection
-      });
+        quantity: orderData.quantity,
+        unit: orderData.unit,
+        unitPrice: orderData.unitPrice,
+        subtotal: getSubtotal(),
+        deliveryFee,
+        serviceFee,
+        totalAmount: getTotalAmount(),
+        deliveryAddress: orderData.location,
+        notes: orderData.notes,
+        paymentMethod: paymentMethods.find(m => m.id === selectedPaymentMethod)?.title || 'Card Payment',
+        status: 'pending',
+        orderDate: new Date().toISOString(),
+        estimatedDelivery: new Date(Date.now() + 45 * 60000).toISOString(),
+        location: orderData.location,
+        itemType: orderData.commodityType,
+      };
 
-      if (response.success && response.data) {
-        await AsyncStorage.setItem('lastOrderId', response.data.id);
-        setOrderStatus('success');
-      } else {
-        console.error('Order creation failed:', response.error);
-        setOrderStatus('failed');
-      }
+      // Save order
+      const existingOrders = await AsyncStorage.getItem('userOrders');
+      const orders = existingOrders ? JSON.parse(existingOrders) : [];
+      orders.push(finalOrder);
+      await AsyncStorage.setItem('userOrders', JSON.stringify(orders));
+      await AsyncStorage.setItem('lastOrderId', finalOrder.id);
+
+      // Clear pending order
+      await AsyncStorage.removeItem('pendingOrder');
+
+      setOrderStatus('success');
     } catch (error) {
       console.error('Error confirming order:', error);
       setOrderStatus('failed');

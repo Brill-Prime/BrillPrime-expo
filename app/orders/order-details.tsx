@@ -171,16 +171,19 @@ export default function OrderDetails() {
     if (type === 'call') {
       Alert.alert('Call Driver', `Call ${order?.driverName}?`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => console.log('Calling driver...') },
+        { text: 'Call', onPress: () => {
+          // In a real app, this would initiate a phone call
+          Alert.alert('Calling...', `Connecting to ${order?.driverName}...`);
+        }},
       ]);
     } else {
-      // Navigate to chat screen
-      router.push(`/chat/conv_${order?.id}`);
+      setShowDriverCommunication(false);
+      router.push(`/chat/conv_driver_${order?.id}`);
     }
   };
 
   const handleContactMerchant = () => {
-    // Navigate to chat screen for merchant
+    setShowMerchantCommunication(false);
     router.push(`/chat/conv_merchant_${order?.id}`);
   };
 
