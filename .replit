@@ -14,7 +14,7 @@ run = ["npx", "serve", "dist", "-s", "-l", "5000"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Start App"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -23,19 +23,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Frontend"
-
-[[workflows.workflow]]
-name = "Frontend"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx expo start --web --port 5000 --host lan"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
+args = "Expo Web Server"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -50,6 +38,18 @@ args = "npm install"
 task = "shell.exec"
 args = "npx expo start --web --port 5000"
 
+[[workflows.workflow]]
+name = "Expo Web Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run web"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -57,6 +57,10 @@ externalPort = 80
 [[ports]]
 localPort = 5001
 externalPort = 3001
+
+[[ports]]
+localPort = 38123
+externalPort = 3002
 
 [[ports]]
 localPort = 46753

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
-import MapViewDirections from 'react-native-maps-directions';
+const MapViewDirections = Platform.OS === 'web' ? null : require('react-native-maps-directions').default;
 import { locationService } from '../../services/locationService';
 import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
@@ -433,7 +433,7 @@ export default function ConsumerHome() {
               />
             ))}
 
-            {selectedDestination && (
+            {selectedDestination && MapViewDirections && (
               <MapViewDirections
                 origin={region}
                 destination={selectedDestination.coords}

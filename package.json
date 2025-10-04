@@ -57,6 +57,7 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "^1.11.0",
     "react-native-maps": "^1.26.0",
+    "react-native-maps-directions": "^1.9.0",
     "react-native-otp-verify": "^1.1.8",
     "react-native-paystack-webview": "^5.0.2",
     "react-native-reanimated": "~3.17.4",

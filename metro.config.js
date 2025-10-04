@@ -5,6 +5,9 @@ const config = getDefaultConfig(__dirname);
 // Add support for Ionicons fonts
 config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2');
 
+// Configure platform-specific extensions
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 'tsx', 'json'];
+
 // Configure for Replit environment
 config.server = {
   ...config.server,
@@ -23,6 +26,21 @@ config.server = {
       return middleware(req, res, next);
     };
   },
+};
+
+// Block react-native-maps from being bundled on web
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web' && moduleName === 'react-native-maps') {
+    return {
+      type: 'empty',
+    };
+  }
+  if (platform === 'web' && moduleName === 'react-native-maps-directions') {
+    return {
+      type: 'empty',
+    };
+  }
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = config;
