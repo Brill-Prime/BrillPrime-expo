@@ -60,8 +60,8 @@ const MapWeb: React.FC<MapProps> = ({
   const [clusteredStores, setClusteredStores] = useState<any[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const maxRetries = 3;
-  const retryTimeoutRef = useRef<NodeJS.Timeout>();
-  const liveTrackingRef = useRef<NodeJS.Timeout>();
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const liveTrackingRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     // Check network status
@@ -80,7 +80,7 @@ const MapWeb: React.FC<MapProps> = ({
         setMapError(false);
         
         // Simulate network request
-        await new Promise((resolve, reject) => {
+        await new Promise<boolean>((resolve, reject) => {
           setTimeout(() => {
             if (isOffline && retryCount === 0) {
               reject(new Error('Network unavailable'));

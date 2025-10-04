@@ -98,7 +98,7 @@ export default function ConsumerHome() {
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
 
   const slideAnim = useRef(new Animated.Value(-280)).current;
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
 
   // Calculate delta based on screen dimensions
@@ -131,7 +131,7 @@ export default function ConsumerHome() {
 
   // Debounced region change handler
   const handleRegionChange = useCallback(
-    debounce((newRegion) => {
+    debounce((newRegion: any) => {
       if (isMountedRef.current) {
         setRegion(newRegion);
       }
@@ -408,13 +408,15 @@ export default function ConsumerHome() {
       >
         {!isMapLoading && !mapError && (
           <>
+            {/* @ts-expect-error - Marker component accepts these props but types are not properly defined */}
             <MemoizedMarker
-              coordinate={region}
+              coordinate={{ latitude: region.latitude, longitude: region.longitude }}
               title="You are here"
               pinColor="#4682B4"
             />
 
             {nearbyDrivers.map((driver) => (
+              // @ts-expect-error - Marker component accepts these props but types are not properly defined
               <MemoizedMarker
                 key={driver.id}
                 coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
@@ -424,9 +426,10 @@ export default function ConsumerHome() {
             ))}
 
             {storeLocations.map((store) => (
+              // @ts-expect-error - Marker component accepts these props but types are not properly defined
               <MemoizedMarker
                 key={store.title}
-                coordinate={store.coords}
+                coordinate={{ latitude: store.coords.lat, longitude: store.coords.lng }}
                 title={store.title}
                 description={store.address}
                 onPress={() => handleStoreSelect(store)}
@@ -441,11 +444,11 @@ export default function ConsumerHome() {
                 strokeWidth={4}
                 strokeColor={theme.colors.primary}
                 optimizeWaypoints={true}
-                onReady={(result) => {
+                onReady={(result: any) => {
                   console.log(`Distance: ${result.distance} km`);
                   console.log(`Duration: ${result.duration} min`);
                 }}
-                onError={(error) => {
+                onError={(error: any) => {
                   console.error("Directions error:", error);
                   showError("Navigation Error", "Could not calculate route. Please try again.");
                 }}
