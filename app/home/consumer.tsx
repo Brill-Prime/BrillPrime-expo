@@ -97,7 +97,7 @@ export default function ConsumerHome() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
 
-  const slideAnim = useRef(new Animated.Value(-280)).current;
+  const slideAnim = useRef(new Animated.Value(-Math.min(280, width * 0.8))).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
 
@@ -875,7 +875,6 @@ const styles = StyleSheet.create({
   sidebar: {
     position: 'absolute',
     top: 0,
-    right: 0,
     width: Math.min(280, width * 0.8),
     height: '100%',
     backgroundColor: theme.colors.white,
