@@ -1,3 +1,6 @@
+// Import merchantService
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { merchantService } = require('../../services/merchantService');
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -867,11 +870,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    marginTop: 20,
-    marginBottom: 20,
-  },
+  // Removed duplicate actionButtons definition (keep the one with gap: 10)
   favoriteButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -937,14 +936,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  quantityButton: {
-    backgroundColor: '#2f75c2',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // Removed duplicate quantityButton definition (keep the one with backgroundColor: '#2f75c2', width: 40, ...)
   quantityButtonText: {
     color: '#fff',
     fontSize: 18,
@@ -960,11 +952,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginHorizontal: 15,
   },
-  quantityUnit: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-  },
+  // Removed duplicate quantityUnit definition (keep the one with fontSize: 14, color: '#666', marginBottom: 20)
   modalActions: {
     flexDirection: 'row',
     gap: 15,

@@ -57,7 +57,7 @@ export default function CommoditiesScreen() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
 
-  // Mock data for categories
+  // Static categories (can be fetched from API if available)
   const categories: Category[] = [
     { id: 1, name: 'Fuel & Energy', icon: 'car-outline', description: 'Petrol, Diesel, Gas' },
     { id: 2, name: 'Food & Beverages', icon: 'restaurant-outline', description: 'Fresh food, drinks' },
@@ -80,71 +80,44 @@ export default function CommoditiesScreen() {
     { id: 19, name: 'Vehicle Service', icon: 'build-outline', description: 'Auto repair & maintenance' },
   ];
 
-  // Mock data for products
-  const products: Product[] = [
-    {
-      id: '1',
-      name: 'Premium Petrol',
-      description: 'High-quality unleaded petrol with engine cleaning additives',
-      price: '650',
-      unit: 'liter',
-      inStock: true,
-      rating: 4.5,
-      reviewCount: 125,
-      minimumOrder: 5,
-      categoryId: 1,
-      merchantId: '1',
-      merchantName: 'Lagos Fuel Station',
-      merchantLocation: 'Victoria Island, Lagos'
-    },
-    {
-      id: '2',
-      name: 'Fresh Tomatoes',
-      description: 'Farm-fresh locally sourced tomatoes, perfect for cooking',
-      price: '800',
-      unit: 'kg',
-      inStock: true,
-      rating: 4.2,
-      reviewCount: 89,
-      minimumOrder: 1,
-      categoryId: 2,
-      merchantId: '2',
-      merchantName: 'Victoria Island Market',
-      merchantLocation: 'Victoria Island, Lagos'
-    },
-    {
-      id: '3',
-      name: 'Rice (Local)',
-      description: 'Premium quality local rice, well processed and clean',
-      price: '1200',
-      unit: 'kg',
-      inStock: true,
-      rating: 4.7,
-      reviewCount: 234,
-      minimumOrder: 2,
-      categoryId: 3,
-      merchantId: '3',
-      merchantName: 'Alaba Market',
-      merchantLocation: 'Alaba, Lagos'
-    },
-    {
-      id: '4',
-      name: 'Paracetamol Tablets',
-      description: 'Pain relief and fever reducer, 500mg tablets',
-      price: '150',
-      unit: 'pack',
-      inStock: true,
-      rating: 4.8,
-      reviewCount: 67,
-      minimumOrder: 1,
-      categoryId: 4,
-      merchantId: '4',
-      merchantName: 'HealthPlus Pharmacy',
-      merchantLocation: 'Ikeja, Lagos'
-    }
-  ];
+  // Real products state
+  const [products, setProducts] = useState<Product[]>([]);
 
+  // Import merchantService
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { merchantService } = require('../../services/merchantService');
   useEffect(() => {
+  // Fetch products from API when a category is selected
+  useEffect(() => {
+    if (viewMode === 'products' && selectedCategory) {
+      setLoading(true);
+      merchantService.getCommodities({ category: categories.find(c => c.id === selectedCategory)?.name })
+        .then((response: any) => {
+          if (response.success && Array.isArray(response.data)) {
+            // Map API data to Product[] if needed
+            setProducts(response.data.map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              description: item.description,
+              price: item.price?.toString() || '0',
+              unit: item.unit || '',
+              inStock: item.availability === 'In Stock',
+              rating: item.rating || 0,
+              reviewCount: item.reviewCount || 0,
+              minimumOrder: item.minimumOrder || 1,
+              categoryId: selectedCategory,
+              merchantId: item.merchantId || '',
+              merchantName: item.merchantName || '',
+              merchantLocation: item.merchantLocation || '',
+            })));
+          } else {
+            setProducts([]);
+          }
+        })
+        .catch(() => setProducts([]))
+        .finally(() => setLoading(false));
+    }
+  }, [viewMode, selectedCategory]);
     loadCartItems();
     loadFavorites();
 

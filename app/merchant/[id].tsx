@@ -191,14 +191,28 @@ export default function MerchantDetailScreen() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showCommunicationModal, setShowCommunicationModal] = useState(false);
 
+  // Import merchantService
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { merchantService } = require('../../services/merchantService');
+
   useEffect(() => {
-    if (id && MERCHANT_DATA[id as keyof typeof MERCHANT_DATA]) {
-      setMerchant(MERCHANT_DATA[id as keyof typeof MERCHANT_DATA]);
-    } else {
-      Alert.alert("Error", "Merchant not found", [
-        { text: "Go Back", onPress: () => router.back() }
-      ]);
-    }
+    if (!id) return;
+    setMerchant(null);
+    merchantService.getMerchant(id)
+      .then((response: any) => {
+        if (response.success && response.data) {
+          setMerchant(response.data);
+        } else {
+          Alert.alert("Error", "Merchant not found", [
+            { text: "Go Back", onPress: () => router.back() }
+          ]);
+        }
+      })
+      .catch(() => {
+        Alert.alert("Error", "Merchant not found", [
+          { text: "Go Back", onPress: () => router.back() }
+        ]);
+      });
   }, [id]);
 
   if (!merchant) {

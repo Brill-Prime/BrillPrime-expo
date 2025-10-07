@@ -1,66 +1,67 @@
 
+
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
 
+// Import merchantService
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { merchantService } = require('../../services/merchantService');
+
 export default function MerchantAnalytics() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [analyticsData, setAnalyticsData] = useState({
-    totalSales: 125000,
-    totalOrders: 243,
-    averageOrderValue: 514,
-    topSellingProducts: [
-      { name: "Premium Petrol", sales: 45, revenue: 29250, category: "fuel" },
-      { name: "Engine Oil", sales: 32, revenue: 272000, category: "lubricants" },
-      { name: "Diesel", sales: 28, revenue: 16240, category: "fuel" },
-    ],
-    monthlyGrowth: 15.6,
-    customerRetention: 78.3,
-    dailySales: [
-      { date: '2024-01-15', sales: 15000, orders: 12 },
-      { date: '2024-01-16', sales: 18500, orders: 15 },
-      { date: '2024-01-17', sales: 22000, orders: 18 },
-      { date: '2024-01-18', sales: 19500, orders: 16 },
-      { date: '2024-01-19', sales: 25000, orders: 20 },
-      { date: '2024-01-20', sales: 21000, orders: 17 },
-      { date: '2024-01-21', sales: 23500, orders: 19 },
-    ],
-    categoryBreakdown: [
-      { category: 'fuel', percentage: 65, revenue: 81250 },
-      { category: 'lubricants', percentage: 25, revenue: 31250 },
-      { category: 'accessories', percentage: 10, revenue: 12500 },
-    ],
-    customerMetrics: {
-      newCustomers: 24,
-      returningCustomers: 67,
-      averageOrdersPerCustomer: 2.6,
-      customerSatisfaction: 4.7,
-    },
-    inventoryMetrics: {
-      totalItems: 45,
-      lowStockItems: 8,
-      outOfStockItems: 3,
-      turnoverRate: 12.5,
-    },
-    paymentMethods: [
-      { method: 'Card', percentage: 45, amount: 56250 },
-      { method: 'Bank Transfer', percentage: 35, amount: 43750 },
-      { method: 'Mobile Money', percentage: 20, amount: 25000 },
-    ]
-  });
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  // TODO: Replace with actual merchantId from auth/user context or navigation params
+  const merchantId = 'merchant1';
 
   useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        const response = await merchantService.getAnalytics
+          ? await merchantService.getAnalytics(merchantId)
+          : { success: false };
+        if (response.success && response.data) {
+          setAnalyticsData(response.data);
+        } else {
+          setAnalyticsData(null);
+        }
+      } catch (error) {
+        setAnalyticsData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalytics();
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-
     return () => subscription?.remove();
   }, []);
 
   const styles = getResponsiveStyles(screenData);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B1A51' }}>
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={{ color: '#fff', marginTop: 16 }}>Loading analytics...</Text>
+      </View>
+    );
+  }
+
+  if (!analyticsData) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B1A51' }}>
+        <Ionicons name="alert-circle-outline" size={48} color="#fff" />
+        <Text style={{ color: '#fff', marginTop: 16 }}>No analytics data available.</Text>
+      </View>
+    );
+  }
 
   return (
     <LinearGradient
@@ -491,7 +492,7 @@ const getResponsiveStyles = (screenData: any) => {
     },
     chart: {
       flexDirection: "row",
-      alignItems: "end",
+  alignItems: "flex-end",
       height: 120,
       justifyContent: "space-around",
     },

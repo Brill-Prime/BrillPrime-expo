@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 
 const { width } = Dimensions.get('window');
@@ -54,80 +54,46 @@ export default function MerchantCommoditiesScreen() {
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  // Get merchantId from navigation params or context (update as needed)
+  // TODO: Replace with actual merchantId from auth/user context or navigation params
+  const merchantId = 'merchant1'; // fallback for demo
+
+  // Import merchantService
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { merchantService } = require('../../services/merchantService');
   
 
   useEffect(() => {
-    loadCommodities();
+    const fetchCommodities = async () => {
+      try {
+        setLoading(true);
+        const response = await merchantService.getMerchantCommodities(merchantId);
+        if (response.success && Array.isArray(response.data)) {
+          setCommodities(response.data);
+        } else {
+          setCommodities([]);
+        }
+      } catch (error) {
+        console.error('Error loading commodities:', error);
+        showError('Error', 'Failed to load commodities');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCommodities();
 
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
 
-    // Reload commodities when screen is focused
-    const unsubscribe = router.addListener?.('focus', () => {
-      loadCommodities();
-    });
-
+    // Clean up subscription only
     return () => {
       subscription?.remove();
-      unsubscribe?.();
     };
   }, []);
 
-  const loadCommodities = async () => {
-    try {
-      setLoading(true);
-      const savedCommodities = await AsyncStorage.getItem('merchantCommodities');
-      if (savedCommodities) {
-        setCommodities(JSON.parse(savedCommodities));
-      } else {
-        // Load sample data for demo
-        const sampleCommodities: Commodity[] = [
-          {
-            id: '1',
-            name: 'Premium Petrol',
-            description: 'High-quality unleaded petrol with engine cleaning additives',
-            category: 'petrol',
-            unit: 'Litres',
-            price: 650,
-            image: require('../../assets/images/consumer_order_fuel_icon.png'),
-            inStock: true,
-            createdAt: new Date().toISOString(),
-            merchantId: 'merchant1',
-          },
-          {
-            id: '2',
-            name: 'Diesel Fuel',
-            description: 'Clean burning diesel fuel for vehicles and generators',
-            category: 'petrol',
-            unit: 'Litres',
-            price: 580,
-            image: require('../../assets/images/order_fuel_icon.png'),
-            inStock: true,
-            createdAt: new Date().toISOString(),
-            merchantId: 'merchant1',
-          }
-        ];
-        setCommodities(sampleCommodities);
-        await AsyncStorage.setItem('merchantCommodities', JSON.stringify(sampleCommodities));
-      }
-    } catch (error) {
-      console.error('Error loading commodities:', error);
-      showError('Error', 'Failed to load commodities');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveCommodities = async (updatedCommodities: Commodity[]) => {
-    try {
-      await AsyncStorage.setItem('merchantCommodities', JSON.stringify(updatedCommodities));
-      setCommodities(updatedCommodities);
-    } catch (error) {
-      console.error('Error saving commodities:', error);
-      showError('Error', 'Failed to save commodities');
-    }
-  };
+  // Remove saveCommodities and AsyncStorage usage for real API
 
   const handleGoBack = () => {
     router.back();
@@ -150,7 +116,7 @@ export default function MerchantCommoditiesScreen() {
       `Are you sure you want to delete "${commodity.name}"?`,
       () => {
         const updatedCommodities = commodities.filter(c => c.id !== commodity.id);
-        saveCommodities(updatedCommodities);
+        setCommodities(updatedCommodities);
         showSuccess('Success', 'Commodity deleted successfully');
       }
     );
@@ -163,7 +129,7 @@ export default function MerchantCommoditiesScreen() {
           ? { ...c, inStock: !c.inStock }
           : c
       );
-      await saveCommodities(updatedCommodities);
+      setCommodities(updatedCommodities);
       showSuccess(
         'Stock Updated', 
         `${commodity.name} is now ${!commodity.inStock ? 'in stock' : 'out of stock'}`

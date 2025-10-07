@@ -40,7 +40,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     config.apiBaseUrl = config.apiBaseUrl || (replitUrl ? `https://${replitUrl}` : 'http://localhost:3000');
   } else {
     // Production - use your deployed backend URL
-    config.apiBaseUrl = config.apiBaseUrl || 'https://your-backend-app.onrender.com';
+    config.apiBaseUrl = config.apiBaseUrl || 'https://api.brillprime.com';
   }
 
   return config;
