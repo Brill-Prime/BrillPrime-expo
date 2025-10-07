@@ -91,8 +91,29 @@ export default function AdminKYCVerification() {
       setScreenData(window);
     });
     
+    loadKYCDocuments();
+    
     return () => subscription?.remove();
   }, []);
+
+  const loadKYCDocuments = async () => {
+    try {
+      const token = await AsyncStorage.getItem('adminToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/documents`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(data.documents || []);
+      }
+    } catch (error) {
+      console.error('Error loading KYC documents:', error);
+      // Keep using mock data as fallback
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -142,20 +163,42 @@ export default function AdminKYCVerification() {
   const handleApproveDocument = async () => {
     if (!selectedDocument) return;
 
-    setDocuments(prev => 
-      prev.map(doc => 
-        doc.id === selectedDocument.id 
-          ? { 
-              ...doc, 
-              status: 'APPROVED' as const,
-              reviewedAt: new Date().toISOString()
-            }
-          : doc
-      )
-    );
+    try {
+      // Call API to approve document
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({
+          documentId: selectedDocument.id,
+          userId: selectedDocument.userId,
+          notes: actionNotes
+        })
+      });
 
-    setShowReviewModal(false);
-    Alert.alert('Success', 'Document approved successfully');
+      if (!response.ok) throw new Error('Failed to approve document');
+
+      setDocuments(prev => 
+        prev.map(doc => 
+          doc.id === selectedDocument.id 
+            ? { 
+                ...doc, 
+                status: 'APPROVED' as const,
+                reviewedAt: new Date().toISOString()
+              }
+            : doc
+        )
+      );
+
+      setShowReviewModal(false);
+      setActionNotes('');
+      Alert.alert('Success', 'Document approved successfully');
+    } catch (error) {
+      console.error('Error approving document:', error);
+      Alert.alert('Error', 'Failed to approve document. Please try again.');
+    }
   };
 
   const handleRejectDocument = async () => {
@@ -164,22 +207,44 @@ export default function AdminKYCVerification() {
       return;
     }
 
-    setDocuments(prev => 
-      prev.map(doc => 
-        doc.id === selectedDocument.id 
-          ? { 
-              ...doc, 
-              status: 'REJECTED' as const,
-              reviewedAt: new Date().toISOString(),
-              rejectionReason: rejectionReason.trim()
-            }
-          : doc
-      )
-    );
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({
+          documentId: selectedDocument.id,
+          userId: selectedDocument.userId,
+          reason: rejectionReason.trim(),
+          notes: actionNotes
+        })
+      });
 
-    setShowReviewModal(false);
-    setRejectionReason('');
-    Alert.alert('Success', 'Document rejected with reason');
+      if (!response.ok) throw new Error('Failed to reject document');
+
+      setDocuments(prev => 
+        prev.map(doc => 
+          doc.id === selectedDocument.id 
+            ? { 
+                ...doc, 
+                status: 'REJECTED' as const,
+                reviewedAt: new Date().toISOString(),
+                rejectionReason: rejectionReason.trim()
+              }
+            : doc
+        )
+      );
+
+      setShowReviewModal(false);
+      setRejectionReason('');
+      setActionNotes('');
+      Alert.alert('Success', 'Document rejected with reason');
+    } catch (error) {
+      console.error('Error rejecting document:', error);
+      Alert.alert('Error', 'Failed to reject document. Please try again.');
+    }
   };
 
   const handleBatchAction = (action: 'approve' | 'reject') => {

@@ -106,8 +106,29 @@ export default function AdminModeration() {
       setScreenData(window);
     });
     
+    loadModerationReports();
+    
     return () => subscription?.remove();
   }, []);
+
+  const loadModerationReports = async () => {
+    try {
+      const token = await AsyncStorage.getItem('adminToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/moderation/reports`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReports(data.reports || []);
+      }
+    } catch (error) {
+      console.error('Error loading moderation reports:', error);
+      // Keep using mock data as fallback
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -165,7 +186,7 @@ export default function AdminModeration() {
     setShowActionModal(true);
   };
 
-  const executeAction = (action: 'resolve' | 'dismiss' | 'escalate') => {
+  const executeAction = async (action: 'resolve' | 'dismiss' | 'escalate') => {
     if (!selectedReport) return;
 
     Alert.alert(
@@ -175,20 +196,42 @@ export default function AdminModeration() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: () => {
-            setReports(prev => 
-              prev.map(report => 
-                report.id === selectedReport.id 
-                  ? { 
-                      ...report, 
-                      status: action === 'resolve' ? 'RESOLVED' : action === 'dismiss' ? 'DISMISSED' : 'REVIEWED'
-                    }
-                  : report
-              )
-            );
-            setShowActionModal(false);
-            setActionNotes('');
-            Alert.alert('Success', `Report ${action}d successfully.`);
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('adminToken');
+              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/moderation/${action}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  reportId: selectedReport.id,
+                  contentId: selectedReport.contentId,
+                  contentType: selectedReport.contentType,
+                  notes: actionNotes
+                })
+              });
+
+              if (!response.ok) throw new Error(`Failed to ${action} report`);
+
+              setReports(prev => 
+                prev.map(report => 
+                  report.id === selectedReport.id 
+                    ? { 
+                        ...report, 
+                        status: action === 'resolve' ? 'RESOLVED' : action === 'dismiss' ? 'DISMISSED' : 'REVIEWED'
+                      }
+                    : report
+                )
+              );
+              setShowActionModal(false);
+              setActionNotes('');
+              Alert.alert('Success', `Report ${action}d successfully.`);
+            } catch (error) {
+              console.error(`Error ${action}ing report:`, error);
+              Alert.alert('Error', `Failed to ${action} report. Please try again.`);
+            }
           }
         }
       ]
