@@ -233,7 +233,7 @@ export default function SearchScreen() {
       commodity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       commodity.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       commodity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      commodity.merchants.some(merchant => merchant.toLowerCase().includes(searchQuery.toLowerCase()))
+      (Array.isArray(commodity.merchants) && commodity.merchants.some((merchant: string) => merchant.toLowerCase().includes(searchQuery.toLowerCase())))
     );
 
     if (selectedCategory !== 'all') {
@@ -481,12 +481,19 @@ export default function SearchScreen() {
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data if actual service is not available
-      setFilteredMerchants(MOCK_MERCHANTS);
+      // Call real API endpoint for merchants
+      const response = await merchantService.getMerchants();
+      if (response.success && response.data) {
+        setAllMerchants(response.data);
+        setFilteredMerchants(response.data);
+      } else {
+        setAllMerchants([]);
+        setFilteredMerchants([]);
+      }
     } catch (error) {
       console.error('Error loading merchants:', error);
       setAllMerchants([]);
-      setFilteredMerchants([]); // Fallback on error
+      setFilteredMerchants([]);
     } finally {
       setLoading(false);
     }
@@ -495,12 +502,19 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data
-      setFilteredCommodities(MOCK_COMMODITIES);
+      // Call real API endpoint for commodities/products
+      const response = await merchantService.getCommodities();
+      if (response.success && response.data) {
+        setAllCommodities(response.data);
+        setFilteredCommodities(response.data);
+      } else {
+        setAllCommodities([]);
+        setFilteredCommodities([]);
+      }
     } catch (error) {
       console.error('Error loading commodities:', error);
       setAllCommodities([]);
-      setFilteredCommodities([]); // Fallback on error
+      setFilteredCommodities([]);
     } finally {
       setLoading(false);
     }
@@ -863,7 +877,7 @@ export default function SearchScreen() {
                       <Text style={styles.merchantName}>{merchant.name}</Text>
                       <Text style={styles.merchantType}>{merchant.type}</Text>
                       <Text style={styles.merchantAddress}>
-                        {typeof merchant.address === 'string' ? merchant.address : (merchant.address?.street || 'Address not available')}
+                        {merchant.address || 'Address not available'}
                       </Text>
                       <View style={styles.merchantStatus}>
                         <View style={[
@@ -877,15 +891,7 @@ export default function SearchScreen() {
                     </View>
                     <View style={styles.distanceContainer}>
                       <Text style={styles.distance}>
-                        {userLocation && merchant.address && typeof merchant.address !== 'string' && merchant.address.coordinates
-                          ? `${locationService.calculateDistance(
-                              userLocation.latitude,
-                              userLocation.longitude,
-                              merchant.address.coordinates.latitude,
-                              merchant.address.coordinates.longitude
-                            ).toFixed(1)} km`
-                          : 'N/A'
-                        }
+                        {'N/A'}
                       </Text>
                     </View>
                   </TouchableOpacity>
