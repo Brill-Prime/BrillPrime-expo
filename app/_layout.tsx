@@ -37,15 +37,23 @@ export default function RootLayout() {
         // Keep the splash screen visible while we fetch resources
         await SplashScreen.preventAutoHideAsync();
 
-        // Load Ionicons font
-        console.log('Loading Ionicons font...');
+        // Load fonts
+        console.log('Loading fonts...');
         await Font.loadAsync({
           ...Ionicons.font,
+          'Montserrat-Black': require('../assets/fonts/Montserrat-Black.ttf'),
+          'Montserrat-ExtraBold': require('../assets/fonts/Montserrat-ExtraBold.ttf'),
+          'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
+          'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
+          'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
+          'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
+          'Montserrat-Light': require('../assets/fonts/Montserrat-Light.ttf'),
+          'Montserrat-ExtraLight': require('../assets/fonts/Montserrat-ExtraLight.ttf'),
         });
-        console.log('Ionicons font loaded successfully');
+        console.log('Fonts loaded successfully');
 
       } catch (e) {
-        console.warn('Error loading fonts:', e);
+        console.error('Error loading fonts:', e);
       } finally {
         // Tell the application to render the child components
         setFontsLoaded(true);
