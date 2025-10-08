@@ -18,11 +18,25 @@ const firebaseConfig = {
   measurementId: "G-7T5QKZPDWW"
 };
 
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Initialize Firebase with error handling
+let app;
+let auth;
+let db;
+let storage;
+
+try {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  // Create fallback empty objects to prevent crashes
+  app = null as any;
+  auth = null as any;
+  db = null as any;
+  storage = null as any;
+}
 
 // Icon fallback configuration for web
 if (typeof window !== 'undefined') {

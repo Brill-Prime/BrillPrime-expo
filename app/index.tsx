@@ -11,6 +11,7 @@ export default function SplashScreenComponent() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -59,7 +60,7 @@ export default function SplashScreenComponent() {
         if (onboardingStatus !== 'true') {
           console.log('Redirecting to onboarding');
           if (isMounted) {
-            router.push('/onboarding/screen1');
+            router.replace('/onboarding/screen1');
           }
           return;
         }
@@ -71,7 +72,7 @@ export default function SplashScreenComponent() {
           console.log('Redirecting to signin');
           await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
           if (isMounted) {
-            router.push('/auth/signin');
+            router.replace('/auth/signin');
           }
           return;
         }
@@ -79,19 +80,20 @@ export default function SplashScreenComponent() {
         const role = await AsyncStorage.getItem('userRole');
         
         if (role === 'consumer' && isMounted) {
-          router.push('/home/consumer');
+          router.replace('/home/consumer');
         } else if (role === 'merchant' && isMounted) {
-          router.push('/home/merchant');
+          router.replace('/home/merchant');
         } else if (role === 'driver' && isMounted) {
-          router.push('/home/driver');
+          router.replace('/home/driver');
         } else if (isMounted) {
-          router.push('/auth/role-selection');
+          router.replace('/auth/role-selection');
         }
       } catch (error) {
         console.error('Error checking auth state:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error');
         await SplashScreen.hideAsync();
         if (isMounted) {
-          router.push('/onboarding/screen1');
+          router.replace('/onboarding/screen1');
         }
       }
     };
@@ -103,6 +105,22 @@ export default function SplashScreenComponent() {
       pulseAnimation.stop();
     };
   }, [router, fadeAnim, scaleAnim, pulseAnim]);
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.errorText}>Error: {error}</Text>
+          <Text style={styles.retryText} onPress={() => {
+            setError(null);
+            router.replace('/onboarding/screen1');
+          }}>
+            Tap to continue
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -158,5 +176,17 @@ const styles = StyleSheet.create({
   loadingContainer: {
     marginTop: 32,
     alignItems: "center",
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryText: {
+    color: '#3498db',
+    fontSize: 16,
+    textDecorationLine: 'underline',
   },
 });

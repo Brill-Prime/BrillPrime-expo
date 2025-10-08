@@ -11,15 +11,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#fff' }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#000' }}>
         Something went wrong
       </Text>
       <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
         {error.message}
       </Text>
+      <Text style={{ fontSize: 12, color: '#999', marginBottom: 20, textAlign: 'center' }}>
+        {error.stack?.substring(0, 200)}
+      </Text>
       <Text
-        style={{ color: '#007AFF', fontSize: 16 }}
+        style={{ color: '#007AFF', fontSize: 16, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 5 }}
         onPress={resetErrorBoundary}
       >
         Try again
