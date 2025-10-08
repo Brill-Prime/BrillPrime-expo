@@ -120,6 +120,18 @@ class PaymentService {
     });
   }
 
+  // Confirm transaction
+  async confirmTransaction(transactionId: string): Promise<ApiResponse<Transaction>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post<Transaction>(`/api/transactions/${transactionId}/confirm`, {}, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
   // Request refund
   async requestRefund(transactionId: string, reason: string): Promise<ApiResponse<{
     refundId: string;

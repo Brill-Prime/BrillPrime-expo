@@ -56,7 +56,7 @@ class AuthService {
 
       // Then, register the user with your backend API to store additional details like role, name, etc.
       // The backend will then return a token and user data that you'll store locally.
-      const response = await apiClient.post<AuthResponse>('/api/auth/signup', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/register', {
         ...data,
         firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
       });
@@ -136,7 +136,7 @@ class AuthService {
 
       // Then, authenticate with your backend using the Firebase UID or a token
       // For simplicity, we'll assume your backend can verify the Firebase UID and return your internal token
-      const response = await apiClient.post<AuthResponse>('/api/auth/signin', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/login', {
         email: data.email, // Pass email to backend for role verification if needed
         firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
       });
@@ -367,12 +367,17 @@ class AuthService {
 
   // Request password reset
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>('/api/auth/forgot-password', data);
+    return apiClient.post<{ message: string }>('/api/password-reset/request', data);
+  }
+
+  // Verify reset code
+  async verifyResetCode(email: string, code: string): Promise<ApiResponse<{ message: string }>> {
+    return apiClient.post<{ message: string }>('/api/password-reset/verify-code', { email, code });
   }
 
   // Confirm password reset
   async confirmPasswordReset(data: ConfirmPasswordResetRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>('/api/auth/reset-password', data);
+    return apiClient.post<{ message: string }>('/api/password-reset/complete', data);
   }
 
   // Get current user
@@ -412,7 +417,7 @@ class AuthService {
       }
 
       // Use the token from local storage to authenticate with the backend API
-      const response = await apiClient.get<User>('/api/auth/user', {
+      const response = await apiClient.get<User>('/api/auth/profile', {
         Authorization: `Bearer ${token}`,
       });
 
@@ -471,7 +476,7 @@ class AuthService {
       // Call API to invalidate token
       const token = await this.getToken();
       if (token) {
-        await apiClient.post('/api/auth/signout', {}, {
+        await apiClient.post('/api/jwt-tokens/logout', {}, {
           Authorization: `Bearer ${token}`,
         });
       }

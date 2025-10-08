@@ -124,7 +124,7 @@ class OrderService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<Order>(`/api/orders/${orderId}/status`, { status }, {
+    return apiClient.put<Order>(`/api/orders/${orderId}`, { status }, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -164,7 +164,7 @@ class OrderService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get(`/api/orders/${orderId}/track`, {
+    return apiClient.get(`/api/orders/${orderId}/tracking`, {
       Authorization: `Bearer ${token}`,
     });
   }

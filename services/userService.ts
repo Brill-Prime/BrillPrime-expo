@@ -53,7 +53,7 @@ class UserService {
       return { success: false, error: validation.error };
     }
 
-    return apiClient.put<User>('/api/user/profile', data, {
+    return apiClient.put<User>('/api/auth/profile', data, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -65,7 +65,7 @@ class UserService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<User>('/api/user/profile', {
+    return apiClient.get<User>('/api/auth/profile', {
       Authorization: `Bearer ${token}`,
     });
   }

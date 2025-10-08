@@ -6,14 +6,14 @@ class MigrationService {
   // Feature flags to control which services use real API
   private featureFlags = {
     useRealAuth: true,        // Auth is critical, should use real API
-    useRealMerchants: false,  // Start with mock, migrate gradually
-    useRealCommodities: false,
-    useRealOrders: false,
-    useRealPayments: false,
+    useRealMerchants: true,   // Using real backend API
+    useRealCommodities: true, // Using real backend API
+    useRealOrders: true,      // Using real backend API
+    useRealPayments: true,    // Using real backend API
     useRealKYC: true,         // KYC should use real validation
     useRealAdmin: true,       // Admin features should use real API
-    useRealNotifications: false,
-    useRealChat: false,
+    useRealNotifications: true, // Using real backend API
+    useRealChat: true,        // Using real backend API
   };
 
   // Check if a feature should use real API

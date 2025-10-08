@@ -25,18 +25,13 @@ export interface MerchantProfile {
 class MerchantService {
   // Get nearby merchants
   async getNearbyMerchants(latitude: number, longitude: number, radius: number = 5000): Promise<ApiResponse<Merchant[]>> {
-    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
-      console.log('Using mock merchants data');
-      return { success: true, data: [] };
-    }
-
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
     return apiClient.get<Merchant[]>(
-      `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`,
+      `/api/merchants?lat=${latitude}&lng=${longitude}&radius=${radius}`,
       { Authorization: `Bearer ${token}` }
     );
   }
@@ -157,13 +152,8 @@ class MerchantService {
     }
   }
 
-  // Get commodities
+  // Get commodities (products)
   async getCommodities(filters?: any): Promise<ApiResponse<Commodity[]>> {
-    if (!migrationService.shouldUseRealAPI('useRealCommodities')) {
-      console.log('Using mock commodities data');
-      return { success: true, data: [] };
-    }
-
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
@@ -177,27 +167,22 @@ class MerchantService {
     }
 
     const endpoint = queryParams.toString() 
-      ? `/api/commodities?${queryParams.toString()}`
-      : '/api/commodities';
+      ? `/api/products?${queryParams.toString()}`
+      : '/api/products';
 
     return apiClient.get<Commodity[]>(endpoint, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  // Get commodity by ID
+  // Get commodity by ID (product)
   async getCommodityById(commodityId: string): Promise<ApiResponse<Commodity>> {
-    if (!migrationService.shouldUseRealAPI('useRealCommodities')) {
-      console.log('Using mock commodity data');
-      return { success: true, data: {} as Commodity };
-    }
-
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<Commodity>(`/api/commodities/${commodityId}`, {
+    return apiClient.get<Commodity>(`/api/products/${commodityId}`, {
       Authorization: `Bearer ${token}`,
     });
   }
