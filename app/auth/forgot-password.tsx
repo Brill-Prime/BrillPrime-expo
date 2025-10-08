@@ -1,22 +1,29 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import AlertModal from "../../components/AlertModal";
 
 export default function ForgotPassword() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+      setErrorMessage("Please enter your email address");
+      setShowErrorModal(true);
       return;
     }
 
     if (!email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      setErrorMessage("Please enter a valid email address");
+      setShowErrorModal(true);
       return;
     }
 
@@ -78,18 +85,7 @@ export default function ForgotPassword() {
       setIsLoading(false);
       
       if (response.success) {
-        Alert.alert(
-          "Reset Link Sent!",
-          `A password reset link has been sent to ${email}. Please check your email and click the link to reset your password.`,
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                router.back(); // Go back to sign in
-              }
-            }
-          ]
-        );
+        setShowSuccessModal(true);
       } else {
         throw new Error("Failed to send email");
       }
@@ -97,7 +93,8 @@ export default function ForgotPassword() {
     } catch (error) {
       console.error("Error sending reset link:", error);
       setIsLoading(false);
-      Alert.alert("Error", "Failed to send reset link. Please try again.");
+      setErrorMessage("Failed to send reset link. Please try again.");
+      setShowErrorModal(true);
     }
   };
 
@@ -190,6 +187,29 @@ export default function ForgotPassword() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <AlertModal
+        visible={showSuccessModal}
+        type="success"
+        title="Reset Link Sent!"
+        message={`A password reset link has been sent to ${email}. Please check your email and click the link to reset your password.`}
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.back();
+        }}
+        confirmText="OK"
+      />
+
+      {/* Error Modal */}
+      <AlertModal
+        visible={showErrorModal}
+        type="error"
+        title="Error"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+        confirmText="OK"
+      />
     </KeyboardAvoidingView>
   );
 }
