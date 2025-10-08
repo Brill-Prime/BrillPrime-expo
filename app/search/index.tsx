@@ -392,9 +392,25 @@ export default function SearchScreen() {
         const coordinates = JSON.parse(savedLocation);
         setUserCoordinates(coordinates);
         setUserLocation(savedAddress || "Your Location");
+        
+        // Load nearby merchants when user location is available
+        if (coordinates.latitude && coordinates.longitude) {
+          await loadNearbyMerchantsFromAPI(coordinates.latitude, coordinates.longitude);
+        }
       }
     } catch (error) {
       console.error("Error loading user location:", error);
+    }
+  };
+
+  const loadNearbyMerchantsFromAPI = async (latitude: number, longitude: number) => {
+    try {
+      const response = await locationService.getNearbyMerchantsLive(latitude, longitude, 10);
+      if (response.success && response.data) {
+        setNearbyMerchants(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading nearby merchants:', error);
     }
   };
 
@@ -760,8 +776,35 @@ export default function SearchScreen() {
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data if actual service is not available
-      setFilteredMerchants(MOCK_MERCHANTS);
+      
+      if (userCoordinates) {
+        const { merchantService } = await import('../../services/merchantService');
+        const response = await merchantService.getNearbyMerchants(
+          userCoordinates.latitude,
+          userCoordinates.longitude,
+          filters.maxDistance * 1000 // Convert km to meters
+        );
+        
+        if (response.success && response.data) {
+          // Transform API data to match UI format
+          const merchants = response.data.map(m => ({
+            ...m,
+            distance: `${locationService.calculateDistance(
+              userCoordinates.latitude,
+              userCoordinates.longitude,
+              m.latitude,
+              m.longitude
+            ).toFixed(1)} km`
+          }));
+          setFilteredMerchants(merchants);
+        } else {
+          // Fallback to mock data
+          setFilteredMerchants(MOCK_MERCHANTS);
+        }
+      } else {
+        // No location, use mock data
+        setFilteredMerchants(MOCK_MERCHANTS);
+      }
     } catch (error) {
       console.error('Error loading merchants:', error);
       setFilteredMerchants(MOCK_MERCHANTS); // Fallback on error
@@ -773,8 +816,29 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data
-      setFilteredCommodities(MOCK_COMMODITIES);
+      
+      const { merchantService } = await import('../../services/merchantService');
+      const response = await merchantService.getCommodities({
+        category: filters.category !== 'all' ? filters.category : undefined
+      });
+      
+      if (response.success && response.data) {
+        // Transform API data to match UI format
+        const commodities = response.data.map(c => ({
+          id: c.id,
+          name: c.name,
+          category: c.category,
+          merchants: [c.merchantId || 'Unknown'],
+          price: `₦${c.price.toLocaleString()}`,
+          priceValue: c.price,
+          availability: c.stockQuantity > 0 ? 'In Stock' : 'Out of Stock',
+          description: c.description
+        }));
+        setFilteredCommodities(commodities);
+      } else {
+        // Fallback to mock data
+        setFilteredCommodities(MOCK_COMMODITIES);
+      }
     } catch (error) {
       console.error('Error loading commodities:', error);
       setFilteredCommodities(MOCK_COMMODITIES); // Fallback on error

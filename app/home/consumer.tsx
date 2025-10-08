@@ -111,23 +111,27 @@ export default function ConsumerHome() {
 
   // Fit map to show user location and nearby points
   const fitToUserLocation = useCallback(() => {
-    if (mapRef.current && nearbyDrivers.length > 0) {
+    if (mapRef.current && (nearbyDrivers.length > 0 || storeLocations.length > 0)) {
+      const locationsToShow = [
+        { latitude: region.latitude, longitude: region.longitude },
+        ...nearbyDrivers.map(driver => ({
+          latitude: driver.latitude,
+          longitude: driver.longitude,
+        })),
+        ...storeLocations.map(store => store.coords)
+      ];
       mapRef.current.fitToCoordinates(
-        [
-          { latitude: region.latitude, longitude: region.longitude },
-          ...nearbyDrivers.map(driver => ({
-            latitude: driver.latitude,
-            longitude: driver.longitude,
-          })),
-          ...storeLocations.map(store => store.coords)
-        ],
+        locationsToShow,
         {
-          edgePadding: { top: 100, right: 20, bottom: 400, left: 20 },
+          edgePadding: { top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 },
           animated: true
         }
       );
+    } else if (mapRef.current) {
+      // If no nearby points, just center on user location
+      mapRef.current.animateToRegion(region, 1000);
     }
-  }, [region, nearbyDrivers, storeLocations]);
+  }, [region, nearbyDrivers, storeLocations, isLocationSet]);
 
   // Debounced region change handler
   const handleRegionChange = useCallback(
@@ -138,6 +142,45 @@ export default function ConsumerHome() {
     }, 500),
     []
   );
+
+  const loadNearbyMerchants = async (latitude: number, longitude: number) => {
+    try {
+      // Load merchants from backend
+      const { merchantService } = await import('../../services/merchantService');
+      const response = await merchantService.getNearbyMerchants(latitude, longitude, 10000); // 10km radius
+
+      if (response.success && response.data) {
+        // Convert merchants to store locations format
+        const locations: StoreLocation[] = response.data.map(merchant => ({
+          title: merchant.name,
+          address: merchant.address,
+          coords: { lat: merchant.latitude, lng: merchant.longitude }
+        }));
+
+        setStoreLocations(locations);
+
+        // Also set as nearby merchants for tracking
+        setNearbyDrivers(response.data.map(m => ({
+          id: m.id,
+          latitude: m.latitude,
+          longitude: m.longitude,
+          name: m.name,
+          eta: calculateETA(latitude, longitude, m.latitude, m.longitude)
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading nearby merchants:', error);
+      showError("Loading Error", "Could not load nearby merchants. Please try again.");
+    }
+  };
+
+  const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
+    const distance = locationService.calculateDistance(lat1, lon1, lat2, lon2);
+    const avgSpeed = 30; // km/h average speed in urban areas
+    const timeInMinutes = Math.round((distance / avgSpeed) * 60);
+    return `${timeInMinutes} mins`;
+  };
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -158,14 +201,26 @@ export default function ConsumerHome() {
 
       const unsubscribe = locationService.onLocationUpdate((location) => {
         if (isMountedRef.current) {
+          // Update user's current region
+          const deltas = calculateDelta(location.latitude);
+          setRegion({
+            latitude: location.latitude,
+            longitude: location.longitude,
+            ...deltas,
+          });
+
+          // Load nearby merchants based on the new location
+          loadNearbyMerchants(location.latitude, location.longitude);
+
+          // Update driver positions (this is a mock, real implementation would come from backend)
           setNearbyDrivers(prev => [
-            ...prev.filter(d => d.id !== 'driver1'),
+            ...prev.filter(d => d.id !== 'driver1'), // Remove old driver1 if exists
             {
               id: 'driver1',
-              latitude: location.latitude + 0.002,
+              latitude: location.latitude + 0.002, // Simulate driver slightly ahead
               longitude: location.longitude + 0.002,
               name: 'Driver John',
-              eta: '5 mins'
+              eta: calculateETA(location.latitude, location.longitude, location.latitude + 0.002, location.longitude + 0.002)
             }
           ]);
         }
@@ -206,6 +261,11 @@ export default function ConsumerHome() {
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
+        // Load merchants near the saved location
+        loadNearbyMerchants(location.latitude, location.longitude);
+      } else {
+        // If no saved location, try to get current location immediately
+        handleSetLocationAutomatically();
       }
     } catch (error) {
       console.error("Error loading saved location:", error);
@@ -320,7 +380,8 @@ export default function ConsumerHome() {
 
             if (reverseGeocode.length > 0) {
               const address = reverseGeocode[0];
-              addressInfo = `${address.city || address.subregion || address.region}, ${address.country}`;
+              addressInfo = `${address.city || address.region || ''}, ${address.country || ''}`.trim().replace(/^,/, '');
+              if (!addressInfo) addressInfo = "Unknown Location";
             }
           } catch (geoError) {
             console.log("Geocoding failed, using default address");
@@ -333,6 +394,9 @@ export default function ConsumerHome() {
 
           await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
           await AsyncStorage.setItem("userAddress", addressInfo);
+
+          // Load merchants near the newly set location
+          loadNearbyMerchants(latitude, longitude);
 
           setIsLoadingLocation(false);
           showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
@@ -360,7 +424,8 @@ export default function ConsumerHome() {
     setSelectedDestination(store);
     if (mapRef.current) {
       mapRef.current.animateToRegion({
-        ...store.coords,
+        latitude: store.coords.lat,
+        longitude: store.coords.lng,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       }, 1000);
@@ -422,6 +487,9 @@ export default function ConsumerHome() {
                 coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
                 title={driver.name}
                 description={`ETA: ${driver.eta}`}
+                image={require('../../assets/images/car_icon.png')} // Assuming you have a car icon
+                anchor={{ x: 0.5, y: 0.5 }}
+                style={{ width: 40, height: 40 }}
               />
             ))}
 
@@ -440,7 +508,7 @@ export default function ConsumerHome() {
               <MapViewDirections
                 origin={region}
                 destination={selectedDestination.coords}
-                apikey="YOUR_GOOGLE_MAPS_API_KEY" // Replace with your actual API key
+                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"} // Replace with your actual API key
                 strokeWidth={4}
                 strokeColor={theme.colors.primary}
                 optimizeWaypoints={true}
@@ -529,7 +597,7 @@ export default function ConsumerHome() {
       )}
 
       {/* Store List (when location is set) */}
-      {isLocationSet && (
+      {isLocationSet && storeLocations.length > 0 && (
         <View style={styles.storeListContainer}>
           <ScrollView
             horizontal

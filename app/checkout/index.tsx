@@ -97,47 +97,58 @@ export default function CheckoutScreen() {
     setLoading(true);
 
     try {
+      const { orderService } = await import('../../services/orderService');
+      const { locationService } = await import('../../services/locationService');
+      
+      // Get user location for driver assignment
+      const userLocation = await AsyncStorage.getItem("userLocation");
+      const coordinates = userLocation ? JSON.parse(userLocation) : null;
+      
       // Create orders for each cart item
       const createdOrders = [];
       
       for (const item of cartItems) {
-        const orderId = `ORD${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const itemTotal = item.price * item.quantity;
         
-        const order = {
-          id: orderId,
+        const orderData = {
+          merchantId: item.merchantId || '',
           commodityId: item.commodityId || item.id,
-          commodityName: item.commodityName,
-          commodityType: item.category || 'product',
-          merchantId: item.merchantId,
-          merchantName: item.merchantName,
-          deliveryType: 'yourself',
           quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: item.price,
-          subtotal: itemTotal,
-          deliveryFee,
-          serviceFee,
-          totalAmount: itemTotal + deliveryFee + serviceFee,
           deliveryAddress: selectedAddress.address,
-          location: selectedAddress.address,
+          deliveryType: 'yourself' as const,
+          paymentMethod: paymentMethod === 'card' ? 'card' : 
+                        paymentMethod === 'bank' ? 'bank_transfer' : 'cash',
           notes: deliveryNotes,
-          paymentMethod: paymentMethod === 'card' ? 'Card Payment' : 
-                        paymentMethod === 'bank' ? 'Bank Transfer' : 'Cash on Delivery',
-          status: 'pending',
-          orderDate: new Date().toISOString(),
-          estimatedDelivery: new Date(Date.now() + 45 * 60000).toISOString(),
-          itemType: item.category || 'product',
+          coordinates: coordinates ? {
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude
+          } : undefined
         };
 
-        createdOrders.push(order);
+        // Call backend to create order and assign driver
+        const response = await orderService.createOrder(orderData);
+        
+        if (response.success && response.data) {
+          // Backend will automatically find nearest driver
+          createdOrders.push(response.data);
+          
+          // Save to local storage for offline access
+          const existingOrders = await AsyncStorage.getItem('userOrders');
+          const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
+          allOrders.push({
+            ...response.data,
+            commodityName: item.commodityName,
+            merchantName: item.merchantName,
+            unitPrice: item.price,
+            subtotal: itemTotal,
+            deliveryFee,
+            serviceFee,
+            totalAmount: itemTotal + deliveryFee + serviceFee,
+            itemType: item.category || 'product',
+          });
+          await AsyncStorage.setItem('userOrders', JSON.stringify(allOrders));
+        }
       }
-
-      // Save all orders
-      const existingOrders = await AsyncStorage.getItem('userOrders');
-      const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
-      allOrders.push(...createdOrders);
-      await AsyncStorage.setItem('userOrders', JSON.stringify(allOrders));
 
       // Save last order ID for quick access
       if (createdOrders.length > 0) {
@@ -153,10 +164,10 @@ export default function CheckoutScreen() {
 
       Alert.alert(
         'Order Placed Successfully!',
-        `${createdOrders.length} order(s) placed successfully. You will receive updates on their status.`,
+        `${createdOrders.length} order(s) placed successfully. A driver has been assigned and will pick up your order shortly.`,
         [
-          { text: 'View Orders', onPress: () => router.replace('/orders/consumer-orders') },
-          { text: 'Continue Shopping', onPress: () => router.replace('/dashboard/consumer') }
+          { text: 'Track Order', onPress: () => router.replace(`/orders/order-tracking?orderId=${createdOrders[0].id}`) },
+          { text: 'View Orders', onPress: () => router.replace('/orders/consumer-orders') }
         ]
       );
     } catch (error) {

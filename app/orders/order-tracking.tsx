@@ -35,13 +35,50 @@ export default function OrderTrackingScreen() {
       setScreenDimensions(window);
     });
 
-    return () => subscription?.remove();
+    // Poll for order updates every 30 seconds
+    const pollInterval = setInterval(() => {
+      loadOrderDetails();
+    }, 30000);
+
+    return () => {
+      subscription?.remove();
+      clearInterval(pollInterval);
+    };
   }, [orderId]);
 
   const loadOrderDetails = async () => {
     try {
       setLoading(true);
-      // Load order from storage
+      
+      // Try to load from backend first
+      const { orderService } = await import('../../services/orderService');
+      const response = await orderService.trackOrder(orderId as string);
+      
+      if (response.success && response.data) {
+        setOrderDetails(response.data.order);
+        
+        // Update local storage with latest data
+        const ordersData = await AsyncStorage.getItem('userOrders');
+        const orders = ordersData ? JSON.parse(ordersData) : [];
+        const updatedOrders = orders.map((o: any) => 
+          o.id === orderId ? response.data.order : o
+        );
+        await AsyncStorage.setItem('userOrders', JSON.stringify(updatedOrders));
+      } else {
+        // Fallback to local storage
+        const ordersData = await AsyncStorage.getItem('userOrders');
+        if (ordersData) {
+          const orders = JSON.parse(ordersData);
+          const order = orders.find((o: any) => o.id === orderId);
+          if (order) {
+            setOrderDetails(order);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading order details:', error);
+      
+      // Fallback to local storage on error
       const ordersData = await AsyncStorage.getItem('userOrders');
       if (ordersData) {
         const orders = JSON.parse(ordersData);
@@ -50,8 +87,6 @@ export default function OrderTrackingScreen() {
           setOrderDetails(order);
         }
       }
-    } catch (error) {
-      console.error('Error loading order details:', error);
     } finally {
       setLoading(false);
     }
