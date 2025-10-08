@@ -78,6 +78,19 @@ Preferred communication style: Simple, everyday language.
 - Maintained role-based authentication flow - users must select role before social login
 - All social auth methods properly handle errors, validate roles, and store authentication tokens
 - Type system updated to support both traditional and social authentication flows
+- **API Endpoints Fixed**: Updated to match backend expectations (`/api/auth/signup` and `/api/auth/signin`)
+- **Firebase Config**: Using brillprimefirebase project with valid credentials
+
+### Firebase Configuration Requirements
+**Important**: To enable social authentication, configure Firebase Console:
+1. Add authorized domain in Firebase Console → Authentication → Settings → Authorized domains:
+   - Replit domain: `8ccdf747-ee96-4994-a1c9-a4efe9a653ef-00-3isb1t4b1rif8.janeway.replit.dev`
+   - Production domain (when deployed)
+2. Enable social auth providers in Firebase Console → Authentication → Sign-in method:
+   - Google Sign-In
+   - Apple Sign-In (requires Apple Developer setup)
+   - Facebook Sign-In (requires Facebook App credentials)
+3. Configure OAuth consent screen and app credentials for each provider
 
 ### October 01, 2025 - Fresh GitHub Clone Setup
 - Successfully set up fresh GitHub clone in Replit environment

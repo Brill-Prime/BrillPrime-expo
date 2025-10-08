@@ -56,7 +56,7 @@ class AuthService {
 
       // Then, register the user with your backend API to store additional details like role, name, etc.
       // The backend will then return a token and user data that you'll store locally.
-      const response = await apiClient.post<AuthResponse>('/api/auth/register', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/signup', {
         ...data,
         firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
       });
@@ -136,7 +136,7 @@ class AuthService {
 
       // Then, authenticate with your backend using the Firebase UID or a token
       // For simplicity, we'll assume your backend can verify the Firebase UID and return your internal token
-      const response = await apiClient.post<AuthResponse>('/api/auth/login', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/signin', {
         email: data.email, // Pass email to backend for role verification if needed
         firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
       });
