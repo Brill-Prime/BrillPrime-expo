@@ -4,6 +4,7 @@
 import { apiClient, ApiResponse } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
+import type { Auth } from 'firebase/auth';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -34,7 +35,7 @@ class AuthService {
 
   constructor() {
     // Listen to Firebase auth state changes
-    onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+  onAuthStateChanged(auth as Auth, (user: FirebaseUser | null) => {
       if (user) {
         this.currentUser = user;
         user.getIdToken().then(token => {
@@ -51,7 +52,7 @@ class AuthService {
   async signUp(data: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
     try {
       // First, try to sign up using Firebase
-      const firebaseUserCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+  const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
 
       // Then, register the user with your backend API to store additional details like role, name, etc.
@@ -68,7 +69,7 @@ class AuthService {
       }
 
       return response;
-    } catch (error: any) {
+  } catch (error: any) {
       console.error('SignUp error:', error);
 
       // Handle Firebase specific errors
@@ -110,7 +111,7 @@ class AuthService {
           [this.USER_KEY, JSON.stringify(demoUser)],
           [this.ROLE_KEY, demoUser.role],
           ['tokenExpiry', expiryTime.toString()],
-          ['userName', demoUser.name],
+          ['userName', demoUser.name ?? ''],
           ['isOfflineMode', 'true'],
         ]);
 
@@ -131,7 +132,7 @@ class AuthService {
   async signIn(data: SignInRequest & { role?: string }): Promise<ApiResponse<AuthResponse>> {
     try {
       // First, try to sign in with Firebase
-      const firebaseUserCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+  const firebaseUserCredential = await signInWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
 
       // Then, authenticate with your backend using the Firebase UID or a token
@@ -155,7 +156,7 @@ class AuthService {
       }
 
       return response;
-    } catch (error: any) {
+  } catch (error: any) {
       console.error('SignIn error:', error);
 
       // Handle Firebase specific errors
@@ -225,7 +226,7 @@ class AuthService {
   async signInWithGoogle(role: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(auth as Auth, provider);
       const firebaseUser = result.user;
 
       // Send Firebase UID and user data to backend
@@ -251,7 +252,7 @@ class AuthService {
       }
 
       return response;
-    } catch (error: any) {
+  } catch (error: any) {
       console.error('Google sign-in error:', error);
       
       if (error.code === 'auth/popup-closed-by-user') {
@@ -269,7 +270,7 @@ class AuthService {
   async signInWithApple(role: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const provider = new OAuthProvider('apple.com');
-      const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(auth as Auth, provider);
       const firebaseUser = result.user;
 
       // Send Firebase UID and user data to backend
@@ -295,7 +296,7 @@ class AuthService {
       }
 
       return response;
-    } catch (error: any) {
+  } catch (error: any) {
       console.error('Apple sign-in error:', error);
       
       if (error.code === 'auth/popup-closed-by-user') {
@@ -313,7 +314,7 @@ class AuthService {
   async signInWithFacebook(role: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const provider = new FacebookAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(auth as Auth, provider);
       const firebaseUser = result.user;
 
       // Send Firebase UID and user data to backend
@@ -339,7 +340,7 @@ class AuthService {
       }
 
       return response;
-    } catch (error: any) {
+  } catch (error: any) {
       console.error('Facebook sign-in error:', error);
       
       if (error.code === 'auth/popup-closed-by-user') {
@@ -393,42 +394,12 @@ class AuthService {
         return { success: false, error: 'No authentication token found' };
       }
 
-      // Check if we're in offline mode
-      const isOfflineMode = await AsyncStorage.getItem('isOfflineMode');
-
-      if (isOfflineMode === 'true') {
-        // Return offline user data
-        const [email, role, name] = await AsyncStorage.multiGet([
-          'userEmail', 'userRole', 'userName'
-        ]);
-
-        if (email[1] && role[1]) {
-          const offlineUser: User = {
-            id: 'demo-offline',
-            email: email[1],
-            role: role[1] as 'consumer' | 'merchant' | 'driver',
-            name: name[1] || email[1].split('@')[0],
-            phone: '',
-            isVerified: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-
-          return {
-            success: true,
-            data: offlineUser
-          };
-        }
-      }
-
       // Use the token from local storage to authenticate with the backend API
       const response = await apiClient.get<User>('/api/auth/profile', {
         Authorization: `Bearer ${token}`,
       });
 
       if (response.success && response.data) {
-        // Clear offline mode if API is working
-        await AsyncStorage.removeItem('isOfflineMode');
         return response;
       } else {
         return {
@@ -436,41 +407,11 @@ class AuthService {
           error: response.error || 'Failed to get user data'
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('getCurrentUser error:', error);
-
-      // Handle network errors - fallback to offline mode
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
-        console.log('Network error, falling back to offline user data');
-
-        const [email, role, name] = await AsyncStorage.multiGet([
-          'userEmail', 'userRole', 'userName'
-        ]);
-
-        if (email[1] && role[1] && token) {
-          const offlineUser: User = {
-            id: 'demo-offline',
-            email: email[1],
-            role: role[1] as 'consumer' | 'merchant' | 'driver',
-            name: name[1] || email[1].split('@')[0],
-            phone: '',
-            isVerified: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-
-          await AsyncStorage.setItem('isOfflineMode', 'true');
-
-          return {
-            success: true,
-            data: offlineUser
-          };
-        }
-      }
-
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error occurred'
+        error: error.message || 'Network error occurred'
       };
     }
   }
@@ -486,8 +427,8 @@ class AuthService {
         });
       }
       // Sign out from Firebase as well
-      await signOut(auth);
-    } catch (error) {
+  await signOut(auth as Auth);
+  } catch (error: any) {
       console.error('Error during API signout:', error);
     } finally {
       // Clear local storage regardless of API call result
@@ -509,7 +450,7 @@ class AuthService {
         ['userEmail', authData.user.email], // Store email for offline use
         // We don't store firebaseUid here as it's implicitly handled by Firebase auth state
       ]);
-    } catch (error) {
+  } catch (error: any) {
       console.error('Error storing auth data:', error);
     }
   }
@@ -528,7 +469,7 @@ class AuthService {
         'isOfflineMode', // Also clear offline mode flag
         'userEmail' // Clear stored email as well
       ]);
-    } catch (error) {
+  } catch (error: any) {
       console.error('Error clearing auth data:', error);
     }
   }
@@ -540,7 +481,7 @@ class AuthService {
         return this.authToken;
       }
       return await AsyncStorage.getItem(this.TOKEN_KEY);
-    } catch (error) {
+  } catch (error: any) {
       console.error('Error getting token:', error);
       return null;
     }
@@ -603,20 +544,19 @@ class AuthService {
       }
     } catch (error) {
       console.error('Token refresh error:', error);
-      // If getCurrentUser threw an error (e.g., network issue during refresh attempt)
-      // we don't necessarily want to clear tokens immediately. The logic within
-      // getCurrentUser should handle fallback to offline mode.
-      // If it's a genuine error that prevents even checking expiry, we might need to clear.
-      // For now, assume network errors are handled by fallback.
-      // If it's a different error, clearing might be appropriate.
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof (error as any).message === 'string' &&
+        ((error as any).message.includes('network') || (error as any).message.includes('fetch'))
+      ) {
         console.log('Network error during token refresh attempt, keeping tokens for potential offline use.');
-        return false; // Indicate refresh didn't fully succeed due to network, but don't invalidate.
-      } else {
-        console.error('Non-network error during token refresh, clearing auth data.');
-        await this.clearAuthData();
         return false;
       }
+      console.error('Non-network error during token refresh, clearing auth data.');
+      await this.clearAuthData();
+      return false;
     }
   }
 

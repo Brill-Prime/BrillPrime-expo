@@ -2,7 +2,7 @@
 // Simplified Firebase setup for web platform compatibility
 
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -20,7 +20,7 @@ const firebaseConfig = {
 
 // Initialize Firebase with error handling
 let app;
-let auth;
+let auth: Auth;
 let db;
 let storage;
 
