@@ -23,7 +23,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Expo Web Server"
+args = "Frontend"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -39,7 +39,7 @@ task = "shell.exec"
 args = "npx expo start --web --port 5000"
 
 [[workflows.workflow]]
-name = "Expo Web Server"
+name = "Frontend"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -55,7 +55,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 5001
+localPort = 34041
 externalPort = 3001
 
 [[ports]]
