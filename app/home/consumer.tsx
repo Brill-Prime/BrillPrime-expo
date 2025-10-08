@@ -487,9 +487,7 @@ export default function ConsumerHome() {
                 coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
                 title={driver.name}
                 description={`ETA: ${driver.eta}`}
-                image={require('../../assets/images/car_icon.png')} // Assuming you have a car icon
-                anchor={{ x: 0.5, y: 0.5 }}
-                style={{ width: 40, height: 40 }}
+                pinColor="#34D399"
               />
             ))}
 
@@ -617,14 +615,12 @@ export default function ConsumerHome() {
                 <Text style={styles.storeCardAddress}>{store.address}</Text>
                 <Text style={styles.storeCardDistance}>
                   {(() => {
-                    const dist = userCoordinates 
-                      ? locationService.calculateDistance(
-                          userCoordinates.latitude,
-                          userCoordinates.longitude,
-                          store.coords.lat,
-                          store.coords.lng
-                        ).toFixed(1)
-                      : '2.5';
+                    const dist = locationService.calculateDistance(
+                      region.latitude,
+                      region.longitude,
+                      store.coords.lat,
+                      store.coords.lng
+                    ).toFixed(1);
                     return `${dist} km away`;
                   })()}
                 </Text>
