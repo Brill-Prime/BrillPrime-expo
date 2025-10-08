@@ -5,14 +5,26 @@
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 
-interface Notification {
+export interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'order' | 'promo' | 'system' | 'delivery';
+  type: 'order' | 'promo' | 'system' | 'delivery' | 'payment' | 'promotion';
   read: boolean;
   createdAt: string;
+  timestamp?: string;
   data?: Record<string, any>;
+  action?: string;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+export interface NotificationSettings {
+  pushNotifications: boolean;
+  emailNotifications: boolean;
+  orderUpdates: boolean;
+  promotions: boolean;
+  merchantUpdates?: boolean;
+  systemNotifications?: boolean;
 }
 
 class NotificationService {
@@ -84,7 +96,7 @@ class NotificationService {
   }
 
   // Register device for push notifications
-  async registerPushToken(token: string, platform: 'ios' | 'android'): Promise<ApiResponse<{ message: string }>> {
+  async registerPushToken(token: string, platform: 'ios' | 'android' | 'web'): Promise<ApiResponse<{ message: string }>> {
     const authToken = await authService.getToken();
     if (!authToken) {
       return { success: false, error: 'Authentication required' };
@@ -97,12 +109,7 @@ class NotificationService {
   }
 
   // Update notification preferences
-  async updatePreferences(preferences: {
-    orderUpdates: boolean;
-    promotions: boolean;
-    systemNotifications: boolean;
-    emailNotifications: boolean;
-  }): Promise<ApiResponse<{ message: string }>> {
+  async updateSettings(preferences: NotificationSettings): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
@@ -114,12 +121,7 @@ class NotificationService {
   }
 
   // Get notification preferences
-  async getPreferences(): Promise<ApiResponse<{
-    orderUpdates: boolean;
-    promotions: boolean;
-    systemNotifications: boolean;
-    emailNotifications: boolean;
-  }>> {
+  async getSettings(): Promise<ApiResponse<NotificationSettings>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
@@ -129,99 +131,36 @@ class NotificationService {
       Authorization: `Bearer ${token}`,
     });
   }
-}
 
-export const notificationService = new NotificationService();
-// Notification Service
-// Handles push notifications and in-app notifications
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiClient, ApiResponse } from './api';
-
-export interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'order' | 'payment' | 'system' | 'promotion';
-  timestamp: string;
-  read: boolean;
-  action?: string;
-  data?: any;
-}
-
-export interface NotificationSettings {
-  pushNotifications: boolean;
-  emailNotifications: boolean;
-  orderUpdates: boolean;
-  promotions: boolean;
-  merchantUpdates: boolean;
-}
-
-class NotificationService {
-  async getNotifications(): Promise<ApiResponse<Notification[]>> {
-    try {
-      const response = await apiClient.get('/notifications');
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error getting notifications:', error);
-      // Return cached notifications as fallback
-      const cached = await AsyncStorage.getItem('userNotifications');
-      return { 
-        success: true, 
-        data: cached ? JSON.parse(cached) : [] 
-      };
+  // Get notification history
+  async getHistory(filters?: {
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<Notification[]>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
     }
-  }
 
-  async markAsRead(notificationId: string): Promise<ApiResponse<void>> {
-    try {
-      await apiClient.put(`/notifications/${notificationId}/read`);
-      return { success: true };
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      return { success: false, error: 'Failed to mark notification as read' };
-    }
-  }
+    let endpoint = '/api/notifications/history';
+    const queryParams = new URLSearchParams();
 
-  async updateSettings(settings: NotificationSettings): Promise<ApiResponse<void>> {
-    try {
-      await apiClient.put('/notifications/settings', settings);
-      await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings));
-      return { success: true };
-    } catch (error) {
-      console.error('Error updating notification settings:', error);
-      return { success: false, error: 'Failed to update notification settings' };
+    if (filters) {
+      if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
+      if (filters.toDate) queryParams.append('toDate', filters.toDate);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
     }
-  }
 
-  async getSettings(): Promise<ApiResponse<NotificationSettings>> {
-    try {
-      const response = await apiClient.get('/notifications/settings');
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error getting notification settings:', error);
-      // Return default settings
-      return {
-        success: true,
-        data: {
-          pushNotifications: true,
-          emailNotifications: true,
-          orderUpdates: true,
-          promotions: false,
-          merchantUpdates: true,
-        }
-      };
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
     }
-  }
 
-  async registerForPushNotifications(token: string): Promise<ApiResponse<void>> {
-    try {
-      await apiClient.post('/notifications/register', { token });
-      return { success: true };
-    } catch (error) {
-      console.error('Error registering for push notifications:', error);
-      return { success: false, error: 'Failed to register for push notifications' };
-    }
+    return apiClient.get<Notification[]>(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
   }
 }
 
