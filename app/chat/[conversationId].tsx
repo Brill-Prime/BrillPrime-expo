@@ -49,74 +49,32 @@ export default function ChatScreen() {
   }, [conversationId]);
 
   const loadConversation = async () => {
-    // Mock conversation data - replace with actual API call
-    const mockConversation: Conversation = {
-      id: conversationId!,
-      orderId: 'ORDER-123',
-      participants: [
-        {
-          userId: 'user1',
-          name: 'John Doe',
-          role: 'consumer',
-          phone: '+234-801-234-5678',
-          online: true,
-        },
-        {
-          userId: 'user2',
-          name: 'Lagos Fuel Station',
-          role: 'merchant',
-          phone: '+234-803-123-4567',
-          online: true,
-        }
-      ],
-      unreadCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setConversation(mockConversation);
+    try {
+      const response = await communicationService.getOrCreateConversation(conversationId as string);
+      if (response.success && response.data) {
+        setConversation(response.data as Conversation);
+      } else {
+        console.warn('Failed to load conversation from API, using placeholder');
+        setConversation(null);
+      }
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      setConversation(null);
+    }
   };
 
   const loadMessages = async () => {
     try {
-      // Mock messages - replace with actual API call
-      const mockMessages: ChatMessage[] = [
-        {
-          id: '1',
-          conversationId: conversationId!,
-          senderId: 'user2',
-          senderName: 'Lagos Fuel Station',
-          senderRole: 'merchant',
-          message: 'Hello! Your fuel order is being prepared.',
-          messageType: 'text',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          read: true,
-        },
-        {
-          id: '2',
-          conversationId: conversationId!,
-          senderId: 'user1',
-          senderName: 'John Doe',
-          senderRole: 'consumer',
-          message: 'Great! How long will it take?',
-          messageType: 'text',
-          timestamp: new Date(Date.now() - 3000000).toISOString(),
-          read: true,
-        },
-        {
-          id: '3',
-          conversationId: conversationId!,
-          senderId: 'user2',
-          senderName: 'Lagos Fuel Station',
-          senderRole: 'merchant',
-          message: 'It should be ready in about 10 minutes. We\'ll notify you when ready for pickup.',
-          messageType: 'text',
-          timestamp: new Date(Date.now() - 1800000).toISOString(),
-          read: true,
-        }
-      ];
-      setMessages(mockMessages);
+      const response = await communicationService.getMessages(conversationId as string, 100, 0);
+      if (response.success && Array.isArray(response.data)) {
+        setMessages(response.data as ChatMessage[]);
+      } else {
+        console.warn('No messages from API');
+        setMessages([]);
+      }
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error('Error loading messages from API:', error);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -168,8 +126,15 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
 
-      // Send to backend (mock for now)
-      // const response = await communicationService.sendMessage(conversationId!, newMessage.trim());
+      // Send to backend
+      try {
+        const response = await communicationService.sendMessage(conversationId as string, message.message);
+        if (!response.success) {
+          console.warn('Failed to send message to backend:', response.error);
+        }
+      } catch (error) {
+        console.error('Error sending message to backend:', error);
+      }
     }
   };
 
@@ -185,9 +150,23 @@ export default function ChatScreen() {
           {
             text: 'Call',
             onPress: async () => {
-              // Mock call initiation
-              Alert.alert('Calling...', `Calling ${conversation.participants[1].name}`);
-              // const response = await communicationService.initiateCall(conversationId!, conversation.participants[1].userId);
+              try {
+                const participantId = conversation?.participants[1].userId;
+                if (!participantId) {
+                  Alert.alert('Error', 'Participant not available');
+                  return;
+                }
+
+                const response = await communicationService.initiateCall(conversationId as string, participantId);
+                if (response.success && response.data) {
+                  Alert.alert('Calling...', `Calling ${conversation.participants[1].name}`);
+                } else {
+                  Alert.alert('Error', 'Failed to initiate call');
+                }
+              } catch (error) {
+                console.error('Initiate call error:', error);
+                Alert.alert('Error', 'Failed to initiate call');
+              }
             }
           }
         ]
@@ -229,7 +208,7 @@ export default function ChatScreen() {
 
           {item.attachments && item.attachments.length > 0 && (
             <View style={styles.messageAttachments}>
-              {item.attachments.map((attachment: Attachment) => (
+              {item.attachments.map((attachment: { id: string; uri: string; name?: string; type?: 'image' | 'document' }) => (
                 <View key={attachment.id} style={styles.messageAttachment}>
                   {attachment.type === 'image' ? (
                     <Image source={{ uri: attachment.uri }} style={styles.messageImage} />
@@ -237,7 +216,7 @@ export default function ChatScreen() {
                     <View style={styles.messageDocument}>
                       <Ionicons name="document" size={20} color="#4682B4" />
                       <Text style={styles.documentName} numberOfLines={1}>
-                        {attachment.name}
+                        {attachment.name || 'Attachment'}
                       </Text>
                     </View>
                   )}
