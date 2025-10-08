@@ -69,6 +69,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 08, 2025 - Social Authentication Implementation
+- Implemented full social authentication (Google, Apple, Facebook) using Firebase Auth
+- Added `signInWithGoogle()`, `signInWithApple()`, and `signInWithFacebook()` methods to authService
+- Updated sign-in and sign-up pages to use functional social auth buttons instead of "Coming Soon" placeholders
+- Integrated social auth with backend API at `https://api.brillprime.com`
+- Social auth automatically sends Firebase UID, email, provider info, and user role to backend `/api/auth/social-login` endpoint
+- Maintained role-based authentication flow - users must select role before social login
+- All social auth methods properly handle errors, validate roles, and store authentication tokens
+- Type system updated to support both traditional and social authentication flows
+
 ### October 01, 2025 - Fresh GitHub Clone Setup
 - Successfully set up fresh GitHub clone in Replit environment
 - Installed all npm dependencies (1321 packages)

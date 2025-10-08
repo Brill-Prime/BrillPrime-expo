@@ -7,10 +7,23 @@ import { auth } from '../config/firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  OAuthProvider,
+  FacebookAuthProvider,
   signOut,
   onAuthStateChanged,
-  User
+  User as FirebaseUser
 } from 'firebase/auth';
+import { 
+  User, 
+  AuthResponse, 
+  SignUpRequest, 
+  SignInRequest,
+  VerifyOTPRequest,
+  ResetPasswordRequest,
+  ConfirmPasswordResetRequest
+} from './types';
 
 class AuthService {
   private readonly TOKEN_KEY = 'userToken';
@@ -21,10 +34,12 @@ class AuthService {
 
   constructor() {
     // Listen to Firebase auth state changes
-    onAuthStateChanged(auth, (user: User | null) => {
+    onAuthStateChanged(auth, (user: FirebaseUser | null) => {
       if (user) {
         this.currentUser = user;
-        this.authToken = user.accessToken;
+        user.getIdToken().then(token => {
+          this.authToken = token;
+        });
       } else {
         this.currentUser = null;
         this.authToken = null;
@@ -202,6 +217,138 @@ class AuthService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error occurred'
+      };
+    }
+  }
+
+  // Social Authentication - Google
+  async signInWithGoogle(role: string): Promise<ApiResponse<AuthResponse>> {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Send Firebase UID and user data to backend
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email,
+        provider: 'google',
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        role: role
+      });
+
+      if (response.success && response.data) {
+        // Validate role if provided
+        if (role && response.data.user.role !== role) {
+          return {
+            success: false,
+            error: `Account role mismatch. Expected ${role} but account is ${response.data.user.role}`
+          };
+        }
+
+        await this.storeAuthData(response.data);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'Sign-in cancelled' };
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Google sign-in failed'
+      };
+    }
+  }
+
+  // Social Authentication - Apple
+  async signInWithApple(role: string): Promise<ApiResponse<AuthResponse>> {
+    try {
+      const provider = new OAuthProvider('apple.com');
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Send Firebase UID and user data to backend
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email,
+        provider: 'apple',
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        role: role
+      });
+
+      if (response.success && response.data) {
+        // Validate role if provided
+        if (role && response.data.user.role !== role) {
+          return {
+            success: false,
+            error: `Account role mismatch. Expected ${role} but account is ${response.data.user.role}`
+          };
+        }
+
+        await this.storeAuthData(response.data);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('Apple sign-in error:', error);
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'Sign-in cancelled' };
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Apple sign-in failed'
+      };
+    }
+  }
+
+  // Social Authentication - Facebook
+  async signInWithFacebook(role: string): Promise<ApiResponse<AuthResponse>> {
+    try {
+      const provider = new FacebookAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Send Firebase UID and user data to backend
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email,
+        provider: 'facebook',
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        role: role
+      });
+
+      if (response.success && response.data) {
+        // Validate role if provided
+        if (role && response.data.user.role !== role) {
+          return {
+            success: false,
+            error: `Account role mismatch. Expected ${role} but account is ${response.data.user.role}`
+          };
+        }
+
+        await this.storeAuthData(response.data);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('Facebook sign-in error:', error);
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'Sign-in cancelled' };
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Facebook sign-in failed'
       };
     }
   }

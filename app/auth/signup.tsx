@@ -19,6 +19,7 @@ export default function SignUp() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -141,8 +142,61 @@ export default function SignUp() {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    showInfo("Coming Soon", `${provider} login will be available soon!`);
+  const handleSocialLogin = async (provider: 'Google' | 'Apple' | 'Facebook') => {
+    try {
+      setLoading(true);
+
+      // Check if user has selected a role first
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      if (!selectedRole) {
+        showConfirmDialog(
+          "Role Required",
+          "Please select your role first.",
+          () => router.replace("/auth/role-selection")
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Import authService
+      const { authService } = await import('../../services/authService');
+
+      let response;
+      if (provider === 'Google') {
+        response = await authService.signInWithGoogle(selectedRole);
+      } else if (provider === 'Apple') {
+        response = await authService.signInWithApple(selectedRole);
+      } else if (provider === 'Facebook') {
+        response = await authService.signInWithFacebook(selectedRole);
+      }
+
+      if (response?.success && response.data) {
+        // Store user data from API response
+        await AsyncStorage.multiSet([
+          ["userToken", response.data.token],
+          ["userEmail", response.data.user.email],
+          ["userRole", response.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
+        ]);
+
+        // Route based on user role from API
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
+      } else {
+        const errorMessage = response?.error || `${provider} sign-up failed`;
+        if (errorMessage !== 'Sign-in cancelled') {
+          showError("Sign Up Failed", errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error(`${provider} sign-up error:`, error);
+      showError("Error", `${provider} sign-up failed. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
