@@ -21,98 +21,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
-// Mock commodity data
-const COMMODITY_DATA = {
-  "1": {
-    id: "1",
-    name: "Premium Petrol",
-    category: "fuel",
-    description: "High-quality premium unleaded petrol with enhanced engine cleaning additives. Suitable for all modern vehicles and provides optimal engine performance.",
-    image: require('../../assets/images/consumer_order_fuel_icon.png'),
-    unit: "per Liter",
-    availability: "In Stock",
-    merchants: [
-      {
-        id: "1",
-        name: "Lagos Fuel Station",
-        distance: "2.3 km",
-        price: "₦650",
-        originalPrice: "₦680",
-        rating: 4.5,
-        address: "Victoria Island, Lagos",
-        isOpen: true,
-        deliveryTime: "15-20 mins",
-        stock: "Available"
-      },
-      {
-        id: "4",
-        name: "Lekki Phase 1 Fuel",
-        distance: "4.2 km", 
-        price: "₦645",
-        originalPrice: "₦670",
-        rating: 4.3,
-        address: "Lekki Phase 1, Lagos",
-        isOpen: true,
-        deliveryTime: "25-30 mins",
-        stock: "Available"
-      },
-      {
-        id: "7",
-        name: "Ikeja Fuel Hub",
-        distance: "6.8 km",
-        price: "₦660",
-        originalPrice: "₦685",
-        rating: 4.1,
-        address: "Ikeja, Lagos",
-        isOpen: false,
-        deliveryTime: "35-40 mins",
-        stock: "Limited"
-      }
-    ],
-    specifications: [
-      { label: "Octane Rating", value: "91 RON" },
-      { label: "Sulfur Content", value: "< 50 ppm" },
-      { label: "Additives", value: "Engine Cleaning Formula" },
-      { label: "Storage", value: "Cool, dry place" }
-    ],
-    reviews: [
-      { name: "Ahmed K.", rating: 5, comment: "Best fuel quality in Lagos. My car runs smoother.", date: "3 days ago" },
-      { name: "Grace O.", rating: 4, comment: "Good price and availability. Fast delivery service.", date: "1 week ago" }
-    ]
-  },
-  "2": {
-    id: "2",
-    name: "Fresh Tomatoes",
-    category: "food",
-    description: "Farm-fresh, locally sourced tomatoes. Perfect for cooking, salads, and garnishing. Rich in vitamins and antioxidants.",
-    image: require('../../assets/images/order_fuel_icon.png'), // Using placeholder image
-    unit: "per Kg",
-    availability: "In Stock",
-    merchants: [
-      {
-        id: "2",
-        name: "Victoria Island Market",
-        distance: "1.8 km",
-        price: "₦800",
-        originalPrice: "₦900",
-        rating: 4.2,
-        address: "Victoria Island, Lagos",
-        isOpen: true,
-        deliveryTime: "20-25 mins",
-        stock: "Available"
-      }
-    ],
-    specifications: [
-      { label: "Origin", value: "Local Farms, Ogun State" },
-      { label: "Grade", value: "Premium Grade A" },
-      { label: "Shelf Life", value: "5-7 days" },
-      { label: "Storage", value: "Cool, dry place" }
-    ],
-    reviews: [
-      { name: "Kemi A.", rating: 5, comment: "Very fresh and tasty tomatoes. Great for stew!", date: "2 days ago" }
-    ]
-  }
-};
+// We'll load commodity details from the backend via merchantService.getCommodity
+// Fallbacks remain in code paths where needed (e.g. AsyncStorage/cart). This file no longer defines a global mock data object.
 
 export default function CommodityDetailScreen() {
   const router = useRouter();
@@ -135,20 +45,35 @@ export default function CommodityDetailScreen() {
     return () => subscription?.remove();
   }, [id]);
 
-  const loadCommodityDetails = () => {
-    if (id && COMMODITY_DATA[id as keyof typeof COMMODITY_DATA]) {
-      const commodityData = COMMODITY_DATA[id as keyof typeof COMMODITY_DATA];
-      setCommodity(commodityData);
-      // Set cheapest available merchant as default
-      const availableMerchants = commodityData.merchants.filter(m => m.isOpen);
-      if (availableMerchants.length > 0) {
-        const cheapest = availableMerchants.sort((a, b) => 
-          parseInt(a.price.replace(/[^\d]/g, '')) - parseInt(b.price.replace(/[^\d]/g, ''))
-        )[0];
-        setSelectedMerchant(cheapest);
+  const loadCommodityDetails = async () => {
+    if (!id) return;
+
+    try {
+      const response = await merchantService.getCommodity(id as string);
+      if (response.success && response.data) {
+        // Response shape: { commodity, merchants, reviews }
+        const { commodity: commodityData, merchants } = response.data as any;
+        const merged = { ...commodityData, merchants };
+        setCommodity(merged);
+
+        // pick cheapest available merchant
+        const availableMerchants = (merchants || []).filter((m: any) => m.isOpen);
+        if (availableMerchants.length > 0) {
+          const cheapest = availableMerchants.sort((a: any, b: any) =>
+            parseInt(String(a.price).replace(/[^\d]/g, '')) - parseInt(String(b.price).replace(/[^\d]/g, ''))
+          )[0];
+          setSelectedMerchant(cheapest);
+        } else if ((merchants || []).length > 0) {
+          setSelectedMerchant(merchants[0]);
+        }
       } else {
-        setSelectedMerchant(commodityData.merchants[0]);
+        // API failed - keep UI graceful
+        console.warn('Failed to load commodity from API, falling back to local placeholder');
+        setCommodity(null);
       }
+    } catch (error) {
+      console.error('Error loading commodity details:', error);
+      setCommodity(null);
     }
   };
 

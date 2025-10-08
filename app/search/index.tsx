@@ -11,6 +11,7 @@ import {
   Modal,
   ActivityIndicator
 } from "react-native";
+import { Image } from 'react-native';
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import ArrowForwardIcon from '../../components/ArrowForwardIcon';
@@ -19,322 +20,26 @@ import * as Location from 'expo-location';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
 import { locationService } from '../../services/locationService';
 import { Merchant } from '../../services/types';
+import { merchantService } from '../../services/merchantService';
 import CommunicationModal from '../../components/CommunicationModal'; // Assuming this path is correct
 
 const { width } = Dimensions.get('window');
 
-// Enhanced mock data with more detailed information
-const MOCK_MERCHANTS = [
-  {
-    id: "1",
-    name: "Lagos Fuel Station",
-    type: "fuel" as const,
-    category: "fuel",
-    address: "Victoria Island, Lagos",
-    phone: "+234-800-123-4567",
-    email: "info@lagosfuel.com",
-    description: "Premium fuel station with 24/7 service",
-    distance: "2.3 km",
-    rating: 4.5,
-    reviewCount: 124,
-    latitude: 6.4281,
-    longitude: 3.4219,
-    priceRange: "medium",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "24 hours",
-      "Tuesday": "24 hours",
-      "Wednesday": "24 hours",
-      "Thursday": "24 hours",
-      "Friday": "24 hours",
-      "Saturday": "24 hours",
-      "Sunday": "24 hours"
-    },
-    services: ["24/7", "Car Wash", "ATM"],
-    images: []
-  },
-  {
-    id: "2",
-    name: "Victoria Island Market",
-    type: "market" as const,
-    category: "groceries",
-    address: "Victoria Island, Lagos",
-    phone: "+234-800-123-4568",
-    email: "info@vimarket.com",
-    description: "Local market with fresh produce",
-    distance: "1.8 km",
-    rating: 4.2,
-    reviewCount: 89,
-    latitude: 6.4241,
-    longitude: 3.4189,
-    priceRange: "low",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "6:00 AM - 8:00 PM",
-      "Tuesday": "6:00 AM - 8:00 PM",
-      "Wednesday": "6:00 AM - 8:00 PM",
-      "Thursday": "6:00 AM - 8:00 PM",
-      "Friday": "6:00 AM - 8:00 PM",
-      "Saturday": "6:00 AM - 9:00 PM",
-      "Sunday": "7:00 AM - 7:00 PM"
-    },
-    services: ["Fresh Produce", "Local Vendors"],
-    images: []
-  },
-  {
-    id: "3",
-    name: "Ikeja Shopping Mall",
-    type: "shopping" as const,
-    category: "retail",
-    address: "Ikeja, Lagos",
-    phone: "+234-800-123-4569",
-    email: "info@ikejamall.com",
-    description: "Modern shopping mall with diverse stores",
-    distance: "5.1 km",
-    rating: 4.7,
-    reviewCount: 203,
-    latitude: 6.5927,
-    longitude: 3.3615,
-    priceRange: "high",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "10:00 AM - 10:00 PM",
-      "Tuesday": "10:00 AM - 10:00 PM",
-      "Wednesday": "10:00 AM - 10:00 PM",
-      "Thursday": "10:00 AM - 10:00 PM",
-      "Friday": "10:00 AM - 11:00 PM",
-      "Saturday": "9:00 AM - 11:00 PM",
-      "Sunday": "11:00 AM - 9:00 PM"
-    },
-    services: ["Air Conditioned", "Food Court", "Parking"],
-    images: []
-  },
-  {
-    id: "4",
-    name: "Lekki Phase 1 Fuel",
-    type: "fuel" as const,
-    category: "fuel",
-    address: "Lekki, Lagos",
-    phone: "+234-800-123-4570",
-    email: "info@lekkifuel.com",
-    description: "Premium fuel station in Lekki",
-    distance: "4.2 km",
-    rating: 4.3,
-    reviewCount: 67,
-    latitude: 6.4474,
-    longitude: 3.5614,
-    priceRange: "medium",
-    isOpen: false,
-    operatingHours: {
-      "Monday": "6:00 AM - 10:00 PM",
-      "Tuesday": "6:00 AM - 10:00 PM",
-      "Wednesday": "6:00 AM - 10:00 PM",
-      "Thursday": "6:00 AM - 10:00 PM",
-      "Friday": "6:00 AM - 10:00 PM",
-      "Saturday": "6:00 AM - 10:00 PM",
-      "Sunday": "7:00 AM - 9:00 PM"
-    },
-    services: ["Premium Fuel", "Quick Service"],
-    images: []
-  },
-  {
-    id: "5",
-    name: "Computer Village",
-    type: "shopping" as const,
-    category: "electronics",
-    address: "Ikeja, Lagos",
-    phone: "+234-800-123-4571",
-    email: "info@compvillage.com",
-    description: "Electronics and tech hub",
-    distance: "6.8 km",
-    rating: 4.1,
-    reviewCount: 156,
-    latitude: 6.5492,
-    longitude: 3.3619,
-    priceRange: "medium",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "8:00 AM - 8:00 PM",
-      "Tuesday": "8:00 AM - 8:00 PM",
-      "Wednesday": "8:00 AM - 8:00 PM",
-      "Thursday": "8:00 AM - 8:00 PM",
-      "Friday": "8:00 AM - 8:00 PM",
-      "Saturday": "8:00 AM - 9:00 PM",
-      "Sunday": "10:00 AM - 6:00 PM"
-    },
-    services: ["Tech Repair", "Wholesale", "Gadgets"],
-    images: []
-  },
-  {
-    id: "6",
-    name: "Palms Shopping Mall",
-    type: "shopping" as const,
-    category: "retail",
-    address: "Lekki, Lagos",
-    phone: "+234-800-123-4572",
-    email: "info@palmsmall.com",
-    description: "Premium shopping destination",
-    distance: "3.9 km",
-    rating: 4.6,
-    reviewCount: 298,
-    latitude: 6.4167,
-    longitude: 3.5405,
-    priceRange: "high",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "10:00 AM - 10:00 PM",
-      "Tuesday": "10:00 AM - 10:00 PM",
-      "Wednesday": "10:00 AM - 10:00 PM",
-      "Thursday": "10:00 AM - 10:00 PM",
-      "Friday": "10:00 AM - 11:00 PM",
-      "Saturday": "9:00 AM - 11:00 PM",
-      "Sunday": "11:00 AM - 9:00 PM"
-    },
-    services: ["Cinema", "Restaurants", "Brand Stores"],
-    images: []
-  },
-  {
-    id: "7",
-    name: "Mainland Market",
-    type: "market" as const,
-    category: "groceries",
-    address: "Yaba, Lagos",
-    phone: "+234-800-123-4573",
-    email: "info@mainlandmarket.com",
-    description: "Local market for bulk purchases",
-    distance: "7.2 km",
-    rating: 3.9,
-    reviewCount: 45,
-    latitude: 6.5158,
-    longitude: 3.3696,
-    priceRange: "low",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "6:00 AM - 7:00 PM",
-      "Tuesday": "6:00 AM - 7:00 PM",
-      "Wednesday": "6:00 AM - 7:00 PM",
-      "Thursday": "6:00 AM - 7:00 PM",
-      "Friday": "6:00 AM - 7:00 PM",
-      "Saturday": "6:00 AM - 8:00 PM",
-      "Sunday": "7:00 AM - 6:00 PM"
-    },
-    services: ["Bulk Purchase", "Local Items"],
-    images: []
-  },
-  {
-    id: "8",
-    name: "Express Fuel Stop",
-    type: "fuel" as const,
-    category: "fuel",
-    address: "Surulere, Lagos",
-    phone: "+234-800-123-4574",
-    email: "info@expressfuel.com",
-    description: "Quick fuel service station",
-    distance: "8.5 km",
-    rating: 4.0,
-    reviewCount: 78,
-    latitude: 6.4969,
-    longitude: 3.3515,
-    priceRange: "low",
-    isOpen: true,
-    operatingHours: {
-      "Monday": "6:00 AM - 9:00 PM",
-      "Tuesday": "6:00 AM - 9:00 PM",
-      "Wednesday": "6:00 AM - 9:00 PM",
-      "Thursday": "6:00 AM - 9:00 PM",
-      "Friday": "6:00 AM - 9:00 PM",
-      "Saturday": "6:00 AM - 9:00 PM",
-      "Sunday": "7:00 AM - 8:00 PM"
-    },
-    services: ["Quick Fill", "Mobile Payment"],
-    images: []
-  }
-];
-
-const MOCK_COMMODITIES = [
-  {
-    id: 1,
-    name: "Premium Petrol",
-    category: "fuel",
-    merchants: ["Lagos Fuel Station", "Lekki Phase 1 Fuel"],
-    price: "₦650/L",
-    priceValue: 650,
-    availability: "In Stock",
-    description: "High quality premium petrol"
-  },
-  {
-    id: 2,
-    name: "Fresh Tomatoes",
-    category: "food",
-    merchants: ["Victoria Island Market", "Mainland Market"],
-    price: "₦800/kg",
-    priceValue: 800,
-    availability: "In Stock",
-    description: "Fresh local tomatoes"
-  },
-  {
-    id: 3,
-    name: "Rice (50kg)",
-    category: "food",
-    merchants: ["Victoria Island Market"],
-    price: "₦45,000",
-    priceValue: 45000,
-    availability: "Limited Stock",
-    description: "Premium long grain rice"
-  },
-  {
-    id: 4,
-    name: "iPhone 15",
-    category: "electronics",
-    merchants: ["Computer Village", "Palms Shopping Mall"],
-    price: "₦1,200,000",
-    priceValue: 1200000,
-    availability: "In Stock",
-    description: "Latest iPhone model"
-  },
-  {
-    id: 5,
-    name: "Samsung TV 55\"",
-    category: "electronics",
-    merchants: ["Computer Village", "Palms Shopping Mall"],
-    price: "₦650,000",
-    priceValue: 650000,
-    availability: "In Stock",
-    description: "4K Smart TV"
-  },
-  {
-    id: 6,
-    name: "Diesel",
-    category: "fuel",
-    merchants: ["Lagos Fuel Station", "Express Fuel Stop"],
-    price: "₦750/L",
-    priceValue: 750,
-    availability: "In Stock",
-    description: "Clean diesel fuel"
-  },
-  {
-    id: 7,
-    name: "Bread (Loaf)",
-    category: "food",
-    merchants: ["Victoria Island Market", "Mainland Market"],
-    price: "₦500",
-    priceValue: 500,
-    availability: "In Stock",
-    description: "Fresh baked bread"
-  }
-];
+// Data will be loaded from backend via merchantService.getMerchants / getCommodities
 
 export default function SearchScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"merchants" | "commodities">("merchants");
-  const [filteredMerchants, setFilteredMerchants] = useState(MOCK_MERCHANTS);
-  const [filteredCommodities, setFilteredCommodities] = useState(MOCK_COMMODITIES);
+  const [allMerchants, setAllMerchants] = useState<any[]>([]);
+  const [allCommodities, setAllCommodities] = useState<any[]>([]);
+  const [filteredMerchants, setFilteredMerchants] = useState<any[]>([]);
+  const [filteredCommodities, setFilteredCommodities] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<any>(null); // Modified to support location object
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'fuel' | 'food' | 'groceries'>('all');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
@@ -444,7 +149,7 @@ export default function SearchScreen() {
   };
 
   const filterMerchants = () => {
-    let filtered = MOCK_MERCHANTS.filter(merchant =>
+    let filtered = (allMerchants || []).filter(merchant =>
       merchant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       merchant.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       merchant.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -508,7 +213,7 @@ export default function SearchScreen() {
   };
 
   const filterCommodities = () => {
-    let filtered = MOCK_COMMODITIES.filter(commodity =>
+    let filtered = (allCommodities || []).filter(commodity =>
       commodity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       commodity.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       commodity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -595,7 +300,7 @@ export default function SearchScreen() {
     await AsyncStorage.removeItem('searchHistory');
   };
 
-  const toggleFavorite = async (id: number) => {
+  const toggleFavorite = async (id: string) => {
     const newFavorites = favorites.includes(id)
       ? favorites.filter(fav => fav !== id)
       : [...favorites, id];
@@ -696,7 +401,7 @@ export default function SearchScreen() {
       <View style={styles.resultContent}>
         <View style={styles.resultHeader}>
           <Text style={styles.resultTitle}>{merchant.name}</Text>
-          <TouchableOpacity onPress={() => toggleFavorite(parseInt(merchant.id))}>
+          <TouchableOpacity onPress={() => toggleFavorite(merchant.id)}>
             <Ionicons
               name={favorites.includes(merchant.id) ? "heart" : "heart-outline"}
               size={20}
@@ -704,7 +409,7 @@ export default function SearchScreen() {
             />
           </TouchableOpacity>
         </View>
-        <Text style={styles.resultSubtitle}>{merchant.address}</Text>
+  <Text style={styles.resultSubtitle}>{typeof (merchant as any).address === 'string' ? (merchant as any).address : ((merchant as any).address?.street || '')}</Text>
         <View style={styles.resultMeta}>
           <Text style={styles.resultDistance}>{merchant.distance}</Text>
           <View style={styles.ratingContainer}>
@@ -760,11 +465,30 @@ export default function SearchScreen() {
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data if actual service is not available
-      setFilteredMerchants(MOCK_MERCHANTS);
+      // Call backend API for merchants
+      const filters: any = {};
+      if (selectedCategory && selectedCategory !== 'all') filters.type = selectedCategory;
+      if (userCoordinates) {
+        filters.location = {
+          latitude: userCoordinates.latitude,
+          longitude: userCoordinates.longitude,
+          radius: 10,
+        };
+      }
+
+      const response = await merchantService.getMerchants(filters);
+      if (response.success && Array.isArray(response.data)) {
+        setAllMerchants(response.data as any);
+        setFilteredMerchants(response.data as any);
+      } else {
+        // Fallback to empty list on API failure
+        setAllMerchants([]);
+        setFilteredMerchants([]);
+      }
     } catch (error) {
       console.error('Error loading merchants:', error);
-      setFilteredMerchants(MOCK_MERCHANTS); // Fallback on error
+      setAllMerchants([]);
+      setFilteredMerchants([]); // Fallback on error
     } finally {
       setLoading(false);
     }
@@ -773,11 +497,23 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data
-      setFilteredCommodities(MOCK_COMMODITIES);
+      // Call backend API for commodities
+      const commodityFilters: any = {};
+      if (selectedCategory && selectedCategory !== 'all') commodityFilters.category = selectedCategory;
+      if (searchQuery && searchQuery.trim()) commodityFilters.search = searchQuery.trim();
+
+      const response = await merchantService.getCommodities(commodityFilters);
+      if (response.success && Array.isArray(response.data)) {
+        setAllCommodities(response.data as any);
+        setFilteredCommodities(response.data as any);
+      } else {
+        setAllCommodities([]);
+        setFilteredCommodities([]);
+      }
     } catch (error) {
       console.error('Error loading commodities:', error);
-      setFilteredCommodities(MOCK_COMMODITIES); // Fallback on error
+      setAllCommodities([]);
+      setFilteredCommodities([]); // Fallback on error
     } finally {
       setLoading(false);
     }
@@ -951,7 +687,7 @@ export default function SearchScreen() {
                         styles.filterChip,
                         selectedCategory === category.key && styles.activeFilterChip
                       ]}
-                      onPress={() => setSelectedCategory(category.key)}
+                      onPress={() => setSelectedCategory(category.key as 'all' | 'fuel' | 'food' | 'groceries')}
                     >
                       <Text style={[
                         styles.filterChipText,
@@ -1140,7 +876,7 @@ export default function SearchScreen() {
                       <Text style={styles.merchantName}>{merchant.name}</Text>
                       <Text style={styles.merchantType}>{merchant.type}</Text>
                       <Text style={styles.merchantAddress}>
-                        {merchant.address?.street || 'Address not available'}
+                        {typeof merchant.address === 'string' ? merchant.address : (merchant.address?.street || 'Address not available')}
                       </Text>
                       <View style={styles.merchantStatus}>
                         <View style={[
@@ -1154,7 +890,7 @@ export default function SearchScreen() {
                     </View>
                     <View style={styles.distanceContainer}>
                       <Text style={styles.distance}>
-                        {userLocation && merchant.address?.coordinates
+                        {userLocation && merchant.address && typeof merchant.address !== 'string' && merchant.address.coordinates
                           ? `${locationService.calculateDistance(
                               userLocation.latitude,
                               userLocation.longitude,

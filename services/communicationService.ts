@@ -15,6 +15,13 @@ export interface ChatMessage {
   messageType: 'text' | 'image' | 'location' | 'system';
   timestamp: string;
   read: boolean;
+  // Optional attachments for messages (images/documents)
+  attachments?: Array<{
+    id: string;
+    uri: string;
+    name?: string;
+    type?: 'image' | 'document';
+  }>;
 }
 
 export interface Conversation {

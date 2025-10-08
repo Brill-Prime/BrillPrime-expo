@@ -19,122 +19,19 @@ import { Svg, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
-// Mock merchant data - in a real app, this would come from API
-const MERCHANT_DATA = {
-  "1": {
-    id: "1",
-    name: "Lagos Fuel Station",
-    type: "fuel",
-    address: "Plot 15, Victoria Island, Lagos, Nigeria",
-    phone: "+234-800-FUEL-001",
-    email: "info@lagosfuel.com",
-    description: "Premium fuel station providing high-quality petrol, diesel, and automotive services. We pride ourselves on fast service and competitive prices.",
-    rating: 4.5,
-    reviewCount: 127,
-    distance: "2.3 km",
-    isOpen: true,
-    operatingHours: {
-      monday: "06:00 - 22:00",
-      tuesday: "06:00 - 22:00",
-      wednesday: "06:00 - 22:00",
-      thursday: "06:00 - 22:00",
-      friday: "06:00 - 22:00",
-      saturday: "07:00 - 21:00",
-      sunday: "07:00 - 20:00"
-    },
-    services: ["Premium Petrol", "Diesel", "Car Wash", "Minor Repairs", "Tire Pressure Check"],
-    commodities: [
-      { name: "Premium Petrol", price: "₦650/L", availability: "In Stock" },
-      { name: "Diesel", price: "₦750/L", availability: "In Stock" },
-      { name: "Engine Oil", price: "₦3,500", availability: "Limited Stock" }
-    ],
-    reviews: [
-      { name: "John Doe", rating: 5, comment: "Excellent service and competitive prices. Highly recommended!", date: "2 days ago" },
-      { name: "Sarah Johnson", rating: 4, comment: "Good fuel quality but sometimes busy during peak hours.", date: "1 week ago" },
-      { name: "Mike Chen", rating: 5, comment: "Clean facility and friendly staff. Always my go-to station.", date: "2 weeks ago" }
-    ],
-    images: [
-      "https://images.unsplash.com/photo-1545262810-77515befe149?w=400",
-      "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400"
-    ]
-  },
-  "2": {
-    id: "2",
-    name: "Victoria Island Market",
-    type: "market",
-    address: "Tiamiyu Savage Street, Victoria Island, Lagos, Nigeria",
-    phone: "+234-800-MARKET-01",
-    email: "contact@vimarket.com",
-    description: "Fresh groceries, local produce, and everyday essentials. Your one-stop shop for quality food items at affordable prices.",
-    rating: 4.2,
-    reviewCount: 89,
-    distance: "1.8 km",
-    isOpen: true,
-    operatingHours: {
-      monday: "07:00 - 19:00",
-      tuesday: "07:00 - 19:00",
-      wednesday: "07:00 - 19:00",
-      thursday: "07:00 - 19:00",
-      friday: "07:00 - 19:00",
-      saturday: "07:00 - 20:00",
-      sunday: "08:00 - 18:00"
-    },
-    services: ["Fresh Produce", "Groceries", "Local Ingredients", "Bulk Orders", "Home Delivery"],
-    commodities: [
-      { name: "Fresh Tomatoes", price: "₦800/kg", availability: "In Stock" },
-      { name: "Rice (50kg)", price: "₦45,000", availability: "In Stock" },
-      { name: "Onions", price: "₦600/kg", availability: "In Stock" }
-    ],
-    reviews: [
-      { name: "Adaora Okafor", rating: 4, comment: "Fresh produce and reasonable prices. Love shopping here.", date: "3 days ago" },
-      { name: "David Williams", rating: 5, comment: "Great selection of local ingredients. Very authentic!", date: "1 week ago" }
-    ],
-    images: [
-      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400",
-      "https://images.unsplash.com/photo-1543083115-a0b5a0b7b16a?w=400"
-    ]
-  },
-  "3": {
-    id: "3",
-    name: "Ikeja Shopping Mall",
-    type: "shopping",
-    address: "Allen Avenue, Ikeja, Lagos, Nigeria",
-    phone: "+234-800-SHOP-001",
-    email: "info@ikejamall.com",
-    description: "Modern shopping center featuring fashion, electronics, restaurants, and entertainment. Over 100 stores under one roof.",
-    rating: 4.7,
-    reviewCount: 203,
-    distance: "5.1 km",
-    isOpen: true,
-    operatingHours: {
-      monday: "10:00 - 21:00",
-      tuesday: "10:00 - 21:00",
-      wednesday: "10:00 - 21:00",
-      thursday: "10:00 - 21:00",
-      friday: "10:00 - 22:00",
-      saturday: "09:00 - 22:00",
-      sunday: "11:00 - 20:00"
-    },
-    services: ["Fashion Retail", "Electronics", "Food Court", "Entertainment", "Parking"],
-    commodities: [
-      { name: "Samsung TV 55\"", price: "₦650,000", availability: "In Stock" },
-      { name: "iPhone 15", price: "₦1,200,000", availability: "Limited Stock" },
-      { name: "Nike Sneakers", price: "₦85,000", availability: "In Stock" }
-    ],
-    reviews: [
-      { name: "Grace Okoro", rating: 5, comment: "Amazing shopping experience! Great variety of stores and excellent customer service.", date: "1 day ago" },
-      { name: "James Smith", rating: 4, comment: "Good mall with lots of options. Parking can be challenging during weekends.", date: "4 days ago" },
-      { name: "Fatima Abdul", rating: 5, comment: "Love the food court and the electronics section. Always find what I need.", date: "1 week ago" }
-    ],
-    images: [
-      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400",
-      "https://images.unsplash.com/photo-1555529669-2269763671c5?w=400"
-    ]
-  }
-};
+// ...existing code...
 
 // Mock communication modal component
-const CommunicationModal = ({ visible, onClose, contactName, contactPhone, contactRole, onChatPress }) => {
+type CommModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  contactName?: string;
+  contactPhone?: string;
+  contactRole?: string;
+  onChatPress?: () => void;
+};
+
+const CommunicationModal = ({ visible, onClose, contactName, contactPhone, contactRole, onChatPress }: CommModalProps) => {
   const handleCall = () => {
     if (!contactPhone) {
       Alert.alert("Error", "Phone number not available");
@@ -145,12 +42,12 @@ const CommunicationModal = ({ visible, onClose, contactName, contactPhone, conta
     Linking.canOpenURL(phoneUrl).then((supported) => {
       if (supported) {
         Linking.openURL(phoneUrl);
-      } else {
-        Alert.alert("Error", "Phone calling is not supported on this device");
-      }
-    }).catch(() => {
-      Alert.alert("Error", "Unable to make phone call");
-    });
+            } else {
+                Alert.alert("Error", "Phone calling is not supported on this device");
+              }
+            }).catch(() => {
+              Alert.alert("Error", "Unable to make phone call");
+            });
   };
 
   return (
@@ -247,10 +144,10 @@ export default function MerchantDetailScreen() {
                 Linking.openURL(phoneUrl);
               } else {
                 Alert.alert("Error", "Phone calling is not supported on this device");
-              }
-            }).catch(() => {
-              Alert.Alert("Error", "Unable to make phone call");
-            });
+                }
+              }).catch(() => {
+                Alert.alert("Error", "Unable to make phone call");
+              });
           }
         }
       ]
@@ -425,13 +322,13 @@ export default function MerchantDetailScreen() {
         {/* Operating Hours */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Operating Hours</Text>
-          {Object.entries(merchant.operatingHours).map(([day, hours]) => (
+          {merchant.operatingHours && Object.entries(merchant.operatingHours).map(([day, hours]) => (
             <View key={day} style={[styles.hoursRow, day === getCurrentDay() && styles.todayRow]}>
               <Text style={[styles.dayText, day === getCurrentDay() && styles.todayText]}>
                 {day.charAt(0).toUpperCase() + day.slice(1)}
               </Text>
               <Text style={[styles.hoursText, day === getCurrentDay() && styles.todayText]}>
-                {hours}
+                {String(hours)}
               </Text>
             </View>
           ))}
