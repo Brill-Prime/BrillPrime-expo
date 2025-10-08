@@ -1,4 +1,3 @@
-
 // KYC Service
 // Handles Know Your Customer verification and document management
 
@@ -129,7 +128,7 @@ class KYCService {
       });
     } catch (error) {
       console.error('Get KYC profile error:', error);
-      
+
       // Return mock data for offline mode
       const mockProfile: KYCProfile = {
         id: 'kyc-' + Date.now(),
@@ -148,11 +147,52 @@ class KYCService {
     }
   }
 
+  // Validate personal information
+  private validatePersonalInfo(data: PersonalInfoRequest): { isValid: boolean; error?: string } => {
+    const { validateName, validateDate, validateAge, validateAddress } = require('../utils/validation');
+
+    const firstNameValidation = validateName(data.firstName, 'First name');
+    if (!firstNameValidation.isValid) {
+      return firstNameValidation;
+    }
+
+    const lastNameValidation = validateName(data.lastName, 'Last name');
+    if (!lastNameValidation.isValid) {
+      return lastNameValidation;
+    }
+
+    const dobValidation = validateAge(data.dateOfBirth, 18);
+    if (!dobValidation.isValid) {
+      return dobValidation;
+    }
+
+    const addressValidation = validateAddress(data.address.street);
+    if (!addressValidation.isValid) {
+      return { isValid: false, error: 'Street ' + addressValidation.error };
+    }
+
+    if (!data.address.city.trim()) {
+      return { isValid: false, error: 'City is required' };
+    }
+
+    if (!data.address.state.trim()) {
+      return { isValid: false, error: 'State is required' };
+    }
+
+    return { isValid: true };
+  }
+
   // Update personal information
   async updatePersonalInfo(data: PersonalInfoRequest): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // Validate before sending
+    const validation = this.validatePersonalInfo(data);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
     }
 
     try {
@@ -165,11 +205,50 @@ class KYCService {
     }
   }
 
+  // Validate business information
+  private validateBusinessInfo(data: BusinessInfoRequest): { isValid: boolean; error?: string } => {
+    const { validateBusinessName, validateAddress } = require('../utils/validation');
+
+    const businessNameValidation = validateBusinessName(data.businessName);
+    if (!businessNameValidation.isValid) {
+      return businessNameValidation;
+    }
+
+    if (!data.businessType.trim()) {
+      return { isValid: false, error: 'Business type is required' };
+    }
+
+    if (!data.registrationNumber.trim()) {
+      return { isValid: false, error: 'Registration number is required' };
+    }
+
+    if (data.registrationNumber.length < 5) {
+      return { isValid: false, error: 'Registration number must be at least 5 characters' };
+    }
+
+    if (!data.taxId.trim()) {
+      return { isValid: false, error: 'Tax ID is required' };
+    }
+
+    const addressValidation = validateAddress(data.businessAddress.street);
+    if (!addressValidation.isValid) {
+      return { isValid: false, error: 'Business address: ' + addressValidation.error };
+    }
+
+    return { isValid: true };
+  }
+
   // Update business information (for merchants)
   async updateBusinessInfo(data: BusinessInfoRequest): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // Validate before sending
+    const validation = this.validateBusinessInfo(data);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
     }
 
     try {
@@ -182,11 +261,63 @@ class KYCService {
     }
   }
 
+  // Validate driver information
+  private validateDriverInfo(data: DriverInfoRequest): { isValid: boolean; error?: string } => {
+    const { validateLicenseNumber, validatePlateNumber, validateDate } = require('../utils/validation');
+
+    const licenseValidation = validateLicenseNumber(data.licenseNumber);
+    if (!licenseValidation.isValid) {
+      return licenseValidation;
+    }
+
+    const expiryValidation = validateDate(data.licenseExpiry, 'License expiry date');
+    if (!expiryValidation.isValid) {
+      return expiryValidation;
+    }
+
+    // Check if license is not expired
+    const expiryDate = new Date(data.licenseExpiry);
+    if (expiryDate < new Date()) {
+      return { isValid: false, error: 'License has expired' };
+    }
+
+    if (!data.vehicleInfo.make.trim()) {
+      return { isValid: false, error: 'Vehicle make is required' };
+    }
+
+    if (!data.vehicleInfo.model.trim()) {
+      return { isValid: false, error: 'Vehicle model is required' };
+    }
+
+    const yearNum = parseInt(data.vehicleInfo.year);
+    const currentYear = new Date().getFullYear();
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > currentYear + 1) {
+      return { isValid: false, error: 'Please enter a valid vehicle year' };
+    }
+
+    const plateValidation = validatePlateNumber(data.vehicleInfo.plateNumber);
+    if (!plateValidation.isValid) {
+      return plateValidation;
+    }
+
+    if (!data.vehicleInfo.registrationNumber.trim()) {
+      return { isValid: false, error: 'Vehicle registration number is required' };
+    }
+
+    return { isValid: true };
+  }
+
   // Update driver information (for drivers)
   async updateDriverInfo(data: DriverInfoRequest): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // Validate before sending
+    const validation = this.validateDriverInfo(data);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
     }
 
     try {
@@ -213,7 +344,7 @@ class KYCService {
       });
     } catch (error) {
       console.error('Upload document error:', error);
-      
+
       // Return mock document for offline mode
       const mockDocument: KYCDocument = {
         id: 'doc-' + Date.now(),
@@ -309,7 +440,7 @@ class KYCService {
       });
     } catch (error) {
       console.error('Check verification status error:', error);
-      
+
       // Return mock status for offline mode
       return {
         success: true,
@@ -330,7 +461,7 @@ class KYCService {
   // Validate document before upload
   validateDocument(file: any, type: KYCDocument['type']): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
-    
+
     if (!file) {
       errors.push('Please select a file');
       return { isValid: false, errors };

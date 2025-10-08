@@ -89,42 +89,53 @@ export const COMMODITY_UNITS = [
   { label: 'Service', value: 'service' }
 ];
 
-export const validateCommodityForm = (data: CommodityFormData): string[] => {
-  const errors: string[] = [];
+import { 
+  validateName, 
+  validateDescription, 
+  validatePrice, 
+  validateNumber 
+} from './validation';
 
-  if (!data.name.trim()) {
-    errors.push('Product name is required');
+export const validateCommodityForm = (data: CommodityFormData): { isValid: boolean; errors: Record<string, string> } => {
+  const errors: Record<string, string> = {};
+
+  // Validate name
+  const nameValidation = validateName(data.name, 'Product name');
+  if (!nameValidation.isValid) {
+    errors.name = nameValidation.error!;
   }
 
-  if (!data.description.trim()) {
-    errors.push('Product description is required');
+  // Validate description
+  const descriptionValidation = validateDescription(data.description, 10, 200);
+  if (!descriptionValidation.isValid) {
+    errors.description = descriptionValidation.error!;
   }
 
-  if (!data.price || parseFloat(data.price) <= 0) {
-    errors.push('Valid price is required');
+  // Validate price
+  const priceValidation = validatePrice(data.price);
+  if (!priceValidation.isValid) {
+    errors.price = priceValidation.error!;
+  } else {
+    const priceNum = parseFloat(data.price);
+    if (priceNum > 10000000) {
+      errors.price = 'Price is too high (maximum ₦10,000,000)';
+    }
   }
 
-  if (!data.category) {
-    errors.push('Category is required');
+  // Validate category
+  if (!data.category || !CATEGORIES.find(c => c.id === data.category)) {
+    errors.category = 'Please select a valid category';
   }
 
-  if (!data.unit) {
-    errors.push('Unit is required');
+  // Validate unit
+  if (!data.unit || !UNITS.includes(data.unit)) {
+    errors.unit = 'Please select a valid unit';
   }
 
-  if (!data.availableQuantity || parseInt(data.availableQuantity) < 0) {
-    errors.push('Available quantity must be 0 or greater');
-  }
-
-  if (!data.minOrderQuantity || parseInt(data.minOrderQuantity) <= 0) {
-    errors.push('Minimum order quantity must be greater than 0');
-  }
-
-  if (data.images.length === 0) {
-    errors.push('At least one product image is required');
-  }
-
-  return errors;
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
 };
 
 export const formatPrice = (price: number): string => {
