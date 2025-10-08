@@ -365,6 +365,11 @@ class AuthService {
     return response;
   }
 
+  // Resend OTP
+  async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
+    return apiClient.post<{ message: string }>('/api/auth/resend-otp', { email });
+  }
+
   // Request password reset
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
     return apiClient.post<{ message: string }>('/api/password-reset/request', data);

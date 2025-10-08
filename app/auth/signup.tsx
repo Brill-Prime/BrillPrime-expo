@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
+import AlertModal from "../../components/AlertModal";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
 
@@ -20,6 +21,7 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -74,6 +76,8 @@ export default function SignUp() {
     // Use stored role instead of component state
     const finalRole = storedRole;
 
+    setLoading(true);
+
     try {
       // Import authService for real API calls
       const { authService } = await import('../../services/authService');
@@ -107,7 +111,8 @@ export default function SignUp() {
           ["tempUserRole", finalRole]
         ]);
 
-        router.push("/auth/otp-verification");
+        // Show OTP sent modal
+        setShowOtpModal(true);
       } else {
         // Handle specific error cases
         const errorMessage = response.error || "Registration failed";
@@ -139,6 +144,8 @@ export default function SignUp() {
       } else {
         showError("Error", "Sign up failed. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -314,8 +321,14 @@ export default function SignUp() {
 
 
           {/* Sign Up Button */}
-          <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-            <Text style={styles.signUpButtonText}>Sign Up</Text>
+          <TouchableOpacity 
+            style={[styles.signUpButton, loading && styles.signUpButtonDisabled]} 
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            <Text style={styles.signUpButtonText}>
+              {loading ? "Creating Account..." : "Sign Up"}
+            </Text>
           </TouchableOpacity>
 
           {/* Terms of Service */}
@@ -365,6 +378,19 @@ export default function SignUp() {
           </View>
         </View>
       </ScrollView>
+
+      {/* OTP Sent Modal */}
+      <AlertModal
+        visible={showOtpModal}
+        type="success"
+        title="OTP Sent!"
+        message={`A verification code has been sent to ${formData.email}. Please check your email and enter the code to verify your account.`}
+        onClose={() => {
+          setShowOtpModal(false);
+          router.push("/auth/otp-verification");
+        }}
+        confirmText="Continue"
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -433,6 +459,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
     marginBottom: 16,
+  },
+  signUpButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
   signUpButtonText: {
     color: "#FFFFFF",
