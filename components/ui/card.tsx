@@ -1,38 +1,46 @@
+
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { theme } from '../../config/theme';
 
 interface CardProps {
   children: React.ReactNode;
-  [key: string]: any;
+  style?: ViewStyle;
+  shadow?: 'none' | 'sm' | 'base' | 'md' | 'lg';
 }
 
-export const Card: React.FC<CardProps> = ({ children, ...props }) => {
+export const Card: React.FC<CardProps> = ({ children, style, shadow = 'base', ...props }) => {
   return (
-    <View style={styles.card} {...props}>
+    <View style={[styles.card, theme.shadows[shadow], style]} {...props}>
       {children}
     </View>
   );
 };
 
-export const CardHeader: React.FC<CardProps> = ({ children, ...props }) => {
+export const CardHeader: React.FC<CardProps> = ({ children, style, ...props }) => {
   return (
-    <View style={styles.cardHeader} {...props}>
+    <View style={[styles.cardHeader, style]} {...props}>
       {children}
     </View>
   );
 };
 
-export const CardTitle: React.FC<CardProps> = ({ children, ...props }) => {
+interface CardTitleProps {
+  children: React.ReactNode;
+  style?: TextStyle;
+}
+
+export const CardTitle: React.FC<CardTitleProps> = ({ children, style, ...props }) => {
   return (
-    <Text style={styles.cardTitle} {...props}>
+    <Text style={[styles.cardTitle, style]} {...props}>
       {children}
     </Text>
   );
 };
 
-export const CardContent: React.FC<CardProps> = ({ children, ...props }) => {
+export const CardContent: React.FC<CardProps> = ({ children, style, ...props }) => {
   return (
-    <View style={styles.cardContent} {...props}>
+    <View style={[styles.cardContent, style]} {...props}>
       {children}
     </View>
   );
@@ -40,23 +48,18 @@ export const CardContent: React.FC<CardProps> = ({ children, ...props }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    marginBottom: 16,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.base,
+    marginBottom: theme.spacing.base,
   },
   cardHeader: {
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: theme.typography.fontSize.lg,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.text,
   },
   cardContent: {
     flex: 1,

@@ -1,16 +1,34 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import ArrowForwardIcon from '../../components/ArrowForwardIcon';
+import { theme } from '../../config/theme';
 
 export default function OnboardingScreen1() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
+
+    // Fade in animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
     return () => subscription?.remove();
   }, []);
@@ -19,7 +37,15 @@ export default function OnboardingScreen1() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
+      <Animated.View 
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         <View style={styles.imageContainer}>
           <Image
             source={require('../../assets/images/onboarding_img1.png')}
@@ -33,7 +59,7 @@ export default function OnboardingScreen1() {
           Your trusted financial partner for secure transactions and seamless money management
         </Text>
 
-      </View>
+      </Animated.View>
 
       <View style={styles.footer}>
         <View style={styles.pagination}>
@@ -55,13 +81,13 @@ export default function OnboardingScreen1() {
 
 const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
-  const isTablet = width >= 768;
+  const isTablet = width >= theme.breakpoints.tablet;
   const isSmallScreen = width < 350;
 
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "white",
+      backgroundColor: theme.colors.background,
       paddingHorizontal: Math.max(16, width * 0.06),
       paddingVertical: Math.max(20, height * 0.04),
     },
@@ -84,22 +110,22 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
     },
     title: {
-      fontSize: isTablet ? 32 : isSmallScreen ? 20 : 24,
-      fontWeight: "800",
-      color: "rgb(11, 26, 81)",
+      fontSize: isTablet ? theme.typography.fontSize['4xl'] : isSmallScreen ? theme.typography.fontSize.xl : theme.typography.fontSize['2xl'],
+      fontFamily: theme.typography.fontFamily.extraBold,
+      color: theme.colors.primaryDark,
       textAlign: "center",
-      marginBottom: Math.max(12, height * 0.02),
+      marginBottom: Math.max(theme.spacing.md, height * 0.02),
       lineHeight: isTablet ? 40 : isSmallScreen ? 28 : 32,
       maxWidth: width * 0.9,
     },
     description: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      color: "rgb(136, 136, 136)",
+      fontSize: isTablet ? theme.typography.fontSize.md : isSmallScreen ? theme.typography.fontSize.sm : theme.typography.fontSize.base,
+      fontFamily: theme.typography.fontFamily.regular,
+      color: theme.colors.textSecondary,
       textAlign: "center",
-      lineHeight: isTablet ? 24 : 20,
-      marginBottom: Math.max(40, height * 0.06),
+      lineHeight: theme.typography.lineHeight.relaxed * (isTablet ? 16 : 14),
+      marginBottom: Math.max(theme.spacing['4xl'], height * 0.06),
       maxWidth: Math.min(width * 0.85, 320),
-      fontWeight: "300",
     },
     pagination: {
       flexDirection: "row",
@@ -124,18 +150,11 @@ const getResponsiveStyles = (screenData: any) => {
     nextButton: {
       width: isTablet ? 64 : 56,
       height: isTablet ? 64 : 56,
-      borderRadius: isTablet ? 32 : 28,
-      backgroundColor: "rgb(70, 130, 180)",
+      borderRadius: theme.borderRadius.full,
+      backgroundColor: theme.colors.primary,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: "#000",
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+      ...theme.shadows.md,
     },
   });
 };
