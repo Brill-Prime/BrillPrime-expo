@@ -3,11 +3,13 @@
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   phone?: string;
   profileImageUrl?: string;
   role: 'consumer' | 'merchant' | 'driver';
+  isVerified?: boolean;
   createdAt: string;
   updatedAt: string;
   address?: string;
@@ -116,12 +118,16 @@ export interface LocationData {
 
 // Request interfaces
 export interface SignUpRequest {
-  fullName: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
-  phone: string;
+  phone?: string;
+  phoneNumber?: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword?: string;
   role: 'consumer' | 'merchant' | 'driver';
+  firebaseUid?: string;
 }
 
 export interface SignInRequest {

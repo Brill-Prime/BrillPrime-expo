@@ -82,15 +82,22 @@ export default function AdminControlCenter() {
 
   const loadSystemMetrics = async () => {
     try {
-      // In a real app, this would fetch from API
-      // const response = await fetch('/api/admin/system-metrics');
-      // const data = await response.json();
-      // setSystemMetrics(data);
-      
-      // For now, using mock data
-      console.log('System metrics loaded');
+      const token = await AsyncStorage.getItem('adminToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/system-metrics`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSystemMetrics(data);
+      } else {
+        console.log('Using mock system metrics');
+      }
     } catch (error) {
       console.error('Error loading system metrics:', error);
+      // Continue using mock data as fallback
     }
   };
 
@@ -113,13 +120,79 @@ export default function AdminControlCenter() {
     return `${hours}h ${minutes}m`;
   };
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = async (action: string) => {
     switch (action) {
       case 'announcement':
-        Alert.alert('Send Announcement', 'Platform announcement feature coming soon!');
+        Alert.prompt(
+          'Send Announcement',
+          'Enter your announcement message:',
+          async (text) => {
+            if (text) {
+              try {
+                const token = await AsyncStorage.getItem('adminToken');
+                const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/announcements`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    title: 'Platform Announcement',
+                    message: text,
+                    targetAudience: 'all',
+                    priority: 'medium'
+                  })
+                });
+                
+                if (response.ok) {
+                  Alert.alert('Success', 'Announcement sent successfully');
+                } else {
+                  throw new Error('Failed to send announcement');
+                }
+              } catch (error) {
+                console.error('Send announcement error:', error);
+                Alert.alert('Error', 'Failed to send announcement');
+              }
+            }
+          }
+        );
         break;
       case 'maintenance':
-        Alert.alert('Maintenance Mode', 'System maintenance controls coming soon!');
+        Alert.alert(
+          'Maintenance Mode',
+          'Enable maintenance mode?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Enable',
+              onPress: async () => {
+                try {
+                  const token = await AsyncStorage.getItem('adminToken');
+                  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/maintenance`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      enabled: true,
+                      message: 'System under maintenance'
+                    })
+                  });
+                  
+                  if (response.ok) {
+                    Alert.alert('Success', 'Maintenance mode enabled');
+                  } else {
+                    throw new Error('Failed to enable maintenance mode');
+                  }
+                } catch (error) {
+                  console.error('Maintenance mode error:', error);
+                  Alert.alert('Error', 'Failed to enable maintenance mode');
+                }
+              }
+            }
+          ]
+        );
         break;
       case 'reports':
         router.push('/admin/reports');

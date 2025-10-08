@@ -87,8 +87,29 @@ export default function AdminEscrowManagement() {
       setScreenData(window);
     });
     
+    loadEscrowTransactions();
+    
     return () => subscription?.remove();
   }, []);
+
+  const loadEscrowTransactions = async () => {
+    try {
+      const token = await AsyncStorage.getItem('adminToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/escrow/transactions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error('Error loading escrow transactions:', error);
+      // Keep using mock data as fallback
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -143,7 +164,7 @@ export default function AdminEscrowManagement() {
     setShowActionModal(true);
   };
 
-  const executeAction = (action: 'release' | 'refund' | 'investigate') => {
+  const executeAction = async (action: 'release' | 'refund' | 'investigate') => {
     if (!selectedTransaction) return;
 
     Alert.alert(
@@ -153,21 +174,42 @@ export default function AdminEscrowManagement() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: () => {
-            // Update transaction status
-            setTransactions(prev => 
-              prev.map(t => 
-                t.id === selectedTransaction.id 
-                  ? { 
-                      ...t, 
-                      status: action === 'release' ? 'RELEASED' : action === 'refund' ? 'REFUNDED' : t.status 
-                    }
-                  : t
-              )
-            );
-            setShowActionModal(false);
-            setActionNotes('');
-            Alert.alert('Success', `Transaction ${action} completed successfully.`);
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('adminToken');
+              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/escrow/${action}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  transactionId: selectedTransaction.id,
+                  orderId: selectedTransaction.orderId,
+                  notes: actionNotes
+                })
+              });
+
+              if (!response.ok) throw new Error(`Failed to ${action} transaction`);
+
+              // Update transaction status
+              setTransactions(prev => 
+                prev.map(t => 
+                  t.id === selectedTransaction.id 
+                    ? { 
+                        ...t, 
+                        status: action === 'release' ? 'RELEASED' : action === 'refund' ? 'REFUNDED' : t.status 
+                      }
+                    : t
+                )
+              );
+              setShowActionModal(false);
+              setActionNotes('');
+              Alert.alert('Success', `Transaction ${action} completed successfully.`);
+            } catch (error) {
+              console.error(`Error ${action}ing transaction:`, error);
+              Alert.alert('Error', `Failed to ${action} transaction. Please try again.`);
+            }
           }
         }
       ]

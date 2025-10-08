@@ -11,15 +11,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#fff' }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#000' }}>
         Something went wrong
       </Text>
       <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
         {error.message}
       </Text>
+      <Text style={{ fontSize: 12, color: '#999', marginBottom: 20, textAlign: 'center' }}>
+        {error.stack?.substring(0, 200)}
+      </Text>
       <Text
-        style={{ color: '#007AFF', fontSize: 16 }}
+        style={{ color: '#007AFF', fontSize: 16, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 5 }}
         onPress={resetErrorBoundary}
       >
         Try again
@@ -37,15 +40,23 @@ export default function RootLayout() {
         // Keep the splash screen visible while we fetch resources
         await SplashScreen.preventAutoHideAsync();
 
-        // Load Ionicons font
-        console.log('Loading Ionicons font...');
+        // Load fonts
+        console.log('Loading fonts...');
         await Font.loadAsync({
           ...Ionicons.font,
+          'Montserrat-Black': require('../assets/fonts/Montserrat-Black.ttf'),
+          'Montserrat-ExtraBold': require('../assets/fonts/Montserrat-ExtraBold.ttf'),
+          'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
+          'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
+          'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
+          'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
+          'Montserrat-Light': require('../assets/fonts/Montserrat-Light.ttf'),
+          'Montserrat-ExtraLight': require('../assets/fonts/Montserrat-ExtraLight.ttf'),
         });
-        console.log('Ionicons font loaded successfully');
+        console.log('Fonts loaded successfully');
 
       } catch (e) {
-        console.warn('Error loading fonts:', e);
+        console.error('Error loading fonts:', e);
       } finally {
         // Tell the application to render the child components
         setFontsLoaded(true);

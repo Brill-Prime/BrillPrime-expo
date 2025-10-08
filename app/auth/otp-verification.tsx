@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,6 +8,23 @@ export default function OTPVerification() {
   const [otp, setOtp] = useState(["", "", "", "", ""]);
   const inputRefs = useRef<TextInput[]>([]);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    const loadUserEmail = async () => {
+      try {
+        const pendingUserData = await AsyncStorage.getItem("pendingUserData");
+        if (pendingUserData) {
+          const userData = JSON.parse(pendingUserData);
+          setUserEmail(userData.email || "");
+        }
+      } catch (error) {
+        console.error("Error loading user email:", error);
+      }
+    };
+
+    loadUserEmail();
+  }, []);
 
   const handleOTPChange = (value: string, index: number) => {
     // Only allow numeric input
@@ -91,11 +108,31 @@ export default function OTPVerification() {
     }
   };
 
-  const handleResendOTP = () => {
-    // In a real app, you would resend the OTP here
-    Alert.alert("Code Resent", "A new verification code has been sent to username@email.com");
-    setOtp(["", "", "", "", ""]);
-    inputRefs.current[0]?.focus();
+  const handleResendOTP = async () => {
+    try {
+      const pendingUserData = await AsyncStorage.getItem("pendingUserData");
+      if (!pendingUserData) {
+        Alert.alert("Error", "Session expired. Please sign up again.");
+        router.replace("/auth/signup");
+        return;
+      }
+
+      const userData = JSON.parse(pendingUserData);
+      
+      const { authService } = await import('../../services/authService');
+      const response = await authService.resendOTP(userData.email);
+
+      if (response.success) {
+        Alert.alert("Code Resent", `A new verification code has been sent to ${userData.email}`);
+        setOtp(["", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+      } else {
+        Alert.alert("Error", response.error || "Failed to resend code. Please try again.");
+      }
+    } catch (error) {
+      console.error("Resend OTP Error:", error);
+      Alert.alert("Error", "Failed to resend code. Please try again.");
+    }
   };
 
   return (
@@ -136,7 +173,7 @@ export default function OTPVerification() {
       {/* Email Info */}
       <View style={styles.emailInfo}>
         <Text style={styles.emailText}>A verification code has been sent to</Text>
-        <Text style={styles.emailAddress}>username@email.com</Text>
+        <Text style={styles.emailAddress}>{userEmail || "your email"}</Text>
       </View>
 
       {/* Submit Button */}

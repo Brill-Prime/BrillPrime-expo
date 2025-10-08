@@ -4,9 +4,78 @@
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 import { Merchant, Commodity, MerchantCommodity } from './types';
+import { migrationService } from './migrationService';
+
+export interface MerchantProfile {
+  id: string;
+  businessName: string;
+  category: string;
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+  operatingHours: Record<string, string>;
+  services: string[];
+  documents: any[];
+  isVerified: boolean;
+  rating: number;
+  reviewCount: number;
+}
 
 class MerchantService {
-  // Get all merchants
+  // Get nearby merchants
+  async getNearbyMerchants(latitude: number, longitude: number, radius: number = 5000): Promise<ApiResponse<Merchant[]>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get<Merchant[]>(
+      `/api/merchants?lat=${latitude}&lng=${longitude}&radius=${radius}`,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Get merchant by ID
+  async getMerchantById(merchantId: string): Promise<ApiResponse<Merchant>> {
+    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
+      console.log('Using mock merchant data');
+      return { 
+        success: true, 
+        data: {
+          id: merchantId,
+          name: 'Sample Merchant',
+          type: 'market',
+          category: 'groceries',
+          address: 'Sample Address',
+          phone: '+234-800-000-0000',
+          email: 'merchant@example.com',
+          description: 'Sample merchant description',
+          distance: '0 km',
+          rating: 0,
+          reviewCount: 0,
+          latitude: 0,
+          longitude: 0,
+          priceRange: 'medium',
+          isOpen: true,
+          operatingHours: {},
+          services: [],
+          images: []
+        } as Merchant 
+      };
+    }
+
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get<Merchant>(`/api/merchants/${merchantId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get all merchants with filters
   async getMerchants(filters?: {
     type?: string;
     location?: { latitude: number; longitude: number; radius: number };
@@ -14,7 +83,7 @@ class MerchantService {
   }): Promise<ApiResponse<Merchant[]>> {
     let endpoint = '/api/merchants';
     const queryParams = new URLSearchParams();
-    
+
     if (filters) {
       if (filters.type) queryParams.append('type', filters.type);
       if (filters.location) {
@@ -24,53 +93,101 @@ class MerchantService {
       }
       if (filters.isOpen !== undefined) queryParams.append('isOpen', filters.isOpen.toString());
     }
-    
+
     if (queryParams.toString()) {
       endpoint += `?${queryParams.toString()}`;
     }
-    
+
     return apiClient.get<Merchant[]>(endpoint);
   }
 
-  // Get merchant by ID
+  // Get merchant alias
   async getMerchant(merchantId: string): Promise<ApiResponse<Merchant>> {
-    return apiClient.get<Merchant>(`/api/merchants/${merchantId}`);
+    return this.getMerchantById(merchantId);
   }
 
-  // Get nearby merchants
-  async getNearbyMerchants(
-    latitude: number, 
-    longitude: number, 
-    radius: number = 10
-  ): Promise<ApiResponse<Merchant[]>> {
-    return apiClient.get<Merchant[]>(
-      `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`
-    );
-  }
+  // Search merchants
+  async searchMerchants(query: string, filters?: any): Promise<ApiResponse<Merchant[]>> {
+    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
+      console.log('Using mock merchant search');
+      return { success: true, data: [] };
+    }
 
-  // Get commodities
-  async getCommodities(filters?: {
-    category?: string;
-    search?: string;
-    merchantId?: string;
-  }): Promise<ApiResponse<Commodity[]>> {
-    let endpoint = '/api/commodities';
-    const queryParams = new URLSearchParams();
-    
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const queryParams = new URLSearchParams({ q: query });
     if (filters) {
-      if (filters.category) queryParams.append('category', filters.category);
-      if (filters.search) queryParams.append('search', filters.search);
-      if (filters.merchantId) queryParams.append('merchantId', filters.merchantId);
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) queryParams.append(key, filters[key]);
+      });
     }
-    
-    if (queryParams.toString()) {
-      endpoint += `?${queryParams.toString()}`;
-    }
-    
-    return apiClient.get<Commodity[]>(endpoint);
+
+    return apiClient.get<Merchant[]>(`/api/merchants/search?${queryParams.toString()}`, {
+      Authorization: `Bearer ${token}`,
+    });
   }
 
-  // Get commodity by ID
+  // Get merchant profile
+  async getMerchantProfile(merchantId: string): Promise<ApiResponse<MerchantProfile>> {
+    try {
+      const response = await apiClient.get(`/api/merchants/${merchantId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error getting merchant profile:', error);
+      return { success: false, error: 'Failed to get merchant profile' };
+    }
+  }
+
+  // Update merchant profile
+  async updateMerchantProfile(profileData: Partial<MerchantProfile>): Promise<ApiResponse<MerchantProfile>> {
+    try {
+      const response = await apiClient.put('/api/merchants/profile', profileData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating merchant profile:', error);
+      return { success: false, error: 'Failed to update merchant profile' };
+    }
+  }
+
+  // Get commodities (products)
+  async getCommodities(filters?: any): Promise<ApiResponse<Commodity[]>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const queryParams = new URLSearchParams();
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) queryParams.append(key, filters[key]);
+      });
+    }
+
+    const endpoint = queryParams.toString() 
+      ? `/api/products?${queryParams.toString()}`
+      : '/api/products';
+
+    return apiClient.get<Commodity[]>(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get commodity by ID (product)
+  async getCommodityById(commodityId: string): Promise<ApiResponse<Commodity>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get<Commodity>(`/api/products/${commodityId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get commodity alias
   async getCommodity(commodityId: string): Promise<ApiResponse<{
     commodity: Commodity;
     merchants: MerchantCommodity[];
@@ -99,7 +216,7 @@ class MerchantService {
     commodities: Commodity[];
   }>> {
     const params = new URLSearchParams({ q: query });
-    
+
     if (filters) {
       if (filters.type) params.append('type', filters.type);
       if (filters.location) {
@@ -107,7 +224,7 @@ class MerchantService {
         params.append('lng', filters.location.longitude.toString());
       }
     }
-    
+
     return apiClient.get(`/api/search?${params.toString()}`);
   }
 
@@ -135,95 +252,6 @@ class MerchantService {
     return apiClient.post(`/api/merchants/${merchantId}/reviews`, review, {
       Authorization: `Bearer ${token}`,
     });
-  }
-}
-
-export const merchantService = new MerchantService();
-// Merchant Service
-// Handles merchant-related API calls
-
-import { apiClient, ApiResponse } from './api';
-
-export interface Merchant {
-  id: string;
-  businessName: string;
-  category: string;
-  email: string;
-  phone: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  rating: number;
-  isVerified: boolean;
-  operatingHours: Record<string, string>;
-  services: string[];
-  priceRange: 'low' | 'medium' | 'high';
-  isOpen: boolean;
-}
-
-export interface MerchantProfile {
-  id: string;
-  businessName: string;
-  category: string;
-  description: string;
-  address: string;
-  phone: string;
-  email: string;
-  operatingHours: Record<string, string>;
-  services: string[];
-  documents: any[];
-  isVerified: boolean;
-  rating: number;
-  reviewCount: number;
-}
-
-class MerchantService {
-  async searchMerchants(query: string, location?: { latitude: number; longitude: number }): Promise<ApiResponse<Merchant[]>> {
-    try {
-      const response = await apiClient.get('/merchants/search', {
-        query,
-        latitude: location?.latitude,
-        longitude: location?.longitude,
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error searching merchants:', error);
-      return { success: false, error: 'Failed to search merchants' };
-    }
-  }
-
-  async getMerchantProfile(merchantId: string): Promise<ApiResponse<MerchantProfile>> {
-    try {
-      const response = await apiClient.get(`/merchants/${merchantId}`);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error getting merchant profile:', error);
-      return { success: false, error: 'Failed to get merchant profile' };
-    }
-  }
-
-  async updateMerchantProfile(profileData: Partial<MerchantProfile>): Promise<ApiResponse<MerchantProfile>> {
-    try {
-      const response = await apiClient.put('/merchants/profile', profileData);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error updating merchant profile:', error);
-      return { success: false, error: 'Failed to update merchant profile' };
-    }
-  }
-
-  async getNearbyMerchants(location: { latitude: number; longitude: number }, radius: number = 10): Promise<ApiResponse<Merchant[]>> {
-    try {
-      const response = await apiClient.get('/merchants/nearby', {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        radius,
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error getting nearby merchants:', error);
-      return { success: false, error: 'Failed to get nearby merchants' };
-    }
   }
 }
 

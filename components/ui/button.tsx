@@ -1,15 +1,18 @@
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, Animated } from 'react-native';
+import { theme } from '../../config/theme';
 
 interface ButtonProps {
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: 'default' | 'outline' | 'secondary' | 'destructive';
-  size?: 'default' | 'sm' | 'lg';
+  variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost';
+  size?: 'sm' | 'default' | 'lg';
   disabled?: boolean;
+  loading?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  fullWidth?: boolean;
 }
 
 export function Button({ 
@@ -18,13 +21,34 @@ export function Button({
   variant = 'default', 
   size = 'default',
   disabled = false,
+  loading = false,
   style,
-  textStyle
+  textStyle,
+  fullWidth = false,
 }: ButtonProps) {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const buttonStyles = [
     styles.base,
     styles[variant],
     styles[`size_${size}`],
+    fullWidth && styles.fullWidth,
     disabled && styles.disabled,
     style
   ];
@@ -32,73 +56,100 @@ export function Button({
   const textStyles = [
     styles.text,
     styles[`text_${variant}`],
+    styles[`textSize_${size}`],
     disabled && styles.disabledText,
     textStyle
   ];
 
   return (
-    <TouchableOpacity 
-      style={buttonStyles} 
-      onPress={disabled ? undefined : onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-    >
-      <Text style={textStyles}>{children}</Text>
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity 
+        style={buttonStyles} 
+        onPress={disabled || loading ? undefined : onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+      >
+        <Text style={textStyles}>
+          {loading ? 'Loading...' : children}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
   default: {
-    backgroundColor: '#4682B4',
+    backgroundColor: theme.colors.primary,
+    ...theme.shadows.base,
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#4682B4',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
   },
   secondary: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.backgroundSecondary,
+    ...theme.shadows.sm,
   },
   destructive: {
-    backgroundColor: '#dc3545',
+    backgroundColor: theme.colors.error,
+    ...theme.shadows.base,
   },
-  size_default: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  ghost: {
+    backgroundColor: 'transparent',
   },
   size_sm: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  size_default: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
   },
   size_lg: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.base,
+  },
+  fullWidth: {
+    width: '100%',
   },
   disabled: {
     opacity: 0.5,
   },
   text: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontFamily: theme.typography.fontFamily.semiBold,
   },
   text_default: {
-    color: 'white',
+    color: theme.colors.white,
   },
   text_outline: {
-    color: '#4682B4',
+    color: theme.colors.primary,
   },
   text_secondary: {
-    color: '#333',
+    color: theme.colors.text,
   },
   text_destructive: {
-    color: 'white',
+    color: theme.colors.white,
+  },
+  text_ghost: {
+    color: theme.colors.primary,
+  },
+  textSize_sm: {
+    fontSize: theme.typography.fontSize.sm,
+  },
+  textSize_default: {
+    fontSize: theme.typography.fontSize.md,
+  },
+  textSize_lg: {
+    fontSize: theme.typography.fontSize.lg,
   },
   disabledText: {
     opacity: 0.7,

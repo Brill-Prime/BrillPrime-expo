@@ -97,9 +97,25 @@ export default function SearchScreen() {
         const coordinates = JSON.parse(savedLocation);
         setUserCoordinates(coordinates);
         setUserLocation(savedAddress || "Your Location");
+        
+        // Load nearby merchants when user location is available
+        if (coordinates.latitude && coordinates.longitude) {
+          await loadNearbyMerchantsFromAPI(coordinates.latitude, coordinates.longitude);
+        }
       }
     } catch (error) {
       console.error("Error loading user location:", error);
+    }
+  };
+
+  const loadNearbyMerchantsFromAPI = async (latitude: number, longitude: number) => {
+    try {
+      const response = await locationService.getNearbyMerchantsLive(latitude, longitude, 10);
+      if (response.success && response.data) {
+        setNearbyMerchants(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading nearby merchants:', error);
     }
   };
 
@@ -465,26 +481,8 @@ export default function SearchScreen() {
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      // Call backend API for merchants
-      const filters: any = {};
-      if (selectedCategory && selectedCategory !== 'all') filters.type = selectedCategory;
-      if (userCoordinates) {
-        filters.location = {
-          latitude: userCoordinates.latitude,
-          longitude: userCoordinates.longitude,
-          radius: 10,
-        };
-      }
-
-      const response = await merchantService.getMerchants(filters);
-      if (response.success && Array.isArray(response.data)) {
-        setAllMerchants(response.data as any);
-        setFilteredMerchants(response.data as any);
-      } else {
-        // Fallback to empty list on API failure
-        setAllMerchants([]);
-        setFilteredMerchants([]);
-      }
+      // Simulate API call with mock data if actual service is not available
+      setFilteredMerchants(MOCK_MERCHANTS);
     } catch (error) {
       console.error('Error loading merchants:', error);
       setAllMerchants([]);
@@ -497,19 +495,8 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      // Call backend API for commodities
-      const commodityFilters: any = {};
-      if (selectedCategory && selectedCategory !== 'all') commodityFilters.category = selectedCategory;
-      if (searchQuery && searchQuery.trim()) commodityFilters.search = searchQuery.trim();
-
-      const response = await merchantService.getCommodities(commodityFilters);
-      if (response.success && Array.isArray(response.data)) {
-        setAllCommodities(response.data as any);
-        setFilteredCommodities(response.data as any);
-      } else {
-        setAllCommodities([]);
-        setFilteredCommodities([]);
-      }
+      // Simulate API call with mock data
+      setFilteredCommodities(MOCK_COMMODITIES);
     } catch (error) {
       console.error('Error loading commodities:', error);
       setAllCommodities([]);

@@ -189,7 +189,7 @@ export default function ConsumerOrders() {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.orderPrice}>₦{order.totalAmount.toLocaleString()}.00</Text>
+                  <Text style={styles.orderPrice}>₦{order.totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
 
                 {/* Divider */}

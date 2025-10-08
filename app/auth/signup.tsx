@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
+import AlertModal from "../../components/AlertModal";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
 
@@ -19,6 +20,8 @@ export default function SignUp() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -73,6 +76,8 @@ export default function SignUp() {
     // Use stored role instead of component state
     const finalRole = storedRole;
 
+    setLoading(true);
+
     try {
       // Import authService for real API calls
       const { authService } = await import('../../services/authService');
@@ -106,7 +111,8 @@ export default function SignUp() {
           ["tempUserRole", finalRole]
         ]);
 
-        router.push("/auth/otp-verification");
+        // Show OTP sent modal
+        setShowOtpModal(true);
       } else {
         // Handle specific error cases
         const errorMessage = response.error || "Registration failed";
@@ -138,11 +144,66 @@ export default function SignUp() {
       } else {
         showError("Error", "Sign up failed. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    showInfo("Coming Soon", `${provider} login will be available soon!`);
+  const handleSocialLogin = async (provider: 'Google' | 'Apple' | 'Facebook') => {
+    try {
+      setLoading(true);
+
+      // Check if user has selected a role first
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      if (!selectedRole) {
+        showConfirmDialog(
+          "Role Required",
+          "Please select your role first.",
+          () => router.replace("/auth/role-selection")
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Import authService
+      const { authService } = await import('../../services/authService');
+
+      let response;
+      if (provider === 'Google') {
+        response = await authService.signInWithGoogle(selectedRole);
+      } else if (provider === 'Apple') {
+        response = await authService.signInWithApple(selectedRole);
+      } else if (provider === 'Facebook') {
+        response = await authService.signInWithFacebook(selectedRole);
+      }
+
+      if (response?.success && response.data) {
+        // Store user data from API response
+        await AsyncStorage.multiSet([
+          ["userToken", response.data.token],
+          ["userEmail", response.data.user.email],
+          ["userRole", response.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
+        ]);
+
+        // Route based on user role from API
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
+      } else {
+        const errorMessage = response?.error || `${provider} sign-up failed`;
+        if (errorMessage !== 'Sign-in cancelled') {
+          showError("Sign Up Failed", errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error(`${provider} sign-up error:`, error);
+      showError("Error", `${provider} sign-up failed. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -260,8 +321,14 @@ export default function SignUp() {
 
 
           {/* Sign Up Button */}
-          <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-            <Text style={styles.signUpButtonText}>Sign Up</Text>
+          <TouchableOpacity 
+            style={[styles.signUpButton, loading && styles.signUpButtonDisabled]} 
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            <Text style={styles.signUpButtonText}>
+              {loading ? "Creating Account..." : "Sign Up"}
+            </Text>
           </TouchableOpacity>
 
           {/* Terms of Service */}
@@ -311,6 +378,19 @@ export default function SignUp() {
           </View>
         </View>
       </ScrollView>
+
+      {/* OTP Sent Modal */}
+      <AlertModal
+        visible={showOtpModal}
+        type="success"
+        title="OTP Sent!"
+        message={`A verification code has been sent to ${formData.email}. Please check your email and enter the code to verify your account.`}
+        onClose={() => {
+          setShowOtpModal(false);
+          router.push("/auth/otp-verification");
+        }}
+        confirmText="Continue"
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -379,6 +459,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
     marginBottom: 16,
+  },
+  signUpButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
   signUpButtonText: {
     color: "#FFFFFF",

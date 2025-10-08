@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notificationService } from '@/services/notificationService';
 
 interface Notification {
   id: string;
@@ -87,9 +88,13 @@ export default function Notifications() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const savedNotifications = await AsyncStorage.getItem('userNotifications');
-      if (savedNotifications) {
-        setNotifications(JSON.parse(savedNotifications));
+      const response = await notificationService.getNotifications();
+      if (response.success && response.data) {
+        const formattedNotifications = response.data.map(notif => ({
+          ...notif,
+          timestamp: notif.timestamp || notif.createdAt || 'Just now'
+        }));
+        setNotifications(formattedNotifications);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -100,13 +105,15 @@ export default function Notifications() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const updatedNotifications = notifications.map(notification =>
-        notification.id === notificationId
-          ? { ...notification, read: true }
-          : notification
-      );
-      setNotifications(updatedNotifications);
-      await AsyncStorage.setItem('userNotifications', JSON.stringify(updatedNotifications));
+      const response = await notificationService.markAsRead(notificationId);
+      if (response.success) {
+        const updatedNotifications = notifications.map(notification =>
+          notification.id === notificationId
+            ? { ...notification, read: true }
+            : notification
+        );
+        setNotifications(updatedNotifications);
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -114,13 +121,17 @@ export default function Notifications() {
 
   const markAllAsRead = async () => {
     try {
-      const updatedNotifications = notifications.map(notification => ({
-        ...notification,
-        read: true
-      }));
-      setNotifications(updatedNotifications);
-      await AsyncStorage.setItem('userNotifications', JSON.stringify(updatedNotifications));
-      Alert.alert('Success', 'All notifications marked as read');
+      const response = await notificationService.markAllAsRead();
+      if (response.success) {
+        const updatedNotifications = notifications.map(notification => ({
+          ...notification,
+          read: true
+        }));
+        setNotifications(updatedNotifications);
+        Alert.alert('Success', 'All notifications marked as read');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to mark notifications as read');
+      }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
       Alert.alert('Error', 'Failed to mark notifications as read');
@@ -138,11 +149,15 @@ export default function Notifications() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updatedNotifications = notifications.filter(
-                notification => notification.id !== notificationId
-              );
-              setNotifications(updatedNotifications);
-              await AsyncStorage.setItem('userNotifications', JSON.stringify(updatedNotifications));
+              const response = await notificationService.deleteNotification(notificationId);
+              if (response.success) {
+                const updatedNotifications = notifications.filter(
+                  notification => notification.id !== notificationId
+                );
+                setNotifications(updatedNotifications);
+              } else {
+                Alert.alert('Error', response.error || 'Failed to delete notification');
+              }
             } catch (error) {
               console.error('Error deleting notification:', error);
               Alert.alert('Error', 'Failed to delete notification');

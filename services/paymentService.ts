@@ -21,6 +21,28 @@ class PaymentService {
     });
   }
 
+  // Validate payment data
+  private validatePaymentData = (paymentData: PaymentRequest): { isValid: boolean; error?: string } => {
+    if (!paymentData.orderId) {
+      return { isValid: false, error: 'Order ID is required' };
+    }
+
+    if (!paymentData.amount || paymentData.amount <= 0) {
+      return { isValid: false, error: 'Valid payment amount is required' };
+    }
+
+    if (paymentData.amount > 10000000) {
+      return { isValid: false, error: 'Payment amount exceeds maximum limit (₦10,000,000)' };
+    }
+
+    const validPaymentMethods = ['card', 'wallet', 'cash'];
+    if (!validPaymentMethods.includes(paymentData.paymentMethod)) {
+      return { isValid: false, error: 'Invalid payment method' };
+    }
+
+    return { isValid: true };
+  }
+
   // Process payment
   async processPayment(paymentData: PaymentRequest): Promise<ApiResponse<{
     transactionId: string;
@@ -30,6 +52,12 @@ class PaymentService {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // Validate before processing
+    const validation = this.validatePaymentData(paymentData);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
     }
 
     return apiClient.post('/api/payments/process', paymentData, {
@@ -88,6 +116,18 @@ class PaymentService {
     }
 
     return apiClient.get<Transaction>(`/api/transactions/${transactionId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Confirm transaction
+  async confirmTransaction(transactionId: string): Promise<ApiResponse<Transaction>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post<Transaction>(`/api/transactions/${transactionId}/confirm`, {}, {
       Authorization: `Bearer ${token}`,
     });
   }
