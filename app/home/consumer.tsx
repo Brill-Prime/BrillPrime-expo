@@ -615,7 +615,19 @@ export default function ConsumerHome() {
                 </View>
                 <Text style={styles.storeCardTitle}>{store.title}</Text>
                 <Text style={styles.storeCardAddress}>{store.address}</Text>
-                <Text style={styles.storeCardDistance}>2.5 km away</Text>
+                <Text style={styles.storeCardDistance}>
+                  {(() => {
+                    const dist = userCoordinates 
+                      ? locationService.calculateDistance(
+                          userCoordinates.latitude,
+                          userCoordinates.longitude,
+                          store.coords.lat,
+                          store.coords.lng
+                        ).toFixed(1)
+                      : '2.5';
+                    return `${dist} km away`;
+                  })()}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>

@@ -219,7 +219,7 @@ export default function CheckoutScreen() {
                 <Text style={styles.merchantName}>{item.merchantName}</Text>
                 <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
               </View>
-              <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString()}</Text>
+              <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString('en-NG')}</Text>
             </View>
           ))}
         </View>
@@ -275,22 +275,22 @@ export default function CheckoutScreen() {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString()}</Text>
+            <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString('en-NG')}</Text>
           </View>
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString()}</Text>
+            <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString('en-NG')}</Text>
           </View>
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Service Fee</Text>
-            <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString()}</Text>
+            <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString('en-NG')}</Text>
           </View>
 
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₦{getTotal().toLocaleString()}</Text>
+            <Text style={styles.totalValue}>₦{getTotal().toLocaleString('en-NG')}</Text>
           </View>
         </View>
       </ScrollView>
@@ -307,7 +307,7 @@ export default function CheckoutScreen() {
           ) : (
             <>
               <Text style={styles.placeOrderText}>Place Order</Text>
-              <Text style={styles.orderTotal}>₦{getTotal().toLocaleString()}</Text>
+              <Text style={styles.orderTotal}>₦{getTotal().toLocaleString('en-NG')}</Text>
             </>
           )}
         </TouchableOpacity>

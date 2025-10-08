@@ -434,7 +434,7 @@ export default function CommoditiesScreen() {
                       </View>
 
                       <View style={styles.priceContainer}>
-                        <Text style={styles.price}>₦{parseFloat(product.price).toLocaleString()}</Text>
+                        <Text style={styles.price}>₦{parseFloat(product.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         <Text style={styles.unit}>/ {product.unit}</Text>
                       </View>
 

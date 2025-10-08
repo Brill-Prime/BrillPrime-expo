@@ -142,7 +142,9 @@ export const formatPrice = (price: number): string => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
-  }).format(price);
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(price).replace('NGN', '₦');
 };
 
 export const generateCommodityId = (): string => {
