@@ -1,17 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function ResetPassword() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [formData, setFormData] = useState({
     newPassword: "",
     confirmPassword: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidToken, setIsValidToken] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    validateResetToken();
+  }, []);
+
+  const validateResetToken = async () => {
+    try {
+      const urlToken = params.token as string;
+      const urlEmail = params.email as string;
+      
+      if (!urlToken || !urlEmail) {
+        throw new Error("Invalid or missing token");
+      }
+
+      // Validate token with backend API
+      const response = await fetch('https://api.brillprime.com/api/password-reset/verify-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: urlEmail, 
+          code: urlToken 
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Store email for password reset
+        await AsyncStorage.setItem("resetEmail", urlEmail);
+        await AsyncStorage.setItem("resetToken", urlToken);
+        setIsValidToken(true);
+        setIsLoading(false);
+      } else {
+        throw new Error(data.message || "Invalid or expired reset link");
+      }
+      
+    } catch (error) {
+      console.error("Token validation error:", error);
+      setIsLoading(false);
+      
+      Alert.alert(
+        "Invalid Reset Link",
+        "This password reset link is invalid or has expired. Please request a new one.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/auth/forgot-password")
+          }
+        ]
+      );
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -61,31 +118,83 @@ export default function ResetPassword() {
 
     try {
       const resetEmail = await AsyncStorage.getItem("resetEmail");
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      const resetToken = await AsyncStorage.getItem("resetToken");
       
-      const token = "user_token_" + Date.now();
-      await AsyncStorage.setItem("userToken", token);
-      await AsyncStorage.setItem("userEmail", resetEmail || "user@brillprime.com");
-      await AsyncStorage.setItem("userRole", selectedRole || "consumer");
+      if (!resetEmail || !resetToken) {
+        throw new Error("Reset session expired");
+      }
+
+      // Call backend API to complete password reset
+      const response = await fetch('https://api.brillprime.com/api/password-reset/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: resetEmail,
+          code: resetToken,
+          newPassword: newPassword,
+        }),
+      });
+
+      const data = await response.json();
       
-      await AsyncStorage.removeItem("resetEmail");
-      
-      Alert.alert(
-        "Success!",
-        "Password reset successfully! You can now log in with your new password.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace(`/dashboard/${selectedRole || "consumer"}`)
-          }
-        ]
-      );
+      if (response.ok && data.success) {
+        // Clean up reset tokens and data
+        await AsyncStorage.removeItem("resetEmail");
+        await AsyncStorage.removeItem("resetToken");
+        
+        Alert.alert(
+          "Success!",
+          "Password reset successfully! You can now log in with your new password.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/auth/signin")
+            }
+          ]
+        );
+      } else {
+        throw new Error(data.message || "Failed to reset password");
+      }
       
     } catch (error) {
       console.error("Error resetting password:", error);
-      Alert.alert("Error", "Failed to reset password. Please try again.");
+      Alert.alert("Error", error instanceof Error ? error.message : "Failed to reset password. Please try again.");
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.loadingText}>Validating reset link...</Text>
+      </View>
+    );
+  }
+
+  if (!isValidToken) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.errorText}>Invalid or expired reset link</Text>
+        <TouchableOpacity 
+          style={styles.resetButton} 
+          onPress={() => router.replace("/auth/forgot-password")}
+        >
+          <Text style={styles.resetButtonText}>Request New Link</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -228,5 +337,16 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "500",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "rgb(11, 26, 81)",
+    marginTop: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff6b6b",
+    marginTop: 20,
+    textAlign: "center",
   },
 });

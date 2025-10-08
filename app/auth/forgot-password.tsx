@@ -1,54 +1,59 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import AlertModal from "../../components/AlertModal";
 
 export default function ForgotPassword() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+      setErrorMessage("Please enter your email address");
+      setShowErrorModal(true);
       return;
     }
 
     if (!email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      setErrorMessage("Please enter a valid email address");
+      setShowErrorModal(true);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Store email for reset process
-      await AsyncStorage.setItem("resetEmail", email);
-      
-      // Simulate API delay
-      setTimeout(async () => {
-        setIsLoading(false);
-        
-        // Show success alert and navigate immediately
-        Alert.alert(
-          "Reset Link Sent!",
-          `A password reset link has been sent to ${email}. You'll be redirected to reset your password.`,
-          [
-            {
-              text: "Continue",
-              onPress: () => {
-                router.push("/auth/reset-password");
-              }
-            }
-          ]
-        );
-      }, 1000);
+      // Call the backend API to request password reset
+      const response = await fetch('https://api.brillprime.com/api/password-reset/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      setIsLoading(false);
+
+      if (response.ok && data.success) {
+        // The backend has sent the email with reset link
+        setShowSuccessModal(true);
+      } else {
+        throw new Error(data.message || "Failed to send reset link");
+      }
       
     } catch (error) {
       console.error("Error sending reset link:", error);
       setIsLoading(false);
-      Alert.alert("Error", "Failed to send reset link. Please try again.");
+      setErrorMessage(error instanceof Error ? error.message : "Failed to send reset link. Please try again.");
+      setShowErrorModal(true);
     }
   };
 
@@ -109,6 +114,29 @@ export default function ForgotPassword() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <AlertModal
+        visible={showSuccessModal}
+        type="success"
+        title="Reset Link Sent!"
+        message={`A password reset link has been sent to ${email}. Please check your email and click the link to reset your password.`}
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.back();
+        }}
+        confirmText="OK"
+      />
+
+      {/* Error Modal */}
+      <AlertModal
+        visible={showErrorModal}
+        type="error"
+        title="Error"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+        confirmText="OK"
+      />
     </KeyboardAvoidingView>
   );
 }

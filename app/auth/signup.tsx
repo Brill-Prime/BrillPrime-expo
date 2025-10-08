@@ -1,11 +1,16 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAlert } from "../../components/AlertProvider";
+import AlertModal from "../../components/AlertModal";
+import EmailIcon from '../../components/EmailIcon';
+import LockIcon from '../../components/LockIcon';
 
 export default function SignUp() {
   const router = useRouter();
+  const { showError, showConfirmDialog, showInfo } = useAlert();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -15,6 +20,8 @@ export default function SignUp() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -25,23 +32,28 @@ export default function SignUp() {
 
   const validateForm = () => {
     if (!formData.fullName.trim()) {
-      Alert.alert("Error", "Please enter your full name");
+      showError("Error", "Please enter your full name");
       return false;
     }
+    // Split fullName into firstName and lastName
+    const nameParts = formData.fullName.trim().split(' ');
+    const firstName = nameParts.length > 0 ? nameParts[0] : '';
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
     if (!formData.email.trim() || !formData.email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showError("Error", "Please enter a valid email address");
       return false;
     }
     if (!formData.phone.trim() || formData.phone.length < 10) {
-      Alert.alert("Error", "Please enter a valid phone number");
+      showError("Error", "Please enter a valid phone number");
       return false;
     }
     if (formData.password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      showError("Error", "Password must be at least 6 characters");
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      showError("Error", "Passwords do not match");
       return false;
     }
     return true;
@@ -50,22 +62,153 @@ export default function SignUp() {
   const handleSignUp = async () => {
     if (!validateForm()) return;
 
+    // Check if user has selected a role first
+    const storedRole = await AsyncStorage.getItem("selectedRole");
+    if (!storedRole) {
+      showConfirmDialog(
+        "Role Required",
+        "Please select your role first.",
+        () => router.replace("/auth/role-selection")
+      );
+      return;
+    }
+
+    // Use stored role instead of component state
+    const finalRole = storedRole;
+
+    setLoading(true);
+
     try {
-      await AsyncStorage.setItem("pendingUserData", JSON.stringify(formData));
-      router.push("/auth/otp-verification");
+      // Import authService for real API calls
+      const { authService } = await import('../../services/authService');
+
+      const nameParts = formData.fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const response = await authService.signUp({
+        email: formData.email,
+        password: formData.password,
+        firstName,
+        lastName,
+        role: finalRole,
+        phoneNumber: formData.phone
+      });
+
+      if (response.success && response.data) {
+        // Store pending user data for OTP verification
+        const pendingUserData = {
+          email: formData.email,
+          firstName,
+          lastName,
+          role: finalRole,
+          phoneNumber: formData.phone
+        };
+
+        await AsyncStorage.multiSet([
+          ["pendingUserData", JSON.stringify(pendingUserData)],
+          ["tempUserEmail", formData.email],
+          ["tempUserRole", finalRole]
+        ]);
+
+        // Show OTP sent modal
+        setShowOtpModal(true);
+      } else {
+        // Handle specific error cases
+        const errorMessage = response.error || "Registration failed";
+        if (errorMessage.includes("email already exists") || errorMessage.includes("already registered")) {
+          showConfirmDialog(
+            "Account Exists",
+            "An account with this email already exists. Would you like to sign in instead?",
+            () => router.push("/auth/signin")
+          );
+        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+          showError("Network Error", "Please check your internet connection and try again.");
+        } else if (errorMessage.includes("invalid email")) {
+          showError("Invalid Email", "Please enter a valid email address.");
+        } else if (errorMessage.includes("password too weak")) {
+          showError("Weak Password", "Please choose a stronger password with at least 8 characters.");
+        } else {
+          showError("Sign Up Failed", errorMessage);
+        }
+      }
     } catch (error) {
-      console.error("Error saving user data:", error);
-      Alert.alert("Error", "Please try again");
+      console.error("Error signing up:", error);
+
+      // Handle network errors specifically
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        showError(
+          "Connection Error",
+          "Unable to connect to server. Please check your internet connection and try again."
+        );
+      } else {
+        showError("Error", "Sign up failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert("Coming Soon", `${provider} login will be available soon!`);
+  const handleSocialLogin = async (provider: 'Google' | 'Apple' | 'Facebook') => {
+    try {
+      setLoading(true);
+
+      // Check if user has selected a role first
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      if (!selectedRole) {
+        showConfirmDialog(
+          "Role Required",
+          "Please select your role first.",
+          () => router.replace("/auth/role-selection")
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Import authService
+      const { authService } = await import('../../services/authService');
+
+      let response;
+      if (provider === 'Google') {
+        response = await authService.signInWithGoogle(selectedRole);
+      } else if (provider === 'Apple') {
+        response = await authService.signInWithApple(selectedRole);
+      } else if (provider === 'Facebook') {
+        response = await authService.signInWithFacebook(selectedRole);
+      }
+
+      if (response?.success && response.data) {
+        // Store user data from API response
+        await AsyncStorage.multiSet([
+          ["userToken", response.data.token],
+          ["userEmail", response.data.user.email],
+          ["userRole", response.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
+        ]);
+
+        // Route based on user role from API
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
+      } else {
+        const errorMessage = response?.error || `${provider} sign-up failed`;
+        if (errorMessage !== 'Sign-in cancelled') {
+          showError("Sign Up Failed", errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error(`${provider} sign-up error:`, error);
+      showError("Error", `${provider} sign-up failed. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -97,7 +240,7 @@ export default function SignUp() {
           {/* Email Field */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <EmailIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.email}
@@ -129,7 +272,7 @@ export default function SignUp() {
           {/* Password Field */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <LockIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.password}
@@ -154,7 +297,7 @@ export default function SignUp() {
           {/* Confirm Password Field */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <LockIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.confirmPassword}
@@ -176,9 +319,16 @@ export default function SignUp() {
             </View>
           </View>
 
+
           {/* Sign Up Button */}
-          <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-            <Text style={styles.signUpButtonText}>Sign Up</Text>
+          <TouchableOpacity 
+            style={[styles.signUpButton, loading && styles.signUpButtonDisabled]} 
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            <Text style={styles.signUpButtonText}>
+              {loading ? "Creating Account..." : "Sign Up"}
+            </Text>
           </TouchableOpacity>
 
           {/* Terms of Service */}
@@ -199,19 +349,19 @@ export default function SignUp() {
 
           {/* Social Login Buttons */}
           <View style={styles.socialContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
             >
               <Ionicons name="logo-google" size={24} color="#DB4437" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Apple")}
             >
               <Ionicons name="logo-apple" size={24} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Facebook")}
             >
@@ -228,6 +378,19 @@ export default function SignUp() {
           </View>
         </View>
       </ScrollView>
+
+      {/* OTP Sent Modal */}
+      <AlertModal
+        visible={showOtpModal}
+        type="success"
+        title="OTP Sent!"
+        message={`A verification code has been sent to ${formData.email}. Please check your email and enter the code to verify your account.`}
+        onClose={() => {
+          setShowOtpModal(false);
+          router.push("/auth/otp-verification");
+        }}
+        confirmText="Continue"
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -296,6 +459,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
     marginBottom: 16,
+  },
+  signUpButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
   signUpButtonText: {
     color: "#FFFFFF",

@@ -1,0 +1,367 @@
+
+import { Alert } from 'react-native';
+
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+}
+
+// Email validation
+export const validateEmail = (email: string): { isValid: boolean; error?: string } => {
+  if (!email.trim()) {
+    return { isValid: false, error: 'Email is required' };
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { isValid: false, error: 'Please enter a valid email address' };
+  }
+  
+  return { isValid: true };
+};
+
+// Phone number validation (Nigerian format)
+export const validatePhone = (phone: string): { isValid: boolean; error?: string } => {
+  if (!phone.trim()) {
+    return { isValid: false, error: 'Phone number is required' };
+  }
+  
+  // Remove spaces and dashes
+  const cleanPhone = phone.replace(/[\s-]/g, '');
+  
+  // Check for Nigerian phone format: +234XXXXXXXXXX or 0XXXXXXXXXX
+  const nigerianPhoneRegex = /^(\+234|0)[7-9][0-1]\d{8}$/;
+  if (!nigerianPhoneRegex.test(cleanPhone)) {
+    return { isValid: false, error: 'Please enter a valid Nigerian phone number' };
+  }
+  
+  return { isValid: true };
+};
+
+// Password validation
+export const validatePassword = (password: string): { isValid: boolean; error?: string } => {
+  if (!password) {
+    return { isValid: false, error: 'Password is required' };
+  }
+  
+  if (password.length < 8) {
+    return { isValid: false, error: 'Password must be at least 8 characters long' };
+  }
+  
+  if (!/[A-Z]/.test(password)) {
+    return { isValid: false, error: 'Password must contain at least one uppercase letter' };
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    return { isValid: false, error: 'Password must contain at least one lowercase letter' };
+  }
+  
+  if (!/\d/.test(password)) {
+    return { isValid: false, error: 'Password must contain at least one number' };
+  }
+  
+  if (!/[@$!%*?&#]/.test(password)) {
+    return { isValid: false, error: 'Password must contain at least one special character (@$!%*?&#)' };
+  }
+  
+  return { isValid: true };
+};
+
+// Name validation
+export const validateName = (name: string, fieldName: string = 'Name'): { isValid: boolean; error?: string } => {
+  if (!name.trim()) {
+    return { isValid: false, error: `${fieldName} is required` };
+  }
+  
+  if (name.trim().length < 2) {
+    return { isValid: false, error: `${fieldName} must be at least 2 characters long` };
+  }
+  
+  if (name.trim().length > 50) {
+    return { isValid: false, error: `${fieldName} must not exceed 50 characters` };
+  }
+  
+  // Allow letters, spaces, hyphens, and apostrophes
+  const nameRegex = /^[a-zA-Z\s\-']+$/;
+  if (!nameRegex.test(name)) {
+    return { isValid: false, error: `${fieldName} can only contain letters, spaces, hyphens, and apostrophes` };
+  }
+  
+  return { isValid: true };
+};
+
+// Address validation
+export const validateAddress = (address: string): { isValid: boolean; error?: string } => {
+  if (!address.trim()) {
+    return { isValid: false, error: 'Address is required' };
+  }
+  
+  if (address.trim().length < 10) {
+    return { isValid: false, error: 'Please enter a complete address (at least 10 characters)' };
+  }
+  
+  if (address.trim().length > 200) {
+    return { isValid: false, error: 'Address is too long (maximum 200 characters)' };
+  }
+  
+  return { isValid: true };
+};
+
+// Business name validation
+export const validateBusinessName = (name: string): { isValid: boolean; error?: string } => {
+  if (!name.trim()) {
+    return { isValid: false, error: 'Business name is required' };
+  }
+  
+  if (name.trim().length < 2) {
+    return { isValid: false, error: 'Business name must be at least 2 characters long' };
+  }
+  
+  if (name.trim().length > 100) {
+    return { isValid: false, error: 'Business name must not exceed 100 characters' };
+  }
+  
+  return { isValid: true };
+};
+
+// Number validation
+export const validateNumber = (
+  value: string,
+  fieldName: string,
+  options: { min?: number; max?: number; allowDecimals?: boolean } = {}
+): { isValid: boolean; error?: string } => {
+  if (!value.trim()) {
+    return { isValid: false, error: `${fieldName} is required` };
+  }
+  
+  const regex = options.allowDecimals ? /^\d+(\.\d+)?$/ : /^\d+$/;
+  if (!regex.test(value)) {
+    return { isValid: false, error: `${fieldName} must be a valid number` };
+  }
+  
+  const numValue = parseFloat(value);
+  
+  if (options.min !== undefined && numValue < options.min) {
+    return { isValid: false, error: `${fieldName} must be at least ${options.min}` };
+  }
+  
+  if (options.max !== undefined && numValue > options.max) {
+    return { isValid: false, error: `${fieldName} must not exceed ${options.max}` };
+  }
+  
+  return { isValid: true };
+};
+
+// Date validation (YYYY-MM-DD format)
+export const validateDate = (date: string, fieldName: string = 'Date'): { isValid: boolean; error?: string } => {
+  if (!date.trim()) {
+    return { isValid: false, error: `${fieldName} is required` };
+  }
+  
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    return { isValid: false, error: 'Date must be in YYYY-MM-DD format' };
+  }
+  
+  const dateObj = new Date(date);
+  if (isNaN(dateObj.getTime())) {
+    return { isValid: false, error: 'Invalid date' };
+  }
+  
+  return { isValid: true };
+};
+
+// Age validation (for date of birth)
+export const validateAge = (dateOfBirth: string, minAge: number = 18): { isValid: boolean; error?: string } => {
+  const dateValidation = validateDate(dateOfBirth, 'Date of birth');
+  if (!dateValidation.isValid) {
+    return dateValidation;
+  }
+  
+  const birthDate = new Date(dateOfBirth);
+  const today = new Date();
+  
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  if (age < minAge) {
+    return { isValid: false, error: `You must be at least ${minAge} years old` };
+  }
+  
+  if (age > 120) {
+    return { isValid: false, error: 'Please enter a valid date of birth' };
+  }
+  
+  return { isValid: true };
+};
+
+// Bank account number validation
+export const validateAccountNumber = (accountNumber: string): { isValid: boolean; error?: string } => {
+  if (!accountNumber.trim()) {
+    return { isValid: false, error: 'Account number is required' };
+  }
+  
+  const cleanNumber = accountNumber.replace(/\s/g, '');
+  
+  if (!/^\d+$/.test(cleanNumber)) {
+    return { isValid: false, error: 'Account number must contain only digits' };
+  }
+  
+  if (cleanNumber.length !== 10) {
+    return { isValid: false, error: 'Account number must be 10 digits' };
+  }
+  
+  return { isValid: true };
+};
+
+// BVN validation
+export const validateBVN = (bvn: string): { isValid: boolean; error?: string } => {
+  if (!bvn.trim()) {
+    return { isValid: false, error: 'BVN is required' };
+  }
+  
+  const cleanBVN = bvn.replace(/\s/g, '');
+  
+  if (!/^\d+$/.test(cleanBVN)) {
+    return { isValid: false, error: 'BVN must contain only digits' };
+  }
+  
+  if (cleanBVN.length !== 11) {
+    return { isValid: false, error: 'BVN must be 11 digits' };
+  }
+  
+  return { isValid: true };
+};
+
+// License number validation
+export const validateLicenseNumber = (licenseNumber: string): { isValid: boolean; error?: string } => {
+  if (!licenseNumber.trim()) {
+    return { isValid: false, error: 'License number is required' };
+  }
+  
+  if (licenseNumber.trim().length < 5) {
+    return { isValid: false, error: 'License number must be at least 5 characters' };
+  }
+  
+  if (licenseNumber.trim().length > 20) {
+    return { isValid: false, error: 'License number must not exceed 20 characters' };
+  }
+  
+  return { isValid: true };
+};
+
+// Vehicle plate number validation
+export const validatePlateNumber = (plateNumber: string): { isValid: boolean; error?: string } => {
+  if (!plateNumber.trim()) {
+    return { isValid: false, error: 'Plate number is required' };
+  }
+  
+  const cleanPlate = plateNumber.trim().toUpperCase();
+  
+  // Nigerian plate format: ABC-123-DE or ABC123DE
+  const plateRegex = /^[A-Z]{3}[-]?\d{3}[-]?[A-Z]{2}$/;
+  if (!plateRegex.test(cleanPlate)) {
+    return { isValid: false, error: 'Please enter a valid plate number (e.g., ABC-123-DE)' };
+  }
+  
+  return { isValid: true };
+};
+
+// Order quantity validation
+export const validateOrderQuantity = (
+  quantity: string,
+  min: number = 1,
+  max: number = 1000
+): { isValid: boolean; error?: string } => {
+  const numValidation = validateNumber(quantity, 'Quantity', { min, max, allowDecimals: true });
+  
+  if (!numValidation.isValid) {
+    return numValidation;
+  }
+  
+  return { isValid: true };
+};
+
+// Price validation
+export const validatePrice = (price: string): { isValid: boolean; error?: string } => {
+  if (!price.trim()) {
+    return { isValid: false, error: 'Price is required' };
+  }
+  
+  const numValidation = validateNumber(price, 'Price', { min: 0.01, allowDecimals: true });
+  
+  return numValidation;
+};
+
+// Description validation
+export const validateDescription = (
+  description: string,
+  minLength: number = 10,
+  maxLength: number = 500
+): { isValid: boolean; error?: string } => {
+  if (!description.trim()) {
+    return { isValid: false, error: 'Description is required' };
+  }
+  
+  if (description.trim().length < minLength) {
+    return { isValid: false, error: `Description must be at least ${minLength} characters` };
+  }
+  
+  if (description.trim().length > maxLength) {
+    return { isValid: false, error: `Description must not exceed ${maxLength} characters` };
+  }
+  
+  return { isValid: true };
+};
+
+// URL validation
+export const validateURL = (url: string): { isValid: boolean; error?: string } => {
+  if (!url.trim()) {
+    return { isValid: false, error: 'URL is required' };
+  }
+  
+  try {
+    new URL(url);
+    return { isValid: true };
+  } catch {
+    return { isValid: false, error: 'Please enter a valid URL' };
+  }
+};
+
+// Form validation helper
+export const validateForm = (
+  validations: Array<{ isValid: boolean; error?: string }>
+): ValidationResult => {
+  const errors: ValidationError[] = [];
+  
+  validations.forEach((validation, index) => {
+    if (!validation.isValid && validation.error) {
+      errors.push({
+        field: `field_${index}`,
+        message: validation.error,
+      });
+    }
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
+// Show validation errors
+export const showValidationErrors = (errors: ValidationError[]): void => {
+  if (errors.length === 0) return;
+  
+  const errorMessages = errors.map(e => e.message).join('\n');
+  Alert.alert('Validation Error', errorMessages);
+};

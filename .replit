@@ -1,9 +1,17 @@
 modules = ["nodejs-20"]
 [agent]
 expertMode = true
+integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_stripe:1.0.0", "javascript_sendgrid:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
+
+
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npx", "serve", "dist", "-s", "-l", "5000"]
+build = ["npm", "run", "build"]
 
 [workflows]
 runButton = "Project"
@@ -15,10 +23,23 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "expo-web"
+args = "Frontend"
 
 [[workflows.workflow]]
-name = "expo-web"
+name = "Start App"
+author = 48040949
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --web --port 5000"
+
+[[workflows.workflow]]
+name = "Frontend"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -34,22 +55,9 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 5001
-externalPort = 3001
+localPort = 38123
+externalPort = 3002
 
 [[ports]]
-localPort = 8082
-externalPort = 80
-
-[[ports]]
-localPort = 42231
+localPort = 46753
 externalPort = 3000
-
-[[ports]]
-localPort = 43933
-externalPort = 3003
-
-[deployment]
-deploymentTarget = "autoscale"
-run = ["npm", "run", "serve"]
-build = ["npm", "run", "build"]

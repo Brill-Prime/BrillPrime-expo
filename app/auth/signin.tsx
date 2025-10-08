@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,58 +6,210 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useAlert } from "../../components/AlertProvider";
+import EmailIcon from '../../components/EmailIcon';
+import LockIcon from '../../components/LockIcon';
 
 export default function SignIn() {
   const router = useRouter();
+  const { showError, showConfirmDialog, showInfo } = useAlert();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSignIn = async () => {
+    setError(''); // Clear previous errors
+    setLoading(true); // Set loading state
+
     if (!formData.email.trim() || !formData.password.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      showError("Error", "Please fill in all fields");
+      setLoading(false); // Reset loading state
       return;
     }
 
     if (!formData.email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showError("Error", "Please enter a valid email address");
+      setLoading(false); // Reset loading state
+      return;
+    }
+
+    // Check if user has selected a role first
+    const selectedRole = await AsyncStorage.getItem("selectedRole");
+    if (!selectedRole) {
+      showConfirmDialog(
+        "Role Required",
+        "Please select your role first.",
+        () => router.replace("/auth/role-selection")
+      );
+      setLoading(false); // Reset loading state
       return;
     }
 
     try {
-      const mockToken = "user_token_" + Date.now();
-      await AsyncStorage.setItem("userToken", mockToken);
-      await AsyncStorage.setItem("userEmail", formData.email);
+      // Import authService for real API calls
+      const { authService } = await import('../../services/authService');
 
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
-      await AsyncStorage.setItem("userRole", selectedRole || "consumer");
+      const response = await authService.signIn({
+        email: formData.email,
+        password: formData.password,
+        role: selectedRole // Include selected role
+      });
 
-      // Route consumers to home page, others to dashboard
-      if (selectedRole === "consumer") {
-        router.replace("/home/consumer");
+      if (response.success && response.data) {
+        // Validate that the user's role matches selected role
+        if (response.data.user.role !== selectedRole) {
+          showConfirmDialog(
+            "Role Mismatch",
+            `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
+            () => router.replace("/auth/role-selection")
+          );
+          setLoading(false); // Reset loading state
+          return;
+        }
+
+        // Store user data from API response
+        await AsyncStorage.multiSet([
+          ["userToken", response.data.token],
+          ["userEmail", response.data.user.email],
+          ["userRole", response.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
+        ]);
+
+        // Route based on user role from API
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
       } else {
-        router.replace(`/dashboard/${selectedRole || "consumer"}`);
+        // Handle specific error cases
+        const errorMessage = response.error || "Invalid credentials";
+        if (errorMessage.includes("Invalid credentials") || errorMessage.includes("authentication")) {
+          showError("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
+        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+          showError("Network Error", "Please check your internet connection and try again.");
+          setError('Unable to connect to server. Trying offline mode...');
+        } else if (errorMessage.includes("account not found")) {
+          showConfirmDialog(
+            "Account Not Found",
+            "No account found with this email. Would you like to sign up?",
+            () => router.push("/auth/signup")
+          );
+        } else {
+          showError("Sign In Failed", errorMessage);
+          setError(errorMessage);
+        }
       }
     } catch (error) {
       console.error("Error signing in:", error);
-      Alert.alert("Error", "Sign in failed. Please try again.");
+
+      // Handle network errors specifically
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        showError(
+          "Connection Error",
+          "Unable to connect to server. Please check your internet connection and try again."
+        );
+        setError('Unable to connect to server. Trying offline mode...');
+      } else {
+        showError("Error", "Sign in failed. Please try again.");
+        setError("Sign in failed. Please try again.");
+      }
+    } finally {
+      setLoading(false); // Reset loading state in finally block
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert("Coming Soon", `${provider} login will be available soon!`);
+  const handleSocialLogin = async (provider: 'Google' | 'Apple' | 'Facebook') => {
+    try {
+      setLoading(true);
+
+      // Check if user has selected a role first
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      if (!selectedRole) {
+        showConfirmDialog(
+          "Role Required",
+          "Please select your role first.",
+          () => router.replace("/auth/role-selection")
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Import authService
+      const { authService } = await import('../../services/authService');
+
+      let response;
+      if (provider === 'Google') {
+        response = await authService.signInWithGoogle(selectedRole);
+      } else if (provider === 'Apple') {
+        response = await authService.signInWithApple(selectedRole);
+      } else if (provider === 'Facebook') {
+        response = await authService.signInWithFacebook(selectedRole);
+      }
+
+      if (response?.success && response.data) {
+        // Validate that the user's role matches selected role
+        if (response.data.user.role !== selectedRole) {
+          showConfirmDialog(
+            "Role Mismatch",
+            `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
+            () => router.replace("/auth/role-selection")
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Store user data from API response
+        await AsyncStorage.multiSet([
+          ["userToken", response.data.token],
+          ["userEmail", response.data.user.email],
+          ["userRole", response.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
+        ]);
+
+        // Route based on user role from API
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
+      } else {
+        const errorMessage = response?.error || `${provider} sign-in failed`;
+        if (errorMessage !== 'Sign-in cancelled') {
+          showError("Sign In Failed", errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error(`${provider} sign-in error:`, error);
+      showError("Error", `${provider} sign-in failed. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const styles = getResponsiveStyles(screenData);
 
   return (
     <KeyboardAvoidingView
@@ -79,7 +231,7 @@ export default function SignIn() {
           {/* Email */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <EmailIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.email}
@@ -95,7 +247,7 @@ export default function SignIn() {
           {/* Password */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.leftIcon} />
+              <LockIcon size={20} color="#9CA3AF" style={styles.leftIcon} />
               <TextInput
                 style={styles.input}
                 value={formData.password}
@@ -117,6 +269,11 @@ export default function SignIn() {
             </View>
           </View>
 
+          {/* Error Message Display */}
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
+
           {/* Forgot Password */}
           <TouchableOpacity
             style={styles.forgotPassword}
@@ -126,8 +283,8 @@ export default function SignIn() {
           </TouchableOpacity>
 
           {/* Sign In Button */}
-          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-            <Text style={styles.signInText}>Sign In</Text>
+          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn} disabled={loading}>
+            <Text style={styles.signInText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -139,23 +296,23 @@ export default function SignIn() {
 
           {/* Social Buttons */}
           <View style={styles.socialContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
             >
-              <Ionicons name="logo-google" size={24} color="#DB4437" />
+              <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Apple")}
             >
-              <Ionicons name="logo-apple" size={24} color="#000" />
+              <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Facebook")}
             >
-              <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+              <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
             </TouchableOpacity>
           </View>
 
@@ -176,128 +333,144 @@ const PRIMARY_COLOR = "rgb(11, 26, 81)";
 const GRAY_400 = "#9CA3AF";
 const GRAY_600 = "#6B7280";
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    maxWidth: 400,
-    alignSelf: "center",
-    width: "100%",
-    justifyContent: "center",
-    minHeight: "100%",
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  logo: {
-    width: 80,
-    height: 64,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: PRIMARY_COLOR,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 25,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  leftIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#111827",
-  },
-  rightIcon: {
-    marginLeft: 12,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: PRIMARY_COLOR,
-    fontWeight: "500",
-  },
-  signInButton: {
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  signInText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#000000",
-  },
-  dividerText: {
-    paddingHorizontal: 8,
-    fontSize: 14,
-    color: "rgb(19, 19, 19)",
-    fontWeight: "300",
-  },
-  socialContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    marginBottom: 20,
-  },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  signUpContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  signUpText: {
-    fontSize: 14,
-    color: "rgb(19, 19, 19)",
-    fontWeight: "300",
-  },
-  signUpLink: {
-    fontSize: 14,
-    color: PRIMARY_COLOR,
-    fontWeight: "700",
-  },
-});
+const getResponsiveStyles = (screenData: any) => {
+  const { width, height } = screenData;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 350;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#FFFFFF",
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: Math.max(20, width * 0.06),
+      paddingVertical: Math.max(24, height * 0.03),
+      maxWidth: isTablet ? 500 : 400,
+      alignSelf: "center",
+      width: "100%",
+      justifyContent: "center",
+      minHeight: "100%",
+    },
+    header: {
+      alignItems: "center",
+      marginBottom: Math.max(24, height * 0.04),
+    },
+    logo: {
+      width: isTablet ? 100 : isSmallScreen ? 60 : 80,
+      height: isTablet ? 80 : isSmallScreen ? 48 : 64,
+      marginBottom: Math.max(6, height * 0.01),
+    },
+    title: {
+      fontSize: isTablet ? 28 : isSmallScreen ? 20 : 24,
+      fontWeight: "800",
+      color: PRIMARY_COLOR,
+      textAlign: "center",
+    },
+    inputContainer: {
+      marginBottom: Math.max(14, height * 0.02),
+    },
+    inputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "#D1D5DB",
+      borderRadius: 25,
+      backgroundColor: "#FFFFFF",
+      paddingHorizontal: Math.max(16, width * 0.04),
+      paddingVertical: Math.max(14, height * 0.018),
+      minHeight: 50,
+    },
+    leftIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      color: "#111827",
+    },
+    rightIcon: {
+      marginLeft: 12,
+    },
+    forgotPassword: {
+      alignSelf: "flex-end",
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    forgotPasswordText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: PRIMARY_COLOR,
+      fontWeight: "500",
+    },
+    signInButton: {
+      backgroundColor: PRIMARY_COLOR,
+      borderRadius: 25,
+      paddingVertical: Math.max(14, height * 0.02),
+      alignItems: "center",
+      marginBottom: Math.max(24, height * 0.04),
+      minHeight: 50,
+      justifyContent: "center",
+    },
+    signInText: {
+      color: "#FFFFFF",
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "500",
+    },
+    divider: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: "#000000",
+    },
+    dividerText: {
+      paddingHorizontal: 8,
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: "rgb(19, 19, 19)",
+      fontWeight: "300",
+    },
+    socialContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: Math.max(16, width * 0.04),
+      marginBottom: Math.max(16, height * 0.025),
+    },
+    socialButton: {
+      width: isTablet ? 64 : 56,
+      height: isTablet ? 64 : 56,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: "#D1D5DB",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#FFFFFF",
+    },
+    signUpContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: Math.max(10, width * 0.02),
+    },
+    signUpText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: "rgb(19, 19, 19)",
+      fontWeight: "300",
+    },
+    signUpLink: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: PRIMARY_COLOR,
+      fontWeight: "700",
+    },
+    errorText: {
+      color: 'red',
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      textAlign: 'center',
+      marginBottom: Math.max(16, height * 0.025),
+    },
+  });
+};

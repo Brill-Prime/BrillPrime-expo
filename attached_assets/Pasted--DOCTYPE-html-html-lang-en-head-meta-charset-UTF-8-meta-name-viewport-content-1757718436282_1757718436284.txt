@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consumer Home Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .consumer-container {
+            width: 399px;
+            height: 896px;
+            background: white;
+            overflow: hidden;
+            position: relative;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .map-background {
+            width: 420px;
+            height: 474px;
+            position: absolute;
+            left: -10px;
+            top: -2px;
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 50%, #1e5f99 100%);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .back-button-container {
+            width: 60px;
+            height: 60px;
+            position: absolute;
+            left: 30px;
+            top: 30px;
+        }
+
+        .back-button-circle {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-button-circle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .back-arrow {
+            width: 24px;
+            height: 24px;
+            background: #666;
+            clip-path: polygon(40% 0%, 40% 35%, 100% 35%, 100% 65%, 40% 65%, 40% 100%, 0% 50%);
+        }
+
+        .location-modal {
+            width: 399px;
+            height: 483px;
+            position: absolute;
+            left: 0px;
+            top: 448px;
+            background: white;
+            box-shadow: 0px -5px 6px rgba(0, 0, 0, 0.10);
+            border-radius: 30px 30px 0 0;
+            padding: 40px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .location-icon {
+            width: 100px;
+            height: 100px;
+            position: absolute;
+            left: 150px;
+            top: -50px;
+            background: #4682B4;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(70, 130, 180, 0.3);
+        }
+
+        .location-icon::before {
+            content: '';
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .location-icon::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4682B4;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .modal-content {
+            margin-top: 80px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .where-are-you-text {
+            color: #010E42;
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            word-wrap: break-word;
+        }
+
+        .description-text {
+            color: black;
+            font-size: 15px;
+            font-weight: 200;
+            margin-bottom: 40px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 268px;
+            margin: 0 auto;
+        }
+
+        .set-automatically-btn {
+            width: 268px;
+            height: 52px;
+            background: #4682B4;
+            border-radius: 30px;
+            border: none;
+            color: white;
+            font-size: 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .set-automatically-btn:hover {
+            background: #3d6fa0;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(70, 130, 180, 0.3);
+        }
+
+        .set-later-btn {
+            width: 268px;
+            height: 52px;
+            border-radius: 30px;
+            border: 1px solid #4682B4;
+            background: transparent;
+            color: #131313;
+            font-size: 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .set-later-btn:hover {
+            background: #4682B4;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(70, 130, 180, 0.3);
+        }
+
+        @media (max-width: 450px) {
+            .consumer-container {
+                width: 100%;
+                max-width: 399px;
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            body {
+                padding: 0;
+            }
+        }
+
+        /* Loading animation for demonstration */
+        .fade-in {
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="consumer-container fade-in">
+        <!-- Map Background -->
+        <div class="map-background"></div>
+        
+        <!-- Back Button -->
+        <div class="back-button-container">
+            <div class="back-button-circle" onclick="goBack()">
+                <div class="back-arrow"></div>
+            </div>
+        </div>
+        
+        <!-- Location Setup Modal -->
+        <div class="location-modal">
+            <!-- Location Icon -->
+            <div class="location-icon"></div>
+            
+            <!-- Modal Content -->
+            <div class="modal-content">
+                <div class="where-are-you-text">Where are you?</div>
+                <div class="description-text">
+                    Set your location so you can see merchants available around you
+                </div>
+                
+                <!-- Button Container -->
+                <div class="button-container">
+                    <button class="set-automatically-btn" onclick="setLocationAutomatically()">
+                        Set automatically
+                    </button>
+                    <button class="set-later-btn" onclick="setLocationLater()">
+                        Set later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactivity
+        function goBack() {
+            console.log('Going back...');
+            // Add haptic feedback simulation
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            // You could add navigation logic here
+        }
+
+        function setLocationAutomatically() {
+            console.log('Setting location automatically...');
+            
+            // Simulate loading state
+            const btn = document.querySelector('.set-automatically-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Getting location...';
+            btn.style.opacity = '0.7';
+            
+            // Simulate geolocation request
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        console.log('Location obtained:', position.coords);
+                        btn.textContent = 'Location set!';
+                        btn.style.background = '#28a745';
+                        
+                        setTimeout(() => {
+                            btn.textContent = originalText;
+                            btn.style.opacity = '1';
+                            btn.style.background = '#4682B4';
+                        }, 2000);
+                    },
+                    function(error) {
+                        console.log('Location error:', error);
+                        btn.textContent = 'Location access denied';
+                        btn.style.background = '#dc3545';
+                        
+                        setTimeout(() => {
+                            btn.textContent = originalText;
+                            btn.style.opacity = '1';
+                            btn.style.background = '#4682B4';
+                        }, 2000);
+                    }
+                );
+            } else {
+                btn.textContent = 'Geolocation not supported';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.opacity = '1';
+                }, 2000);
+            }
+        }
+
+        function setLocationLater() {
+            console.log('Setting location later...');
+            
+            const btn = document.querySelector('.set-later-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Skipped';
+            btn.style.background = '#6c757d';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#6c757d';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = 'transparent';
+                btn.style.color = '#131313';
+                btn.style.borderColor = '#4682B4';
+            }, 1500);
+        }
+
+        // Add some interactive animations
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.querySelector('.location-modal');
+            const icon = document.querySelector('.location-icon');
+            
+            // Animate modal entrance
+            setTimeout(() => {
+                modal.style.transform = 'translateY(-10px)';
+                modal.style.transition = 'transform 0.6s ease-out';
+                
+                setTimeout(() => {
+                    modal.style.transform = 'translateY(0)';
+                }, 100);
+            }, 500);
+            
+            // Pulse animation for location icon
+            setInterval(() => {
+                icon.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    icon.style.transform = 'scale(1)';
+                }, 300);
+            }, 3000);
+        });
+
+        // Add touch/click effects
+        document.querySelectorAll('button, .back-button-circle').forEach(element => {
+            element.addEventListener('touchstart', function(e) {
+                this.style.transform = 'scale(0.95)';
+            });
+            
+            element.addEventListener('touchend', function(e) {
+                this.style.transform = '';
+            });
+            
+            element.addEventListener('mousedown', function(e) {
+                this.style.transform = 'scale(0.95)';
+            });
+            
+            element.addEventListener('mouseup', function(e) {
+                this.style.transform = '';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+
 export default function DriverDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
@@ -53,21 +54,27 @@ export default function DriverDashboard() {
   };
 
   const features = [
-    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#667eea" },
-    { title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb" },
-    { title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe" },
-    { title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f" },
-    { title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf" },
-    { title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d" }
+    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4", route: "/orders/driver-orders" },
+    { title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb", route: "/orders/driver-orders" },
+    { title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe", route: "/transactions" },
+    { title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f", route: "/map" },
+    { title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf", route: "/profile/vehicle" },
+    { title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d", route: "/support" }
   ];
 
   return (
     <LinearGradient
-      colors={['#4facfe', '#00f2fe']}
+      colors={['#0B1A51', '#1e3a8a']}
       style={styles.container}
     >
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/home/consumer')}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
           <Text style={styles.greeting}>Ready to Drive! 🚗</Text>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
@@ -93,10 +100,20 @@ export default function DriverDashboard() {
         </View>
 
         <Text style={styles.sectionTitle}>Your Dashboard</Text>
-        
+
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
-            <TouchableOpacity key={index} style={styles.featureCard}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.featureCard}
+              onPress={() => {
+                if (feature.route) {
+                  router.push(feature.route as any);
+                } else {
+                  Alert.alert("Coming Soon", `${feature.title} feature will be available soon!`);
+                }
+              }}
+            >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
                 <Text style={styles.featureEmoji}>{feature.emoji}</Text>
               </View>
@@ -122,7 +139,7 @@ export default function DriverDashboard() {
               <Text style={styles.statLabel}>Rating</Text>
             </View>
           </View>
-          
+
           <View style={styles.recentDeliveries}>
             <Text style={styles.sectionSubTitle}>Recent Deliveries</Text>
             <View style={styles.deliveryItem}>
@@ -155,6 +172,18 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
+  backButton: {
+    marginRight: 15,
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   greeting: {
     fontSize: 24,
     fontWeight: "bold",
@@ -179,8 +208,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: "white",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
     paddingHorizontal: 20,
     paddingTop: 30,
   },
@@ -188,10 +217,12 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   statusCard: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
     padding: 25,
-    borderRadius: 15,
+    borderRadius: 25,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   statusTitle: {
     fontSize: 16,
@@ -208,7 +239,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   onlineToggle: {
-    backgroundColor: "#4facfe",
+    backgroundColor: "#4682B4",
   },
   toggleCircle: {
     width: 26,
@@ -226,7 +257,7 @@ const styles = StyleSheet.create({
     color: "#7f8c8d",
   },
   onlineText: {
-    color: "#4facfe",
+    color: "#4682B4",
   },
   sectionTitle: {
     fontSize: 20,
@@ -248,10 +279,12 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     width: "47%",
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
     padding: 20,
-    borderRadius: 15,
+    borderRadius: 25,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   featureIcon: {
     width: 50,
@@ -285,25 +318,29 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#4facfe",
+    backgroundColor: "white",
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 20,
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   statNumber: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "white",
+    color: "#4682B4",
   },
   statLabel: {
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "#2c3e50",
     marginTop: 2,
   },
   recentDeliveries: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
     padding: 20,
-    borderRadius: 15,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: "#4682B4",
   },
   deliveryItem: {
     flexDirection: "row",

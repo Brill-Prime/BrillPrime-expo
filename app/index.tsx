@@ -1,99 +1,123 @@
-
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Text, View, StyleSheet, Animated, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SplashScreen from 'expo-splash-screen';
 
-// ✅ DEPLOYMENT READY - DO NOT EDIT WITHOUT TEAM APPROVAL
-// This splash screen component is complete and tested
-export default function SplashScreen() {
+SplashScreen.preventAutoHideAsync();
+
+export default function SplashScreenComponent() {
   const router = useRouter();
-  const variant = process.env.APP_VARIANT || "main";
-  
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Start animations immediately
+    let isMounted = true;
+    const useNativeDriver = false;
+    
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
+        duration: 800,
+        useNativeDriver,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
+        duration: 800,
+        useNativeDriver,
       }),
     ]).start();
 
-    // Start pulse animation
-    const startPulse = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    };
-    
-    startPulse();
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 800,
+          useNativeDriver,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver,
+        }),
+      ])
+    );
+    pulseAnimation.start();
 
-    const checkUserStatus = async () => {
+    const checkAuthState = async () => {
+      if (!isMounted) return;
+
       try {
-        // Wait for 5 seconds (splash screen duration)
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 1200));
         
-        if (variant === "admin") {
-          router.replace("/admin-panel");
+        const onboardingStatus = await AsyncStorage.getItem('hasSeenOnboarding');
+        console.log('hasSeenOnboarding:', onboardingStatus);
+
+        await SplashScreen.hideAsync();
+
+        if (onboardingStatus !== 'true') {
+          console.log('Redirecting to onboarding');
+          if (isMounted) {
+            router.replace('/onboarding/screen1');
+          }
           return;
         }
 
-        console.log('SPLASH SCREEN NAVIGATION STARTED');
+        const [token, tokenExpiry] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
+        const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
 
-        // Check if user is first time visitor
-        const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-        const userToken = await AsyncStorage.getItem("userToken");
+        if (!token[1] || isTokenExpired) {
+          console.log('Redirecting to signin');
+          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
+          if (isMounted) {
+            router.replace('/auth/signin');
+          }
+          return;
+        }
 
-        console.log('hasSeenOnboarding:', hasSeenOnboarding);
-        console.log('userToken:', userToken ? 'exists' : 'null');
-        console.log('Navigation condition check: hasSeenOnboarding is', hasSeenOnboarding === null ? 'null' : hasSeenOnboarding);
-
-        if (!hasSeenOnboarding) {
-          // First time user - go to onboarding
-          console.log('Navigating to onboarding screen 1');
-          router.replace("/onboarding/screen1");
-        } else {
-          // Returning user - must authenticate regardless of token
-          console.log('Returning user - navigating to role selection for authentication');
-          router.replace("/auth/role-selection");
+        const role = await AsyncStorage.getItem('userRole');
+        
+        if (role === 'consumer' && isMounted) {
+          router.replace('/home/consumer');
+        } else if (role === 'merchant' && isMounted) {
+          router.replace('/home/merchant');
+        } else if (role === 'driver' && isMounted) {
+          router.replace('/home/driver');
+        } else if (isMounted) {
+          router.replace('/auth/role-selection');
         }
       } catch (error) {
-        console.error("Error checking user status:", error);
-        // On error, default to onboarding
-        console.log('Error occurred, navigating to onboarding');
-        router.replace("/onboarding/screen1");
+        console.error('Error checking auth state:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error');
+        await SplashScreen.hideAsync();
+        if (isMounted) {
+          router.replace('/onboarding/screen1');
+        }
       }
     };
 
-    checkUserStatus();
-  }, [router, variant, fadeAnim, scaleAnim, pulseAnim]);
+    checkAuthState();
 
-  if (variant === "admin") {
+    return () => {
+      isMounted = false;
+      pulseAnimation.stop();
+    };
+  }, [router, fadeAnim, scaleAnim, pulseAnim]);
+
+  if (error) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Brill Prime Admin Panel</Text>
+        <View style={styles.content}>
+          <Text style={styles.errorText}>Error: {error}</Text>
+          <Text style={styles.retryText} onPress={() => {
+            setError(null);
+            router.replace('/onboarding/screen1');
+          }}>
+            Tap to continue
+          </Text>
+        </View>
       </View>
     );
   }
@@ -107,19 +131,18 @@ export default function SplashScreen() {
             {
               opacity: fadeAnim,
               transform: [
-                { scale: scaleAnim },
-                { scale: pulseAnim }
+                { scale: Animated.multiply(scaleAnim, pulseAnim) }
               ],
             },
           ]}
         >
           <Image
             source={require('../assets/images/logo.png')}
-            style={styles.logoImage}
+            style={styles.logoImage as any}
             resizeMode="contain"
           />
         </Animated.View>
-        
+
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#3b82f6" />
         </View>
@@ -134,12 +157,17 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
+    minHeight: '100%',
+    width: '100%',
   },
   content: {
     alignItems: "center",
+    justifyContent: "center",
   },
   logoContainer: {
     marginBottom: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoImage: {
     width: 128,
@@ -147,10 +175,18 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     marginTop: 32,
+    alignItems: "center",
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1f2937",
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryText: {
+    color: '#3498db',
+    fontSize: 16,
+    textDecorationLine: 'underline',
   },
 });
