@@ -1,5 +1,7 @@
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { apiClient, ApiResponse } from './api';
+import { authService } from './authService';
 
 export interface CartItem {
   id: string;
@@ -24,154 +26,86 @@ export interface CommoditiesCartItem {
   merchantName: string;
 }
 
-class CartService {
-  private static readonly CART_KEY = 'cartItems';
-  private static readonly COMMODITIES_CART_KEY = 'commoditiesCart';
 
-  // Get cart items
-  async getCartItems(): Promise<CartItem[]> {
+class CartService {
+  // Get cart items from backend
+  async getCartItems(): Promise<ApiResponse<CartItem[]>> {
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
     try {
-      const cartData = await AsyncStorage.getItem(CartService.CART_KEY);
-      return cartData ? JSON.parse(cartData) : [];
+      return await apiClient.get<CartItem[]>('/api/cart', { Authorization: `Bearer ${token}` });
     } catch (error) {
       console.error('Error getting cart items:', error);
-      return [];
+      return { success: false, error: 'Failed to get cart items' };
     }
   }
 
-  // Add item to cart
-  async addToCart(item: CartItem): Promise<boolean> {
+  // Add item to cart (backend)
+  async addToCart(item: CartItem): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
     try {
-      const cartItems = await this.getCartItems();
-      const existingItemIndex = cartItems.findIndex(
-        cartItem => cartItem.commodityId === item.commodityId && cartItem.merchantId === item.merchantId
-      );
-
-      if (existingItemIndex !== -1) {
-        // Update existing item quantity
-        cartItems[existingItemIndex].quantity += item.quantity;
-      } else {
-        // Add new item
-        cartItems.push(item);
-      }
-
-      await AsyncStorage.setItem(CartService.CART_KEY, JSON.stringify(cartItems));
-      
-      // Sync with commodities cart
-      await this.syncCommoditiesCart(cartItems);
-      
-      return true;
+      return await apiClient.post<{ message: string }>('/api/cart', item, { Authorization: `Bearer ${token}` });
     } catch (error) {
       console.error('Error adding to cart:', error);
-      return false;
+      return { success: false, error: 'Failed to add to cart' };
     }
   }
 
-  // Update item quantity
-  async updateQuantity(itemId: string, newQuantity: number): Promise<boolean> {
+  // Update item quantity (backend)
+  async updateQuantity(itemId: string, newQuantity: number): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
     try {
-      const cartItems = await this.getCartItems();
-      
-      if (newQuantity <= 0) {
-        return this.removeFromCart(itemId);
-      }
-
-      const updatedItems = cartItems.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      );
-
-      await AsyncStorage.setItem(CartService.CART_KEY, JSON.stringify(updatedItems));
-      await this.syncCommoditiesCart(updatedItems);
-      
-      return true;
+      return await apiClient.put<{ message: string }>(`/api/cart/${itemId}`, { quantity: newQuantity }, { Authorization: `Bearer ${token}` });
     } catch (error) {
       console.error('Error updating quantity:', error);
-      return false;
+      return { success: false, error: 'Failed to update cart item' };
     }
   }
 
-  // Remove item from cart
-  async removeFromCart(itemId: string): Promise<boolean> {
+  // Remove item from cart (backend)
+  async removeFromCart(itemId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
     try {
-      const cartItems = await this.getCartItems();
-      const updatedItems = cartItems.filter(item => item.id !== itemId);
-      
-      await AsyncStorage.setItem(CartService.CART_KEY, JSON.stringify(updatedItems));
-      await this.syncCommoditiesCart(updatedItems);
-      
-      return true;
+      return await apiClient.delete<{ message: string }>(`/api/cart/${itemId}`, { Authorization: `Bearer ${token}` });
     } catch (error) {
       console.error('Error removing from cart:', error);
-      return false;
+      return { success: false, error: 'Failed to remove from cart' };
     }
   }
 
-  // Clear entire cart
-  async clearCart(): Promise<boolean> {
+  // Clear entire cart (backend)
+  async clearCart(): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
     try {
-      await AsyncStorage.multiRemove([
-        CartService.CART_KEY,
-        CartService.COMMODITIES_CART_KEY,
-        'checkoutItems'
-      ]);
-      return true;
+      return await apiClient.delete<{ message: string }>('/api/cart', { Authorization: `Bearer ${token}` });
     } catch (error) {
       console.error('Error clearing cart:', error);
-      return false;
+      return { success: false, error: 'Failed to clear cart' };
     }
   }
 
-  // Get cart total
+  // Get cart total (client-side calculation from backend data)
   async getCartTotal(): Promise<number> {
-    try {
-      const cartItems = await this.getCartItems();
-      return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-    } catch (error) {
-      console.error('Error calculating cart total:', error);
-      return 0;
-    }
+    const res = await this.getCartItems();
+    if (!res.success || !res.data) return 0;
+    return res.data.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
-  // Get cart item count
+  // Get cart item count (client-side calculation from backend data)
   async getCartItemCount(): Promise<number> {
-    try {
-      const cartItems = await this.getCartItems();
-      return cartItems.reduce((count, item) => count + item.quantity, 0);
-    } catch (error) {
-      console.error('Error getting cart item count:', error);
-      return 0;
-    }
+    const res = await this.getCartItems();
+    if (!res.success || !res.data) return 0;
+    return res.data.reduce((count, item) => count + item.quantity, 0);
   }
 
-  // Sync with commodities cart format
-  private async syncCommoditiesCart(cartItems: CartItem[]): Promise<void> {
-    try {
-      const commoditiesCartItems: CommoditiesCartItem[] = cartItems.map(item => ({
-        productId: item.commodityId,
-        quantity: item.quantity,
-        price: item.price,
-        productName: item.commodityName,
-        productUnit: item.unit,
-        merchantId: item.merchantId,
-        merchantName: item.merchantName,
-      }));
-
-      await AsyncStorage.setItem(CartService.COMMODITIES_CART_KEY, JSON.stringify(commoditiesCartItems));
-    } catch (error) {
-      console.error('Error syncing commodities cart:', error);
-    }
-  }
-
-  // Prepare cart for checkout
-  async prepareCheckout(): Promise<boolean> {
-    try {
-      const cartItems = await this.getCartItems();
-      await AsyncStorage.setItem('checkoutItems', JSON.stringify(cartItems));
-      return true;
-    } catch (error) {
-      console.error('Error preparing checkout:', error);
-      return false;
-    }
+  // Prepare cart for checkout (no-op, handled by backend)
+  async prepareCheckout(): Promise<ApiResponse<{ message: string }>> {
+    // Optionally, you could POST to /api/checkout to start checkout process
+    return { success: true, data: { message: 'Checkout prepared (handled by backend)' } };
   }
 }
 

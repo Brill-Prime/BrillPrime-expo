@@ -52,27 +52,23 @@ class AuthService {
   async signUp(data: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
     try {
       // First, try to sign up using Firebase
-  const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
+      const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
 
-      // Then, register the user with your backend API to store additional details like role, name, etc.
-      // The backend will then return a token and user data that you'll store locally.
+      // Register the user with your backend API
       const response = await apiClient.post<AuthResponse>('/api/auth/signup', {
         ...data,
-        firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
+        firebaseUid: firebaseUser.uid
       });
 
       if (response.success && response.data) {
-        // Store user data locally, including the token from your backend
         await this.storeAuthData(response.data);
-        // Note: We don't set firebaseUser or firebaseUser.accessToken here as we are relying on the backend token for API calls.
       }
 
       return response;
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('SignUp error:', error);
 
-      // Handle Firebase specific errors
       if (error.code) {
         switch (error.code) {
           case 'auth/email-already-in-use':
@@ -86,41 +82,6 @@ class AuthService {
         }
       }
 
-      // Handle network errors gracefully - create offline demo account
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
-        console.log('Network error detected, creating offline demo account');
-
-        // Create demo user data
-        const demoUser: User = {
-          id: 'demo-' + Date.now(),
-          email: data.email,
-          role: data.role as 'consumer' | 'merchant' | 'driver',
-          name: data.email.split('@')[0],
-          phone: '',
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-
-        const demoToken = 'demo-token-' + Date.now();
-        const expiryTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
-
-        // Store demo auth data
-        await AsyncStorage.multiSet([
-          [this.TOKEN_KEY, demoToken],
-          [this.USER_KEY, JSON.stringify(demoUser)],
-          [this.ROLE_KEY, demoUser.role],
-          ['tokenExpiry', expiryTime.toString()],
-          ['userName', demoUser.name ?? ''],
-          ['isOfflineMode', 'true'],
-        ]);
-
-        return {
-          success: true,
-          data: { token: demoToken, user: demoUser }
-        };
-      }
-
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error occurred'
@@ -132,34 +93,29 @@ class AuthService {
   async signIn(data: SignInRequest & { role?: string }): Promise<ApiResponse<AuthResponse>> {
     try {
       // First, try to sign in with Firebase
-  const firebaseUserCredential = await signInWithEmailAndPassword(auth as Auth, data.email, data.password);
+      const firebaseUserCredential = await signInWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
 
-      // Then, authenticate with your backend using the Firebase UID or a token
-      // For simplicity, we'll assume your backend can verify the Firebase UID and return your internal token
+      // Authenticate with your backend using the Firebase UID
       const response = await apiClient.post<AuthResponse>('/api/auth/signin', {
-        email: data.email, // Pass email to backend for role verification if needed
-        firebaseUid: firebaseUser.uid // Pass Firebase UID to your backend
+        email: data.email,
+        firebaseUid: firebaseUser.uid
       });
 
       if (response.success && response.data) {
-        // Validate role if provided
         if (data.role && response.data.user.role !== data.role) {
           return {
             success: false,
             error: `Account role mismatch. Expected ${data.role} but account is ${response.data.user.role}`
           };
         }
-
-        // Store user data locally with expiry, using the token from your backend
         await this.storeAuthData(response.data);
       }
 
       return response;
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('SignIn error:', error);
 
-      // Handle Firebase specific errors
       if (error.code) {
         switch (error.code) {
           case 'auth/user-not-found':
@@ -168,50 +124,6 @@ class AuthService {
             return { success: false, error: 'Incorrect password provided.' };
           default:
             return { success: false, error: `Firebase authentication error: ${error.message}` };
-        }
-      }
-
-      // Handle network errors - check if user exists in offline storage
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
-        console.log('Network error detected, checking for existing offline account');
-
-        const storedEmail = await AsyncStorage.getItem('userEmail');
-        const storedRole = await AsyncStorage.getItem('userRole');
-        const storedName = await AsyncStorage.getItem('userName');
-
-        if (storedEmail === data.email && storedRole) {
-          // User exists in offline storage, allow sign in
-          const demoUser: User = {
-            id: 'demo-' + Date.now(),
-            email: storedEmail,
-            role: storedRole as 'consumer' | 'merchant' | 'driver',
-            name: storedName || storedEmail.split('@')[0],
-            phone: '',
-            isVerified: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-
-          const demoToken = 'demo-token-' + Date.now();
-          const expiryTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
-
-          await AsyncStorage.multiSet([
-            [this.TOKEN_KEY, demoToken],
-            [this.USER_KEY, JSON.stringify(demoUser)],
-            [this.ROLE_KEY, demoUser.role],
-            ['tokenExpiry', expiryTime.toString()],
-            ['isOfflineMode', 'true'],
-          ]);
-
-          return {
-            success: true,
-            data: { user: demoUser, token: demoToken }
-          };
-        } else {
-          return {
-            success: false,
-            error: 'No offline account found. Please sign up first when online.'
-          };
         }
       }
 

@@ -121,29 +121,13 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
     try {
       return await apiClient.get<KYCProfile>('/api/kyc/profile', {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
       console.error('Get KYC profile error:', error);
-
-      // Return mock data for offline mode
-      const mockProfile: KYCProfile = {
-        id: 'kyc-' + Date.now(),
-        userId: 'user-123',
-        verificationLevel: 'unverified',
-        overallStatus: 'incomplete',
-        documents: [],
-        personalInfo: {
-          firstName: '',
-          lastName: '',
-        },
-        lastUpdated: new Date().toISOString(),
-      };
-
-      return { success: true, data: mockProfile };
+      return { success: false, error: 'Failed to fetch KYC profile' };
     }
   }
 
@@ -188,20 +172,17 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
-    // Validate before sending
     const validation = this.validatePersonalInfo(data);
     if (!validation.isValid) {
       return { success: false, error: validation.error };
     }
-
     try {
       return await apiClient.put<{ message: string }>('/api/kyc/personal-info', data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
       console.error('Update personal info error:', error);
-      return { success: true, data: { message: 'Personal information updated successfully (offline mode)' } };
+      return { success: false, error: 'Failed to update personal information' };
     }
   }
 
@@ -244,20 +225,17 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
-    // Validate before sending
     const validation = this.validateBusinessInfo(data);
     if (!validation.isValid) {
       return { success: false, error: validation.error };
     }
-
     try {
       return await apiClient.put<{ message: string }>('/api/kyc/business-info', data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
       console.error('Update business info error:', error);
-      return { success: true, data: { message: 'Business information updated successfully (offline mode)' } };
+      return { success: false, error: 'Failed to update business information' };
     }
   }
 
@@ -313,20 +291,17 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
-    // Validate before sending
     const validation = this.validateDriverInfo(data);
     if (!validation.isValid) {
       return { success: false, error: validation.error };
     }
-
     try {
       return await apiClient.put<{ message: string }>('/api/kyc/driver-info', data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
       console.error('Update driver info error:', error);
-      return { success: true, data: { message: 'Driver information updated successfully (offline mode)' } };
+      return { success: false, error: 'Failed to update driver information' };
     }
   }
 
@@ -336,7 +311,6 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
     try {
       return await apiClient.post<KYCDocument>('/api/kyc/documents', data, {
         Authorization: `Bearer ${token}`,
@@ -344,20 +318,7 @@ class KYCService {
       });
     } catch (error) {
       console.error('Upload document error:', error);
-
-      // Return mock document for offline mode
-      const mockDocument: KYCDocument = {
-        id: 'doc-' + Date.now(),
-        type: data.type,
-        documentNumber: data.documentNumber,
-        frontImage: data.frontImage,
-        backImage: data.backImage,
-        status: 'pending',
-        uploadDate: new Date().toISOString(),
-        expiryDate: data.expiryDate,
-      };
-
-      return { success: true, data: mockDocument };
+      return { success: false, error: 'Failed to upload document' };
     }
   }
 
@@ -411,14 +372,13 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
     try {
       return await apiClient.post<{ message: string }>('/api/kyc/submit', {}, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
       console.error('Submit KYC error:', error);
-      return { success: true, data: { message: 'KYC submitted for verification successfully (offline mode)' } };
+      return { success: false, error: 'Failed to submit KYC for verification' };
     }
   }
 
@@ -433,28 +393,13 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
     try {
       return await apiClient.get('/api/kyc/status', {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
       console.error('Check verification status error:', error);
-
-      // Return mock status for offline mode
-      return {
-        success: true,
-        data: {
-          status: 'incomplete',
-          level: 'unverified',
-          completionPercentage: 25,
-          nextSteps: [
-            'Upload government-issued ID',
-            'Provide proof of address',
-            'Complete personal information'
-          ]
-        }
-      };
+      return { success: false, error: 'Failed to check verification status' };
     }
   }
 
