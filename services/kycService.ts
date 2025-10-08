@@ -206,7 +206,7 @@ class KYCService {
   }
 
   // Validate business information
-  private validateBusinessInfo(data: BusinessInfoRequest): { isValid: boolean; error?: string } => {
+  private validateBusinessInfo(data: BusinessInfoRequest): { isValid: boolean; error?: string } {
     const { validateBusinessName, validateAddress } = require('../utils/validation');
 
     const businessNameValidation = validateBusinessName(data.businessName);
@@ -262,7 +262,7 @@ class KYCService {
   }
 
   // Validate driver information
-  private validateDriverInfo(data: DriverInfoRequest): { isValid: boolean; error?: string } => {
+  private validateDriverInfo(data: DriverInfoRequest): { isValid: boolean; error?: string } {
     const { validateLicenseNumber, validatePlateNumber, validateDate } = require('../utils/validation');
 
     const licenseValidation = validateLicenseNumber(data.licenseNumber);
