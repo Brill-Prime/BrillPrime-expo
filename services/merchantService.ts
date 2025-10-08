@@ -29,7 +29,30 @@ class MerchantService {
   async getMerchantById(merchantId: string): Promise<ApiResponse<Merchant>> {
     if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
       console.log('Using mock merchant data');
-      return { success: true, data: {} as Merchant };
+      // Return a proper mock merchant structure
+      return { 
+        success: true, 
+        data: {
+          id: merchantId,
+          name: 'Sample Merchant',
+          type: 'market',
+          category: 'groceries',
+          address: 'Sample Address',
+          phone: '+234-800-000-0000',
+          email: 'merchant@example.com',
+          description: 'Sample merchant description',
+          distance: '0 km',
+          rating: 0,
+          reviewCount: 0,
+          latitude: 0,
+          longitude: 0,
+          priceRange: 'medium',
+          isOpen: true,
+          operatingHours: {},
+          services: [],
+          images: []
+        } as Merchant 
+      };
     }
 
     const token = await authService.getToken();

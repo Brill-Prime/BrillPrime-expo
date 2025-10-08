@@ -25,18 +25,26 @@ export default function PaymentMethodScreen() {
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     loadPaymentMethods();
+
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+
+    return () => subscription?.remove();
   }, []);
 
   const loadPaymentMethods = async () => {
     try {
+      setLoading(true);
       const { paymentService } = await import('../../services/paymentService');
 
       const response = await paymentService.getPaymentMethods();
 
       if (response.success && response.data) {
-        // Transform API data to match local interface
         const transformedMethods: PaymentMethod[] = response.data.map(method => ({
           id: method.id,
           type: method.type === 'card' ? (method.brand?.toLowerCase() as any) || 'visa' : method.type as any,
@@ -48,13 +56,13 @@ export default function PaymentMethodScreen() {
 
         setPaymentMethods(transformedMethods);
       } else {
-        console.error('Failed to load payment methods:', response.error);
-        // Fallback to empty array
         setPaymentMethods([]);
       }
     } catch (error) {
       console.error('Error loading payment methods:', error);
       setPaymentMethods([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,8 +114,18 @@ export default function PaymentMethodScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: responsivePadding }}>
-          {/* Payment Methods */}
-          {paymentMethods.map((method) => (
+          {loading ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Text style={{ color: '#666', marginBottom: 10 }}>Loading payment methods...</Text>
+            </View>
+          ) : paymentMethods.length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Ionicons name="card-outline" size={48} color="#ccc" />
+              <Text style={{ color: '#666', marginTop: 16, textAlign: 'center' }}>No payment methods found</Text>
+              <Text style={{ color: '#999', marginTop: 8, textAlign: 'center' }}>Add a payment method to get started</Text>
+            </View>
+          ) : (
+            paymentMethods.map((method) => (
             <TouchableOpacity
               key={method.id}
               style={[
@@ -140,7 +158,8 @@ export default function PaymentMethodScreen() {
                 <Ionicons name="checkmark-circle" size={24} color="#4285f4" />
               )}
             </TouchableOpacity>
-          ))}
+            ))
+          )}
 
           {/* Add Payment Method */}
           <TouchableOpacity style={styles.addPayment} onPress={handleAddPaymentMethod}>

@@ -164,23 +164,22 @@ export default function CartScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {cartItems.length === 0 ? (
-        <View style={styles.emptyCart}>
-          <Ionicons name="cart-outline" size={80} color="#bdc3c7" />
-          <Text style={styles.emptyCartText}>Your cart is empty</Text>
-          <Text style={styles.emptyCartSubtext}>Add items to get started</Text>
-          <TouchableOpacity 
-            style={styles.shopButton}
-            onPress={() => router.push('/search')}
-          >
-            <Text style={styles.shopButtonText}>Start Shopping</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={{ paddingHorizontal: responsivePadding }}>
-            {/* Cart Items */}
-            {cartItems.map((item) => (
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal: responsivePadding }}>
+          {cartItems.length === 0 ? (
+            <View style={styles.emptyCart}>
+              <Ionicons name="cart-outline" size={80} color="#ccc" />
+              <Text style={styles.emptyTitle}>Your cart is empty</Text>
+              <Text style={styles.emptyDescription}>Add items to your cart to get started</Text>
+              <TouchableOpacity 
+                style={styles.shopNowButton}
+                onPress={() => router.push('/commodity/commodities')}
+              >
+                <Text style={styles.shopNowText}>Shop Now</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            cartItems.map((item) => (
               <View key={item.id} style={styles.cartItem}>
                 <View style={styles.cartLeft}>
                   <View style={styles.cartIcon}>
@@ -221,31 +220,36 @@ export default function CartScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            ))}
+            ))
+          )}
+        </View>
+      </ScrollView>
 
-            {/* Purchase Summary */}
-            <View style={styles.summary}>
-              <Text style={styles.summaryTitle}>Purchase Summary</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Total</Text>
-                <Text style={styles.summaryAmount}>₦{getTotalAmount().toLocaleString()}.00</Text>
-              </View>
-            </View>
-
-            {/* Payment Method Selection */}
-            <TouchableOpacity 
-              style={styles.paymentSelect}
-              onPress={handleSelectPaymentMethod}
-            >
-              <Text style={styles.paymentSelectText}>Select a Payment Method…</Text>
-            </TouchableOpacity>
-
-            {/* Make Payment Button */}
-            <TouchableOpacity style={styles.paymentButton} onPress={handleMakePayment}>
-              <Text style={styles.paymentButtonText}>Make Payment</Text>
-            </TouchableOpacity>
+      {/* Footer */}
+      {cartItems.length > 0 && (
+      <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
+        {/* Purchase Summary */}
+        <View style={styles.summary}>
+          <Text style={styles.summaryTitle}>Purchase Summary</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total</Text>
+            <Text style={styles.summaryAmount}>₦{getTotalAmount().toLocaleString()}.00</Text>
           </View>
-        </ScrollView>
+        </View>
+
+        {/* Payment Method Selection */}
+        <TouchableOpacity 
+          style={styles.paymentSelect}
+          onPress={handleSelectPaymentMethod}
+        >
+          <Text style={styles.paymentSelectText}>Select a Payment Method…</Text>
+        </TouchableOpacity>
+
+        {/* Make Payment Button */}
+        <TouchableOpacity style={styles.paymentButton} onPress={handleMakePayment}>
+          <Text style={styles.paymentButtonText}>Make Payment</Text>
+        </TouchableOpacity>
+      </View>
       )}
     </View>
   );
@@ -279,32 +283,33 @@ const styles = StyleSheet.create({
   },
   emptyCart: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
-  emptyCartText: {
+  emptyTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#7f8c8d',
+    fontWeight: '600',
+    color: '#333',
     marginTop: 20,
-    marginBottom: 8,
   },
-  emptyCartSubtext: {
+  emptyDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  shopNowButton: {
+    backgroundColor: '#0B1A51',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+  shopNowText: {
+    color: 'white',
     fontSize: 16,
-    color: '#bdc3c7',
-    marginBottom: 30,
-  },
-  shopButton: {
-    backgroundColor: '#4682B4',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-  },
-  shopButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -433,5 +438,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  footer: {
+    paddingTop: 10,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
 });
