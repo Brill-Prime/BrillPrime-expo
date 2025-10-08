@@ -4,6 +4,115 @@
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 import { Merchant, Commodity, MerchantCommodity } from './types';
+import { migrationService } from './migrationService';
+
+class MerchantService {
+  // Get nearby merchants
+  async getNearbyMerchants(latitude: number, longitude: number, radius: number = 5000): Promise<ApiResponse<Merchant[]>> {
+    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
+      console.log('Using mock merchants data');
+      return { success: true, data: [] }; // Return mock data here
+    }
+
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get<Merchant[]>(
+      `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Get merchant by ID
+  async getMerchantById(merchantId: string): Promise<ApiResponse<Merchant>> {
+    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
+      console.log('Using mock merchant data');
+      return { success: true, data: {} as Merchant };
+    }
+
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get<Merchant>(`/api/merchants/${merchantId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Search merchants
+  async searchMerchants(query: string, filters?: any): Promise<ApiResponse<Merchant[]>> {
+    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
+      console.log('Using mock merchant search');
+      return { success: true, data: [] };
+    }
+
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const queryParams = new URLSearchParams({ q: query });
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) queryParams.append(key, filters[key]);
+      });
+    }
+
+    return apiClient.get<Merchant[]>(`/api/merchants/search?${queryParams.toString()}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get commodities
+  async getCommodities(filters?: any): Promise<ApiResponse<Commodity[]>> {
+    if (!migrationService.shouldUseRealAPI('useRealCommodities')) {
+      console.log('Using mock commodities data');
+      return { success: true, data: [] };
+    }
+
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const queryParams = new URLSearchParams();
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) queryParams.append(key, filters[key]);
+      });
+    }
+
+    const endpoint = queryParams.toString() 
+      ? `/api/commodities?${queryParams.toString()}`
+      : '/api/commodities';
+
+    return apiClient.get<Commodity[]>(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get commodity by ID
+  async getCommodityById(commodityId: string): Promise<ApiResponse<Commodity>> {
+    if (!migrationService.shouldUseRealAPI('useRealCommodities')) {
+      console.log('Using mock commodity data');
+      return { success: true, data: {} as Commodity };
+    }
+
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get<Commodity>(`/api/commodities/${commodityId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+}
+
+export const merchantService = new MerchantService();
 
 class MerchantService {
   // Get all merchants

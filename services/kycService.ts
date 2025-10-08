@@ -148,7 +148,7 @@ class KYCService {
   }
 
   // Validate personal information
-  private validatePersonalInfo(data: PersonalInfoRequest): { isValid: boolean; error?: string } => {
+  private validatePersonalInfo(data: PersonalInfoRequest): { isValid: boolean; error?: string } {
     const { validateName, validateDate, validateAge, validateAddress } = require('../utils/validation');
 
     const firstNameValidation = validateName(data.firstName, 'First name');

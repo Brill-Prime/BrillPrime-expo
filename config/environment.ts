@@ -50,7 +50,7 @@ export const ENV = {
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.brillprime.com',
-  apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000'),
+  apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'), // Increased to 30s for real API
   mapApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
   enableAnalytics: process.env.EXPO_PUBLIC_ENABLE_ANALYTICS === 'true',
