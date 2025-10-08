@@ -38,38 +38,10 @@ class MerchantService {
 
   // Get merchant by ID
   async getMerchantById(merchantId: string): Promise<ApiResponse<Merchant>> {
-    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
-      console.log('Using mock merchant data');
-      return { 
-        success: true, 
-        data: {
-          id: merchantId,
-          name: 'Sample Merchant',
-          type: 'market',
-          category: 'groceries',
-          address: 'Sample Address',
-          phone: '+234-800-000-0000',
-          email: 'merchant@example.com',
-          description: 'Sample merchant description',
-          distance: '0 km',
-          rating: 0,
-          reviewCount: 0,
-          latitude: 0,
-          longitude: 0,
-          priceRange: 'medium',
-          isOpen: true,
-          operatingHours: {},
-          services: [],
-          images: []
-        } as Merchant 
-      };
-    }
-
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
     return apiClient.get<Merchant>(`/api/merchants/${merchantId}`, {
       Authorization: `Bearer ${token}`,
     });
@@ -108,23 +80,16 @@ class MerchantService {
 
   // Search merchants
   async searchMerchants(query: string, filters?: any): Promise<ApiResponse<Merchant[]>> {
-    if (!migrationService.shouldUseRealAPI('useRealMerchants')) {
-      console.log('Using mock merchant search');
-      return { success: true, data: [] };
-    }
-
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-
     const queryParams = new URLSearchParams({ q: query });
     if (filters) {
       Object.keys(filters).forEach(key => {
         if (filters[key]) queryParams.append(key, filters[key]);
       });
     }
-
     return apiClient.get<Merchant[]>(`/api/merchants/search?${queryParams.toString()}`, {
       Authorization: `Bearer ${token}`,
     });
@@ -134,7 +99,7 @@ class MerchantService {
   async getMerchantProfile(merchantId: string): Promise<ApiResponse<MerchantProfile>> {
     try {
       const response = await apiClient.get(`/api/merchants/${merchantId}`);
-      return { success: true, data: response.data };
+  return { success: true, data: response.data as MerchantProfile };
     } catch (error) {
       console.error('Error getting merchant profile:', error);
       return { success: false, error: 'Failed to get merchant profile' };
@@ -145,7 +110,7 @@ class MerchantService {
   async updateMerchantProfile(profileData: Partial<MerchantProfile>): Promise<ApiResponse<MerchantProfile>> {
     try {
       const response = await apiClient.put('/api/merchants/profile', profileData);
-      return { success: true, data: response.data };
+  return { success: true, data: response.data as MerchantProfile };
     } catch (error) {
       console.error('Error updating merchant profile:', error);
       return { success: false, error: 'Failed to update merchant profile' };

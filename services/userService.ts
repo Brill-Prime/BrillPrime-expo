@@ -7,7 +7,7 @@ import { User, UpdateProfileRequest } from './types';
 
 class UserService {
   // Validate profile update data
-  private validateProfileData(data: UpdateProfileRequest): { isValid: boolean; error?: string } => {
+  private validateProfileData(data: UpdateProfileRequest): { isValid: boolean; error?: string } {
     const { validateName, validateEmail, validatePhone, validateAddress } = require('../utils/validation');
     
     const firstNameValidation = validateName(data.firstName, 'First name');
