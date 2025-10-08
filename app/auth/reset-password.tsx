@@ -25,25 +25,33 @@ export default function ResetPassword() {
       const urlToken = params.token as string;
       const urlEmail = params.email as string;
       
-      // Get stored token and expiry
-      const storedToken = await AsyncStorage.getItem("resetToken");
-      const tokenExpiry = await AsyncStorage.getItem("resetTokenExpiry");
-      const storedEmail = await AsyncStorage.getItem("resetEmail");
-      
-      if (!urlToken || !storedToken || urlToken !== storedToken) {
+      if (!urlToken || !urlEmail) {
         throw new Error("Invalid or missing token");
       }
+
+      // Validate token with backend API
+      const response = await fetch('https://api.brillprime.com/api/password-reset/verify-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: urlEmail, 
+          code: urlToken 
+        }),
+      });
+
+      const data = await response.json();
       
-      if (!tokenExpiry || Date.now() > parseInt(tokenExpiry)) {
-        throw new Error("Token has expired");
+      if (response.ok && data.success) {
+        // Store email for password reset
+        await AsyncStorage.setItem("resetEmail", urlEmail);
+        await AsyncStorage.setItem("resetToken", urlToken);
+        setIsValidToken(true);
+        setIsLoading(false);
+      } else {
+        throw new Error(data.message || "Invalid or expired reset link");
       }
-      
-      if (urlEmail && storedEmail && urlEmail !== storedEmail) {
-        throw new Error("Email mismatch");
-      }
-      
-      setIsValidToken(true);
-      setIsLoading(false);
       
     } catch (error) {
       console.error("Token validation error:", error);
@@ -110,29 +118,49 @@ export default function ResetPassword() {
 
     try {
       const resetEmail = await AsyncStorage.getItem("resetEmail");
+      const resetToken = await AsyncStorage.getItem("resetToken");
       
-      // In a real app, you would make an API call to update the password
-      // await updateUserPassword(resetEmail, newPassword);
+      if (!resetEmail || !resetToken) {
+        throw new Error("Reset session expired");
+      }
+
+      // Call backend API to complete password reset
+      const response = await fetch('https://api.brillprime.com/api/password-reset/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: resetEmail,
+          code: resetToken,
+          newPassword: newPassword,
+        }),
+      });
+
+      const data = await response.json();
       
-      // Clean up reset tokens and data
-      await AsyncStorage.removeItem("resetEmail");
-      await AsyncStorage.removeItem("resetToken");
-      await AsyncStorage.removeItem("resetTokenExpiry");
-      
-      Alert.alert(
-        "Success!",
-        "Password reset successfully! You can now log in with your new password.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace("/auth/signin")
-          }
-        ]
-      );
+      if (response.ok && data.success) {
+        // Clean up reset tokens and data
+        await AsyncStorage.removeItem("resetEmail");
+        await AsyncStorage.removeItem("resetToken");
+        
+        Alert.alert(
+          "Success!",
+          "Password reset successfully! You can now log in with your new password.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/auth/signin")
+            }
+          ]
+        );
+      } else {
+        throw new Error(data.message || "Failed to reset password");
+      }
       
     } catch (error) {
       console.error("Error resetting password:", error);
-      Alert.alert("Error", "Failed to reset password. Please try again.");
+      Alert.alert("Error", error instanceof Error ? error.message : "Failed to reset password. Please try again.");
     }
   };
 
