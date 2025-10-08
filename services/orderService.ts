@@ -7,7 +7,7 @@ import { Order, CreateOrderRequest } from './types';
 
 class OrderService {
   // Validate order data
-  private validateOrderData(orderData: CreateOrderRequest): { isValid: boolean; error?: string } => {
+  private validateOrderData(orderData: CreateOrderRequest): { isValid: boolean; error?: string } {
     const { validateAddress, validateNumber, validatePhone, validateName } = require('../utils/validation');
     
     if (!orderData.merchantId) {
