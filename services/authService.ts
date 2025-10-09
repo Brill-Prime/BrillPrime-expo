@@ -137,19 +137,33 @@ class AuthService {
   // Social Authentication - Google
   async signInWithGoogle(role: string): Promise<ApiResponse<AuthResponse>> {
     try {
+      console.log('🔵 Starting Google sign-in with role:', role);
+      
       const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth as Auth, provider);
+      const result = await signInWithPopup(auth as Auth, provider);
       const firebaseUser = result.user;
 
+      console.log('✅ Firebase Google sign-in successful:', {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName
+      });
+
       // Send Firebase UID and user data to backend
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+      const requestData = {
         firebaseUid: firebaseUser.uid,
         email: firebaseUser.email,
         provider: 'google',
         displayName: firebaseUser.displayName,
         photoURL: firebaseUser.photoURL,
         role: role
-      });
+      };
+      
+      console.log('📤 Sending social login request to backend:', requestData);
+      
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', requestData);
+
+      console.log('📥 Backend response:', response);
 
       if (response.success && response.data) {
         // Validate role if provided
@@ -165,7 +179,13 @@ class AuthService {
 
       return response;
   } catch (error: any) {
-      console.error('Google sign-in error:', error);
+      console.error('❌ Google sign-in error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        response: error.response,
+        stack: error.stack
+      });
       
       if (error.code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'Sign-in cancelled' };

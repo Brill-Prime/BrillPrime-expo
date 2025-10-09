@@ -36,12 +36,25 @@ let db;
 let storage;
 
 try {
+  // Log configuration status for debugging
+  console.log('Firebase Config Status:', {
+    hasApiKey: !!firebaseConfig.apiKey,
+    hasAuthDomain: !!firebaseConfig.authDomain,
+    hasProjectId: !!firebaseConfig.projectId,
+    hasStorageBucket: !!firebaseConfig.storageBucket,
+    hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
+    hasAppId: !!firebaseConfig.appId
+  });
+
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  
+  console.log('✅ Firebase initialized successfully');
 } catch (error) {
-  console.error('Firebase initialization error:', error);
+  console.error('❌ Firebase initialization error:', error);
+  console.error('Firebase config:', firebaseConfig);
   // Create fallback empty objects to prevent crashes
   app = null as any;
   auth = null as any;
