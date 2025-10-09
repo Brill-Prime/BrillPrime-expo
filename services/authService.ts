@@ -59,15 +59,21 @@ class AuthService {
   // Sign up new user
   async signUp(data: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
     try {
+      console.log('Starting signup process for:', data.email);
+      
       // First, try to sign up using Firebase
       const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
+      console.log('Firebase user created:', firebaseUser.uid);
 
       // Register the user with your backend API
+      console.log('Calling backend API at:', '/api/auth/signup');
       const response = await apiClient.post<AuthResponse>('/api/auth/signup', {
         ...data,
         firebaseUid: firebaseUser.uid
       });
+
+      console.log('Backend API response:', response);
 
       if (response.success && response.data) {
         await this.storeAuthData(response.data);
@@ -76,6 +82,11 @@ class AuthService {
       return response;
     } catch (error: any) {
       console.error('SignUp error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
 
       if (error.code) {
         switch (error.code) {
