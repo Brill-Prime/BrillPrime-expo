@@ -63,8 +63,8 @@ class CommunicationService {
     }
 
     try {
-      // Use wss:// for production or ws:// for development
-      const wsUrl = `ws://localhost:3000/ws?token=${token}`;
+      // Use wss:// for production (HTTPS) or ws:// for development (HTTP)
+      const wsUrl = `wss://api.brillprime.com/ws?token=${token}`;
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
