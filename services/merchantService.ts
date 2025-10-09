@@ -1,146 +1,187 @@
 // Merchant service for BrillPrime app
 
-import axios, { AxiosError } from 'axios';
-
-const API_BASE_URL = 'https://api.brillprime.com';
+import { apiClient, ApiResponse } from './api';
+import { authService } from './authService';
 
 export interface Merchant {
-	id: string;
-	name: string;
-	description?: string;
-	logoUrl?: string;
-	// Add more fields as needed
+        id: string;
+        name: string;
+        description?: string;
+        logoUrl?: string;
+}
+
+export interface Commodity {
+        id: string;
+        name: string;
+        description?: string;
+        price: number;
+        unit: string;
+        category?: string;
+        image?: string;
+        merchantId: string;
 }
 
 // Fetch all merchants
 export const getMerchants = async (): Promise<Merchant[]> => {
-	try {
-		const response = await axios.get(`${API_BASE_URL}/merchants`);
-		return response.data;
-	} catch (error) {
-		handleAxiosError(error);
-		return [];
-	}
+        try {
+                const token = await authService.getToken();
+                const response = await apiClient.get<Merchant[]>('/merchants', token ? {
+                        Authorization: `Bearer ${token}`
+                } : {});
+                return response.success && response.data ? response.data : [];
+        } catch (error) {
+                console.error('API Error:', error);
+                return [];
+        }
 };
 
 // Fetch a merchant by ID
 export const getMerchantById = async (id: string): Promise<Merchant | null> => {
-	try {
-		const response = await axios.get(`${API_BASE_URL}/merchants/${id}`);
-		return response.data;
-	} catch (error) {
-		handleAxiosError(error);
-		return null;
-	}
+        try {
+                const token = await authService.getToken();
+                const response = await apiClient.get<Merchant>(`/merchants/${id}`, token ? {
+                        Authorization: `Bearer ${token}`
+                } : {});
+                return response.success && response.data ? response.data : null;
+        } catch (error) {
+                console.error('API Error:', error);
+                return null;
+        }
 };
 
 // Create a new merchant
 export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Merchant | null> => {
-	try {
-		const response = await axios.post(`${API_BASE_URL}/merchants`, merchant);
-		return response.data;
-	} catch (error) {
-		handleAxiosError(error);
-		return null;
-	}
+        try {
+                const token = await authService.getToken();
+                if (!token) return null;
+                
+                const response = await apiClient.post<Merchant>('/merchants', merchant, {
+                        Authorization: `Bearer ${token}`
+                });
+                return response.success && response.data ? response.data : null;
+        } catch (error) {
+                console.error('API Error:', error);
+                return null;
+        }
 };
 
 // Update an existing merchant
 export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant, 'id'>>): Promise<Merchant | null> => {
-	try {
-		const response = await axios.put(`${API_BASE_URL}/merchants/${id}`, merchant);
-		return response.data;
-	} catch (error) {
-		handleAxiosError(error);
-		return null;
-	}
+        try {
+                const token = await authService.getToken();
+                if (!token) return null;
+                
+                const response = await apiClient.put<Merchant>(`/merchants/${id}`, merchant, {
+                        Authorization: `Bearer ${token}`
+                });
+                return response.success && response.data ? response.data : null;
+        } catch (error) {
+                console.error('API Error:', error);
+                return null;
+        }
 };
 
 // Delete a merchant
 export const deleteMerchant = async (id: string): Promise<boolean> => {
-	try {
-		await axios.delete(`${API_BASE_URL}/merchants/${id}`);
-		return true;
-	} catch (error) {
-		handleAxiosError(error);
-		return false;
-	}
+        try {
+                const token = await authService.getToken();
+                if (!token) return false;
+                
+                const response = await apiClient.delete(`/merchants/${id}`, {
+                        Authorization: `Bearer ${token}`
+                });
+                return response.success;
+        } catch (error) {
+                console.error('API Error:', error);
+                return false;
+        }
 };
 
 // Fetch all commodities
-export const getCommodities = async (): Promise<{ success: boolean; data?: any[] }> => {
-	try {
-		const response = await axios.get(`${API_BASE_URL}/api/commodities`);
-		return { success: true, data: response.data };
-	} catch (error) {
-		handleAxiosError(error);
-		return { success: false, data: [] };
-	}
+export const getCommodities = async (): Promise<{ success: boolean; data?: Commodity[] }> => {
+        try {
+                const token = await authService.getToken();
+                const response = await apiClient.get<Commodity[]>('/api/commodities', token ? {
+                        Authorization: `Bearer ${token}`
+                } : {});
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, data: [] };
+        }
 };
 
 // Fetch commodities for a specific merchant
-export const getMerchantCommodities = async (merchantId: string): Promise<{ success: boolean; data?: any[] }> => {
-	try {
-		const response = await axios.get(`${API_BASE_URL}/api/merchants/${merchantId}/commodities`);
-		return { success: true, data: response.data };
-	} catch (error) {
-		handleAxiosError(error);
-		return { success: false, data: [] };
-	}
+export const getMerchantCommodities = async (merchantId: string): Promise<{ success: boolean; data?: Commodity[] }> => {
+        try {
+                const token = await authService.getToken();
+                const response = await apiClient.get<Commodity[]>(`/api/merchants/${merchantId}/commodities`, token ? {
+                        Authorization: `Bearer ${token}`
+                } : {});
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, data: [] };
+        }
 };
 
 // Add commodity for merchant
-export const addCommodity = async (merchantId: string, commodity: any): Promise<{ success: boolean; data?: any }> => {
-	try {
-		const response = await axios.post(`${API_BASE_URL}/api/merchants/${merchantId}/commodities`, commodity);
-		return { success: true, data: response.data };
-	} catch (error) {
-		handleAxiosError(error);
-		return { success: false };
-	}
+export const addCommodity = async (merchantId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+                
+                const response = await apiClient.post<Commodity>(`/api/merchants/${merchantId}/commodities`, commodity, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
+        }
 };
 
 // Update commodity
-export const updateCommodity = async (merchantId: string, commodityId: string, commodity: any): Promise<{ success: boolean; data?: any }> => {
-	try {
-		const response = await axios.put(`${API_BASE_URL}/api/merchants/${merchantId}/commodities/${commodityId}`, commodity);
-		return { success: true, data: response.data };
-	} catch (error) {
-		handleAxiosError(error);
-		return { success: false };
-	}
+export const updateCommodity = async (merchantId: string, commodityId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+                
+                const response = await apiClient.put<Commodity>(`/api/merchants/${merchantId}/commodities/${commodityId}`, commodity, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
+        }
 };
 
 // Delete commodity
 export const deleteCommodity = async (merchantId: string, commodityId: string): Promise<boolean> => {
-	try {
-		await axios.delete(`${API_BASE_URL}/api/merchants/${merchantId}/commodities/${commodityId}`);
-		return true;
-	} catch (error) {
-		handleAxiosError(error);
-		return false;
-	}
-};
-
-// Helper for error handling
-function handleAxiosError(error: unknown) {
-	if (axios.isAxiosError(error)) {
-		// You can add more sophisticated error handling/logging here
-		console.error('API Error:', error.response?.data || error.message);
-	} else {
-		console.error('Unexpected Error:', error);
-	}
+        try {
+                const token = await authService.getToken();
+                if (!token) return false;
+                
+                const response = await apiClient.delete(`/api/merchants/${merchantId}/commodities/${commodityId}`, {
+                        Authorization: `Bearer ${token}`
+                });
+                return response.success;
+        } catch (error) {
+                console.error('API Error:', error);
+                return false;
+        }
 }
 
 export const merchantService = {
-	getMerchants,
-	getMerchantById,
-	createMerchant,
-	updateMerchant,
-	deleteMerchant,
-	getCommodities,
-	getMerchantCommodities,
-	addCommodity,
-	updateCommodity,
-	deleteCommodity
+        getMerchants,
+        getMerchantById,
+        createMerchant,
+        updateMerchant,
+        deleteMerchant,
+        getCommodities,
+        getMerchantCommodities,
+        addCommodity,
+        updateCommodity,
+        deleteCommodity
 };
