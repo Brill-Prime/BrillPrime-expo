@@ -5,21 +5,28 @@ import { apiClient, ApiResponse } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
 import type { Auth } from 'firebase/auth';
-import { 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+  applyActionCode,
+  verifyPasswordResetCode,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   OAuthProvider,
   FacebookAuthProvider,
-  signOut,
-  onAuthStateChanged,
+  updateProfile,
+  sendEmailVerification,
   User as FirebaseUser
 } from 'firebase/auth';
-import { 
-  User, 
-  AuthResponse, 
-  SignUpRequest, 
+import {
+  User,
+  AuthResponse,
+  SignUpRequest,
   SignInRequest,
   VerifyOTPRequest,
   ResetPasswordRequest,
@@ -35,7 +42,7 @@ class AuthService {
 
   constructor() {
     // Listen to Firebase auth state changes
-  onAuthStateChanged(auth as Auth, (user: FirebaseUser | null) => {
+    onAuthStateChanged(auth as Auth, (user: FirebaseUser | null) => {
       if (user) {
         this.currentUser = user;
         user.getIdToken().then(token => {
@@ -134,155 +141,207 @@ class AuthService {
     }
   }
 
-  // Social Authentication - Google
-  async signInWithGoogle(role: string): Promise<ApiResponse<AuthResponse>> {
+  // Sign in with Google
+  async signInWithGoogle(): Promise<ApiResponse<User>> {
     try {
-      console.log('🔵 Starting Google sign-in with role:', role);
-      
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth as Auth, provider);
-      const firebaseUser = result.user;
+      provider.addScope('email');
+      provider.addScope('profile');
 
-      console.log('✅ Firebase Google sign-in successful:', {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName
-      });
+      let result;
+      try {
+        // Try popup first
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        console.log('Popup failed, attempting redirect...', popupError);
 
-      // Send Firebase UID and user data to backend
-      const requestData = {
-        firebaseUid: firebaseUser.uid,
-        email: firebaseUser.email,
-        provider: 'google',
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-        role: role
-      };
-      
-      console.log('📤 Sending social login request to backend:', requestData);
-      
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', requestData);
-
-      console.log('📥 Backend response:', response);
-
-      if (response.success && response.data) {
-        // Validate role if provided
-        if (role && response.data.user.role !== role) {
-          return {
-            success: false,
-            error: `Account role mismatch. Expected ${role} but account is ${response.data.user.role}`
-          };
+        // If popup fails, use redirect instead
+        if (popupError.code === 'auth/popup-blocked' ||
+          popupError.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+          // The page will reload after redirect, so return a pending state
+          return { success: false, error: 'Redirecting to Google sign-in...' };
         }
-
-        await this.storeAuthData(response.data);
+        throw popupError;
       }
 
-      return response;
-  } catch (error: any) {
-      console.error('❌ Google sign-in error:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        response: error.response,
-        stack: error.stack
+      const user = result.user;
+
+      if (!user.email) {
+        throw new Error('No email associated with Google account');
+      }
+
+      // Send user data to backend
+      const response = await apiClient.post<User>('/api/auth/google', {
+        firebaseUid: user.uid,
+        email: user.email,
+        fullName: user.displayName || '',
+        photoUrl: user.photoURL || '',
       });
-      
+
+      if (response.success && response.data) {
+        await this.storeUserData(response.data);
+        return response;
+      }
+
+      throw new Error(response.error || 'Google sign-in failed');
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+
+      if (error.code === 'auth/popup-blocked') {
+        return { success: false, error: 'Popup was blocked. Please allow popups or try again.' };
+      }
       if (error.code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'Sign-in cancelled' };
       }
-      
-      return {
-        success: false,
-        error: error.message || 'Google sign-in failed'
-      };
+      if (error.code === 'auth/operation-not-allowed') {
+        return { success: false, error: 'Google sign-in is not enabled. Please contact support.' };
+      }
+
+      return { success: false, error: error.message || 'Google sign-in failed' };
     }
   }
 
-  // Social Authentication - Apple
-  async signInWithApple(role: string): Promise<ApiResponse<AuthResponse>> {
+  // Check for redirect result on app load
+  async checkRedirectResult(): Promise<ApiResponse<User> | null> {
+    try {
+      const result = await getRedirectResult(auth);
+      if (!result) return null;
+
+      const user = result.user;
+      if (!user.email) {
+        throw new Error('No email associated with account');
+      }
+
+      // Determine provider and send to backend
+      const providerId = result.providerId || 'google.com';
+      let endpoint = '/api/auth/google';
+
+      if (providerId.includes('apple')) {
+        endpoint = '/api/auth/apple';
+      } else if (providerId.includes('facebook')) {
+        endpoint = '/api/auth/facebook';
+      }
+
+      const response = await apiClient.post<User>(endpoint, {
+        firebaseUid: user.uid,
+        email: user.email,
+        fullName: user.displayName || '',
+        photoUrl: user.photoURL || '',
+      });
+
+      if (response.success && response.data) {
+        await this.storeUserData(response.data);
+        return response;
+      }
+
+      throw new Error(response.error || 'Authentication failed');
+    } catch (error: any) {
+      console.error('Redirect result error:', error);
+      return null;
+    }
+  }
+
+  // Sign in with Apple
+  async signInWithApple(): Promise<ApiResponse<User>> {
     try {
       const provider = new OAuthProvider('apple.com');
-  const result = await signInWithPopup(auth as Auth, provider);
-      const firebaseUser = result.user;
+      provider.addScope('email');
+      provider.addScope('name');
 
-      // Send Firebase UID and user data to backend
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
-        firebaseUid: firebaseUser.uid,
-        email: firebaseUser.email,
-        provider: 'apple',
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-        role: role
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        console.log('Popup failed, attempting redirect...', popupError);
+
+        if (popupError.code === 'auth/popup-blocked' ||
+          popupError.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+          return { success: false, error: 'Redirecting to Apple sign-in...' };
+        }
+        throw popupError;
+      }
+
+      const user = result.user;
+
+      if (!user.email) {
+        throw new Error('No email associated with Apple account');
+      }
+
+      const response = await apiClient.post<User>('/api/auth/apple', {
+        firebaseUid: user.uid,
+        email: user.email,
+        fullName: user.displayName || '',
+        photoUrl: user.photoURL || '',
       });
 
       if (response.success && response.data) {
-        // Validate role if provided
-        if (role && response.data.user.role !== role) {
-          return {
-            success: false,
-            error: `Account role mismatch. Expected ${role} but account is ${response.data.user.role}`
-          };
-        }
-
-        await this.storeAuthData(response.data);
+        await this.storeUserData(response.data);
+        return response;
       }
 
-      return response;
-  } catch (error: any) {
+      throw new Error(response.error || 'Apple sign-in failed');
+    } catch (error: any) {
       console.error('Apple sign-in error:', error);
-      
-      if (error.code === 'auth/popup-closed-by-user') {
-        return { success: false, error: 'Sign-in cancelled' };
+
+      if (error.code === 'auth/operation-not-allowed') {
+        return { success: false, error: 'Apple sign-in is not enabled. Please contact support.' };
       }
-      
-      return {
-        success: false,
-        error: error.message || 'Apple sign-in failed'
-      };
+
+      return { success: false, error: error.message || 'Apple sign-in failed' };
     }
   }
 
-  // Social Authentication - Facebook
-  async signInWithFacebook(role: string): Promise<ApiResponse<AuthResponse>> {
+  // Sign in with Facebook
+  async signInWithFacebook(): Promise<ApiResponse<User>> {
     try {
       const provider = new FacebookAuthProvider();
-  const result = await signInWithPopup(auth as Auth, provider);
-      const firebaseUser = result.user;
+      provider.addScope('email');
+      provider.addScope('public_profile');
 
-      // Send Firebase UID and user data to backend
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
-        firebaseUid: firebaseUser.uid,
-        email: firebaseUser.email,
-        provider: 'facebook',
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-        role: role
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        console.log('Popup failed, attempting redirect...', popupError);
+
+        if (popupError.code === 'auth/popup-blocked' ||
+          popupError.code === 'auth/cancelled-popup-request' ||
+          popupError.code === 'auth/popup-closed-by-user') {
+          await signInWithRedirect(auth, provider);
+          return { success: false, error: 'Redirecting to Facebook sign-in...' };
+        }
+        throw popupError;
+      }
+
+      const user = result.user;
+
+      if (!user.email) {
+        throw new Error('No email associated with Facebook account');
+      }
+
+      const response = await apiClient.post<User>('/api/auth/facebook', {
+        firebaseUid: user.uid,
+        email: user.email,
+        fullName: user.displayName || '',
+        photoUrl: user.photoURL || '',
       });
 
       if (response.success && response.data) {
-        // Validate role if provided
-        if (role && response.data.user.role !== role) {
-          return {
-            success: false,
-            error: `Account role mismatch. Expected ${role} but account is ${response.data.user.role}`
-          };
-        }
-
-        await this.storeAuthData(response.data);
+        await this.storeUserData(response.data);
+        return response;
       }
 
-      return response;
-  } catch (error: any) {
+      throw new Error(response.error || 'Facebook sign-in failed');
+    } catch (error: any) {
       console.error('Facebook sign-in error:', error);
-      
-      if (error.code === 'auth/popup-closed-by-user') {
-        return { success: false, error: 'Sign-in cancelled' };
+
+      if (error.code === 'auth/operation-not-allowed') {
+        return { success: false, error: 'Facebook sign-in is not enabled. Please contact support.' };
       }
-      
-      return {
-        success: false,
-        error: error.message || 'Facebook sign-in failed'
-      };
+
+      return { success: false, error: error.message || 'Facebook sign-in failed' };
     }
   }
 
@@ -359,8 +418,8 @@ class AuthService {
         });
       }
       // Sign out from Firebase as well
-  await signOut(auth as Auth);
-  } catch (error: any) {
+      await signOut(auth as Auth);
+    } catch (error: any) {
       console.error('Error during API signout:', error);
     } finally {
       // Clear local storage regardless of API call result
@@ -382,7 +441,7 @@ class AuthService {
         ['userEmail', authData.user.email], // Store email for offline use
         // We don't store firebaseUid here as it's implicitly handled by Firebase auth state
       ]);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Error storing auth data:', error);
     }
   }
@@ -401,7 +460,7 @@ class AuthService {
         'isOfflineMode', // Also clear offline mode flag
         'userEmail' // Clear stored email as well
       ]);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Error clearing auth data:', error);
     }
   }
@@ -413,7 +472,7 @@ class AuthService {
         return this.authToken;
       }
       return await AsyncStorage.getItem(this.TOKEN_KEY);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Error getting token:', error);
       return null;
     }
@@ -519,28 +578,28 @@ class AuthService {
       if (!expiry || Date.now() > parseInt(expiry)) {
         // Token expired, try to refresh
         const refreshed = await this.refreshTokenIfNeeded();
-        return { 
-          isAuthenticated: refreshed, 
-          shouldRefresh: false, 
-          error: refreshed ? undefined : 'Token expired and refresh failed' 
+        return {
+          isAuthenticated: refreshed,
+          shouldRefresh: false,
+          error: refreshed ? undefined : 'Token expired and refresh failed'
         };
       }
 
       // Check if token needs refresh soon
       const needsRefresh = await this.needsTokenRefresh();
 
-      return { 
-        isAuthenticated: true, 
-        shouldRefresh: needsRefresh 
+      return {
+        isAuthenticated: true,
+        shouldRefresh: needsRefresh
       };
     } catch (error) {
       console.error('Authentication validation error:', error);
       // If any error occurs during validation, assume not authenticated.
       // The specific error might be from AsyncStorage or other operations.
-      return { 
-        isAuthenticated: false, 
-        shouldRefresh: false, 
-        error: 'Authentication validation failed due to an error' 
+      return {
+        isAuthenticated: false,
+        shouldRefresh: false,
+        error: 'Authentication validation failed due to an error'
       };
     }
   }

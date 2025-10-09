@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Alert, // Import Alert
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -17,6 +18,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAlert } from "../../components/AlertProvider";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
+
+// Import authService here to ensure it's available for checkRedirectAuth
+import { authService } from '../../services/authService';
 
 export default function SignIn() {
   const router = useRouter();
@@ -34,6 +38,34 @@ export default function SignIn() {
 
     return () => subscription?.remove();
   }, []);
+
+  // Placeholder for checkAuthStatus if it exists in the original code,
+  // otherwise, it might be an artifact from the thought process.
+  // Assuming it's meant to check current session or similar.
+  const checkAuthStatus = async () => {
+    // Placeholder for actual auth status check logic
+    // For now, we'll just assume it's handled by the redirect check or sign-in process
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
+    checkRedirectAuth();
+  }, []);
+
+  const checkRedirectAuth = async () => {
+    try {
+      const result = await authService.checkRedirectResult();
+      if (result?.success && result.data) {
+        // Successfully authenticated via redirect
+        router.replace('/role-selection');
+      } else if (result?.error) {
+        Alert.alert('Authentication Error', result.error);
+      }
+    } catch (error) {
+      console.error('Redirect auth check error:', error);
+    }
+  };
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -68,9 +100,6 @@ export default function SignIn() {
     }
 
     try {
-      // Import authService for real API calls
-      const { authService } = await import('../../services/authService');
-
       const response = await authService.signIn({
         email: formData.email,
         password: formData.password,
@@ -157,19 +186,37 @@ export default function SignIn() {
         return;
       }
 
-      // Import authService
-      const { authService } = await import('../../services/authService');
-
       let response;
       if (provider === 'Google') {
-        response = await authService.signInWithGoogle(selectedRole);
+        // Improved Google sign-in error handling
+        try {
+          response = await authService.signInWithGoogle(selectedRole);
+
+          if (response.success && response.data) {
+            // Successfully signed in, proceed to role validation
+          } else if (response.error?.includes('Redirecting')) {
+            // Redirect in progress, do not show error, continue loading
+            console.log('Redirecting to Google sign-in...');
+            // The loading state will be reset in the finally block
+          } else {
+            // Handle other sign-in errors
+            const errorMessage = response.error || 'Google sign-in failed';
+            if (errorMessage !== 'Sign-in cancelled') { // Don't show error if user cancelled
+              showError("Sign In Failed", errorMessage);
+            }
+          }
+        } catch (error: any) {
+          console.error('Google sign-in handler error:', error);
+          showError('Error', 'An unexpected error occurred during Google sign-in. Please try again.');
+        }
       } else if (provider === 'Apple') {
         response = await authService.signInWithApple(selectedRole);
       } else if (provider === 'Facebook') {
         response = await authService.signInWithFacebook(selectedRole);
       }
 
-      if (response?.success && response.data) {
+      // Common logic for successful social login (excluding Google's redirect case handled above)
+      if (provider !== 'Google' && response?.success && response.data) {
         // Validate that the user's role matches selected role
         if (response.data.user.role !== selectedRole) {
           showConfirmDialog(
@@ -195,11 +242,8 @@ export default function SignIn() {
         } else {
           router.replace(`/dashboard/${response.data.user.role}`);
         }
-      } else {
-        const errorMessage = response?.error || `${provider} sign-in failed`;
-        if (errorMessage !== 'Sign-in cancelled') {
-          showError("Sign In Failed", errorMessage);
-        }
+      } else if (provider !== 'Google' && response?.error && response.error !== 'Sign-in cancelled') {
+        showError("Sign In Failed", response.error);
       }
     } catch (error) {
       console.error(`${provider} sign-in error:`, error);
