@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService } from '../services/authService';
+import { biometricService } from '../services/biometricService';
 import { useAlert } from '../components/AlertProvider';
 
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
@@ -22,17 +23,29 @@ export const useSessionTimeout = () => {
     if (warningIdRef.current) clearTimeout(warningIdRef.current);
 
     // Set warning timer
-    warningIdRef.current = setTimeout(() => {
-      showConfirmDialog(
-        'Session Expiring',
-        'Your session will expire in 5 minutes due to inactivity. Continue?',
-        () => {
+    warningIdRef.current = setTimeout(async () => {
+      const biometricEnabled = await biometricService.isBiometricEnabled();
+      const biometricAvailable = await biometricService.isBiometricAvailable();
+      
+      if (biometricEnabled && biometricAvailable) {
+        const authenticated = await biometricService.authenticate('Verify to continue your session');
+        if (authenticated) {
           resetTimers();
-        },
-        () => {
+        } else {
           handleSessionExpiry();
         }
-      );
+      } else {
+        showConfirmDialog(
+          'Session Expiring',
+          'Your session will expire in 5 minutes due to inactivity. Continue?',
+          () => {
+            resetTimers();
+          },
+          () => {
+            handleSessionExpiry();
+          }
+        );
+      }
     }, SESSION_TIMEOUT - WARNING_TIME);
 
     // Set timeout timer

@@ -8,6 +8,8 @@ import { ErrorBoundary } from 'react-error-boundary';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from '../contexts/AppContext';
+import { useDeepLinking } from '../hooks/useDeepLinking';
+import { analyticsService } from '../services/analyticsService';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -33,12 +35,16 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
 
 export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  useDeepLinking();
 
   useEffect(() => {
     async function prepare() {
       try {
         // Keep the splash screen visible while we fetch resources
         await SplashScreen.preventAutoHideAsync();
+
+        // Initialize analytics
+        await analyticsService.initialize();
 
         // Load fonts
         console.log('Loading fonts...');

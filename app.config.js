@@ -31,9 +31,11 @@ export default ({ config }) => {
       bundleIdentifier: "com.brillprime",
       googleServicesFile: "./ios/GoogleService-Info.plist",
       scheme: "brillprime",
+      associatedDomains: ["applinks:brillprime.com", "applinks:*.brillprime.com"],
       intentFilters: [
         {
           action: "VIEW",
+          autoVerify: true,
           data: [
             {
               scheme: "https",
@@ -44,6 +46,10 @@ export default ({ config }) => {
               scheme: "https",
               host: "*.brillprime.com",
               pathPrefix: "/merchant",
+            },
+            {
+              scheme: "brillprime",
+              host: "*",
             },
           ],
           category: ["BROWSABLE", "DEFAULT"],
@@ -57,6 +63,29 @@ export default ({ config }) => {
       },
       package: "com.brillprime",
       googleServicesFile: "./android/app/google-services.json",
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "*.brillprime.com",
+              pathPrefix: "/product",
+            },
+            {
+              scheme: "https",
+              host: "*.brillprime.com",
+              pathPrefix: "/merchant",
+            },
+            {
+              scheme: "brillprime",
+              host: "*",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY

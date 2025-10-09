@@ -539,7 +539,10 @@ export default function ConsumerHome() {
             value={searchQuery}
             onChangeText={handleSearch}
           />
-          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}>
+          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}
+            accessibilityLabel="Open filter options"
+            accessibilityRole="button"
+          >
             <Ionicons name="options" size={22} color={theme.colors.primary} />
           </TouchableOpacity>
         </View>
@@ -547,11 +550,21 @@ export default function ConsumerHome() {
 
       {/* Header with Back Button and Menu */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={handleGoBack} 
+          style={styles.backButton}
+          accessibilityLabel="Go back to dashboard"
+          accessibilityRole="button"
+        >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+        <TouchableOpacity 
+          onPress={toggleMenu} 
+          style={styles.menuButton}
+          accessibilityLabel={isMenuOpen ? "Close menu" : "Open menu"}
+          accessibilityRole="button"
+        >
           <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
@@ -580,6 +593,8 @@ export default function ConsumerHome() {
               onPress={handleSetLocationAutomatically}
               activeOpacity={0.9}
               disabled={isLoadingLocation}
+              accessibilityLabel="Set location automatically"
+              accessibilityRole="button"
             >
               <Text style={styles.setAutomaticallyText}>
                 {isLoadingLocation ? "Getting location..." : "Set automatically"}
@@ -591,6 +606,8 @@ export default function ConsumerHome() {
               onPress={handleSetLocationLater}
               activeOpacity={0.9}
               disabled={isLoadingLocation}
+              accessibilityLabel="Set location later"
+              accessibilityRole="button"
             >
               <Text style={styles.setLaterText}>Set later</Text>
             </TouchableOpacity>
@@ -611,6 +628,8 @@ export default function ConsumerHome() {
                 key={store.title}
                 style={styles.storeCard}
                 onPress={() => handleStoreSelect(store)}
+                accessibilityLabel={`View details for ${store.title}`}
+                accessibilityRole="button"
               >
                 <View style={styles.storeCardIcon}>
                   <Ionicons name="business" size={24} color={theme.colors.primary} />
@@ -651,6 +670,8 @@ export default function ConsumerHome() {
                 key={item}
                 style={styles.menuItem}
                 onPress={() => handleMenuItemPress(item)}
+                accessibilityLabel={`Navigate to ${item}`}
+                accessibilityRole="button"
               >
                 <Text style={styles.menuItemText}>{item}</Text>
                 <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
@@ -662,6 +683,8 @@ export default function ConsumerHome() {
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Merchant")}
+              accessibilityLabel="Switch to Merchant view"
+              accessibilityRole="button"
             >
               <Text style={styles.switchButtonText}>Switch to Merchant</Text>
             </TouchableOpacity>
@@ -669,6 +692,8 @@ export default function ConsumerHome() {
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Driver")}
+              accessibilityLabel="Switch to Driver view"
+              accessibilityRole="button"
             >
               <Text style={styles.switchButtonText}>Switch to Driver</Text>
             </TouchableOpacity>
@@ -676,6 +701,8 @@ export default function ConsumerHome() {
             <TouchableOpacity
               style={styles.signOutButton}
               onPress={handleSignOut}
+              accessibilityLabel="Sign out from the application"
+              accessibilityRole="button"
             >
               <Text style={styles.signOutButtonText}>Sign out</Text>
             </TouchableOpacity>
@@ -689,6 +716,7 @@ export default function ConsumerHome() {
           style={styles.menuOverlay}
           onPress={toggleMenu}
           activeOpacity={1}
+          accessibilityLabel="Close menu overlay"
         />
       )}
 
@@ -714,7 +742,10 @@ export default function ConsumerHome() {
             <Text style={styles.errorMessage}>
               Unable to load the map. Please check your internet connection.
             </Text>
-            <TouchableOpacity style={styles.retryButton} onPress={retryLoadMap}>
+            <TouchableOpacity style={styles.retryButton} onPress={retryLoadMap}
+              accessibilityLabel="Retry loading map"
+              accessibilityRole="button"
+            >
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -736,7 +767,10 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Distance</Text>
               <View style={styles.filterOptionValues}>
                 {['<1km', '<5km', '<10km', 'Any'].map((option) => (
-                  <TouchableOpacity key={option} style={styles.filterChip}>
+                  <TouchableOpacity key={option} style={styles.filterChip}
+                    accessibilityLabel={`Filter by ${option} distance`}
+                    accessibilityRole="button"
+                  >
                     <Text style={styles.filterChipText}>{option}</Text>
                   </TouchableOpacity>
                 ))}
@@ -747,7 +781,10 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Category</Text>
               <View style={styles.filterOptionValues}>
                 {['Food', 'Gas', 'Retail', 'All'].map((option) => (
-                  <TouchableOpacity key={option} style={styles.filterChip}>
+                  <TouchableOpacity key={option} style={styles.filterChip}
+                    accessibilityLabel={`Filter by ${option} category`}
+                    accessibilityRole="button"
+                  >
                     <Text style={styles.filterChipText}>{option}</Text>
                   </TouchableOpacity>
                 ))}
@@ -758,7 +795,10 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Rating</Text>
               <View style={styles.ratingStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star}>
+                  <TouchableOpacity key={star}
+                    accessibilityLabel={`Filter by ${star} star rating`}
+                    accessibilityRole="button"
+                  >
                     <Ionicons
                       name={star <= 3 ? "star" : "star-outline"}
                       size={24}
@@ -773,12 +813,16 @@ export default function ConsumerHome() {
               <TouchableOpacity
                 style={[styles.filterModalButton, styles.filterModalButtonOutline]}
                 onPress={() => setIsFilterModalOpen(false)}
+                accessibilityLabel="Reset filters"
+                accessibilityRole="button"
               >
                 <Text style={styles.filterModalButtonOutlineText}>Reset</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterModalButton, styles.filterModalButtonFilled]}
                 onPress={() => setIsFilterModalOpen(false)}
+                accessibilityLabel="Apply filters"
+                accessibilityRole="button"
               >
                 <Text style={styles.filterModalButtonFilledText}>Apply</Text>
               </TouchableOpacity>
