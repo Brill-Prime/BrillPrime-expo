@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface KycDocument {
   id: string;
@@ -39,6 +39,7 @@ export default function AdminKYCVerification() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [actionNotes, setActionNotes] = useState('');
 
   const [documents, setDocuments] = useState<KycDocument[]>([
     {
@@ -90,9 +91,9 @@ export default function AdminKYCVerification() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    
+
     loadKYCDocuments();
-    
+
     return () => subscription?.remove();
   }, []);
 
@@ -118,6 +119,7 @@ export default function AdminKYCVerification() {
   const onRefresh = async () => {
     setRefreshing(true);
     // Simulate API call
+    loadKYCDocuments(); // Actually load data on refresh
     setTimeout(() => setRefreshing(false), 1000);
   };
 
@@ -164,12 +166,12 @@ export default function AdminKYCVerification() {
     if (!selectedDocument) return;
 
     try {
-      // Call API to approve document
+      const token = await AsyncStorage.getItem('adminToken');
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           documentId: selectedDocument.id,
@@ -208,11 +210,12 @@ export default function AdminKYCVerification() {
     }
 
     try {
+      const token = await AsyncStorage.getItem('adminToken');
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           documentId: selectedDocument.id,
@@ -254,27 +257,49 @@ export default function AdminKYCVerification() {
     }
 
     Alert.alert(
-      'Batch Action',
+      `Batch Action: ${action.charAt(0).toUpperCase() + action.slice(1)}`,
       `Are you sure you want to ${action} ${selectedDocuments.length} document(s)?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: () => {
-            setDocuments(prev => 
-              prev.map(doc => 
-                selectedDocuments.includes(doc.id)
-                  ? { 
-                      ...doc, 
-                      status: action === 'approve' ? 'APPROVED' as const : 'REJECTED' as const,
-                      reviewedAt: new Date().toISOString(),
-                      rejectionReason: action === 'reject' ? 'Batch rejection' : undefined
-                    }
-                  : doc
-              )
-            );
-            setSelectedDocuments([]);
-            Alert.alert('Success', `Batch ${action} completed`);
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('adminToken');
+              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/batch`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  documentIds: selectedDocuments,
+                  action: action.toUpperCase(), // APPROVE or REJECT
+                  notes: actionNotes
+                })
+              });
+
+              if (!response.ok) throw new Error(`Failed to ${action} documents`);
+
+              setDocuments(prev => 
+                prev.map(doc => 
+                  selectedDocuments.includes(doc.id)
+                    ? { 
+                        ...doc, 
+                        status: action === 'approve' ? 'APPROVED' as const : 'REJECTED' as const,
+                        reviewedAt: new Date().toISOString(),
+                        rejectionReason: action === 'reject' ? 'Batch rejection' : undefined
+                      }
+                    : doc
+                )
+              );
+              setSelectedDocuments([]);
+              setActionNotes('');
+              Alert.alert('Success', `Batch ${action} completed successfully`);
+            } catch (error) {
+              console.error(`Error performing batch ${action}:`, error);
+              Alert.alert('Error', `Failed to perform batch ${action}. Please try again.`);
+            }
           }
         }
       ]
@@ -397,7 +422,7 @@ export default function AdminKYCVerification() {
                     color="rgb(11, 26, 81)" 
                   />
                 </TouchableOpacity>
-                
+
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>{document.userName}</Text>
                   <Text style={styles.userEmail}>{document.userEmail}</Text>
@@ -448,13 +473,21 @@ export default function AdminKYCVerification() {
         visible={showReviewModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowReviewModal(false)}
+        onRequestClose={() => {
+          setShowReviewModal(false);
+          setRejectionReason(''); // Clear rejection reason on close
+          setActionNotes(''); // Clear action notes on close
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Review Document</Text>
-              <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowReviewModal(false);
+                setRejectionReason(''); // Clear rejection reason on close
+                setActionNotes(''); // Clear action notes on close
+              }}>
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
@@ -478,12 +511,21 @@ export default function AdminKYCVerification() {
                     Submitted: {formatDate(selectedDocument.submittedAt)}
                   </Text>
                 </View>
-
+                
                 <TextInput
                   style={styles.rejectionInput}
                   placeholder="Rejection reason (optional)"
                   value={rejectionReason}
                   onChangeText={setRejectionReason}
+                  multiline
+                  numberOfLines={3}
+                />
+
+                <TextInput
+                  style={styles.rejectionInput}
+                  placeholder="Action notes (optional)"
+                  value={actionNotes}
+                  onChangeText={setActionNotes}
                   multiline
                   numberOfLines={3}
                 />

@@ -1,8 +1,8 @@
-
 // Location Service
-// Handles location-based services and merchant data
+// Handles location tracking and geolocation features
 
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 import { Merchant } from './types';
@@ -57,12 +57,12 @@ class LocationService {
   async reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
     try {
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
-      
+
       if (results.length > 0) {
         const address = results[0];
         return `${address.street || ''} ${address.city || ''}, ${address.region || ''} ${address.country || ''}`.trim();
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error reverse geocoding:', error);
@@ -79,7 +79,7 @@ class LocationService {
   ): Promise<ApiResponse<Merchant[]>> {
     try {
       const token = await authService.getToken();
-      
+
       let endpoint = `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`;
       if (type) {
         endpoint += `&type=${type}`;
@@ -104,15 +104,15 @@ class LocationService {
     const R = 6371; // Radius of the Earth in km
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
-    
+
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
       Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * 
       Math.sin(dLon/2) * Math.sin(dLon/2);
-    
+
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distance = R * c; // Distance in km
-    
+
     return distance;
   }
 
@@ -166,7 +166,7 @@ class LocationService {
                 location.longitude
               ) > 0.001 || // ~100 meters
               Date.now() - this.lastLocationUpdate > 30000) { // or 30 seconds passed
-            
+
             this.lastLocationUpdate = Date.now();
             this.trackingCallbacks.forEach(callback => {
               try {
@@ -179,13 +179,13 @@ class LocationService {
             // Queue location for API update with retry mechanism
             await this.queueLocationUpdate(location);
           }
-          
+
           this.trackingErrorCount = 0; // Reset error count on success
         }
       } catch (error) {
         console.error('Live tracking error:', error);
         this.trackingErrorCount++;
-        
+
         if (this.trackingErrorCount >= this.maxTrackingErrors) {
           console.warn('Max tracking errors reached, stopping live tracking');
           this.stopLiveTracking();
@@ -214,7 +214,7 @@ class LocationService {
   // Queue location update with batching for performance
   private async queueLocationUpdate(location: LocationData): Promise<void> {
     this.trackingQueue.push(location);
-    
+
     // Process queue when it reaches batch size or after timeout
     if (this.trackingQueue.length >= 3) {
       await this.processLocationQueue();
@@ -320,7 +320,7 @@ class LocationService {
       return response;
     } catch (error) {
       console.error('Error getting live location:', error);
-      
+
       // Return cached data if available during error
       const cached = this.liveLocationCache.get(userId);
       if (cached) {
@@ -329,7 +329,7 @@ class LocationService {
           data: { ...cached.location, isStale: true }
         };
       }
-      
+
       return { success: false, error: 'Failed to get live location' };
     }
   }
@@ -351,7 +351,7 @@ class LocationService {
   ): Promise<ApiResponse<Array<Merchant & { liveLocation?: LocationData }>>> {
     try {
       const token = await authService.getToken();
-      
+
       let endpoint = `/api/merchants/nearby/live?lat=${latitude}&lng=${longitude}&radius=${radius}`;
 
       return apiClient.get<Array<Merchant & { liveLocation?: LocationData }>>(endpoint, token ? {

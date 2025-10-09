@@ -163,7 +163,7 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get('/api/payments/methods', {
+    return apiClient.get('/api/payment-methods', {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -175,7 +175,7 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post('/api/payments/methods', { paymentMethodId }, {
+    return apiClient.post('/api/payment-methods', { paymentMethodId }, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -187,7 +187,7 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete(`/api/payments/methods/${paymentMethodId}`, {
+    return apiClient.delete(`/api/payment-methods/${paymentMethodId}`, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -199,7 +199,7 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put(`/api/payments/methods/${paymentMethodId}/default`, {}, {
+    return apiClient.put(`/api/payment-methods/${paymentMethodId}/default`, {}, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -216,7 +216,7 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Transaction>('/api/payments/toll', tollData, {
+    return apiClient.post<Transaction>('/api/toll-payments', tollData, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -236,7 +236,7 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    let endpoint = '/api/payments/toll/history';
+    let endpoint = '/api/toll-payments';
     const queryParams = new URLSearchParams();
 
     if (filters) {
