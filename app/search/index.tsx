@@ -23,6 +23,7 @@ import { merchantService } from '../../services/merchantService';
 import CommunicationModal from '../../components/CommunicationModal'; // Assuming this path is correct
 import { authService } from '../../services/authService';
 import apiClient from '../../services/api';
+import { useSearchHistory } from '../../hooks/useSearchHistory'; // Import the hook
 
 // Define SearchResult interface if not already defined elsewhere
 interface SearchResult {
@@ -47,6 +48,17 @@ interface SearchResult {
   isFavorite?: boolean;
 }
 
+// Define Merchant interface for clarity in handleMerchantPress and CommunicationModal
+interface Merchant {
+  id: string;
+  name: string;
+  type: string;
+  address?: string;
+  isOpen?: boolean;
+  phone?: string; // Assuming phone number is available for communication
+  // other merchant properties...
+}
+
 const { width } = Dimensions.get('window');
 
 // Data will be loaded from backend via merchantService.getMerchants / getCommodities
@@ -62,9 +74,7 @@ export default function SearchScreen() {
   const [userLocation, setUserLocation] = useState<any>(null); // Modified to support location object
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'fuel' | 'food' | 'groceries'>('all');
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false); // Added loading state
@@ -75,7 +85,7 @@ export default function SearchScreen() {
   const [userCoordinates, setUserCoordinates] = useState<{latitude: number; longitude: number} | null>(null); // User coordinates state
   const [results, setResults] = useState<SearchResult[]>([]); // State for search results
   const [isSearching, setIsSearching] = useState(false); // State to indicate if a search is in progress
-
+  const { searchHistory, addToHistory, clearHistory, removeFromHistory } = useSearchHistory(); // Initialize search history
 
   // Enhanced filter states
   const [filters, setFilters] = useState({
@@ -96,7 +106,6 @@ export default function SearchScreen() {
 
   useEffect(() => {
     loadUserData();
-    loadSearchHistory();
     loadFavorites();
     loadUserLocation(); // Load user location on component mount
   }, []);
@@ -143,17 +152,6 @@ export default function SearchScreen() {
       }
     } catch (error) {
       console.error('Error loading nearby merchants:', error);
-    }
-  };
-
-  const loadSearchHistory = async () => {
-    try {
-      const history = await AsyncStorage.getItem('searchHistory');
-      if (history) {
-        setSearchHistory(JSON.parse(history));
-      }
-    } catch (error) {
-      console.error("Error loading search history:", error);
     }
   };
 
@@ -303,13 +301,6 @@ export default function SearchScreen() {
     } else {
       setFilteredCommodities(filterCommodities());
     }
-
-    // Save search to history if it's not empty and not already in history
-    if (searchQuery.trim() && !searchHistory.includes(searchQuery.trim())) {
-      const newHistory = [searchQuery.trim(), ...searchHistory.slice(0, 4)]; // Keep last 5 searches
-      setSearchHistory(newHistory);
-      AsyncStorage.setItem('searchHistory', JSON.stringify(newHistory));
-    }
   };
 
 
@@ -330,17 +321,19 @@ export default function SearchScreen() {
 
   const handleHistorySelect = (historyItem: string) => {
     setSearchQuery(historyItem);
-    setShowHistory(false);
+    // No longer need to explicitly show history here, as the UI logic handles it
+    // The search is triggered by onSubmitEditing in the TextInput
   };
 
   const handleSuggestionSelect = (suggestion: string) => {
     setSearchQuery(suggestion);
     setSearchSuggestions([]);
+    // Trigger the actual search after selecting a suggestion
+    filterResults(); // Or call a dedicated search function if needed
   };
 
   const clearSearchHistory = async () => {
-    setSearchHistory([]);
-    await AsyncStorage.removeItem('searchHistory');
+    await clearHistory();
   };
 
   const toggleFavorite = async (id: string) => {
@@ -577,6 +570,13 @@ export default function SearchScreen() {
     setSearchQuery(query);
     setIsSearching(true);
 
+    // Add to history only if the query is not empty
+    if (query.trim()) {
+      await addToHistory(query);
+    }
+
+    await analyticsService.trackEvent('search', { query: query });
+
     try {
       const token = await authService.getToken();
       const response = await apiClient.get(`/api/search?q=${encodeURIComponent(query)}`, {
@@ -597,7 +597,7 @@ export default function SearchScreen() {
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [addToHistory, authService, apiClient, analyticsService]); // Added dependencies
 
   return (
     <View style={styles.container}>
@@ -631,16 +631,19 @@ export default function SearchScreen() {
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
-              setShowHistory(text.length === 0 && searchHistory.length > 0); // Show history if search is cleared
               if (text.length > 0) {
                 handleSearch(text); // Call handleSearch on text change for live search
               } else {
                 setResults([]); // Clear results if search query is empty
               }
             }}
-            onFocus={() => setShowHistory(searchHistory.length > 0 && searchQuery.length === 0)}
+            onFocus={() => {}} // Keep onFocus handler empty to avoid interfering with history display logic
             returnKeyType="search"
-            onSubmitEditing={filterResults} // Trigger filter on submit
+            onSubmitEditing={() => {
+              if (searchQuery.trim()) {
+                filterResults();
+              }
+            }}
           />
           {searchQuery.length > 0 ? (
             <TouchableOpacity onPress={() => { setSearchQuery(""); setResults([]); filterResults(); }}>
@@ -651,7 +654,7 @@ export default function SearchScreen() {
               />
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity onPress={() => setShowHistory(!showHistory)}>
+            <TouchableOpacity onPress={() => { /* Logic for showing history is now handled by !searchQuery check */ }}>
               <Ionicons name="time" size={20} color="#999" />
             </TouchableOpacity>
           )}
@@ -698,22 +701,28 @@ export default function SearchScreen() {
         )}
 
         {/* Search History */}
-        {showHistory && searchHistory.length > 0 && searchQuery.length === 0 && (
+        {!searchQuery && searchHistory.length > 0 && (
           <View style={styles.historyContainer}>
             <View style={styles.historyHeader}>
               <Text style={styles.historyTitle}>Recent Searches</Text>
-              <TouchableOpacity onPress={clearSearchHistory}>
-                <Text style={styles.clearHistoryText}>Clear</Text>
+              <TouchableOpacity onPress={clearHistory}>
+                <Text style={styles.clearText}>Clear All</Text>
               </TouchableOpacity>
             </View>
             {searchHistory.map((item, index) => (
               <TouchableOpacity
                 key={index}
                 style={styles.historyItem}
-                onPress={() => handleHistorySelect(item)}
+                onPress={() => {
+                  setSearchQuery(item);
+                  handleSearch(item); // Trigger search with the history item
+                }}
               >
-                <Ionicons name="time" size={16} color="#999" />
-                <Text style={styles.historyItemText}>{item}</Text>
+                <Ionicons name="time-outline" size={20} color="#666" />
+                <Text style={styles.historyText}>{item}</Text>
+                <TouchableOpacity onPress={() => removeFromHistory(item)}>
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
               </TouchableOpacity>
             ))}
           </View>
@@ -1127,11 +1136,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  // Styles for search history
   historyContainer: {
     backgroundColor: '#fff',
-    marginTop: 10,
-    borderRadius: 8,
-    padding: 15,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    marginTop: 10, // Added margin top to separate from search bar
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1142,26 +1153,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   historyTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#1F2937',
   },
-  clearHistoryText: {
-    fontSize: 12,
+  clearText: {
+    fontSize: 14,
     color: '#4682B4',
   },
   historyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
   },
-  historyItemText: {
+  historyText: {
+    flex: 1,
     fontSize: 14,
-    color: '#666',
+    color: '#374151',
   },
   filtersContainer: {
     backgroundColor: 'white',

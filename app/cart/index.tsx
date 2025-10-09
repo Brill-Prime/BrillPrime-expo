@@ -60,7 +60,7 @@ export default function CartScreen() {
   };
 
   const { updateCartCount } = useAppContext();
-  
+
   const updateCartItems = async (updatedItems: CartItem[]) => {
     try {
       await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));

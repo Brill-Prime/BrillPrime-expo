@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
@@ -96,6 +96,7 @@ export default function ConsumerHome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
+  const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
 
   const slideAnim = useRef(new Animated.Value(-Math.min(280, width * 0.8))).current;
   const mapRef = useRef<any>(null);
@@ -181,6 +182,41 @@ export default function ConsumerHome() {
     return `${timeInMinutes} mins`;
   };
 
+  const fetchNearbyMerchants = useCallback(async () => {
+    try {
+      const location = await locationService.getCurrentLocation();
+      if (location) {
+        const response = await merchantService.getNearbyMerchants(
+          location.latitude,
+          location.longitude,
+          5000
+        );
+        if (response.success && response.data) {
+          setStoreLocations(response.data.map(merchant => ({
+            title: merchant.name,
+            address: merchant.address,
+            coords: { lat: merchant.latitude, lng: merchant.longitude }
+          })));
+          setNearbyDrivers(response.data.map(m => ({
+            id: m.id,
+            latitude: m.latitude,
+            longitude: m.longitude,
+            name: m.name,
+            eta: calculateETA(location.latitude, location.longitude, m.latitude, m.longitude)
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching nearby merchants:', error);
+      showError("Loading Error", "Could not load nearby merchants. Please try again.");
+    }
+  }, [showError, calculateETA]); // Added dependencies
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchNearbyMerchants();
+    setRefreshing(false);
+  }, [fetchNearbyMerchants]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -443,6 +479,9 @@ export default function ConsumerHome() {
     return storeLocations;
   }, [storeLocations]);
 
+  // Mock cart item count for badge display
+  const cartItemCount = 3;
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
@@ -550,8 +589,8 @@ export default function ConsumerHome() {
 
       {/* Header with Back Button and Menu */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={handleGoBack} 
+        <TouchableOpacity
+          onPress={handleGoBack}
           style={styles.backButton}
           accessibilityLabel="Go back to dashboard"
           accessibilityRole="button"
@@ -559,8 +598,8 @@ export default function ConsumerHome() {
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={toggleMenu} 
+        <TouchableOpacity
+          onPress={toggleMenu}
           style={styles.menuButton}
           accessibilityLabel={isMenuOpen ? "Close menu" : "Open menu"}
           accessibilityRole="button"
