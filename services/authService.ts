@@ -67,8 +67,8 @@ class AuthService {
       console.log('Firebase user created:', firebaseUser.uid);
 
       // Register the user with your backend API
-      console.log('Calling backend API at:', '/api/auth/signup');
-      const response = await apiClient.post<AuthResponse>('/api/auth/signup', {
+      console.log('Calling backend API at:', '/api/auth/register');
+      const response = await apiClient.post<AuthResponse>('/api/auth/register', {
         ...data,
         firebaseUid: firebaseUser.uid
       });
@@ -116,7 +116,7 @@ class AuthService {
       const firebaseUser = firebaseUserCredential.user;
 
       // Authenticate with your backend using the Firebase UID
-      const response = await apiClient.post<AuthResponse>('/api/auth/signin', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/login', {
         email: data.email,
         firebaseUid: firebaseUser.uid
       });
@@ -190,7 +190,8 @@ class AuthService {
       }
 
       // Send user data to backend
-      const response = await apiClient.post<AuthResponse>('/api/auth/google', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        provider: 'google',
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
@@ -234,15 +235,16 @@ class AuthService {
 
       // Determine provider and send to backend
       const providerId = result.providerId || 'google.com';
-      let endpoint = '/api/auth/google';
+      let provider = 'google';
 
       if (providerId.includes('apple')) {
-        endpoint = '/api/auth/apple';
+        provider = 'apple';
       } else if (providerId.includes('facebook')) {
-        endpoint = '/api/auth/facebook';
+        provider = 'facebook';
       }
 
-      const response = await apiClient.post<AuthResponse>(endpoint, {
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        provider,
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
@@ -296,7 +298,8 @@ class AuthService {
         throw new Error('No email associated with Apple account');
       }
 
-      const response = await apiClient.post<AuthResponse>('/api/auth/apple', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        provider: 'apple',
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
@@ -356,7 +359,8 @@ class AuthService {
         throw new Error('No email associated with Facebook account');
       }
 
-      const response = await apiClient.post<AuthResponse>('/api/auth/facebook', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+        provider: 'facebook',
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
