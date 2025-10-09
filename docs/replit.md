@@ -67,7 +67,37 @@ Preferred communication style: Simple, everyday language.
 - **Environment Variables**: APP_VARIANT for distinguishing between main app and admin panel builds
 - **Dynamic App Configuration**: Role-based entry points and platform targeting
 
+## Backend & Firebase Configuration
+
+### API Backend
+- **Backend URL**: `https://api.brillprime.com`
+- **Configuration**: Configured in `config/environment.ts` and `services/api.ts`
+- **API Timeout**: 30 seconds for reliable external API communication
+- **Authentication**: Token-based authentication with Firebase integration
+
+### Firebase Connection
+- **Status**: ✅ Connected using vault credentials
+- **Project**: Firebase project configured with web SDK
+- **Services Used**:
+  - Firebase Authentication (email/password, social providers)
+  - Cloud Firestore (database)
+  - Cloud Storage
+- **Environment Variables**: All Firebase credentials stored securely in Replit secrets vault
+  - EXPO_PUBLIC_FIREBASE_API_KEY
+  - EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
+  - EXPO_PUBLIC_FIREBASE_PROJECT_ID
+  - EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+  - EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+  - EXPO_PUBLIC_FIREBASE_APP_ID
+
 ## Recent Changes
+
+### October 09, 2025 - Firebase & Backend Integration
+- Connected app to Firebase using secure vault credentials
+- Configured backend API connection to api.brillprime.com
+- Verified all Firebase environment variables are properly set
+- Installed all npm dependencies (1324 packages)
+- Development server running successfully on port 5000
 
 ### October 08, 2025 - Social Authentication Implementation
 - Implemented full social authentication (Google, Apple, Facebook) using Firebase Auth
