@@ -69,16 +69,29 @@ POST /api/jwt-tokens/logout - User logout
 5. **Auto-logout**: On token expiration
 
 ### Firebase Configuration
-Firebase credentials are configured with environment variable support and fallbacks:
+
+#### Web Platform
+Firebase credentials are configured via environment variables (required):
 - `EXPO_PUBLIC_FIREBASE_API_KEY`
 - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_DATABASE_URL`
 - `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
 - `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
 - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `EXPO_PUBLIC_FIREBASE_APP_ID`
 - `EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID`
 
-Current project uses BrillPrime Firebase project with fallback credentials in `config/firebase.ts`.
+#### iOS Platform
+- Config File: `ios/GoogleService-Info.plist` ✅
+- Project ID: `brillprime`
+- Bundle ID: `com.brillprime`
+
+#### Android Platform
+- Config File: `android/app/google-services.json` ✅
+- Project ID: `brillprime`
+- Package: `com.brillprime`
+
+**Note**: Currently using different Firebase projects for web vs mobile. For seamless auth across platforms, consider using the same Firebase project for all platforms.
 
 ## Environment Setup
 
@@ -91,25 +104,50 @@ EXPO_PUBLIC_API_TIMEOUT=30000
 # Google Maps
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_key_here
 
-# Firebase (Optional - has fallbacks)
-EXPO_PUBLIC_FIREBASE_API_KEY=your_key
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
-# ... other Firebase vars
+# Firebase Web (REQUIRED - No fallbacks)
+EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
 # Feature Flags
 EXPO_PUBLIC_ENABLE_ANALYTICS=true
 EXPO_PUBLIC_ENABLE_CRASH_REPORTING=true
 ```
 
+**Important**: All Firebase environment variables are required for web platform. The app will fail to start if any are missing.
+
 ## Development Workflow
 
 ### Running the Application
+
+#### Web (Current)
 ```bash
 npm install          # Install dependencies
 npm run web          # Start development server on port 5000
 ```
 
-The app is configured to run on port 5000 for web access.
+#### iOS (Requires Mac + Xcode)
+```bash
+npm run ios          # Run on iOS simulator
+```
+
+#### Android (Requires Android Studio/Emulator)
+```bash
+npm run android      # Run on Android emulator
+```
+
+#### Development Mode (All Platforms)
+```bash
+npm start            # Start Expo dev server
+# Scan QR code with Expo Go app on your phone
+```
+
+The web app is configured to run on port 5000 for browser access.
 
 ### Workflow Configuration
 - **Name**: Frontend
