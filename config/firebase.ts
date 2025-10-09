@@ -8,14 +8,14 @@ import { getStorage } from 'firebase/storage';
 
 // Web Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBAe9x-nOCzn8VA1oAP23y2Sv2sIiVyP0s",
-  authDomain: "brillprimefirebase.firebaseapp.com",
-  databaseURL: "https://brillprimefirebase-default-rtdb.firebaseio.com",
-  projectId: "brillprimefirebase",
-  storageBucket: "brillprimefirebase.firebasestorage.app",
-  messagingSenderId: "655201684400",
-  appId: "1:655201684400:web:ec3ac485a4f98a82fb2475",
-  measurementId: "G-7T5QKZPDWW"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBAe9x-nOCzn8VA1oAP23y2Sv2sIiVyP0s",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "brillprimefirebase.firebaseapp.com",
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://brillprimefirebase-default-rtdb.firebaseio.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "brillprimefirebase",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "brillprimefirebase.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "655201684400",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:655201684400:web:ec3ac485a4f98a82fb2475",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-7T5QKZPDWW"
 };
 
 // Initialize Firebase with error handling
