@@ -1,0 +1,35 @@
+all Stack
+
+Source Map
+This call stack is not symbolicated. Some features are unavailable such as viewing the function name or tapping to open files.
+debugFail
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:116487:20
+debugAssert
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:116498:16
+reject
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:125359:18
+onError
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:125336:18
+sendToConsumer
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:125996:25
+<unknown>
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:125976:30
+forEach
+[native code]
+onEvent
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:125973:29
+<unknown>
+https://0b3adbbd-8d9c-4484-bb8a-17424a852fc2-00-2p7gaieegmeh.worf.replit.dev/node_modules/expo-router/entry.bundle:126575:40
+Sm
+https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.J8aLcn7bYF8.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo-YaQN_2soL6ZNher0ZcTp3d4Q_nw/cb=gapi.loaded_0:195:291
+<unknown>
+https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.J8aLcn7bYF8.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo-YaQN_2soL6ZNher0ZcTp3d4Q_nw/cb=gapi.loaded_0:195:462
+gl
+https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.J8aLcn7bYF8.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo-YaQN_2soL6ZNher0ZcTp3d4Q_nw/cb=gapi.loaded_0:174:312
+pl
+https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.J8aLcn7bYF8.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo-YaQN_2soL6ZNher0ZcTp3d4Q_nw/cb=gapi.loaded_0:174:474
+Kk
+https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.J8aLcn7bYF8.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo-YaQN_2soL6ZNher0ZcTp3d4Q_nw/cb=gapi.loaded_0:175:30
+<unknown>
+https://apis.google.com/_/scs/abc-static/_/js/k=gapi.lb.en.J8aLcn7bYF8.O/m=gapi_iframes/rt=j/sv=1/d=1/ed=1/rs=AHpOoo-YaQN_2soL6ZNher0ZcTp3d4Q_nw/cb=gapi.loaded_0:168:374
+Showing all frames
