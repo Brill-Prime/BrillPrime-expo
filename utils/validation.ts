@@ -25,22 +25,65 @@ export const validateEmail = (email: string): { isValid: boolean; error?: string
   return { isValid: true };
 };
 
-// Phone number validation (Nigerian format)
-export const validatePhone = (phone: string): { isValid: boolean; error?: string } => {
+// International phone number validation
+export const validatePhone = (phone: string, country: string = 'NG'): { isValid: boolean; error?: string } => {
   if (!phone.trim()) {
     return { isValid: false, error: 'Phone number is required' };
   }
   
-  // Remove spaces and dashes
-  const cleanPhone = phone.replace(/[\s-]/g, '');
+  // Remove spaces, dashes, and parentheses
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
   
-  // Check for Nigerian phone format: +234XXXXXXXXXX or 0XXXXXXXXXX
-  const nigerianPhoneRegex = /^(\+234|0)[7-9][0-1]\d{8}$/;
-  if (!nigerianPhoneRegex.test(cleanPhone)) {
-    return { isValid: false, error: 'Please enter a valid Nigerian phone number' };
+  // Country-specific validation
+  const phonePatterns: Record<string, { regex: RegExp; format: string }> = {
+    'NG': { 
+      regex: /^(\+234|234|0)[7-9][0-1]\d{8}$/, 
+      format: '+234XXXXXXXXXX or 0XXXXXXXXXX' 
+    },
+    'US': { 
+      regex: /^(\+1|1)?[2-9]\d{9}$/, 
+      format: '+1XXXXXXXXXX or XXXXXXXXXX' 
+    },
+    'GB': { 
+      regex: /^(\+44|44|0)[1-9]\d{9,10}$/, 
+      format: '+44XXXXXXXXXX or 0XXXXXXXXXX' 
+    },
+    'GH': { 
+      regex: /^(\+233|233|0)[2-5]\d{8}$/, 
+      format: '+233XXXXXXXXX or 0XXXXXXXXX' 
+    },
+    'KE': { 
+      regex: /^(\+254|254|0)[17]\d{8}$/, 
+      format: '+254XXXXXXXXX or 0XXXXXXXXX' 
+    },
+  };
+
+  const pattern = phonePatterns[country] || phonePatterns['NG'];
+  
+  if (!pattern.regex.test(cleanPhone)) {
+    return { 
+      isValid: false, 
+      error: `Invalid phone number. Format: ${pattern.format}` 
+    };
   }
   
   return { isValid: true };
+};
+
+// Format phone number for display
+export const formatPhoneNumber = (phone: string, country: string = 'NG'): string => {
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+  
+  if (country === 'NG') {
+    if (cleanPhone.startsWith('+234')) {
+      const number = cleanPhone.slice(4);
+      return `+234 ${number.slice(0, 3)} ${number.slice(3, 6)} ${number.slice(6)}`;
+    } else if (cleanPhone.startsWith('0')) {
+      return `0${cleanPhone.slice(1, 4)} ${cleanPhone.slice(4, 7)} ${cleanPhone.slice(7)}`;
+    }
+  }
+  
+  return phone;
 };
 
 // Password validation

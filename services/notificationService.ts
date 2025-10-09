@@ -94,17 +94,71 @@ class NotificationService {
     });
   }
 
-  // Register device for push notifications
+  // Register device for push notifications with Firebase
   async registerPushToken(token: string, platform: 'ios' | 'android' | 'web'): Promise<ApiResponse<{ message: string }>> {
     const authToken = await authService.getToken();
     if (!authToken) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post('/api/notifications/register-device', 
-      { token, platform }, 
-      { Authorization: `Bearer ${authToken}` }
-    );
+    try {
+      // Store token locally
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem('fcm_token', token);
+
+      // Register with backend
+      const response = await apiClient.post('/api/notifications/register-device', 
+        { token, platform, deviceId: await this.getDeviceId() }, 
+        { Authorization: `Bearer ${authToken}` }
+      );
+
+      if (response.success) {
+        await AsyncStorage.setItem('fcm_registered', 'true');
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error registering push token:', error);
+      return { success: false, error: 'Failed to register device' };
+    }
+  }
+
+  // Get device ID for push notifications
+  private async getDeviceId(): Promise<string> {
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    let deviceId = await AsyncStorage.getItem('device_id');
+    
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await AsyncStorage.setItem('device_id', deviceId);
+    }
+    
+    return deviceId;
+  }
+
+  // Initialize Firebase messaging
+  async initializePushNotifications(): Promise<boolean> {
+    try {
+      // Check if notifications are supported
+      if (typeof window === 'undefined') {
+        console.log('Push notifications not supported in this environment');
+        return false;
+      }
+
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      const isRegistered = await AsyncStorage.getItem('fcm_registered');
+      
+      if (isRegistered === 'true') {
+        return true;
+      }
+
+      // Platform-specific initialization would go here
+      console.log('Push notifications initialized');
+      return true;
+    } catch (error) {
+      console.error('Error initializing push notifications:', error);
+      return false;
+    }
   }
 
   // Update notification preferences

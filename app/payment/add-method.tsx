@@ -61,29 +61,85 @@ export default function AddPaymentMethod() {
     }
   };
 
+  // Luhn algorithm for card validation
+  const validateCardNumberLuhn = (cardNumber: string): boolean => {
+    const cleaned = cardNumber.replace(/\s/g, '');
+    if (!/^\d+$/.test(cleaned)) return false;
+    
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned[i], 10);
+      
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return sum % 10 === 0;
+  };
+
   const validateCard = () => {
     if (!selectedMethod) {
       Alert.alert("Error", "Please select a payment method");
       return false;
     }
     
-    if (!cardData.cardNumber.replace(/\s/g, '') || cardData.cardNumber.replace(/\s/g, '').length < 16) {
-      Alert.alert("Error", "Please enter a valid card number");
+    const cleanCardNumber = cardData.cardNumber.replace(/\s/g, '');
+    
+    // Card number validation
+    if (!cleanCardNumber || cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
+      Alert.alert("Error", "Card number must be between 13-19 digits");
       return false;
     }
     
+    if (!validateCardNumberLuhn(cleanCardNumber)) {
+      Alert.alert("Error", "Invalid card number. Please check and try again.");
+      return false;
+    }
+    
+    // Expiry date validation
     if (!cardData.expiryDate || cardData.expiryDate.length < 5) {
-      Alert.alert("Error", "Please enter a valid expiry date");
+      Alert.alert("Error", "Please enter a valid expiry date (MM/YY)");
       return false;
     }
     
-    if (!cardData.cvv || cardData.cvv.length < 3) {
-      Alert.alert("Error", "Please enter a valid CVV");
+    const [month, year] = cardData.expiryDate.split('/');
+    const expMonth = parseInt(month, 10);
+    const expYear = parseInt('20' + year, 10);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    
+    if (expMonth < 1 || expMonth > 12) {
+      Alert.alert("Error", "Invalid expiry month (01-12)");
       return false;
     }
     
-    if (!cardData.cardholderName.trim()) {
-      Alert.alert("Error", "Please enter the cardholder name");
+    if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+      Alert.alert("Error", "Card has expired");
+      return false;
+    }
+    
+    // CVV validation
+    if (!cardData.cvv || (cardData.cvv.length < 3 || cardData.cvv.length > 4)) {
+      Alert.alert("Error", "CVV must be 3 or 4 digits");
+      return false;
+    }
+    
+    // Cardholder name validation
+    if (!cardData.cardholderName.trim() || cardData.cardholderName.trim().length < 3) {
+      Alert.alert("Error", "Please enter a valid cardholder name");
+      return false;
+    }
+    
+    if (!/^[a-zA-Z\s\-'\.]+$/.test(cardData.cardholderName)) {
+      Alert.alert("Error", "Cardholder name contains invalid characters");
       return false;
     }
     

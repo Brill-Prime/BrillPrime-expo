@@ -16,7 +16,12 @@ class AnalyticsService {
   async trackEvent(eventName: string, properties?: Record<string, any>) {
     const event: AnalyticsEvent = {
       name: eventName,
-      properties,
+      properties: {
+        ...properties,
+        timestamp: new Date().toISOString(),
+        platform: this.getPlatform(),
+        appVersion: '1.0.0',
+      },
       timestamp: Date.now(),
     };
 
@@ -29,6 +34,33 @@ class AnalyticsService {
     if (this.eventQueue.length >= this.MAX_QUEUE_SIZE) {
       await this.flush();
     }
+  }
+
+  async trackUserAction(action: string, details?: Record<string, any>) {
+    await this.trackEvent('user_action', { action, ...details });
+  }
+
+  async trackButtonClick(buttonName: string, screenName: string) {
+    await this.trackEvent('button_click', { buttonName, screenName });
+  }
+
+  async trackFormSubmit(formName: string, success: boolean, errorMessage?: string) {
+    await this.trackEvent('form_submit', { formName, success, errorMessage });
+  }
+
+  async trackAPICall(endpoint: string, method: string, statusCode: number, duration: number) {
+    await this.trackEvent('api_call', { endpoint, method, statusCode, duration });
+  }
+
+  async trackNavigation(fromScreen: string, toScreen: string) {
+    await this.trackEvent('navigation', { from: fromScreen, to: toScreen });
+  }
+
+  private getPlatform(): string {
+    if (typeof window !== 'undefined') {
+      return 'web';
+    }
+    return 'mobile';
   }
 
   async trackScreen(screenName: string) {
