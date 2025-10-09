@@ -23,7 +23,8 @@ import { merchantService } from '../../services/merchantService';
 import CommunicationModal from '../../components/CommunicationModal'; // Assuming this path is correct
 import { authService } from '../../services/authService';
 import apiClient from '../../services/api';
-import { useSearchHistory } from '../../hooks/useSearchHistory'; // Import the hook
+import { useSearchHistory } from '../../hooks/useSearchHistory';
+import { analyticsService } from '../../services/analyticsService';
 
 // Define SearchResult interface if not already defined elsewhere
 interface SearchResult {
@@ -597,7 +598,7 @@ export default function SearchScreen() {
     } finally {
       setIsSearching(false);
     }
-  }, [addToHistory, authService, apiClient, analyticsService]); // Added dependencies
+  }, [addToHistory]);
 
   return (
     <View style={styles.container}>

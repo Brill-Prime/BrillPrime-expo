@@ -175,7 +175,7 @@ export default function CartScreen() {
               <Ionicons name="cart-outline" size={80} color="#ccc" />
               <Text style={styles.emptyTitle}>Your cart is empty</Text>
               <Text style={styles.emptyDescription}>Add items to your cart to get started</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.shopNowButton}
                 onPress={() => router.push('/commodity/commodities')}
               >
@@ -193,7 +193,7 @@ export default function CartScreen() {
                   <View style={styles.cartInfo}>
                     <Text style={styles.itemName}>{item.commodityName}</Text>
                     <View style={styles.quantityControls}>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.quantityButton}
                         onPress={() => updateQuantity(item.id, item.quantity - 1)}
                       >
@@ -204,7 +204,7 @@ export default function CartScreen() {
                         <Text style={styles.quantityText}>{item.quantity}</Text>
                       </View>
 
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.quantityButton}
                         onPress={() => updateQuantity(item.id, item.quantity + 1)}
                       >
@@ -216,7 +216,7 @@ export default function CartScreen() {
 
                 <View style={styles.cartRight}>
                   <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString()}.00</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.deleteButton}
                     onPress={() => removeItem(item.id)}
                   >
@@ -242,7 +242,7 @@ export default function CartScreen() {
         </View>
 
         {/* Payment Method Selection */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.paymentSelect}
           onPress={handleSelectPaymentMethod}
         >

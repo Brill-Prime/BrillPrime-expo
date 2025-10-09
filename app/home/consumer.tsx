@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 const MapViewDirections = Platform.OS === 'web' ? null : require('react-native-maps-directions').default;
 import { locationService } from '../../services/locationService';
+import { merchantService } from '../../services/merchantService';
 import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
 import { Ionicons } from '@expo/vector-icons';
@@ -210,7 +211,7 @@ export default function ConsumerHome() {
       console.error('Error fetching nearby merchants:', error);
       showError("Loading Error", "Could not load nearby merchants. Please try again.");
     }
-  }, [showError, calculateETA]); // Added dependencies
+  }, [showError]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
