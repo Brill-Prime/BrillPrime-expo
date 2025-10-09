@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
-import apiClient from '../../services/apiClient'; // Assuming apiClient is set up
-import authService from '../../services/authService'; // Assuming authService is set up
-import locationService from '../../services/locationService'; // Assuming locationService is set up
+import apiClient from '../../services/api';
+import { authService } from '../../services/authService';
+import { locationService } from '../../services/locationService';
 
 // Mock data removed as it will be fetched from API
 

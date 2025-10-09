@@ -71,9 +71,18 @@ export default function Favorites() {
   const loadFavorites = async () => {
     try {
       setLoading(true);
-      const savedFavorites = await AsyncStorage.getItem('userFavorites');
-      if (savedFavorites) {
-        setFavorites(JSON.parse(savedFavorites));
+      const { favoritesService } = require('../../services/favoritesService');
+      const result = await favoritesService.getFavorites();
+      
+      if (result.success && result.data) {
+        // Map favorites to display format
+        setFavorites(result.data);
+      } else {
+        // Fallback to AsyncStorage
+        const savedFavorites = await AsyncStorage.getItem('userFavorites');
+        if (savedFavorites) {
+          setFavorites(JSON.parse(savedFavorites));
+        }
       }
     } catch (error) {
       console.error('Error loading favorites:', error);

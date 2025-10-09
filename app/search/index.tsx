@@ -21,8 +21,8 @@ import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
 import { locationService } from '../../services/locationService';
 import { merchantService } from '../../services/merchantService';
 import CommunicationModal from '../../components/CommunicationModal'; // Assuming this path is correct
-import { authService } from '../../services/authService'; // Assuming authService is available
-import { apiClient } from '../../services/apiClient'; // Assuming apiClient is available
+import { authService } from '../../services/authService';
+import apiClient from '../../services/api';
 
 // Define SearchResult interface if not already defined elsewhere
 interface SearchResult {

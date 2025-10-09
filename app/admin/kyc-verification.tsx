@@ -55,22 +55,6 @@ export default function AdminKYCVerification() {
 
   const loadKYCDocuments = async () => {
     try {
-      const token = await authService.getToken();
-      const response = await apiClient.get('/api/admin/kyc/pending', {
-        Authorization: `Bearer ${token}`,
-      });
-
-      if (response.success && response.data) {
-        setDocuments(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading KYC documents:', error);
-      Alert.alert('Error', 'Failed to load KYC documents');
-    }
-  };
-
-  const loadKYCDocuments = async () => {
-    try {
       const token = await AsyncStorage.getItem('adminToken');
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/kyc/documents`, {
         headers: {
