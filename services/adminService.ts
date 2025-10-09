@@ -178,3 +178,237 @@ class AdminService {
 
 export const adminService = new AdminService();
 ```
+// Admin Service
+// Handles admin operations and management API calls
+
+import { apiClient, ApiResponse } from './api';
+import { authService } from './authService';
+
+class AdminService {
+  // Get dashboard statistics
+  async getDashboardStats(): Promise<ApiResponse<{
+    totalUsers: number;
+    totalOrders: number;
+    totalRevenue: number;
+    activeDrivers: number;
+    activeMerchants: number;
+    pendingKYC: number;
+    pendingEscrow: number;
+    reportedContent: number;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get('/api/admin/dashboard/stats', {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get all users with filters
+  async getUsers(filters?: {
+    role?: string;
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{
+    users: Array<any>;
+    total: number;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    let endpoint = '/api/admin/users';
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      if (filters.role) queryParams.append('role', filters.role);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.search) queryParams.append('search', filters.search);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+    
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get pending KYC verifications
+  async getPendingKYC(filters?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{
+    submissions: Array<any>;
+    total: number;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    let endpoint = '/api/admin/kyc/pending';
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+    
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Approve KYC
+  async approveKYC(kycId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.put(`/api/admin/kyc/${kycId}/approve`, {}, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Reject KYC
+  async rejectKYC(kycId: string, reason: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.put(`/api/admin/kyc/${kycId}/reject`, { reason }, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get escrow transactions
+  async getEscrowTransactions(filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{
+    transactions: Array<any>;
+    total: number;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    let endpoint = '/api/admin/escrow/transactions';
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+    
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Release escrow
+  async releaseEscrow(transactionId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(`/api/admin/escrow/${transactionId}/release`, {}, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get reported content
+  async getReportedContent(filters?: {
+    type?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{
+    reports: Array<any>;
+    total: number;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    let endpoint = '/api/admin/moderation/reports';
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      if (filters.type) queryParams.append('type', filters.type);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+    
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Take moderation action
+  async moderateContent(reportId: string, action: 'approve' | 'remove' | 'warn', reason?: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(`/api/admin/moderation/${reportId}/${action}`, { reason }, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Suspend user
+  async suspendUser(userId: string, reason: string, duration?: number): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(`/api/admin/users/${userId}/suspend`, { reason, duration }, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Unsuspend user
+  async unsuspendUser(userId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.delete(`/api/admin/users/${userId}/suspend`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+}
+
+export const adminService = new AdminService();

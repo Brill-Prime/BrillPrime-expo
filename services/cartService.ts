@@ -1,5 +1,3 @@
-
-
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 
@@ -81,6 +79,7 @@ class CartService {
     const token = await authService.getToken();
     if (!token) return { success: false, error: 'Authentication required' };
     try {
+      // Backend handles clearing the cart
       return await apiClient.delete<{ message: string }>('/api/cart', { Authorization: `Bearer ${token}` });
     } catch (error) {
       console.error('Error clearing cart:', error);

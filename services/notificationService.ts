@@ -1,4 +1,3 @@
-
 // Notification Service
 // Handles push notifications and in-app notifications
 
@@ -42,14 +41,14 @@ class NotificationService {
 
     let endpoint = '/api/notifications';
     const queryParams = new URLSearchParams();
-    
+
     if (filters) {
       if (filters.type) queryParams.append('type', filters.type);
       if (filters.read !== undefined) queryParams.append('read', filters.read.toString());
       if (filters.limit) queryParams.append('limit', filters.limit.toString());
       if (filters.offset) queryParams.append('offset', filters.offset.toString());
     }
-    
+
     if (queryParams.toString()) {
       endpoint += `?${queryParams.toString()}`;
     }
@@ -159,6 +158,18 @@ class NotificationService {
     }
 
     return apiClient.get<Notification[]>(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Get unread count
+  async getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get('/api/notifications/unread-count', {
       Authorization: `Bearer ${token}`,
     });
   }

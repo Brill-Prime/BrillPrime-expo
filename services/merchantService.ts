@@ -67,6 +67,61 @@ export const deleteMerchant = async (id: string): Promise<boolean> => {
 	}
 };
 
+// Fetch all commodities
+export const getCommodities = async (): Promise<{ success: boolean; data?: any[] }> => {
+	try {
+		const response = await axios.get(`${API_BASE_URL}/api/commodities`);
+		return { success: true, data: response.data };
+	} catch (error) {
+		handleAxiosError(error);
+		return { success: false, data: [] };
+	}
+};
+
+// Fetch commodities for a specific merchant
+export const getMerchantCommodities = async (merchantId: string): Promise<{ success: boolean; data?: any[] }> => {
+	try {
+		const response = await axios.get(`${API_BASE_URL}/api/merchants/${merchantId}/commodities`);
+		return { success: true, data: response.data };
+	} catch (error) {
+		handleAxiosError(error);
+		return { success: false, data: [] };
+	}
+};
+
+// Add commodity for merchant
+export const addCommodity = async (merchantId: string, commodity: any): Promise<{ success: boolean; data?: any }> => {
+	try {
+		const response = await axios.post(`${API_BASE_URL}/api/merchants/${merchantId}/commodities`, commodity);
+		return { success: true, data: response.data };
+	} catch (error) {
+		handleAxiosError(error);
+		return { success: false };
+	}
+};
+
+// Update commodity
+export const updateCommodity = async (merchantId: string, commodityId: string, commodity: any): Promise<{ success: boolean; data?: any }> => {
+	try {
+		const response = await axios.put(`${API_BASE_URL}/api/merchants/${merchantId}/commodities/${commodityId}`, commodity);
+		return { success: true, data: response.data };
+	} catch (error) {
+		handleAxiosError(error);
+		return { success: false };
+	}
+};
+
+// Delete commodity
+export const deleteCommodity = async (merchantId: string, commodityId: string): Promise<boolean> => {
+	try {
+		await axios.delete(`${API_BASE_URL}/api/merchants/${merchantId}/commodities/${commodityId}`);
+		return true;
+	} catch (error) {
+		handleAxiosError(error);
+		return false;
+	}
+};
+
 // Helper for error handling
 function handleAxiosError(error: unknown) {
 	if (axios.isAxiosError(error)) {
@@ -76,3 +131,16 @@ function handleAxiosError(error: unknown) {
 		console.error('Unexpected Error:', error);
 	}
 }
+
+export const merchantService = {
+	getMerchants,
+	getMerchantById,
+	createMerchant,
+	updateMerchant,
+	deleteMerchant,
+	getCommodities,
+	getMerchantCommodities,
+	addCommodity,
+	updateCommodity,
+	deleteCommodity
+};

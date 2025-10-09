@@ -1,4 +1,3 @@
-
 // Communication Service
 // Handles real-time chat and call functionality
 
@@ -240,28 +239,98 @@ class CommunicationService {
     );
   }
 
-  // End a call
-  async endCall(callId: string): Promise<ApiResponse<CallSession>> {
+  // End call
+  async endCall(callId: string): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<CallSession>(
-      `/api/calls/${callId}/end`,
-      {},
-      { Authorization: `Bearer ${token}` }
-    );
+    return apiClient.put(`/api/calls/${callId}/end`, {}, {
+      Authorization: `Bearer ${token}`,
+    });
   }
 
   // Get call history
-  async getCallHistory(): Promise<ApiResponse<CallSession[]>> {
+  async getCallHistory(filters?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<Array<{
+    id: string;
+    participantId: string;
+    participantName: string;
+    type: 'audio' | 'video';
+    direction: 'incoming' | 'outgoing';
+    duration: number;
+    status: 'completed' | 'missed' | 'rejected';
+    timestamp: string;
+  }>>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<CallSession[]>('/api/calls/history', {
+    let endpoint = '/api/calls/history';
+    const queryParams = new URLSearchParams();
+
+    if (filters) {
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Mark conversation as read
+  async markConversationAsRead(conversationId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.put(`/api/conversations/${conversationId}/read`, {}, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Delete conversation
+  async deleteConversation(conversationId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.delete(`/api/conversations/${conversationId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Block user
+  async blockUser(userId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(`/api/users/${userId}/block`, {}, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Unblock user
+  async unblockUser(userId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.delete(`/api/users/${userId}/block`, {
       Authorization: `Bearer ${token}`,
     });
   }
