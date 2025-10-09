@@ -30,6 +30,25 @@ export default ({ config }) => {
       supportsTablet: true,
       bundleIdentifier: "com.brillprime",
       googleServicesFile: "./ios/GoogleService-Info.plist",
+      scheme: "brillprime",
+      intentFilters: [
+        {
+          action: "VIEW",
+          data: [
+            {
+              scheme: "https",
+              host: "*.brillprime.com",
+              pathPrefix: "/product",
+            },
+            {
+              scheme: "https",
+              host: "*.brillprime.com",
+              pathPrefix: "/merchant",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
     },
     android: {
       adaptiveIcon: {
@@ -54,7 +73,7 @@ export default ({ config }) => {
     plugins: [
       "expo-router",
       "expo-web-browser",
-      
+
     ],
     platforms: variant === "admin" ? ["web"] : ["ios", "android", "web"],
   };

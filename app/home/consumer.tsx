@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -439,6 +439,10 @@ export default function ConsumerHome() {
 
   const MemoizedMarker = React.memo(Marker);
 
+  const memoizedStoreLocations = useMemo(() => {
+    return storeLocations;
+  }, [storeLocations]);
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
@@ -491,7 +495,7 @@ export default function ConsumerHome() {
               />
             ))}
 
-            {storeLocations.map((store) => (
+            {memoizedStoreLocations.map((store) => (
               // @ts-expect-error - Marker component accepts these props but types are not properly defined
               <MemoizedMarker
                 key={store.title}
@@ -602,7 +606,7 @@ export default function ConsumerHome() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.storeList}
           >
-            {storeLocations.map((store) => (
+            {memoizedStoreLocations.map((store) => (
               <TouchableOpacity
                 key={store.title}
                 style={styles.storeCard}

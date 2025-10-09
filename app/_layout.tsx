@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Stack } from "expo-router";
 import { AlertProvider } from "../components/AlertProvider";
@@ -8,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from 'react-error-boundary';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import { AppProvider } from '../contexts/AppContext';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -77,18 +77,22 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AlertProvider>
-        <View style={styles.container}>
-          <OfflineBanner />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: '#fff' },
-              animation: 'fade',
-            }}
-          />
-        </View>
-      </AlertProvider>
+      <AppProvider>
+        <AlertProvider>
+          <View style={styles.container}>
+            <OfflineBanner />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: '#fff' },
+                animation: 'fade',
+              }}
+            >
+              <Stack.Screen name="index" />
+            </Stack>
+          </View>
+        </AlertProvider>
+      </AppProvider>
     </ErrorBoundary>
   );
 }

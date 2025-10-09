@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppContext } from '../contexts/AppContext';
 
 interface CartItem {
   id: string;
@@ -58,10 +59,13 @@ export default function CartScreen() {
     }
   };
 
+  const { updateCartCount } = useAppContext();
+  
   const updateCartItems = async (updatedItems: CartItem[]) => {
     try {
       await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
       setCartItems(updatedItems);
+      await updateCartCount();
 
       // Also update commodities cart for consistency
       const commoditiesCartItems = updatedItems.map(item => ({
