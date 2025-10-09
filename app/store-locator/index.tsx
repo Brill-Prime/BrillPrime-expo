@@ -1,28 +1,18 @@
-
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
+import apiClient from '../../services/apiClient'; // Assuming apiClient is set up
+import authService from '../../services/authService'; // Assuming authService is set up
+import locationService from '../../services/locationService'; // Assuming locationService is set up
 
-const STORE_LOCATIONS = [
-  {
-    title: "NASCO FOODS",
-    address: "Yakubu Gowon Way, Jos 930104, Plateau, Nigeria",
-    coords: { lat: 9.868215022142984, lng: 8.87063226368744 },
-    placeId: "ChIJe6LPkIR0UxARK56KdYBaiBY"
-  },
-  {
-    title: "Airforce military school Jumma'at Masjid",
-    address: "VVMP+2JR, Abattoir Rd, Jos 930103, Plateau, Nigeria",
-    coords: { lat: 9.882715745220978, lng: 8.886276230024714 },
-    placeId: "ChIJnXRKAxRzUxARrPe42aGe4rc"
-  }
-];
+// Mock data removed as it will be fetched from API
 
 export default function StoreLocator() {
   const router = useRouter();
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [stores, setStores] = useState([]); // State to hold store data
 
   const region = {
     latitude: 9.875,
@@ -30,6 +20,34 @@ export default function StoreLocator() {
     latitudeDelta: 0.05,
     longitudeDelta: 0.05
   };
+
+  useEffect(() => {
+    const loadNearbyStores = async () => {
+      try {
+        // Assuming authService.getToken() and locationService.getCurrentLocation() are implemented
+        const token = await authService.getToken();
+        const location = await locationService.getCurrentLocation();
+
+        // Assuming apiClient.get is a function that makes HTTP requests
+        const response = await apiClient.get(
+          `/api/merchants/nearby?latitude=${location.latitude}&longitude=${location.longitude}&radius=10`,
+          {
+            Authorization: `Bearer ${token}`,
+          }
+        );
+
+        if (response.success && response.data) {
+          setStores(response.data);
+        }
+      } catch (error) {
+        console.error('Error loading stores:', error);
+        Alert.alert('Error', 'Failed to load nearby stores');
+      }
+    };
+
+    loadNearbyStores();
+  }, []);
+
 
   return (
     <View style={styles.container}>
@@ -47,7 +65,7 @@ export default function StoreLocator() {
         style={styles.map}
         region={region}
         enableStoreLocator={true}
-        storeLocations={STORE_LOCATIONS}
+        storeLocations={stores} // Use the fetched store data
         onLocationSelect={setSelectedLocation}
         showsUserLocation={true}
         showsMyLocationButton={false}

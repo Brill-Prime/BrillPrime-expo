@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,9 +19,33 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
 import { locationService } from '../../services/locationService';
-import { Merchant } from '../../services/types';
 import { merchantService } from '../../services/merchantService';
 import CommunicationModal from '../../components/CommunicationModal'; // Assuming this path is correct
+import { authService } from '../../services/authService'; // Assuming authService is available
+import { apiClient } from '../../services/apiClient'; // Assuming apiClient is available
+
+// Define SearchResult interface if not already defined elsewhere
+interface SearchResult {
+  id: string;
+  type: 'merchant' | 'commodity';
+  name: string;
+  description: string;
+  distance?: number;
+  rating?: number;
+  merchantName?: string;
+  merchantId?: string;
+  price?: string;
+  availability?: string;
+  category?: string;
+  address?: string;
+  services?: string[];
+  isOpen?: boolean;
+  reviewCount?: number;
+  priceValue?: number;
+  latitude?: number;
+  longitude?: number;
+  isFavorite?: boolean;
+}
 
 const { width } = Dimensions.get('window');
 
@@ -49,6 +73,9 @@ export default function SearchScreen() {
   const [showCommunicationModal, setShowCommunicationModal] = useState(false); // State for communication modal
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null); // State for selected merchant for modal
   const [userCoordinates, setUserCoordinates] = useState<{latitude: number; longitude: number} | null>(null); // User coordinates state
+  const [results, setResults] = useState<SearchResult[]>([]); // State for search results
+  const [isSearching, setIsSearching] = useState(false); // State to indicate if a search is in progress
+
 
   // Enhanced filter states
   const [filters, setFilters] = useState({
@@ -97,7 +124,7 @@ export default function SearchScreen() {
         const coordinates = JSON.parse(savedLocation);
         setUserCoordinates(coordinates);
         setUserLocation(savedAddress || "Your Location");
-        
+
         // Load nearby merchants when user location is available
         if (coordinates.latitude && coordinates.longitude) {
           await loadNearbyMerchantsFromAPI(coordinates.latitude, coordinates.longitude);
@@ -546,6 +573,32 @@ export default function SearchScreen() {
   };
   // --- End of new functions ---
 
+  const handleSearch = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    setIsSearching(true);
+
+    try {
+      const token = await authService.getToken();
+      const response = await apiClient.get(`/api/search?q=${encodeURIComponent(query)}`, {
+        headers: { // Use 'headers' for Authorization
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.success && response.data) {
+        setResults(response.data);
+      } else {
+        setResults([]);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      Alert.alert('Error', 'Failed to search. Please try again.');
+      setResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -579,14 +632,19 @@ export default function SearchScreen() {
             onChangeText={(text) => {
               setSearchQuery(text);
               setShowHistory(text.length === 0 && searchHistory.length > 0); // Show history if search is cleared
+              if (text.length > 0) {
+                handleSearch(text); // Call handleSearch on text change for live search
+              } else {
+                setResults([]); // Clear results if search query is empty
+              }
             }}
             onFocus={() => setShowHistory(searchHistory.length > 0 && searchQuery.length === 0)}
             returnKeyType="search"
             onSubmitEditing={filterResults} // Trigger filter on submit
           />
           {searchQuery.length > 0 ? (
-            <TouchableOpacity onPress={() => { setSearchQuery(""); filterResults(); }}>
-              <Image 
+            <TouchableOpacity onPress={() => { setSearchQuery(""); setResults([]); filterResults(); }}>
+              <Image
                 source={require('../../assets/images/delete_icon_white.png')}
                 style={{ width: 20, height: 20 }}
                 resizeMode="contain"
@@ -899,27 +957,33 @@ export default function SearchScreen() {
               </View>
             )}
 
-            {/* Regular Search Results */}
-            {activeTab === "merchants" ? (
-              filteredMerchants.length > 0 ? (
-                filteredMerchants.map(renderMerchantItem)
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="search" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>No merchants found</Text>
-                  <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
-                </View>
-              )
+            {/* Render Search Results */}
+            {isSearching ? (
+              <ActivityIndicator size="large" color="#4682B4" style={styles.loadingIndicator} />
             ) : (
-              filteredCommodities.length > 0 ? (
-                filteredCommodities.map(renderCommodityItem)
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="search" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>No commodities found</Text>
-                  <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
-                </View>
-              )
+              <View>
+                {activeTab === "merchants" ? (
+                  filteredMerchants.length > 0 ? (
+                    filteredMerchants.map(renderMerchantItem)
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="search" size={48} color="#ccc" />
+                      <Text style={styles.emptyText}>No merchants found</Text>
+                      <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
+                    </View>
+                  )
+                ) : (
+                  filteredCommodities.length > 0 ? (
+                    filteredCommodities.map(renderCommodityItem)
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="search" size={48} color="#ccc" />
+                      <Text style={styles.emptyText}>No commodities found</Text>
+                      <Text style={styles.emptySubtext}>Try adjusting your filters or search term</Text>
+                    </View>
+                  )
+                )}
+              </View>
             )}
           </ScrollView>
         </>
@@ -1414,5 +1478,8 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 5,
     textAlign: 'center',
+  },
+  loadingIndicator: {
+    marginTop: 20,
   },
 });

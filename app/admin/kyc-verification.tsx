@@ -41,51 +41,7 @@ export default function AdminKYCVerification() {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [actionNotes, setActionNotes] = useState('');
 
-  const [documents, setDocuments] = useState<KycDocument[]>([
-    {
-      id: '1',
-      userId: 'USR001',
-      userName: 'John Doe',
-      userEmail: 'john@example.com',
-      documentType: 'ID_CARD',
-      documentUrl: 'https://example.com/doc1.jpg',
-      status: 'PENDING',
-      submittedAt: '2024-01-15T10:30:00Z',
-    },
-    {
-      id: '2',
-      userId: 'USR002',
-      userName: 'Jane Smith',
-      userEmail: 'jane@example.com',
-      documentType: 'PASSPORT',
-      documentUrl: 'https://example.com/doc2.jpg',
-      status: 'PENDING',
-      submittedAt: '2024-01-14T15:20:00Z',
-    },
-    {
-      id: '3',
-      userId: 'USR003',
-      userName: 'Mike Johnson',
-      userEmail: 'mike@example.com',
-      documentType: 'DRIVER_LICENSE',
-      documentUrl: 'https://example.com/doc3.jpg',
-      status: 'APPROVED',
-      submittedAt: '2024-01-13T09:15:00Z',
-      reviewedAt: '2024-01-13T14:30:00Z',
-    },
-    {
-      id: '4',
-      userId: 'USR004',
-      userName: 'Sarah Wilson',
-      userEmail: 'sarah@example.com',
-      documentType: 'UTILITY_BILL',
-      documentUrl: 'https://example.com/doc4.jpg',
-      status: 'REJECTED',
-      submittedAt: '2024-01-12T16:45:00Z',
-      reviewedAt: '2024-01-12T18:00:00Z',
-      rejectionReason: 'Document not clear enough',
-    },
-  ]);
+  const [documents, setDocuments] = useState<KycDocument[]>([]);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -96,6 +52,22 @@ export default function AdminKYCVerification() {
 
     return () => subscription?.remove();
   }, []);
+
+  const loadKYCDocuments = async () => {
+    try {
+      const token = await authService.getToken();
+      const response = await apiClient.get('/api/admin/kyc/pending', {
+        Authorization: `Bearer ${token}`,
+      });
+
+      if (response.success && response.data) {
+        setDocuments(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading KYC documents:', error);
+      Alert.alert('Error', 'Failed to load KYC documents');
+    }
+  };
 
   const loadKYCDocuments = async () => {
     try {
