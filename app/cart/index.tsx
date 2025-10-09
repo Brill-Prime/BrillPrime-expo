@@ -11,7 +11,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppContext } from '../../contexts/AppContext';
+import { useAppContext } from('../../contexts/AppContext');
 
 interface CartItem {
   id: string;

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { 
   validateCommodityForm, 
   CATEGORIES, 
@@ -162,6 +163,34 @@ export default function AddCommodityScreen() {
         { text: 'Cancel', style: 'cancel' },
       ]
     );
+  };
+
+  const handleAddAttachment = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+
+        // Validate file size (max 5MB)
+        if (file.size && file.size > 5 * 1024 * 1024) {
+          Alert.alert('Error', 'File size must be less than 5MB');
+          return;
+        }
+
+        setAttachments([...attachments, {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || 'application/octet-stream',
+        }]);
+      }
+    } catch (error) {
+      console.error('Error picking document:', error);
+      Alert.alert('Error', 'Failed to pick document. Please try again.');
+    }
   };
 
   const handleSave = async () => {
@@ -322,7 +351,7 @@ export default function AddCommodityScreen() {
           {/* Attachments Section */}
           <View style={styles.inputContainer}>
             <Text style={styles.attachmentTitle}>Attachments</Text>
-            <TouchableOpacity style={styles.addAttachmentButton} onPress={() => { /* TODO: Implement attachment picker */ }}>
+            <TouchableOpacity style={styles.addAttachmentButton} onPress={handleAddAttachment}>
               <Ionicons name="attach" size={20} color="#4682B4" />
               <Text style={styles.addAttachmentButtonText}>Add Attachment</Text>
             </TouchableOpacity>

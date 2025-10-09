@@ -7,12 +7,17 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
-  Modal
+  Modal,
+  Platform,
+  Clipboard
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import LiveOrderTracker from '../../components/LiveOrderTracker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Assuming orderService is imported and has methods like cancelOrder
+// import orderService from '../../services/orderService'; // Placeholder for actual import
 
 interface OrderItem {
   name: string;
@@ -40,6 +45,7 @@ interface Order {
   timeTaken?: string;
   deliveryTime?: string;
   driverName?: string;
+  date?: string; // Added for receipt generation
 }
 
 export default function OrderDetails() {
@@ -108,6 +114,7 @@ export default function OrderDetails() {
         timeTaken: '15 mins',
         deliveryTime: '05:00pm',
         driverName: 'Mike',
+        date: 'January 15, 2024' // Added for receipt generation
       };
       // Simulate a status change for demonstration purposes
       if (id === '1001') { // Example ID for an order that is out for delivery
@@ -125,67 +132,72 @@ export default function OrderDetails() {
     Alert.alert('Report Issue', 'This feature will be available soon.');
   };
 
-  const handleShareReceipt = () => {
-    Alert.alert('Share Receipt', 'Receipt sharing feature coming soon.');
-  };
+  const handleShareReceipt = async () => {
+    try {
+      const receipt = `
+Order Receipt - Brill Prime
+------------------------
+Order ID: ${order?.id}
+Date: ${order?.date}
+Status: ${order?.status}
+Total: ₦${order?.totalAmount?.toLocaleString()}
 
-  const handleCancelOrder = () => {
-    if (order.status === 'delivered' || order.status === 'cancelled') {
-      Alert.alert('Cannot Cancel', 'This order cannot be cancelled.');
-      return;
+Thank you for your order!
+      `.trim();
+
+      if (Platform.OS === 'web') {
+        navigator.clipboard.writeText(receipt);
+        Alert.alert('Success', 'Receipt copied to clipboard');
+      } else {
+        // For mobile, implement proper sharing
+        Alert.alert('Receipt', receipt, [
+          { text: 'Copy', onPress: () => Clipboard.setString(receipt) },
+          { text: 'Close', style: 'cancel' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error sharing receipt:', error);
+      Alert.alert('Error', 'Failed to share receipt');
     }
-
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order? This action cannot be undone.',
-      [
-        { text: 'Keep Order', style: 'cancel' },
-        {
-          text: 'Cancel Order',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Update order status to cancelled (in real app, call API)
-              const updatedOrder = { ...order, status: 'cancelled' as const };
-              setOrder(updatedOrder);
-              Alert.alert('Order Cancelled', 'Your order has been successfully cancelled.');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to cancel order. Please try again.');
-            }
-          }
-        }
-      ]
-    );
   };
 
   const handleModifyOrder = () => {
-    if (order.status !== 'pending' && order.status !== 'confirmed') {
-      Alert.alert('Cannot Modify', 'This order cannot be modified at this stage.');
-      return;
-    }
-
-    Alert.alert('Modify Order', 'Order modification feature coming soon.');
-  };
-
-  const handleContactDriver = (type: 'call' | 'message') => {
-    if (type === 'call') {
-      Alert.alert('Call Driver', `Call ${order?.driverName}?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => {
-          // In a real app, this would initiate a phone call
-          Alert.alert('Calling...', `Connecting to ${order?.driverName}...`);
-        }},
-      ]);
+    if (order?.status === 'pending' || order?.status === 'confirmed') {
+      Alert.alert(
+        'Modify Order',
+        'What would you like to modify?',
+        [
+          { text: 'Cancel Order', onPress: handleCancelOrder, style: 'destructive' },
+          { text: 'Change Delivery Address', onPress: handleChangeAddress },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
     } else {
-      setShowDriverCommunication(false);
-      router.push(`/chat/conv_driver_${order?.id}`);
+      Alert.alert('Cannot Modify', 'This order can no longer be modified');
     }
   };
 
-  const handleContactMerchant = () => {
-    setShowMerchantCommunication(false);
-    router.push(`/chat/conv_merchant_${order?.id}`);
+  const handleCancelOrder = async () => {
+    try {
+      // const response = await orderService.cancelOrder(order?.id as string, 'Customer request'); // Uncomment and replace with actual service call
+      // if (response.success) {
+      //   Alert.alert('Success', 'Order cancelled successfully');
+      //   router.back();
+      // }
+      // Mocking successful cancellation for now
+      const updatedOrder = { ...order, status: 'cancelled' as const };
+      setOrder(updatedOrder);
+      Alert.alert('Order Cancelled', 'Your order has been successfully cancelled.');
+      router.back(); // Or navigate away, depending on desired behavior
+    } catch (error) {
+      Alert.alert('Error', 'Failed to cancel order');
+    }
   };
+
+  const handleChangeAddress = () => {
+    router.push(`/orders/${order?.id}/change-address`);
+  };
+
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {

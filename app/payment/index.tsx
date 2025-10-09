@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Alert, // Import Alert for the previous placeholder
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,8 +96,7 @@ export default function PaymentMethodScreen() {
   };
 
   const handleAddPaymentMethod = () => {
-    // TODO: Navigate to add payment method screen
-    console.log('Add payment method');
+    router.push('/payment/add-payment-method');
   };
 
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);

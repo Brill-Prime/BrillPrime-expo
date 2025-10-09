@@ -87,6 +87,7 @@ export default function MerchantDetailScreen() {
   const [merchant, setMerchant] = useState<any>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showCommunicationModal, setShowCommunicationModal] = useState(false);
+  const merchantId = id; // Assign id to merchantId for clarity in the reviews button onPress
 
   // Import merchantService
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -168,7 +169,7 @@ export default function MerchantDetailScreen() {
         Alert.alert("Error", "Email client is not available on this device");
       }
     }).catch(() => {
-      Alert.alert("Error", "Unable to open email client");
+      Alert.Alert.alert("Error", "Unable to open email client");
     });
   };
 
@@ -394,18 +395,10 @@ export default function MerchantDetailScreen() {
             </View>
           )}
           {merchant.reviews && merchant.reviews.length > 0 && (
-            <TouchableOpacity style={styles.viewAllReviewsButton} onPress={() => {
-              Alert.alert(
-                "All Reviews",
-                `View all ${merchant.reviewCount || merchant.reviews.length} reviews for ${merchant.name}`,
-                [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "View All", onPress: () => {
-                    Alert.alert("Coming Soon", "Full reviews screen will be available in the next update!");
-                  }}
-                ]
-              );
-            }}>
+            <TouchableOpacity
+              style={styles.viewAllReviewsButton}
+              onPress={() => router.push(`/merchant/${merchantId}/reviews`)}
+            >
               <Text style={styles.viewAllReviewsText}>View All {merchant.reviewCount || merchant.reviews.length} Reviews</Text>
               <Ionicons name="chevron-forward" size={16} color="#4682B4" />
             </TouchableOpacity>

@@ -54,13 +54,32 @@ export default function DriverDashboard() {
   };
 
   const features = [
-    { title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4", route: "/orders/driver-orders" },
-    { title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb", route: "/orders/driver-orders" },
-    { title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe", route: "/transactions" },
-    { title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f", route: "/map" },
-    { title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf", route: "/profile/vehicle" },
-    { title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d", route: "/support" }
+    { id: 'available-orders', title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4", route: "/orders/driver-orders" },
+    { id: 'my-deliveries', title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb", route: "/orders/driver-orders" },
+    { id: 'earnings', title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe", route: "/transactions" },
+    { id: 'navigation', title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f", route: "/store-locator" },
+    { id: 'vehicle-info', title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf", route: "/profile/vehicle" },
+    { id: 'support', title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d", route: "/support" }
   ];
+
+  const handleFeaturePress = (feature: any) => {
+    switch (feature.id) {
+      case 'available-orders':
+        router.push('/orders/driver-orders');
+        break;
+      case 'earnings':
+        router.push('/transactions');
+        break;
+      case 'navigation':
+        router.push('/store-locator');
+        break;
+      case 'support':
+        router.push('/support');
+        break;
+      default:
+        Alert.alert("Info", `${feature.title} feature coming soon`);
+    }
+  };
 
   return (
     <LinearGradient
@@ -106,13 +125,7 @@ export default function DriverDashboard() {
             <TouchableOpacity 
               key={index} 
               style={styles.featureCard}
-              onPress={() => {
-                if (feature.route) {
-                  router.push(feature.route as any);
-                } else {
-                  Alert.alert("Coming Soon", `${feature.title} feature will be available soon!`);
-                }
-              }}
+              onPress={() => handleFeaturePress(feature)}
             >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
                 <Text style={styles.featureEmoji}>{feature.emoji}</Text>
