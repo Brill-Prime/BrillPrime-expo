@@ -21,6 +21,7 @@ import {
   FacebookAuthProvider,
   updateProfile,
   sendEmailVerification,
+  onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
 import {
@@ -155,13 +156,19 @@ class AuthService {
       } catch (popupError: any) {
         console.log('Popup failed, attempting redirect...', popupError);
 
-        // If popup fails, use redirect instead
-        if (popupError.code === 'auth/popup-blocked' ||
-          popupError.code === 'auth/cancelled-popup-request') {
-          await signInWithRedirect(auth, provider);
-          // The page will reload after redirect, so return a pending state
-          return { success: false, error: 'Redirecting to Google sign-in...' };
+        // Don't treat cancelled popups as errors that need redirect
+        if (popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.code === 'auth/cancelled-popup-request') {
+          return { success: false, error: 'Sign-in cancelled' };
         }
+
+        // Only redirect for actual popup blocking
+        if (popupError.code === 'auth/popup-blocked') {
+          await signInWithRedirect(auth, provider);
+          // Don't return here - let the redirect happen
+          throw new Error('Redirecting to Google sign-in...');
+        }
+        
         throw popupError;
       }
 
@@ -255,11 +262,19 @@ class AuthService {
       } catch (popupError: any) {
         console.log('Popup failed, attempting redirect...', popupError);
 
-        if (popupError.code === 'auth/popup-blocked' ||
-          popupError.code === 'auth/cancelled-popup-request') {
-          await signInWithRedirect(auth, provider);
-          return { success: false, error: 'Redirecting to Apple sign-in...' };
+        // Don't treat cancelled popups as errors that need redirect
+        if (popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.code === 'auth/cancelled-popup-request') {
+          return { success: false, error: 'Sign-in cancelled' };
         }
+
+        // Only redirect for actual popup blocking
+        if (popupError.code === 'auth/popup-blocked') {
+          await signInWithRedirect(auth, provider);
+          // Don't return here - let the redirect happen
+          throw new Error('Redirecting to Apple sign-in...');
+        }
+        
         throw popupError;
       }
 
@@ -306,12 +321,19 @@ class AuthService {
       } catch (popupError: any) {
         console.log('Popup failed, attempting redirect...', popupError);
 
-        if (popupError.code === 'auth/popup-blocked' ||
-          popupError.code === 'auth/cancelled-popup-request' ||
-          popupError.code === 'auth/popup-closed-by-user') {
-          await signInWithRedirect(auth, provider);
-          return { success: false, error: 'Redirecting to Facebook sign-in...' };
+        // Don't treat cancelled popups as errors that need redirect
+        if (popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.code === 'auth/cancelled-popup-request') {
+          return { success: false, error: 'Sign-in cancelled' };
         }
+
+        // Only redirect for actual popup blocking
+        if (popupError.code === 'auth/popup-blocked') {
+          await signInWithRedirect(auth, provider);
+          // Don't return here - let the redirect happen
+          throw new Error('Redirecting to Facebook sign-in...');
+        }
+        
         throw popupError;
       }
 
