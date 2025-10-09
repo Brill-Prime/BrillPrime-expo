@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppContext } from '../../contexts/AppContext';
@@ -38,15 +38,16 @@ export default function CartScreen() {
       setScreenDimensions(window);
     });
 
-    const unsubscribe = router.addListener?.('focus', () => {
-      loadCartItems();
-    });
-
     return () => {
       subscription?.remove();
-      unsubscribe?.();
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCartItems();
+    }, [])
+  );
 
   const loadCartItems = async () => {
     try {
