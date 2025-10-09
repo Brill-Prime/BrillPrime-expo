@@ -1,0 +1,949 @@
+
+{
+  "apiBaseUrl": "https://api.brillprime.com",
+  "endpoints": {
+    "health": {
+      "description": "Health check endpoints",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/",
+          "description": "API status check",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/"
+        },
+        {
+          "method": "GET",
+          "path": "/health",
+          "description": "Enhanced health check",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "description": "Basic health check",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health/detailed",
+          "description": "Detailed health check",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/api/health/detailed"
+        }
+      ]
+    },
+    "authentication": {
+      "description": "User authentication and profile management",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "description": "Register a new user",
+          "requiresAuth": false,
+          "requestBody": {
+            "email": "string",
+            "password": "string",
+            "firstName": "string",
+            "lastName": "string",
+            "phone": "string",
+            "role": "consumer|merchant|driver",
+            "firebaseUid": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"password\":\"Test123!\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"phone\":\"+2348012345678\",\"role\":\"consumer\",\"firebaseUid\":\"firebase123\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "description": "User login",
+          "requiresAuth": false,
+          "requestBody": {
+            "email": "string",
+            "firebaseUid": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"firebaseUid\":\"firebase123\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/social-login",
+          "description": "Social media login (Google, Apple, Facebook)",
+          "requiresAuth": false,
+          "requestBody": {
+            "provider": "google|apple|facebook",
+            "firebaseUid": "string",
+            "email": "string",
+            "fullName": "string",
+            "photoUrl": "string",
+            "role": "consumer|merchant|driver"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/auth/social-login -H 'Content-Type: application/json' -d '{\"provider\":\"google\",\"firebaseUid\":\"firebase123\",\"email\":\"test@example.com\",\"fullName\":\"John Doe\",\"photoUrl\":\"https://example.com/photo.jpg\",\"role\":\"consumer\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/profile",
+          "description": "Get user profile",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/auth/profile -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/auth/profile",
+          "description": "Update user profile",
+          "requiresAuth": true,
+          "requestBody": {
+            "firstName": "string",
+            "lastName": "string",
+            "email": "string",
+            "phone": "string",
+            "address": "string"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/auth/profile -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"firstName\":\"John\",\"lastName\":\"Doe\",\"phone\":\"+2348012345678\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/auth/deactivate",
+          "description": "Deactivate user account",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/auth/deactivate -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "passwordReset": {
+      "description": "Password reset functionality",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/password-reset/request",
+          "description": "Request password reset",
+          "requiresAuth": false,
+          "requestBody": {
+            "email": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/password-reset/request -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/password-reset/verify-code",
+          "description": "Verify reset code",
+          "requiresAuth": false,
+          "requestBody": {
+            "email": "string",
+            "code": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/password-reset/verify-code -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"code\":\"123456\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/password-reset/complete",
+          "description": "Complete password reset",
+          "requiresAuth": false,
+          "requestBody": {
+            "email": "string",
+            "code": "string",
+            "newPassword": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/password-reset/complete -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"code\":\"123456\",\"newPassword\":\"NewPass123!\"}'"
+        }
+      ]
+    },
+    "merchants": {
+      "description": "Merchant management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/merchants",
+          "description": "List all merchants",
+          "requiresAuth": false,
+          "queryParams": {
+            "category": "string (optional)",
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/merchants?limit=10&offset=0'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/merchants/{id}",
+          "description": "Get merchant by ID",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/api/merchants/MERCHANT_ID"
+        },
+        {
+          "method": "POST",
+          "path": "/api/merchants",
+          "description": "Create merchant",
+          "requiresAuth": true,
+          "requestBody": {
+            "name": "string",
+            "description": "string",
+            "logoUrl": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/merchants -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"name\":\"Test Merchant\",\"description\":\"A test merchant\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/merchants/nearby",
+          "description": "Get nearby merchants",
+          "requiresAuth": false,
+          "queryParams": {
+            "lat": "number",
+            "lng": "number",
+            "radius": "number (km)",
+            "type": "string (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/merchants/nearby?lat=9.0820&lng=8.6753&radius=10'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/merchants/nearby/live",
+          "description": "Get nearby merchants with live locations",
+          "requiresAuth": true,
+          "queryParams": {
+            "lat": "number",
+            "lng": "number",
+            "radius": "number (km)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/merchants/nearby/live?lat=9.0820&lng=8.6753&radius=10' -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/merchants/{id}/analytics",
+          "description": "Get merchant analytics",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/merchants/MERCHANT_ID/analytics -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "commodities": {
+      "description": "Commodity/Product management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/commodities",
+          "description": "List all commodities",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/api/commodities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/merchants/{merchantId}/commodities",
+          "description": "Get commodities for a merchant",
+          "requiresAuth": false,
+          "curl": "curl -X GET https://api.brillprime.com/api/merchants/MERCHANT_ID/commodities"
+        },
+        {
+          "method": "POST",
+          "path": "/api/merchants/{merchantId}/commodities",
+          "description": "Add commodity to merchant",
+          "requiresAuth": true,
+          "requestBody": {
+            "name": "string",
+            "description": "string",
+            "price": "number",
+            "unit": "string",
+            "category": "string",
+            "image": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/merchants/MERCHANT_ID/commodities -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"name\":\"Rice\",\"price\":50000,\"unit\":\"bag\",\"category\":\"grains\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/merchants/{merchantId}/commodities/{commodityId}",
+          "description": "Update commodity",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/merchants/MERCHANT_ID/commodities/COMMODITY_ID -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"price\":55000}'"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/merchants/{merchantId}/commodities/{commodityId}",
+          "description": "Delete commodity",
+          "requiresAuth": true,
+          "curl": "curl -X DELETE https://api.brillprime.com/api/merchants/MERCHANT_ID/commodities/COMMODITY_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "orders": {
+      "description": "Order management",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/orders",
+          "description": "Create new order",
+          "requiresAuth": true,
+          "requestBody": {
+            "merchantId": "string",
+            "commodityId": "string",
+            "quantity": "number",
+            "deliveryAddress": "string",
+            "deliveryType": "self|someone_else",
+            "recipientName": "string (if deliveryType is someone_else)",
+            "recipientPhone": "string (if deliveryType is someone_else)"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/orders -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"merchantId\":\"MERCHANT_ID\",\"commodityId\":\"COMMODITY_ID\",\"quantity\":2,\"deliveryAddress\":\"123 Main St\",\"deliveryType\":\"self\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/orders",
+          "description": "Get user orders",
+          "requiresAuth": true,
+          "queryParams": {
+            "status": "string (optional)",
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/orders?status=pending&limit=10' -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/orders/{orderId}",
+          "description": "Get order by ID",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/orders/ORDER_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/orders/{orderId}",
+          "description": "Update order status",
+          "requiresAuth": true,
+          "requestBody": {
+            "status": "pending|accepted|ready|picked_up|in_transit|delivered|cancelled"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/orders/ORDER_ID -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"status\":\"accepted\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/orders/{orderId}/cancel",
+          "description": "Cancel order",
+          "requiresAuth": true,
+          "requestBody": {
+            "reason": "string (optional)"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/orders/ORDER_ID/cancel -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"reason\":\"Changed my mind\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/orders/{orderId}/tracking",
+          "description": "Track order",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/orders/ORDER_ID/tracking -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/orders/summary",
+          "description": "Get order summary/statistics",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/orders/summary -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "cart": {
+      "description": "Shopping cart management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/cart",
+          "description": "Get cart items",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/cart -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/cart",
+          "description": "Add item to cart",
+          "requiresAuth": true,
+          "requestBody": {
+            "commodityId": "string",
+            "commodityName": "string",
+            "merchantId": "string",
+            "merchantName": "string",
+            "price": "number",
+            "quantity": "number",
+            "unit": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/cart -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"commodityId\":\"COMMODITY_ID\",\"quantity\":2,\"price\":1000}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/cart/{itemId}",
+          "description": "Update cart item quantity",
+          "requiresAuth": true,
+          "requestBody": {
+            "quantity": "number"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/cart/ITEM_ID -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"quantity\":3}'"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/cart/{itemId}",
+          "description": "Remove item from cart",
+          "requiresAuth": true,
+          "curl": "curl -X DELETE https://api.brillprime.com/api/cart/ITEM_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/cart",
+          "description": "Clear entire cart",
+          "requiresAuth": true,
+          "curl": "curl -X DELETE https://api.brillprime.com/api/cart -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "payments": {
+      "description": "Payment processing",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/payments/create-intent",
+          "description": "Create payment intent (Stripe)",
+          "requiresAuth": true,
+          "requestBody": {
+            "amount": "number",
+            "currency": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/payments/create-intent -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"amount\":10000,\"currency\":\"ngn\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/payments/process",
+          "description": "Process payment",
+          "requiresAuth": true,
+          "requestBody": {
+            "orderId": "string",
+            "amount": "number",
+            "paymentMethod": "card|wallet|cash"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/payments/process -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"orderId\":\"ORDER_ID\",\"amount\":10000,\"paymentMethod\":\"card\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/payment-methods",
+          "description": "Get payment methods",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/payment-methods -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/payment-methods",
+          "description": "Add payment method",
+          "requiresAuth": true,
+          "requestBody": {
+            "paymentMethodId": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/payment-methods -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"paymentMethodId\":\"pm_123\"}'"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/payment-methods/{paymentMethodId}",
+          "description": "Remove payment method",
+          "requiresAuth": true,
+          "curl": "curl -X DELETE https://api.brillprime.com/api/payment-methods/PAYMENT_METHOD_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/payment-methods/{paymentMethodId}/default",
+          "description": "Set default payment method",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/payment-methods/PAYMENT_METHOD_ID/default -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "transactions": {
+      "description": "Transaction management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/transactions",
+          "description": "Get user transactions",
+          "requiresAuth": true,
+          "queryParams": {
+            "type": "string (optional)",
+            "status": "string (optional)",
+            "dateFrom": "string (optional)",
+            "dateTo": "string (optional)",
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/transactions?limit=10&status=completed' -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/transactions/{transactionId}",
+          "description": "Get transaction by ID",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/transactions/TRANSACTION_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/transactions/{transactionId}/confirm",
+          "description": "Confirm transaction",
+          "requiresAuth": true,
+          "curl": "curl -X POST https://api.brillprime.com/api/transactions/TRANSACTION_ID/confirm -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/transactions/{transactionId}/refund",
+          "description": "Request refund",
+          "requiresAuth": true,
+          "requestBody": {
+            "reason": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/transactions/TRANSACTION_ID/refund -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"reason\":\"Product defective\"}'"
+        }
+      ]
+    },
+    "tollPayments": {
+      "description": "Toll gate payment",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/toll-payments",
+          "description": "Process toll payment",
+          "requiresAuth": true,
+          "requestBody": {
+            "tollGateId": "string",
+            "vehicleType": "string",
+            "amount": "number",
+            "paymentMethodId": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/toll-payments -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"tollGateId\":\"TOLL_ID\",\"vehicleType\":\"car\",\"amount\":500,\"paymentMethodId\":\"pm_123\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/toll-payments",
+          "description": "Get toll payment history",
+          "requiresAuth": true,
+          "queryParams": {
+            "fromDate": "string (optional)",
+            "toDate": "string (optional)",
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/toll-payments?limit=10' -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "notifications": {
+      "description": "Notification management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "description": "Get user notifications",
+          "requiresAuth": true,
+          "queryParams": {
+            "type": "string (optional)",
+            "read": "boolean (optional)",
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/notifications?read=false&limit=20' -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/{notificationId}/read",
+          "description": "Mark notification as read",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/notifications/NOTIFICATION_ID/read -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/read-all",
+          "description": "Mark all notifications as read",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/notifications/read-all -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/notifications/{notificationId}",
+          "description": "Delete notification",
+          "requiresAuth": true,
+          "curl": "curl -X DELETE https://api.brillprime.com/api/notifications/NOTIFICATION_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/notifications/register-device",
+          "description": "Register device for push notifications",
+          "requiresAuth": true,
+          "requestBody": {
+            "token": "string",
+            "platform": "ios|android|web",
+            "deviceId": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/notifications/register-device -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"token\":\"FCM_TOKEN\",\"platform\":\"android\",\"deviceId\":\"device123\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "description": "Update notification preferences",
+          "requiresAuth": true,
+          "requestBody": {
+            "pushNotifications": "boolean",
+            "emailNotifications": "boolean",
+            "orderUpdates": "boolean",
+            "promotions": "boolean"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/notifications/preferences -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"pushNotifications\":true,\"emailNotifications\":false}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications/preferences",
+          "description": "Get notification preferences",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/notifications/preferences -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications/unread-count",
+          "description": "Get unread notification count",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/notifications/unread-count -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "kyc": {
+      "description": "KYC verification",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/kyc/profile",
+          "description": "Get KYC profile",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/kyc/profile -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/kyc/personal-info",
+          "description": "Update personal information",
+          "requiresAuth": true,
+          "requestBody": {
+            "firstName": "string",
+            "lastName": "string",
+            "dateOfBirth": "string",
+            "nationality": "string",
+            "address": {
+              "street": "string",
+              "city": "string",
+              "state": "string",
+              "country": "string",
+              "postalCode": "string"
+            }
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/kyc/personal-info -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"firstName\":\"John\",\"lastName\":\"Doe\",\"dateOfBirth\":\"1990-01-01\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/kyc/business-info",
+          "description": "Update business information",
+          "requiresAuth": true,
+          "requestBody": {
+            "businessName": "string",
+            "businessType": "string",
+            "registrationNumber": "string",
+            "taxId": "string"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/kyc/business-info -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"businessName\":\"Test Co\",\"businessType\":\"retail\",\"registrationNumber\":\"RC123456\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/kyc/driver-info",
+          "description": "Update driver information",
+          "requiresAuth": true,
+          "requestBody": {
+            "licenseNumber": "string",
+            "licenseExpiry": "string",
+            "vehicleInfo": {
+              "make": "string",
+              "model": "string",
+              "year": "string",
+              "plateNumber": "string",
+              "registrationNumber": "string"
+            }
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/kyc/driver-info -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"licenseNumber\":\"ABC123\",\"licenseExpiry\":\"2025-12-31\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/kyc/documents",
+          "description": "Upload KYC document",
+          "requiresAuth": true,
+          "requestBody": {
+            "type": "identity|address|business|driver_license|vehicle_registration",
+            "documentNumber": "string",
+            "frontImage": "string (base64)",
+            "backImage": "string (base64, optional)"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/kyc/documents -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: multipart/form-data' -F 'type=identity' -F 'frontImage=@document.jpg'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/kyc/submit",
+          "description": "Submit KYC for verification",
+          "requiresAuth": true,
+          "curl": "curl -X POST https://api.brillprime.com/api/kyc/submit -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/kyc/status",
+          "description": "Check verification status",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/kyc/status -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "communication": {
+      "description": "Chat and calls",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/conversations",
+          "description": "Get user conversations",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/conversations -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/conversations",
+          "description": "Create/get conversation for order",
+          "requiresAuth": true,
+          "requestBody": {
+            "orderId": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/conversations -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"orderId\":\"ORDER_ID\"}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/{conversationId}/messages",
+          "description": "Get messages for conversation",
+          "requiresAuth": true,
+          "queryParams": {
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/conversations/CONVERSATION_ID/messages?limit=50' -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/conversations/{conversationId}/messages",
+          "description": "Send message",
+          "requiresAuth": true,
+          "requestBody": {
+            "message": "string",
+            "messageType": "text|image|location"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/conversations/CONVERSATION_ID/messages -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"message\":\"Hello\",\"messageType\":\"text\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/conversations/{conversationId}/read",
+          "description": "Mark messages as read",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/conversations/CONVERSATION_ID/read -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/calls/initiate",
+          "description": "Initiate a call",
+          "requiresAuth": true,
+          "requestBody": {
+            "conversationId": "string",
+            "participantId": "string"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/calls/initiate -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"conversationId\":\"CONV_ID\",\"participantId\":\"USER_ID\"}'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/calls/{callId}/answer",
+          "description": "Answer a call",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/calls/CALL_ID/answer -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/calls/{callId}/end",
+          "description": "End call",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/calls/CALL_ID/end -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "location": {
+      "description": "Location tracking",
+      "endpoints": [
+        {
+          "method": "PUT",
+          "path": "/api/location/live",
+          "description": "Update live location",
+          "requiresAuth": true,
+          "requestBody": {
+            "latitude": "number",
+            "longitude": "number",
+            "timestamp": "number"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/location/live -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"latitude\":9.0820,\"longitude\":8.6753,\"timestamp\":1234567890}'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/location/live/{userId}",
+          "description": "Get live location of user",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/location/live/USER_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "search": {
+      "description": "Search functionality",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/search",
+          "description": "Search merchants and commodities",
+          "requiresAuth": false,
+          "queryParams": {
+            "q": "string",
+            "type": "merchant|commodity|all (optional)",
+            "limit": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/search?q=rice&type=commodity&limit=10'"
+        }
+      ]
+    },
+    "favorites": {
+      "description": "Favorites management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/favorites",
+          "description": "Get user favorites",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/favorites -H 'Authorization: Bearer YOUR_TOKEN'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/favorites",
+          "description": "Add to favorites",
+          "requiresAuth": true,
+          "requestBody": {
+            "itemId": "string",
+            "itemType": "merchant|commodity"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/favorites -H 'Authorization: Bearer YOUR_TOKEN' -H 'Content-Type: application/json' -d '{\"itemId\":\"ITEM_ID\",\"itemType\":\"merchant\"}'"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/favorites/{itemId}",
+          "description": "Remove from favorites",
+          "requiresAuth": true,
+          "curl": "curl -X DELETE https://api.brillprime.com/api/favorites/ITEM_ID -H 'Authorization: Bearer YOUR_TOKEN'"
+        }
+      ]
+    },
+    "analytics": {
+      "description": "Analytics and tracking",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/analytics/events",
+          "description": "Track analytics events",
+          "requiresAuth": false,
+          "requestBody": {
+            "events": [
+              {
+                "name": "string",
+                "properties": "object",
+                "timestamp": "number"
+              }
+            ]
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/analytics/events -H 'Content-Type: application/json' -d '{\"events\":[{\"name\":\"screen_view\",\"properties\":{\"screen_name\":\"home\"},\"timestamp\":1234567890}]}'"
+        }
+      ]
+    },
+    "admin": {
+      "description": "Admin operations",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/dashboard/stats",
+          "description": "Get dashboard statistics",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/admin/dashboard/stats -H 'Authorization: Bearer ADMIN_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/users",
+          "description": "List users",
+          "requiresAuth": true,
+          "queryParams": {
+            "role": "string (optional)",
+            "status": "string (optional)",
+            "limit": "number (optional)",
+            "offset": "number (optional)"
+          },
+          "curl": "curl -X GET 'https://api.brillprime.com/api/admin/users?role=consumer&limit=20' -H 'Authorization: Bearer ADMIN_TOKEN'"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/kyc/pending",
+          "description": "Get pending KYC verifications",
+          "requiresAuth": true,
+          "curl": "curl -X GET https://api.brillprime.com/api/admin/kyc/pending -H 'Authorization: Bearer ADMIN_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/kyc/{kycId}/approve",
+          "description": "Approve KYC",
+          "requiresAuth": true,
+          "curl": "curl -X PUT https://api.brillprime.com/api/admin/kyc/KYC_ID/approve -H 'Authorization: Bearer ADMIN_TOKEN'"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/kyc/{kycId}/reject",
+          "description": "Reject KYC",
+          "requiresAuth": true,
+          "requestBody": {
+            "reason": "string"
+          },
+          "curl": "curl -X PUT https://api.brillprime.com/api/admin/kyc/KYC_ID/reject -H 'Authorization: Bearer ADMIN_TOKEN' -H 'Content-Type: application/json' -d '{\"reason\":\"Invalid documents\"}'"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/users/{userId}/suspend",
+          "description": "Suspend user",
+          "requiresAuth": true,
+          "requestBody": {
+            "reason": "string",
+            "duration": "number (optional)"
+          },
+          "curl": "curl -X POST https://api.brillprime.com/api/admin/users/USER_ID/suspend -H 'Authorization: Bearer ADMIN_TOKEN' -H 'Content-Type: application/json' -d '{\"reason\":\"Policy violation\"}'"
+        }
+      ]
+    },
+    "websocket": {
+      "description": "WebSocket connections",
+      "endpoints": [
+        {
+          "method": "WS",
+          "path": "/ws",
+          "description": "WebSocket connection for real-time updates",
+          "requiresAuth": true,
+          "note": "Connect using: wss://api.brillprime.com/ws?token=YOUR_TOKEN",
+          "curl": "wscat -c 'wss://api.brillprime.com/ws?token=YOUR_TOKEN'"
+        }
+      ]
+    }
+  },
+  "notes": {
+    "authentication": "All endpoints marked with requiresAuth: true need Authorization header with Bearer token",
+    "baseUrl": "Replace https://api.brillprime.com with your actual backend URL",
+    "tokens": "Replace YOUR_TOKEN with actual JWT token from login/register",
+    "ids": "Replace placeholder IDs (MERCHANT_ID, ORDER_ID, etc.) with actual IDs",
+    "testingSteps": [
+      "1. Start with health check endpoints to verify backend is running",
+      "2. Register a new user to get authentication token",
+      "3. Use the token for all authenticated endpoints",
+      "4. Test CRUD operations in order: Create -> Read -> Update -> Delete"
+    ]
+  }
+}
