@@ -188,35 +188,21 @@ export default function SignIn() {
 
       let response;
       if (provider === 'Google') {
-        // Improved Google sign-in error handling
-        try {
-          response = await authService.signInWithGoogle(selectedRole);
-
-          if (response.success && response.data) {
-            // Successfully signed in, proceed to role validation
-          } else if (response.error?.includes('Redirecting')) {
-            // Redirect in progress, do not show error, continue loading
-            console.log('Redirecting to Google sign-in...');
-            // The loading state will be reset in the finally block
-          } else {
-            // Handle other sign-in errors
-            const errorMessage = response.error || 'Google sign-in failed';
-            if (errorMessage !== 'Sign-in cancelled') { // Don't show error if user cancelled
-              showError("Sign In Failed", errorMessage);
-            }
-          }
-        } catch (error: any) {
-          console.error('Google sign-in handler error:', error);
-          showError('Error', 'An unexpected error occurred during Google sign-in. Please try again.');
-        }
+        response = await authService.signInWithGoogle(selectedRole);
       } else if (provider === 'Apple') {
         response = await authService.signInWithApple(selectedRole);
       } else if (provider === 'Facebook') {
         response = await authService.signInWithFacebook(selectedRole);
       }
 
-      // Common logic for successful social login (excluding Google's redirect case handled above)
-      if (provider !== 'Google' && response?.success && response.data) {
+      // Handle redirecting state
+      if (response?.error?.includes('Redirecting')) {
+        console.log(`Redirecting to ${provider} sign-in...`);
+        return; // Don't reset loading, redirect in progress
+      }
+
+      // Common logic for successful social login
+      if (response?.success && response.data) {
         // Validate that the user's role matches selected role
         if (response.data.user.role !== selectedRole) {
           showConfirmDialog(

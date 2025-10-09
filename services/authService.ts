@@ -143,7 +143,7 @@ class AuthService {
   }
 
   // Sign in with Google
-  async signInWithGoogle(): Promise<ApiResponse<User>> {
+  async signInWithGoogle(role?: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
@@ -179,15 +179,16 @@ class AuthService {
       }
 
       // Send user data to backend
-      const response = await apiClient.post<User>('/api/auth/google', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/google', {
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
         photoUrl: user.photoURL || '',
+        role: role || 'consumer',
       });
 
       if (response.success && response.data) {
-        await this.storeUserData(response.data);
+        await this.storeAuthData(response.data);
         return response;
       }
 
@@ -210,7 +211,7 @@ class AuthService {
   }
 
   // Check for redirect result on app load
-  async checkRedirectResult(): Promise<ApiResponse<User> | null> {
+  async checkRedirectResult(): Promise<ApiResponse<AuthResponse> | null> {
     try {
       const result = await getRedirectResult(auth);
       if (!result) return null;
@@ -230,7 +231,7 @@ class AuthService {
         endpoint = '/api/auth/facebook';
       }
 
-      const response = await apiClient.post<User>(endpoint, {
+      const response = await apiClient.post<AuthResponse>(endpoint, {
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
@@ -238,7 +239,7 @@ class AuthService {
       });
 
       if (response.success && response.data) {
-        await this.storeUserData(response.data);
+        await this.storeAuthData(response.data);
         return response;
       }
 
@@ -250,7 +251,7 @@ class AuthService {
   }
 
   // Sign in with Apple
-  async signInWithApple(): Promise<ApiResponse<User>> {
+  async signInWithApple(role?: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
@@ -284,15 +285,16 @@ class AuthService {
         throw new Error('No email associated with Apple account');
       }
 
-      const response = await apiClient.post<User>('/api/auth/apple', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/apple', {
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
         photoUrl: user.photoURL || '',
+        role: role || 'consumer',
       });
 
       if (response.success && response.data) {
-        await this.storeUserData(response.data);
+        await this.storeAuthData(response.data);
         return response;
       }
 
@@ -309,7 +311,7 @@ class AuthService {
   }
 
   // Sign in with Facebook
-  async signInWithFacebook(): Promise<ApiResponse<User>> {
+  async signInWithFacebook(role?: string): Promise<ApiResponse<AuthResponse>> {
     try {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');
@@ -343,15 +345,16 @@ class AuthService {
         throw new Error('No email associated with Facebook account');
       }
 
-      const response = await apiClient.post<User>('/api/auth/facebook', {
+      const response = await apiClient.post<AuthResponse>('/api/auth/facebook', {
         firebaseUid: user.uid,
         email: user.email,
         fullName: user.displayName || '',
         photoUrl: user.photoURL || '',
+        role: role || 'consumer',
       });
 
       if (response.success && response.data) {
-        await this.storeUserData(response.data);
+        await this.storeAuthData(response.data);
         return response;
       }
 
@@ -465,6 +468,22 @@ class AuthService {
       ]);
     } catch (error: any) {
       console.error('Error storing auth data:', error);
+    }
+  }
+
+  private async storeUserData(user: User): Promise<void> {
+    try {
+      const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+
+      await AsyncStorage.multiSet([
+        [this.USER_KEY, JSON.stringify(user)],
+        [this.ROLE_KEY, user.role],
+        ['tokenExpiry', tokenExpiry.toString()],
+        ['selectedRole', user.role],
+        ['userEmail', user.email],
+      ]);
+    } catch (error: any) {
+      console.error('Error storing user data:', error);
     }
   }
 
