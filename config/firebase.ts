@@ -1,33 +1,39 @@
 // Firebase Configuration - Web Only
 // Simplified Firebase setup for web platform compatibility
 
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import Constants from 'expo-constants';
 
-// Web Firebase configuration - requires environment variables
+// Get Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
-  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || '',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
+  apiKey: Constants.expoConfig?.extra?.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: Constants.expoConfig?.extra?.firebaseAuthDomain || process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: Constants.expoConfig?.extra?.firebaseProjectId || process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket || process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: Constants.expoConfig?.extra?.firebaseMessagingSenderId || process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: Constants.expoConfig?.extra?.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  databaseURL: Constants.expoConfig?.extra?.firebaseDatabaseURL || process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+  measurementId: Constants.expoConfig?.extra?.firebaseMeasurementId || process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Validate Firebase configuration
-const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-const missingFields = requiredFields.filter(field => !firebaseConfig[field as keyof typeof firebaseConfig]);
+console.log('Firebase Config Status:', {
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasAuthDomain: !!firebaseConfig.authDomain,
+  hasProjectId: !!firebaseConfig.projectId,
+  hasStorageBucket: !!firebaseConfig.storageBucket,
+  hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
+  hasAppId: !!firebaseConfig.appId,
+  projectId: firebaseConfig.projectId,
+});
 
-if (missingFields.length > 0) {
-  console.error('❌ Firebase configuration error: Missing required environment variables:', 
-    missingFields.map(f => `EXPO_PUBLIC_FIREBASE_${f.toUpperCase().replace(/([A-Z])/g, '_$1')}`).join(', ')
-  );
-  console.error('Current config values:', firebaseConfig);
-  throw new Error(`Firebase initialization failed: Missing environment variables. Please check your .env file and ensure all EXPO_PUBLIC_FIREBASE_* variables are set correctly.`);
+// Validate that we have the required config
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error('❌ Missing required Firebase configuration');
+  console.error('Firebase config:', firebaseConfig);
+  throw new Error('Firebase configuration is incomplete. Please check your environment variables.');
 }
 
 // Initialize Firebase with error handling
@@ -37,17 +43,6 @@ let db;
 let storage;
 
 try {
-  // Log configuration status for debugging (without exposing sensitive data)
-  console.log('Firebase Config Status:', {
-    hasApiKey: !!firebaseConfig.apiKey && firebaseConfig.apiKey.length > 0,
-    hasAuthDomain: !!firebaseConfig.authDomain,
-    hasProjectId: !!firebaseConfig.projectId,
-    hasStorageBucket: !!firebaseConfig.storageBucket,
-    hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
-    hasAppId: !!firebaseConfig.appId,
-    projectId: firebaseConfig.projectId // Safe to log project ID
-  });
-
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
   db = getFirestore(app);
