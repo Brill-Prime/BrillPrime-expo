@@ -5,6 +5,9 @@ export default ({ config }) => {
   return {
     ...config,
     extra: {
+      eas: {
+        projectId: "f5773380-2458-4907-a320-455168371fd2"
+      },
       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
       googleMapsAndroidApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY,
       googleMapsIosApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY,
