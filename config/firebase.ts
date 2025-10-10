@@ -1,3 +1,4 @@
+
 // Firebase Configuration - Web Only
 // Simplified Firebase setup for web platform compatibility
 
@@ -8,14 +9,14 @@ import { getStorage } from 'firebase/storage';
 
 // Web Firebase configuration - requires environment variables
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || '',
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
 };
 
 // Validate Firebase configuration
@@ -26,7 +27,8 @@ if (missingFields.length > 0) {
   console.error('❌ Firebase configuration error: Missing required environment variables:', 
     missingFields.map(f => `EXPO_PUBLIC_FIREBASE_${f.toUpperCase().replace(/([A-Z])/g, '_$1')}`).join(', ')
   );
-  throw new Error(`Firebase initialization failed: Missing environment variables. Please set: ${missingFields.join(', ')}`);
+  console.error('Current config values:', firebaseConfig);
+  throw new Error(`Firebase initialization failed: Missing environment variables. Please check your .env file and ensure all EXPO_PUBLIC_FIREBASE_* variables are set correctly.`);
 }
 
 // Initialize Firebase with error handling
@@ -36,14 +38,15 @@ let db;
 let storage;
 
 try {
-  // Log configuration status for debugging
+  // Log configuration status for debugging (without exposing sensitive data)
   console.log('Firebase Config Status:', {
-    hasApiKey: !!firebaseConfig.apiKey,
+    hasApiKey: !!firebaseConfig.apiKey && firebaseConfig.apiKey.length > 0,
     hasAuthDomain: !!firebaseConfig.authDomain,
     hasProjectId: !!firebaseConfig.projectId,
     hasStorageBucket: !!firebaseConfig.storageBucket,
     hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
-    hasAppId: !!firebaseConfig.appId
+    hasAppId: !!firebaseConfig.appId,
+    projectId: firebaseConfig.projectId // Safe to log project ID
   });
 
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -54,7 +57,6 @@ try {
   console.log('✅ Firebase initialized successfully');
 } catch (error) {
   console.error('❌ Firebase initialization error:', error);
-  console.error('Firebase config:', firebaseConfig);
   // Create fallback empty objects to prevent crashes
   app = null as any;
   auth = null as any;
