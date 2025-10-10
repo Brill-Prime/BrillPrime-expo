@@ -209,17 +209,42 @@ class AuthService {
     } catch (error: any) {
       console.error('Google sign-in error:', error);
 
-      if (error.code === 'auth/popup-blocked') {
-        return { success: false, error: 'Popup was blocked. Please allow popups or try again.' };
-      }
-      if (error.code === 'auth/popup-closed-by-user') {
-        return { success: false, error: 'Sign-in cancelled' };
-      }
-      if (error.code === 'auth/operation-not-allowed') {
-        return { success: false, error: 'Google sign-in is not enabled. Please contact support.' };
+      // Handle unauthorized domain error
+      if (error.code === 'auth/unauthorized-domain') {
+        return {
+          success: false,
+          error: 'This domain is not authorized for Google Sign-In. Please contact support or add this domain to Firebase authorized domains.'
+        };
       }
 
-      return { success: false, error: error.message || 'Google sign-in failed' };
+      // If popup fails, try redirect
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+        console.log('Popup failed, attempting redirect...');
+        try {
+          await signInWithRedirect(auth, provider);
+          return { success: false, requiresRedirect: true };
+        } catch (redirectError: any) {
+          console.error('Redirect sign-in error:', redirectError);
+
+          // Handle unauthorized domain in redirect
+          if (redirectError.code === 'auth/unauthorized-domain') {
+            return {
+              success: false,
+              error: 'This domain is not authorized. Please contact support.'
+            };
+          }
+
+          return {
+            success: false,
+            error: redirectError.message || 'Failed to sign in with Google'
+          };
+        }
+      }
+
+      return {
+        success: false,
+        error: error.message || 'Failed to sign in with Google'
+      };
     }
   }
 
@@ -378,11 +403,41 @@ class AuthService {
     } catch (error: any) {
       console.error('Facebook sign-in error:', error);
 
-      if (error.code === 'auth/operation-not-allowed') {
-        return { success: false, error: 'Facebook sign-in is not enabled. Please contact support.' };
+      // Handle unauthorized domain error
+      if (error.code === 'auth/unauthorized-domain') {
+        return {
+          success: false,
+          error: 'This domain is not authorized for Facebook Sign-In. Please contact support or add this domain to Firebase authorized domains.'
+        };
       }
 
-      return { success: false, error: error.message || 'Facebook sign-in failed' };
+      // If popup fails, try redirect
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return { success: false, requiresRedirect: true };
+        } catch (redirectError: any) {
+          console.error('Redirect sign-in error:', redirectError);
+
+          // Handle unauthorized domain in redirect
+          if (redirectError.code === 'auth/unauthorized-domain') {
+            return {
+              success: false,
+              error: 'This domain is not authorized. Please contact support.'
+            };
+          }
+
+          return {
+            success: false,
+            error: redirectError.message || 'Failed to sign in with Facebook'
+          };
+        }
+      }
+
+      return {
+        success: false,
+        error: error.message || 'Failed to sign in with Facebook'
+      };
     }
   }
 
