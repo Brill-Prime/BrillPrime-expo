@@ -1,4 +1,3 @@
-
 // Firebase Configuration - Web Only
 // Simplified Firebase setup for web platform compatibility
 
@@ -53,7 +52,7 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-  
+
   console.log('✅ Firebase initialized successfully');
 } catch (error) {
   console.error('❌ Firebase initialization error:', error);

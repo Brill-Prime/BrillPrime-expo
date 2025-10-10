@@ -1,7 +1,8 @@
 // Authentication Service
 // Handles user authentication, session management, and user state
 
-import { apiClient, ApiResponse } from './api';
+import { apiClient } from './api';
+import { API_ENDPOINTS } from './apiEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
 import type { Auth } from 'firebase/auth';
@@ -60,15 +61,15 @@ class AuthService {
   async signUp(data: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
     try {
       console.log('Starting signup process for:', data.email);
-      
+
       // First, try to sign up using Firebase
       const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
       console.log('Firebase user created:', firebaseUser.uid);
 
       // Register the user with your backend API
-      console.log('Calling backend API at:', '/api/auth/register');
-      const response = await apiClient.post<AuthResponse>('/api/auth/register', {
+      console.log('Calling backend API at:', API_ENDPOINTS.AUTH.REGISTER);
+      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, {
         ...data,
         firebaseUid: firebaseUser.uid
       });
@@ -116,7 +117,7 @@ class AuthService {
       const firebaseUser = firebaseUserCredential.user;
 
       // Authenticate with your backend using the Firebase UID
-      const response = await apiClient.post<AuthResponse>('/api/auth/login', {
+      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
         email: data.email,
         firebaseUid: firebaseUser.uid
       });
@@ -179,7 +180,7 @@ class AuthService {
           // Don't return here - let the redirect happen
           throw new Error('Redirecting to Google sign-in...');
         }
-        
+
         throw popupError;
       }
 
@@ -190,7 +191,7 @@ class AuthService {
       }
 
       // Send user data to backend
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
         provider: 'google',
         firebaseUid: user.uid,
         email: user.email,
@@ -243,7 +244,7 @@ class AuthService {
         provider = 'facebook';
       }
 
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
         provider,
         firebaseUid: user.uid,
         email: user.email,
@@ -288,7 +289,7 @@ class AuthService {
           // Don't return here - let the redirect happen
           throw new Error('Redirecting to Apple sign-in...');
         }
-        
+
         throw popupError;
       }
 
@@ -298,7 +299,7 @@ class AuthService {
         throw new Error('No email associated with Apple account');
       }
 
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
         provider: 'apple',
         firebaseUid: user.uid,
         email: user.email,
@@ -349,7 +350,7 @@ class AuthService {
           // Don't return here - let the redirect happen
           throw new Error('Redirecting to Facebook sign-in...');
         }
-        
+
         throw popupError;
       }
 
@@ -359,7 +360,7 @@ class AuthService {
         throw new Error('No email associated with Facebook account');
       }
 
-      const response = await apiClient.post<AuthResponse>('/api/auth/social-login', {
+      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
         provider: 'facebook',
         firebaseUid: user.uid,
         email: user.email,
@@ -387,7 +388,7 @@ class AuthService {
 
   // Verify OTP
   async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>('/api/auth/verify-otp', data);
+    const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
 
     if (response.success && response.data) {
       // Store user data locally
@@ -399,22 +400,22 @@ class AuthService {
 
   // Resend OTP
   async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>('/api/auth/resend-otp', { email });
+    return apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.RESEND_OTP, { email });
   }
 
   // Request password reset
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>('/api/password-reset/request', data);
+    return apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.REQUEST, data);
   }
 
   // Verify reset code
   async verifyResetCode(email: string, code: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>('/api/password-reset/verify-code', { email, code });
+    return apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.VERIFY_CODE, { email, code });
   }
 
   // Confirm password reset
   async confirmPasswordReset(data: ConfirmPasswordResetRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>('/api/password-reset/complete', data);
+    return apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.COMPLETE, data);
   }
 
   // Get current user
@@ -426,7 +427,7 @@ class AuthService {
       }
 
       // Use the token from local storage to authenticate with the backend API
-      const response = await apiClient.get<User>('/api/auth/profile', {
+      const response = await apiClient.get<User>(API_ENDPOINTS.PROFILE.GET, {
         Authorization: `Bearer ${token}`,
       });
 
@@ -453,12 +454,12 @@ class AuthService {
       // Call API to invalidate token
       const token = await this.getToken();
       if (token) {
-        await apiClient.post('/api/jwt-tokens/logout', {}, {
+        await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {}, {
           Authorization: `Bearer ${token}`,
         });
       }
       // Sign out from Firebase as well
-      await signOut(auth as Auth);
+      await firebaseSignOut(auth as Auth);
     } catch (error: any) {
       console.error('Error during API signout:', error);
     } finally {
