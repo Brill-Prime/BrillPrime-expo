@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
@@ -58,7 +58,7 @@ const theme = {
   colors: {
     primary: '#4682B4',
     primaryDark: '#0B1A51',
-    boltBlue: '#006AFF',
+    boltBlue: '#006AFF', // Bolt-style blue
     background: '#fff',
     text: '#333',
     textLight: '#666',
@@ -144,11 +144,10 @@ export default function ConsumerHome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
 
-  // Sidebar animation
-  const sidebarWidth = width * 0.8; // Wider sidebar (80% of screen width)
-  const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
+  const sidebarWidth = Math.min(300, width * 0.85);
+  const slideAnim = useRef(new Animated.Value(sidebarWidth)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
 
@@ -174,14 +173,15 @@ export default function ConsumerHome() {
       mapRef.current.fitToCoordinates(
         locationsToShow,
         {
-          edgePadding: { top: 100, right: 20, bottom: showDriverCard ? 250 : 150, left: 20 },
+          edgePadding: { top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 },
           animated: true
         }
       );
     } else if (mapRef.current) {
+      // If no nearby points, just center on user location
       mapRef.current.animateToRegion(region, 1000);
     }
-  }, [region, nearbyDrivers, storeLocations, showDriverCard]);
+  }, [region, nearbyDrivers, storeLocations, isLocationSet]);
 
   // Debounced region change handler
   const handleRegionChange = useCallback(
@@ -193,10 +193,10 @@ export default function ConsumerHome() {
     []
   );
 
-  // Mock data for stores
   const loadNearbyMerchants = async (latitude: number, longitude: number) => {
     try {
-      // Mock data - replace with actual API call
+      // For now, using mock data since backend API doesn't have location-based search yet
+      // TODO: Implement backend API endpoint for nearby merchants with lat/lng
       const mockStores: StoreLocation[] = [
         {
           title: "NASCO FOODS",
@@ -207,18 +207,9 @@ export default function ConsumerHome() {
           title: "Airforce Masjid",
           address: "Abattoir Rd, Jos",
           coords: { lat: 9.882716, lng: 8.886276 }
-        },
-        {
-          title: "Jos Market",
-          address: "Terminus Market, Jos",
-          coords: { lat: 9.9200, lng: 8.8800 }
-        },
-        {
-          title: "Farmer's Market",
-          address: "Angwan Rogo, Jos",
-          coords: { lat: 9.9000, lng: 8.8900 }
         }
       ];
+      
       setStoreLocations(mockStores);
     } catch (error) {
       console.error('Error loading nearby merchants:', error);
@@ -237,6 +228,7 @@ export default function ConsumerHome() {
     try {
       const location = await locationService.getCurrentLocation();
       if (location) {
+        // Load merchants near the location
         await loadNearbyMerchants(location.latitude, location.longitude);
       }
     } catch (error) {
@@ -253,7 +245,7 @@ export default function ConsumerHome() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    setIsMapLoading(false);
+    setIsMapLoading(false); // Map loads in background
     checkSavedLocation();
     loadUserData();
     initializeLiveTracking();
@@ -266,17 +258,20 @@ export default function ConsumerHome() {
 
   const initializeLiveTracking = async () => {
     try {
-      await locationService.startLiveTracking(5000);
+      await locationService.startLiveTracking(5000); // Update every 5 seconds
       setIsLiveTrackingEnabled(true);
 
       const unsubscribe = locationService.onLocationUpdate((location) => {
         if (isMountedRef.current) {
+          // Update user's current region
           const deltas = calculateDelta(location.latitude);
           setRegion({
             latitude: location.latitude,
             longitude: location.longitude,
             ...deltas,
           });
+
+          // Load nearby merchants based on the new location
           loadNearbyMerchants(location.latitude, location.longitude);
         }
       });
@@ -296,6 +291,8 @@ export default function ConsumerHome() {
 
     const trackingInterval = setInterval(async () => {
       try {
+        // In real app, fetch from backend: const driverData = await orderService.getDriverLocation(activeDelivery.driverId);
+        // Simulate driver movement
         const currentDriver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
         if (!currentDriver) return;
 
@@ -315,6 +312,7 @@ export default function ConsumerHome() {
             activeDelivery.merchantLocation.longitude
           );
 
+          // Check if driver arrived at merchant
           if (distanceToMerchant < 0.05) {
             setNotificationMessage('🎉 Driver has arrived at the merchant!');
             setTimeout(() => setNotificationMessage(null), 3000);
@@ -333,6 +331,7 @@ export default function ConsumerHome() {
             region.longitude
           );
 
+          // Check if driver arrived at consumer
           if (distanceToConsumer < 0.05) {
             setNotificationMessage('🎊 Driver has arrived at your location!');
             setTimeout(() => {
@@ -344,13 +343,13 @@ export default function ConsumerHome() {
         }
 
         // Update driver location
-        setNearbyDrivers(prev => prev.map(d =>
-          d.id === activeDelivery.driverId
-            ? {
-                ...d,
-                latitude: newLat,
+        setNearbyDrivers(prev => prev.map(d => 
+          d.id === activeDelivery.driverId 
+            ? { 
+                ...d, 
+                latitude: newLat, 
                 longitude: newLng,
-                distanceToMerchant: activeDelivery.status === 'picking_up'
+                distanceToMerchant: activeDelivery.status === 'picking_up' 
                   ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
                   : 0,
                 distanceToConsumer: locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude),
@@ -360,6 +359,8 @@ export default function ConsumerHome() {
         ));
 
         setActiveDelivery(prev => prev ? { ...prev, driverLocation: { latitude: newLat, longitude: newLng } } : null);
+
+        // Auto-zoom to include all locations
         fitMapToActiveDelivery();
       } catch (error) {
         console.error('Error tracking driver:', error);
@@ -393,7 +394,7 @@ export default function ConsumerHome() {
   // Simulate starting a delivery
   const simulateDelivery = () => {
     if (storeLocations.length === 0) return;
-
+    
     const merchant = storeLocations[0];
     const driver: Driver = {
       id: 'driver-1',
@@ -416,12 +417,15 @@ export default function ConsumerHome() {
 
   const loadUserData = async () => {
     try {
+      // Load user data from AsyncStorage (stored by authService)
       const userDataString = await AsyncStorage.getItem('userData');
+      
       if (userDataString && isMountedRef.current) {
         const userData = JSON.parse(userDataString);
         setUserEmail(userData.email || '');
         setUserName(userData.name || 'User');
       } else {
+        // Fallback to email only
         const email = await AsyncStorage.getItem("userEmail");
         if (email && isMountedRef.current) {
           setUserEmail(email);
@@ -448,8 +452,10 @@ export default function ConsumerHome() {
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
+        // Load merchants near the saved location
         loadNearbyMerchants(location.latitude, location.longitude);
       } else {
+        // If no saved location, try to get current location immediately
         handleSetLocationAutomatically();
       }
     } catch (error) {
@@ -458,8 +464,10 @@ export default function ConsumerHome() {
   };
 
   const toggleMenu = () => {
+    const sidebarWidth = width * 0.5;
+    const toValue = isMenuOpen ? sidebarWidth : 0;
     Animated.timing(slideAnim, {
-      toValue: isMenuOpen ? -sidebarWidth : 0,
+      toValue,
       duration: 300,
       useNativeDriver: false,
     }).start();
@@ -574,6 +582,7 @@ export default function ConsumerHome() {
       await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
       await AsyncStorage.setItem("userAddress", addressInfo);
 
+      // Load merchants near the newly set location
       loadNearbyMerchants(latitude, longitude);
 
       setIsLoadingLocation(false);
@@ -593,6 +602,7 @@ export default function ConsumerHome() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    // Implement search logic here (filter storeLocations or call API)
   };
 
   const handleStoreSelect = (store: StoreLocation) => {
@@ -618,11 +628,14 @@ export default function ConsumerHome() {
     return storeLocations;
   }, [storeLocations]);
 
+  // Mock cart item count for badge display
+  const cartItemCount = 3;
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Map View with Blue Theme */}
+      {/* Map View */}
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -645,56 +658,45 @@ export default function ConsumerHome() {
         padding={{ top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 }}
         customMapStyle={Platform.OS !== 'web' ? blueMapStyle : undefined}
       >
-        {/* User Location Marker */}
+        {/* @ts-expect-error - Marker component accepts these props but types are not properly defined */}
         <MemoizedMarker
           coordinate={{ latitude: region.latitude, longitude: region.longitude }}
           title="You are here"
-        >
-          <View style={styles.userMarker}>
-            <Ionicons name="person" size={24} color={theme.colors.boltBlue} />
-          </View>
-        </MemoizedMarker>
+          pinColor="#4682B4"
+        />
 
-        {/* Driver Markers */}
         {nearbyDrivers.map((driver) => (
+          // @ts-expect-error - Marker component accepts these props but types are not properly defined
           <MemoizedMarker
             key={driver.id}
             coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
             title={driver.name}
             description={`ETA: ${driver.eta}`}
           >
-            <View style={[
-              styles.driverMarker,
-              { backgroundColor: activeDelivery?.driverId === driver.id ? theme.colors.boltBlue : theme.colors.success }
-            ]}>
-              <Ionicons name="car" size={24} color={theme.colors.white} />
+            <View style={styles.driverMarker}>
+              <Ionicons name="car" size={24} color={activeDelivery?.driverId === driver.id ? theme.colors.boltBlue : theme.colors.success} />
             </View>
           </MemoizedMarker>
         ))}
 
-        {/* Store Markers */}
         {memoizedStoreLocations.map((store) => (
+          // @ts-expect-error - Marker component accepts these props but types are not properly defined
           <MemoizedMarker
             key={store.title}
             coordinate={{ latitude: store.coords.lat, longitude: store.coords.lng }}
             title={store.title}
             description={store.address}
             onPress={() => handleStoreSelect(store)}
-          >
-            <View style={styles.storeMarker}>
-              <Ionicons name="business" size={24} color={theme.colors.primary} />
-            </View>
-          </MemoizedMarker>
+          />
         ))}
 
-        {/* Directions */}
         {selectedDestination && MapViewDirections && (
           <MapViewDirections
             origin={region}
             destination={selectedDestination.coords}
             apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"}
             strokeWidth={4}
-            strokeColor={theme.colors.boltBlue}
+            strokeColor={theme.colors.primary}
             optimizeWaypoints={true}
             onReady={(result: any) => {
               console.log(`Distance: ${result.distance} km`);
@@ -832,7 +834,10 @@ export default function ConsumerHome() {
 
       {/* Test Delivery Button (for demo) */}
       {isLocationSet && !activeDelivery && storeLocations.length > 0 && (
-        <TouchableOpacity style={styles.testDeliveryButton} onPress={simulateDelivery}>
+        <TouchableOpacity 
+          style={styles.testDeliveryButton}
+          onPress={simulateDelivery}
+        >
           <Ionicons name="play" size={20} color={theme.colors.white} />
           <Text style={styles.testDeliveryText}>Test Delivery</Text>
         </TouchableOpacity>
@@ -849,7 +854,10 @@ export default function ConsumerHome() {
             value={searchQuery}
             onChangeText={handleSearch}
           />
-          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}>
+          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}
+            accessibilityLabel="Open filter options"
+            accessibilityRole="button"
+          >
             <Ionicons name="options" size={22} color={theme.colors.boltBlue} />
           </TouchableOpacity>
         </View>
@@ -868,6 +876,8 @@ export default function ConsumerHome() {
                 key={store.title}
                 style={styles.storeCard}
                 onPress={() => handleStoreSelect(store)}
+                accessibilityLabel={`View details for ${store.title}`}
+                accessibilityRole="button"
               >
                 <View style={styles.storeCardIcon}>
                   <Ionicons name="business" size={24} color={theme.colors.primary} />
@@ -891,16 +901,10 @@ export default function ConsumerHome() {
         </View>
       )}
 
-      {/* Clean, Modern Sidebar */}
-      <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
-        <View style={styles.sidebarContent}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>Menu</Text>
-            <TouchableOpacity onPress={toggleMenu} style={styles.sidebarClose}>
-              <Ionicons name="close" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
-          </View>
-
+      {/* Navigation Sidebar - Only visible when menu is open */}
+      {isMenuOpen && (
+        <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
+          <View style={styles.sidebarContent}>
           <View style={styles.sidebarProfile}>
             <View style={styles.sidebarProfileImage}>
               <Ionicons name="person" size={30} color={theme.colors.primary} />
@@ -910,23 +914,15 @@ export default function ConsumerHome() {
           </View>
 
           <View style={styles.menuList}>
-            {[
-              { name: "Profile", icon: "person" },
-              { name: "Orders", icon: "receipt" },
-              { name: "Cart", icon: "cart" },
-              { name: "Favorites", icon: "heart" },
-              { name: "Settings", icon: "settings" },
-              { name: "Support", icon: "help-circle" }
-            ].map((item) => (
+            {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
               <TouchableOpacity
-                key={item.name}
+                key={item}
                 style={styles.menuItem}
-                onPress={() => handleMenuItemPress(item.name)}
+                onPress={() => handleMenuItemPress(item)}
+                accessibilityLabel={`Navigate to ${item}`}
+                accessibilityRole="button"
               >
-                <View style={styles.menuItemContent}>
-                  <Ionicons name={item.icon} size={20} color={theme.colors.primary} />
-                  <Text style={styles.menuItemText}>{item.name}</Text>
-                </View>
+                <Text style={styles.menuItemText}>{item}</Text>
                 <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
               </TouchableOpacity>
             ))}
@@ -936,6 +932,8 @@ export default function ConsumerHome() {
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Merchant")}
+              accessibilityLabel="Switch to Merchant view"
+              accessibilityRole="button"
             >
               <Text style={styles.switchButtonText}>Switch to Merchant</Text>
             </TouchableOpacity>
@@ -943,6 +941,8 @@ export default function ConsumerHome() {
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Driver")}
+              accessibilityLabel="Switch to Driver view"
+              accessibilityRole="button"
             >
               <Text style={styles.switchButtonText}>Switch to Driver</Text>
             </TouchableOpacity>
@@ -950,12 +950,15 @@ export default function ConsumerHome() {
             <TouchableOpacity
               style={styles.signOutButton}
               onPress={handleSignOut}
+              accessibilityLabel="Sign out from the application"
+              accessibilityRole="button"
             >
               <Text style={styles.signOutButtonText}>Sign out</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Animated.View>
+      )}
 
       {/* Menu Overlay */}
       {isMenuOpen && (
@@ -963,10 +966,11 @@ export default function ConsumerHome() {
           style={styles.menuOverlay}
           onPress={toggleMenu}
           activeOpacity={1}
+          accessibilityLabel="Close menu overlay"
         />
       )}
 
-      {/* Loading Indicator */}
+      {/* Loading Indicator for Location Only */}
       {isLoadingLocation && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
@@ -991,7 +995,10 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Distance</Text>
               <View style={styles.filterOptionValues}>
                 {['<1km', '<5km', '<10km', 'Any'].map((option) => (
-                  <TouchableOpacity key={option} style={styles.filterChip}>
+                  <TouchableOpacity key={option} style={styles.filterChip}
+                    accessibilityLabel={`Filter by ${option} distance`}
+                    accessibilityRole="button"
+                  >
                     <Text style={styles.filterChipText}>{option}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1002,7 +1009,10 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Category</Text>
               <View style={styles.filterOptionValues}>
                 {['Food', 'Gas', 'Retail', 'All'].map((option) => (
-                  <TouchableOpacity key={option} style={styles.filterChip}>
+                  <TouchableOpacity key={option} style={styles.filterChip}
+                    accessibilityLabel={`Filter by ${option} category`}
+                    accessibilityRole="button"
+                  >
                     <Text style={styles.filterChipText}>{option}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1013,7 +1023,10 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Rating</Text>
               <View style={styles.ratingStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star}>
+                  <TouchableOpacity key={star}
+                    accessibilityLabel={`Filter by ${star} star rating`}
+                    accessibilityRole="button"
+                  >
                     <Ionicons
                       name={star <= 3 ? "star" : "star-outline"}
                       size={24}
@@ -1028,12 +1041,16 @@ export default function ConsumerHome() {
               <TouchableOpacity
                 style={[styles.filterModalButton, styles.filterModalButtonOutline]}
                 onPress={() => setIsFilterModalOpen(false)}
+                accessibilityLabel="Reset filters"
+                accessibilityRole="button"
               >
                 <Text style={styles.filterModalButtonOutlineText}>Reset</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterModalButton, styles.filterModalButtonFilled]}
                 onPress={() => setIsFilterModalOpen(false)}
+                accessibilityLabel="Apply filters"
+                accessibilityRole="button"
               >
                 <Text style={styles.filterModalButtonFilledText}>Apply</Text>
               </TouchableOpacity>
@@ -1057,6 +1074,33 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+  },
+  searchContainer: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.white,
+    borderRadius: 30,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    ...theme.shadows.medium,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+  },
+  filterButton: {
+    padding: 8,
   },
   header: {
     position: 'absolute',
@@ -1086,33 +1130,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.small,
-  },
-  searchContainer: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    zIndex: 10,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.white,
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    ...theme.shadows.medium,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    fontFamily: theme.typography.regular,
-    fontSize: 14,
-  },
-  filterButton: {
-    padding: 8,
   },
   bottomCard: {
     position: 'absolute',
@@ -1206,113 +1223,181 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: theme.typography.medium,
   },
-  notification: {
+  sidebar: {
     position: 'absolute',
-    top: 120,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    borderRadius: 12,
-    padding: 16,
-    zIndex: 15,
-    ...theme.shadows.medium,
-  },
-  notificationText: {
-    color: theme.colors.white,
-    fontSize: 14,
-    fontFamily: theme.typography.medium,
-    textAlign: 'center',
-  },
-  floatingCard: {
-    position: 'absolute',
-    bottom: 180,
-    left: 20,
-    right: 20,
+    top: 0,
+    width: width * 0.5,
+    height: '100%',
     backgroundColor: theme.colors.white,
-    borderRadius: 16,
-    padding: 16,
-    zIndex: 20,
     ...theme.shadows.medium,
+    zIndex: 1000,
   },
-  driverCardHeader: {
-    flexDirection: 'row',
+  sidebarContent: {
+    flex: 1,
+    paddingTop: 60,
+  },
+  sidebarProfile: {
     alignItems: 'center',
-    marginBottom: 12,
+    paddingVertical: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  driverAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.boltBlue,
+  sidebarProfileImage: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginBottom: 15,
   },
-  driverInfo: {
-    flex: 1,
-  },
-  driverName: {
-    fontSize: 16,
+  sidebarProfileName: {
+    fontSize: 18,
     fontWeight: '600',
     color: theme.colors.text,
+    marginBottom: 5,
     fontFamily: theme.typography.semiBold,
-    marginBottom: 2,
   },
-  driverStatus: {
+  sidebarProfileEmail: {
     fontSize: 14,
     color: theme.colors.textLight,
     fontFamily: theme.typography.regular,
   },
-  driverCardBody: {
-    gap: 8,
+  menuList: {
+    flex: 1,
+    paddingTop: 20,
   },
-  distanceRow: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  distanceText: {
-    fontSize: 14,
+  menuItemText: {
+    fontSize: 16,
     color: theme.colors.text,
     fontFamily: theme.typography.medium,
   },
-  userMarker: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 20,
-    padding: 8,
-    ...theme.shadows.small,
+  sidebarBottom: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
-  driverMarker: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 20,
-    padding: 8,
-    ...theme.shadows.small,
-  },
-  storeMarker: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 20,
-    padding: 8,
-    ...theme.shadows.small,
-  },
-  testDeliveryButton: {
-    position: 'absolute',
-    bottom: 120,
-    right: 20,
-    backgroundColor: theme.colors.boltBlue,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
+  switchButton: {
+    backgroundColor: '#f8f9fa',
     paddingVertical: 12,
-    borderRadius: 25,
-    zIndex: 20,
-    ...theme.shadows.medium,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: 'center',
   },
-  testDeliveryText: {
-    color: theme.colors.white,
+  switchButtonText: {
     fontSize: 14,
+    color: theme.colors.primary,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  signOutButton: {
+    backgroundColor: '#ffe6e6',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    fontSize: 14,
+    color: theme.colors.error,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.overlay,
+    zIndex: 999,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  loadingContainer: {
+    backgroundColor: theme.colors.white,
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    maxWidth: 280,
+    marginHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 18,
     fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
     fontFamily: theme.typography.semiBold,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+    fontFamily: theme.typography.regular,
+  },
+  errorContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  errorContent: {
+    backgroundColor: theme.colors.white,
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    maxWidth: 280,
+    marginHorizontal: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.error,
+    marginBottom: 10,
+    fontFamily: theme.typography.semiBold,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: theme.typography.regular,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
   },
   storeListContainer: {
     position: 'absolute',
@@ -1441,152 +1526,100 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: theme.typography.medium,
   },
-  loadingOverlay: {
+  notification: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 30,
-  },
-  loadingContainer: {
-    backgroundColor: theme.colors.white,
-    padding: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    maxWidth: 280,
-    marginHorizontal: 20,
-  },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-    fontFamily: theme.typography.semiBold,
-  },
-  menuOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.overlay,
-    zIndex: 999,
-  },
-  sidebar: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: width * 0.8, // Wider sidebar (80% of screen width)
-    height: '100%',
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    top: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    borderRadius: 12,
+    padding: 16,
+    zIndex: 15,
     ...theme.shadows.medium,
-    zIndex: 1000,
-    elevation: 10,
   },
-  sidebarContent: {
-    flex: 1,
-    padding: 20,
+  notificationText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontFamily: theme.typography.medium,
+    textAlign: 'center',
   },
-  sidebarHeader: {
+  floatingCard: {
+    position: 'absolute',
+    bottom: 180,
+    left: 20,
+    right: 20,
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    padding: 16,
+    zIndex: 20,
+    ...theme.shadows.medium,
+  },
+  driverCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  sidebarTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: theme.colors.text,
-    fontFamily: theme.typography.semiBold,
-  },
-  sidebarClose: {
-    padding: 8,
-  },
-  sidebarProfile: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  sidebarProfileImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: '#f0f8ff',
-    borderRadius: 40,
+  driverAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.boltBlue,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 15,
+    marginRight: 12,
   },
-  sidebarProfileName: {
-    fontSize: 18,
+  driverInfo: {
+    flex: 1,
+  },
+  driverName: {
+    fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text,
-    marginBottom: 5,
     fontFamily: theme.typography.semiBold,
+    marginBottom: 2,
   },
-  sidebarProfileEmail: {
+  driverStatus: {
     fontSize: 14,
     color: theme.colors.textLight,
     fontFamily: theme.typography.regular,
   },
-  menuList: {
-    flex: 1,
-    marginBottom: 20,
+  driverCardBody: {
+    gap: 8,
   },
-  menuItem: {
+  distanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    gap: 8,
   },
-  menuItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-  },
-  menuItemText: {
-    fontSize: 16,
+  distanceText: {
+    fontSize: 14,
     color: theme.colors.text,
     fontFamily: theme.typography.medium,
   },
-  sidebarBottom: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: 15,
+  driverMarker: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 20,
+    padding: 8,
+    ...theme.shadows.small,
   },
-  switchButton: {
-    backgroundColor: '#f0f8ff',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 10,
+  testDeliveryButton: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
+    backgroundColor: theme.colors.boltBlue,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  switchButtonText: {
-    fontSize: 14,
-    color: theme.colors.boltBlue,
-    fontWeight: '500',
-    fontFamily: theme.typography.medium,
-  },
-  signOutButton: {
-    backgroundColor: '#ffe6e6',
-    paddingVertical: 12,
+    gap: 8,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 25,
+    zIndex: 20,
+    ...theme.shadows.medium,
   },
-  signOutButtonText: {
+  testDeliveryText: {
+    color: theme.colors.white,
     fontSize: 14,
-    color: theme.colors.error,
-    fontWeight: '500',
-    fontFamily: theme.typography.medium,
+    fontWeight: '600',
+    fontFamily: theme.typography.semiBold,
   },
 });
