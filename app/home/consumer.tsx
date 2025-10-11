@@ -13,17 +13,61 @@ import { debounce } from 'lodash';
 
 const { width, height } = Dimensions.get('window');
 
+// Blue map style (Bolt-inspired) for Google Maps
+const blueMapStyle = [
+  {
+    "elementType": "geometry",
+    "stylers": [{ "color": "#e8f4ff" }]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#333333" }]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{ "color": "#ffffff" }]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#b3d9ff" }]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#ffffff" }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#cce5ff" }]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#d6ebff" }]
+  },
+  {
+    "featureType": "landscape",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#f0f8ff" }]
+  }
+];
+
 const theme = {
   colors: {
     primary: '#4682B4',
     primaryDark: '#0B1A51',
+    boltBlue: '#006AFF', // Bolt-style blue
     background: '#fff',
     text: '#333',
     textLight: '#666',
     white: '#fff',
     error: '#e74c3c',
+    success: '#00C853',
     border: '#f0f0f0',
     overlay: 'rgba(0, 0, 0, 0.5)',
+    mapOverlay: 'rgba(0, 106, 255, 0.1)',
   },
   shadows: {
     small: {
@@ -62,6 +106,16 @@ interface Driver {
   longitude: number;
   name: string;
   eta: string;
+  status?: 'idle' | 'picking_up' | 'delivering';
+  distanceToMerchant?: number;
+  distanceToConsumer?: number;
+}
+
+interface ActiveDelivery {
+  driverId: string;
+  merchantLocation: { latitude: number; longitude: number };
+  status: 'picking_up' | 'delivering';
+  driverLocation: { latitude: number; longitude: number };
 }
 
 export default function ConsumerHome() {
@@ -75,6 +129,9 @@ export default function ConsumerHome() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
+  const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
+  const [showDriverCard, setShowDriverCard] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([
     {
       title: "NASCO FOODS",
@@ -235,7 +292,7 @@ export default function ConsumerHome() {
 
   const initializeLiveTracking = async () => {
     try {
-      await locationService.startLiveTracking(30000); // Update every 30 seconds
+      await locationService.startLiveTracking(5000); // Update every 5 seconds
       setIsLiveTrackingEnabled(true);
 
       const unsubscribe = locationService.onLocationUpdate((location) => {
@@ -250,18 +307,6 @@ export default function ConsumerHome() {
 
           // Load nearby merchants based on the new location
           loadNearbyMerchants(location.latitude, location.longitude);
-
-          // Update driver positions (this is a mock, real implementation would come from backend)
-          setNearbyDrivers(prev => [
-            ...prev.filter(d => d.id !== 'driver1'), // Remove old driver1 if exists
-            {
-              id: 'driver1',
-              latitude: location.latitude + 0.002, // Simulate driver slightly ahead
-              longitude: location.longitude + 0.002,
-              name: 'Driver John',
-              eta: calculateETA(location.latitude, location.longitude, location.latitude + 0.002, location.longitude + 0.002)
-            }
-          ]);
         }
       });
 
@@ -272,6 +317,136 @@ export default function ConsumerHome() {
         showError("Tracking Error", "Failed to start live tracking. Some features may be limited.");
       }
     }
+  };
+
+  // Real-time driver tracking
+  useEffect(() => {
+    if (!activeDelivery) return;
+
+    const trackingInterval = setInterval(async () => {
+      try {
+        // In real app, fetch from backend: const driverData = await orderService.getDriverLocation(activeDelivery.driverId);
+        // Simulate driver movement
+        const currentDriver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
+        if (!currentDriver) return;
+
+        let newLat = currentDriver.latitude;
+        let newLng = currentDriver.longitude;
+
+        if (activeDelivery.status === 'picking_up') {
+          // Move towards merchant
+          const latDiff = activeDelivery.merchantLocation.latitude - currentDriver.latitude;
+          const lngDiff = activeDelivery.merchantLocation.longitude - currentDriver.longitude;
+          newLat += latDiff * 0.1;
+          newLng += lngDiff * 0.1;
+
+          const distanceToMerchant = locationService.calculateDistance(
+            newLat, newLng,
+            activeDelivery.merchantLocation.latitude,
+            activeDelivery.merchantLocation.longitude
+          );
+
+          // Check if driver arrived at merchant
+          if (distanceToMerchant < 0.05) {
+            setNotificationMessage('🎉 Driver has arrived at the merchant!');
+            setTimeout(() => setNotificationMessage(null), 3000);
+            setActiveDelivery({ ...activeDelivery, status: 'delivering' });
+          }
+        } else if (activeDelivery.status === 'delivering') {
+          // Move towards consumer
+          const latDiff = region.latitude - currentDriver.latitude;
+          const lngDiff = region.longitude - currentDriver.longitude;
+          newLat += latDiff * 0.1;
+          newLng += lngDiff * 0.1;
+
+          const distanceToConsumer = locationService.calculateDistance(
+            newLat, newLng,
+            region.latitude,
+            region.longitude
+          );
+
+          // Check if driver arrived at consumer
+          if (distanceToConsumer < 0.05) {
+            setNotificationMessage('🎊 Driver has arrived at your location!');
+            setTimeout(() => {
+              setNotificationMessage(null);
+              setActiveDelivery(null);
+              setShowDriverCard(false);
+            }, 3000);
+          }
+        }
+
+        // Update driver location
+        setNearbyDrivers(prev => prev.map(d => 
+          d.id === activeDelivery.driverId 
+            ? { 
+                ...d, 
+                latitude: newLat, 
+                longitude: newLng,
+                distanceToMerchant: activeDelivery.status === 'picking_up' 
+                  ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
+                  : 0,
+                distanceToConsumer: locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude),
+                eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
+              }
+            : d
+        ));
+
+        setActiveDelivery(prev => prev ? { ...prev, driverLocation: { latitude: newLat, longitude: newLng } } : null);
+
+        // Auto-zoom to include all locations
+        fitMapToActiveDelivery();
+      } catch (error) {
+        console.error('Error tracking driver:', error);
+      }
+    }, 5000);
+
+    return () => clearInterval(trackingInterval);
+  }, [activeDelivery, nearbyDrivers, region]);
+
+  const fitMapToActiveDelivery = useCallback(() => {
+    if (!mapRef.current || !activeDelivery) return;
+
+    const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
+    if (!driver) return;
+
+    const locationsToFit = [
+      { latitude: driver.latitude, longitude: driver.longitude },
+      { latitude: region.latitude, longitude: region.longitude },
+    ];
+
+    if (activeDelivery.status === 'picking_up') {
+      locationsToFit.push(activeDelivery.merchantLocation);
+    }
+
+    mapRef.current.fitToCoordinates(locationsToFit, {
+      edgePadding: { top: 100, right: 50, bottom: showDriverCard ? 250 : 150, left: 50 },
+      animated: true
+    });
+  }, [activeDelivery, nearbyDrivers, region, showDriverCard]);
+
+  // Simulate starting a delivery
+  const simulateDelivery = () => {
+    if (storeLocations.length === 0) return;
+    
+    const merchant = storeLocations[0];
+    const driver: Driver = {
+      id: 'driver-1',
+      latitude: merchant.coords.lat - 0.01,
+      longitude: merchant.coords.lng - 0.01,
+      name: 'John Doe',
+      eta: '15 mins',
+      status: 'picking_up',
+    };
+
+    setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
+    setActiveDelivery({
+      driverId: driver.id,
+      merchantLocation: { latitude: merchant.coords.lat, longitude: merchant.coords.lng },
+      status: 'picking_up',
+      driverLocation: { latitude: driver.latitude, longitude: driver.longitude },
+    });
+    setShowDriverCard(true);
   };
 
   const loadUserData = async () => {
@@ -515,6 +690,7 @@ export default function ConsumerHome() {
         zoomEnabled={true}
         paddingAdjustmentBehavior="automatic"
         padding={{ top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 }}
+        customMapStyle={Platform.OS !== 'web' ? blueMapStyle : undefined}
       >
         {/* @ts-expect-error - Marker component accepts these props but types are not properly defined */}
         <MemoizedMarker
@@ -530,8 +706,11 @@ export default function ConsumerHome() {
             coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
             title={driver.name}
             description={`ETA: ${driver.eta}`}
-            pinColor="#34D399"
-          />
+          >
+            <View style={styles.driverMarker}>
+              <Ionicons name="car" size={24} color={activeDelivery?.driverId === driver.id ? theme.colors.boltBlue : theme.colors.success} />
+            </View>
+          </MemoizedMarker>
         ))}
 
         {memoizedStoreLocations.map((store) => (
@@ -571,7 +750,7 @@ export default function ConsumerHome() {
           <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search for merchants..."
+            placeholder="Where do you want to shop?"
             placeholderTextColor={theme.colors.textLight}
             value={searchQuery}
             onChangeText={handleSearch}
@@ -580,10 +759,17 @@ export default function ConsumerHome() {
             accessibilityLabel="Open filter options"
             accessibilityRole="button"
           >
-            <Ionicons name="options" size={22} color={theme.colors.primary} />
+            <Ionicons name="options" size={22} color={theme.colors.boltBlue} />
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Notification */}
+      {notificationMessage && (
+        <Animated.View style={styles.notification}>
+          <Text style={styles.notificationText}>{notificationMessage}</Text>
+        </Animated.View>
+      )}
 
       {/* Header with Back Button and Menu */}
       <View style={styles.header}>
@@ -652,6 +838,63 @@ export default function ConsumerHome() {
             </TouchableOpacity>
           </View>
         </View>
+      )}
+
+      {/* Floating Driver Card */}
+      {showDriverCard && activeDelivery && (
+        <View style={styles.floatingCard}>
+          {(() => {
+            const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
+            if (!driver) return null;
+
+            return (
+              <>
+                <View style={styles.driverCardHeader}>
+                  <View style={styles.driverAvatar}>
+                    <Ionicons name="person" size={24} color={theme.colors.white} />
+                  </View>
+                  <View style={styles.driverInfo}>
+                    <Text style={styles.driverName}>{driver.name}</Text>
+                    <Text style={styles.driverStatus}>
+                      {activeDelivery.status === 'picking_up' ? '📦 Picking up order' : '🚗 On the way'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowDriverCard(false)}>
+                    <Ionicons name="close" size={24} color={theme.colors.text} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.driverCardBody}>
+                  {activeDelivery.status === 'picking_up' && driver.distanceToMerchant !== undefined && (
+                    <View style={styles.distanceRow}>
+                      <Ionicons name="storefront" size={16} color={theme.colors.boltBlue} />
+                      <Text style={styles.distanceText}>
+                        {driver.distanceToMerchant.toFixed(1)} km to merchant
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.distanceRow}>
+                    <Ionicons name="location" size={16} color={theme.colors.boltBlue} />
+                    <Text style={styles.distanceText}>
+                      {driver.distanceToConsumer?.toFixed(1) || '0'} km to you • ETA: {driver.eta}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            );
+          })()}
+        </View>
+      )}
+
+      {/* Test Delivery Button (for demo) */}
+      {isLocationSet && !activeDelivery && storeLocations.length > 0 && (
+        <TouchableOpacity 
+          style={styles.testDeliveryButton}
+          onPress={simulateDelivery}
+        >
+          <Ionicons name="play" size={20} color={theme.colors.white} />
+          <Text style={styles.testDeliveryText}>Test Delivery</Text>
+        </TouchableOpacity>
       )}
 
       {/* Store List (when location is set) */}
@@ -875,9 +1118,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.white,
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    borderRadius: 30,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     ...theme.shadows.medium,
   },
   searchIcon: {
@@ -1315,5 +1558,101 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     fontWeight: '500',
     fontFamily: theme.typography.medium,
+  },
+  notification: {
+    position: 'absolute',
+    top: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    borderRadius: 12,
+    padding: 16,
+    zIndex: 15,
+    ...theme.shadows.medium,
+  },
+  notificationText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontFamily: theme.typography.medium,
+    textAlign: 'center',
+  },
+  floatingCard: {
+    position: 'absolute',
+    bottom: 180,
+    left: 20,
+    right: 20,
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    padding: 16,
+    zIndex: 20,
+    ...theme.shadows.medium,
+  },
+  driverCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  driverAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.boltBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  driverInfo: {
+    flex: 1,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+    marginBottom: 2,
+  },
+  driverStatus: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    fontFamily: theme.typography.regular,
+  },
+  driverCardBody: {
+    gap: 8,
+  },
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  distanceText: {
+    fontSize: 14,
+    color: theme.colors.text,
+    fontFamily: theme.typography.medium,
+  },
+  driverMarker: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 20,
+    padding: 8,
+    ...theme.shadows.small,
+  },
+  testDeliveryButton: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
+    backgroundColor: theme.colors.boltBlue,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    zIndex: 20,
+    ...theme.shadows.medium,
+  },
+  testDeliveryText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: theme.typography.semiBold,
   },
 });

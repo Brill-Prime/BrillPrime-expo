@@ -283,7 +283,7 @@ const MapWeb: React.FC<MapProps> = ({
     <View style={[styles.container, style]}>
       <View style={styles.mapContentContainer}>
         <View style={styles.mapHeader}>
-          <Ionicons name="location" size={20} color="#4682B4" />
+          <Ionicons name="location" size={20} color="#006AFF" />
           <Text style={styles.locationText}>
             {enableLiveTracking ? 'Live Map' : 'Current Location'}
           </Text>
@@ -295,7 +295,7 @@ const MapWeb: React.FC<MapProps> = ({
           )}
         </View>
 
-        <View style={styles.mapContent}>
+        <View style={[styles.mapContent, { backgroundColor: '#e8f4ff' }]}>
           <View style={styles.mapGrid}>
             {Array.from({ length: 20 }, (_, i) => (
               <View key={i} style={styles.gridLine} />
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     width: '10%',
     height: '10%',
     borderWidth: 0.5,
-    borderColor: 'rgba(70, 130, 180, 0.2)',
+    borderColor: 'rgba(0, 106, 255, 0.15)',
   },
   centerMarker: {
     position: 'absolute',
