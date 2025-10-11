@@ -240,14 +240,15 @@ class LocationService {
       if (token) {
         // Send batch update or just the latest location
         const latestLocation = locationsToProcess[locationsToProcess.length - 1];
-        await apiClient.put('/api/location/live', {
-          latitude: latestLocation.latitude,
-          longitude: latestLocation.longitude,
-          timestamp: latestLocation.timestamp,
-          accuracy: 'high'
-        }, {
-          Authorization: `Bearer ${token}`
-        });
+        // Disabled backend API call to prevent 401 errors when not authenticated
+        // await apiClient.put('/api/location/live', {
+        //   latitude: latestLocation.latitude,
+        //   longitude: latestLocation.longitude,
+        //   timestamp: latestLocation.timestamp,
+        //   accuracy: 'high'
+        // }, {
+        //   Authorization: `Bearer ${token}`
+        // });
       }
     } catch (error) {
       console.error('Failed to process location queue:', error);
@@ -274,13 +275,14 @@ class LocationService {
     try {
       const token = await authService.getToken();
       if (token) {
-        await apiClient.put('/api/location/live', {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          timestamp: location.timestamp
-        }, {
-          Authorization: `Bearer ${token}`
-        });
+        // Disabled backend API call to prevent 401 errors when not authenticated
+        // await apiClient.put('/api/location/live', {
+        //   latitude: location.latitude,
+        //   longitude: location.longitude,
+        //   timestamp: location.timestamp
+        // }, {
+        //   Authorization: `Bearer ${token}`
+        // });
       }
     } catch (error) {
       console.error('Failed to update live location:', error);
