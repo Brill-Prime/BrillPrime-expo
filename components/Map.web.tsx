@@ -274,14 +274,6 @@ const MapWeb: React.FC<MapProps> = ({
   );
 };
 
-// Marker component for web
-export const Marker: React.FC<any> = ({ coordinate, title, children, onPress }) => {
-  return null; // Handled internally by MapContainer
-};
-
-// Provider constant for web
-export const PROVIDER_GOOGLE = 'leaflet';
-
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#f0f8ff',
@@ -355,6 +347,9 @@ const styles = StyleSheet.create({
     right: 10,
   },
 });
+
+// Provider constant for web
+export const PROVIDER_GOOGLE = 'leaflet';
 
 export default MapWeb;
 export { MapWeb };
