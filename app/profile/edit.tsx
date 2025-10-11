@@ -220,40 +220,54 @@ export default function EditProfileScreen() {
     setLoading(true);
 
     try {
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('merchantBusinessName', profile.businessName);
-      await AsyncStorage.setItem('userName', profile.businessName);
-      await AsyncStorage.setItem('merchantCategory', profile.category);
-      await AsyncStorage.setItem('userEmail', profile.email);
-      await AsyncStorage.setItem('userPhone', profile.phone);
-      if (profile.address) {
-        await AsyncStorage.setItem('userAddress', profile.address);
+      const { userService } = await import('../../services/userService');
+      let profileImageUrl = profile.profileImage;
+
+      // Upload profile photo if it's a local file URI (not a URL)
+      if (profile.profileImage && profile.profileImage.startsWith('file://')) {
+        const uploadResponse = await userService.uploadProfilePhoto(profile.profileImage);
+        
+        if (uploadResponse.success && uploadResponse.data) {
+          profileImageUrl = uploadResponse.data.profileImageUrl;
+          showSuccess('Success', 'Profile photo uploaded successfully');
+        } else {
+          showError('Warning', uploadResponse.error || 'Failed to upload profile photo, but continuing with profile update');
+        }
       }
-      await AsyncStorage.setItem('merchantOperatingHours', JSON.stringify(profile.operatingHours));
-      
-      if (profile.profileImage) {
-        await AsyncStorage.setItem('userProfileImage', profile.profileImage);
+
+      // Update profile with all data including photo URL
+      const updateResponse = await userService.updateProfile({
+        firstName: profile.businessName,
+        lastName: '',
+        email: profile.email,
+        phone: profile.phone,
+        address: profile.address,
+        profileImageUrl: profileImageUrl
+      });
+
+      if (updateResponse.success) {
+        // Save to AsyncStorage for offline access
+        await AsyncStorage.setItem('merchantBusinessName', profile.businessName);
+        await AsyncStorage.setItem('userName', profile.businessName);
+        await AsyncStorage.setItem('merchantCategory', profile.category);
+        await AsyncStorage.setItem('userEmail', profile.email);
+        await AsyncStorage.setItem('userPhone', profile.phone);
+        if (profile.address) {
+          await AsyncStorage.setItem('userAddress', profile.address);
+        }
+        await AsyncStorage.setItem('merchantOperatingHours', JSON.stringify(profile.operatingHours));
+        
+        if (profileImageUrl) {
+          await AsyncStorage.setItem('userProfileImage', profileImageUrl);
+        } else {
+          await AsyncStorage.removeItem('userProfileImage');
+        }
+
+        showSuccess('Success', 'Profile updated successfully');
+        router.back();
       } else {
-        await AsyncStorage.removeItem('userProfileImage');
+        showError('Error', updateResponse.error || 'Failed to update profile');
       }
-
-      // Call API to update profile
-      try {
-        const { userService } = await import('../../services/userService');
-        await userService.updateProfile({
-          firstName: profile.businessName,
-          lastName: '',
-          email: profile.email,
-          phone: profile.phone,
-          address: profile.address,
-          profileImage: profile.profileImage
-        });
-      } catch (apiError) {
-        console.log('API call failed, but local storage updated:', apiError);
-      }
-
-      showSuccess('Success', 'Profile updated successfully');
-      router.back();
     } catch (error) {
       console.error('Error updating profile:', error);
       showError('Error', 'Failed to update profile. Please try again.');
