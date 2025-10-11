@@ -6,6 +6,17 @@ Brill Prime is a multi-role React Native application built with Expo for web dep
 ## Recent Changes
 
 ### October 11, 2025 (Latest)
+- ✅ **Profile Photo Upload Feature** - Implemented complete profile photo upload functionality
+  - Added uploadProfilePhoto() method to userService.ts for multipart/form-data uploads
+  - Updated app/profile/edit.tsx to upload photos before updating profile
+  - Fixed critical Content-Type header bug that was breaking FormData boundary injection
+  - Added profileImageUrl field to UpdateProfileRequest interface
+  - Users can now upload profile photos directly to backend API
+- ✅ **Backend Documentation Updated** - Enhanced BACKEND_IMPLEMENTATION_GUIDE.md
+  - Added profile photo upload endpoint (POST /api/user/profile-photo)
+  - Added toll gates endpoint (GET /api/toll-gates)
+  - Added driver orders endpoint (GET /api/drivers/orders)
+  - Updated total endpoint count to 100
 - ✅ **Migration Complete** - Successfully completed project import to Replit environment
 - ✅ **Fixed Map Integration Errors** - Resolved React.memo component errors in Leaflet/Google Maps integration
   - Fixed Map.web.tsx to properly export Marker component for platform compatibility
