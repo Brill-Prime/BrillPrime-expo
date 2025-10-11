@@ -606,14 +606,163 @@ Authorization: Bearer <firebase-jwt-token>
 
 **Backend Base URL**: `https://api.brillprime.com`
 
-**Working Endpoints (8/98):**
-- ✅ POST /api/auth/register
-- ✅ POST /api/auth/login  
-- ✅ POST /api/password-reset/request
-- ✅ GET /api/auth/profile
-- ✅ GET /api/merchants
-- ✅ GET /api/orders
-- ✅ GET /api/notifications
-- ✅ GET /health
+**Working Endpoints (Based on API Documentation - 60+/100):**
 
-**Needs Implementation**: 90 endpoints
+**Authentication & Users (13 endpoints):**
+- ✅ POST /api/auth/register
+- ✅ POST /api/auth/login
+- ✅ POST /api/auth/social-login
+- ✅ POST /api/auth/logout
+- ✅ POST /api/auth/refresh
+- ✅ POST /api/auth/verify-email
+- ✅ POST /api/auth/resend-otp
+- ✅ GET /api/users (Admin)
+- ✅ GET /api/users/:id
+- ✅ PUT /api/users/:id
+- ✅ DELETE /api/users/:id
+- ✅ GET /api/profile
+- ✅ PUT /api/profile
+
+**Profile Management (10 endpoints):**
+- ✅ GET /api/profile/addresses
+- ✅ POST /api/profile/addresses
+- ✅ PUT /api/profile/addresses/:id
+- ✅ DELETE /api/profile/addresses/:id
+- ✅ GET /api/profile/payment-methods
+- ✅ POST /api/profile/payment-methods
+- ✅ PUT /api/profile/payment-methods/:id
+- ✅ DELETE /api/profile/payment-methods/:id
+- ✅ GET /api/profile/privacy-settings
+- ✅ PUT /api/profile/privacy-settings
+
+**Products & Categories (7 endpoints):**
+- ✅ GET /api/products
+- ✅ POST /api/products
+- ✅ GET /api/products/:id
+- ✅ PUT /api/products/:id
+- ✅ DELETE /api/products/:id
+- ✅ GET /api/categories
+- ✅ POST /api/categories
+
+**Cart (5 endpoints):**
+- ✅ GET /api/cart
+- ✅ POST /api/cart
+- ✅ PUT /api/cart/:itemId
+- ✅ DELETE /api/cart/:itemId
+- ✅ DELETE /api/cart
+
+**Orders (6 endpoints):**
+- ✅ GET /api/orders
+- ✅ POST /api/orders
+- ✅ GET /api/orders/:id
+- ✅ PUT /api/orders/:id/status
+- ✅ POST /api/orders/:id/cancel
+- ✅ GET /api/orders/:id/eta
+
+**Payments (4 endpoints):**
+- ✅ POST /api/payments/initialize
+- ✅ GET /api/payments/verify/:reference
+- ✅ GET /api/payments/history
+- ✅ POST /api/payments/refund
+
+**Escrow (4 endpoints):**
+- ✅ GET /api/escrows
+- ✅ GET /api/escrows/:id
+- ✅ POST /api/escrows/:id/release
+- ✅ POST /api/escrows/:id/dispute
+
+**Drivers & Tracking (7 endpoints):**
+- ✅ GET /api/drivers
+- ✅ GET /api/drivers/:id
+- ✅ POST /api/drivers/register
+- ✅ PUT /api/drivers/:id/status
+- ✅ POST /api/drivers/location
+- ✅ GET /api/tracking/order/:orderId
+- ✅ POST /api/tracking/:orderId/location
+
+**Notifications (3 endpoints):**
+- ✅ GET /api/notifications
+- ✅ PUT /api/notifications/:id/read
+- ✅ PUT /api/notifications/read-all
+
+**Messages (3 endpoints):**
+- ✅ GET /api/conversations
+- ✅ GET /api/conversations/:conversationId/messages
+- ✅ POST /api/messages
+
+**Ratings (2 endpoints):**
+- ✅ POST /api/ratings
+- ✅ GET /api/ratings/user/:userId
+
+**Admin Endpoints (15+ endpoints):**
+- ✅ GET /api/admin-users
+- ✅ POST /api/admin-users
+- ✅ GET /api/admin-dashboard/overview
+- ✅ GET /api/admin-dashboard/alerts
+- ✅ GET /api/admin/moderation
+- ✅ POST /api/admin/moderation/:reportId/action
+- ✅ GET /api/admin/control-center
+- ✅ POST /api/admin/control-center/action
+- ✅ GET /api/admin/escrow-management
+- ✅ POST /api/admin/escrow-management/:escrowId/action
+- ✅ GET /api/admin/kyc-verification
+- ✅ GET /api/admin/reports/financial
+- ✅ GET /api/admin/reports/user-growth
+- ✅ GET /api/admin/reports/performance
+- ✅ GET /api/admin/reports/export/:reportType
+- ✅ GET /api/admin/system-metrics
+- ✅ GET /api/admin/system-metrics/health
+
+**Health Checks (4 endpoints):**
+- ✅ GET /
+- ✅ GET /health
+- ✅ GET /api/health
+- ✅ GET /api/health/detailed
+
+**Still Needs Implementation (Key Missing Endpoints ~40):**
+- ❌ GET /api/merchants/nearby (Location-based search)
+- ❌ GET /api/merchants/nearby/live (Live tracking)
+- ❌ GET /api/merchants/:id
+- ❌ POST /api/merchants
+- ❌ PUT /api/merchants/:id
+- ❌ DELETE /api/merchants/:id
+- ❌ GET /api/merchants/:id/analytics (Important for merchant dashboard)
+- ❌ GET /api/commodities
+- ❌ GET /api/merchants/:merchantId/commodities
+- ❌ POST /api/merchants/:merchantId/commodities
+- ❌ PUT /api/merchants/:merchantId/commodities/:commodityId
+- ❌ DELETE /api/merchants/:merchantId/commodities/:commodityId
+- ❌ POST /api/profile/change-password
+- ❌ POST /api/payments/create-intent (Stripe/Paystack)
+- ❌ POST /api/payments/process
+- ❌ POST /api/toll-payments
+- ❌ GET /api/toll-payments
+- ❌ GET /api/toll-gates
+- ❌ GET /api/drivers/orders
+- ❌ PUT /api/location/live
+- ❌ GET /api/location/live/:userId
+- ❌ POST /api/notifications/register-device
+- ❌ GET /api/notifications/unread-count
+- ❌ GET /api/notifications/preferences
+- ❌ PUT /api/notifications/preferences
+- ❌ GET /api/notifications/history
+- ❌ POST /api/calls/initiate
+- ❌ PUT /api/calls/:id/answer
+- ❌ PUT /api/calls/:id/end
+- ❌ GET /api/calls/history
+- ❌ POST /api/conversations
+- ❌ PUT /api/conversations/:id/read
+- ❌ DELETE /api/conversations/:id
+- ❌ POST /api/users/:userId/block
+- ❌ DELETE /api/users/:userId/block
+- ❌ GET /api/favorites
+- ❌ POST /api/favorites
+- ❌ DELETE /api/favorites/:itemId
+- ❌ POST /api/kyc/documents
+- ❌ GET /api/kyc/profile
+- ❌ PUT /api/kyc/personal-info
+- ❌ PUT /api/kyc/business-info
+- ❌ PUT /api/kyc/driver-info
+- ❌ GET /api/kyc/requirements
+- ❌ POST /api/kyc/submit
+- ❌ GET /api/kyc/status

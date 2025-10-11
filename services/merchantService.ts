@@ -179,28 +179,82 @@ export const getAnalytics = async (merchantId: string): Promise<{ success: boole
                 const token = await authService.getToken();
                 if (!token) return { success: false };
                 
+                // Note: This endpoint needs to be implemented in backend
+                // For now, return mock data structure
                 const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`, {
                         Authorization: `Bearer ${token}`
                 });
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
-                return { success: false };
+                // Return structured mock data on error until backend implements this endpoint
+                return { 
+                        success: false,
+                        data: {
+                                totalSales: 0,
+                                totalOrders: 0,
+                                averageOrderValue: 0,
+                                monthlyGrowth: 0,
+                                customerRetention: 0,
+                                topSellingProducts: [],
+                                dailySales: [],
+                                categoryBreakdown: [],
+                                customerMetrics: {
+                                        newCustomers: 0,
+                                        returningCustomers: 0,
+                                        averageOrdersPerCustomer: 0,
+                                        customerSatisfaction: 0
+                                },
+                                inventoryMetrics: {
+                                        totalItems: 0,
+                                        lowStockItems: 0,
+                                        outOfStockItems: 0,
+                                        turnoverRate: 0
+                                },
+                                paymentMethods: []
+                        }
+                };
         }
 };
 
-// Get merchant reviews
+// Get merchant reviews (using ratings endpoint from backend)
 export const getMerchantReviews = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
                 const token = await authService.getToken();
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/reviews`, token ? {
+                // Backend has /api/ratings/user/:userId endpoint
+                // We need to adapt this to get merchant reviews
+                const response = await apiClient.get<any>(`/api/ratings/user/${merchantId}`, token ? {
                         Authorization: `Bearer ${token}`
                 } : {});
-                return { success: response.success, data: response.data };
+                
+                if (response.success && response.data) {
+                        // Transform the ratings data to reviews format
+                        return {
+                                success: true,
+                                data: {
+                                        averageRating: calculateAverageRating(response.data),
+                                        reviews: response.data.map((rating: any) => ({
+                                                id: rating.id,
+                                                userName: rating.user?.fullName || 'Anonymous',
+                                                rating: rating.rating,
+                                                comment: rating.comment,
+                                                date: rating.createdAt
+                                        }))
+                                }
+                        };
+                }
+                return { success: false, data: { averageRating: 0, reviews: [] } };
         } catch (error) {
                 console.error('API Error:', error);
-                return { success: false };
+                return { success: false, data: { averageRating: 0, reviews: [] } };
         }
+};
+
+// Helper function to calculate average rating
+const calculateAverageRating = (ratings: any[]): number => {
+        if (!ratings || ratings.length === 0) return 0;
+        const sum = ratings.reduce((acc, rating) => acc + rating.rating, 0);
+        return Math.round((sum / ratings.length) * 10) / 10;
 };
 
 export const merchantService = {

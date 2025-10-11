@@ -148,7 +148,7 @@ class PaymentService {
     });
   }
 
-  // Get payment methods
+  // Get payment methods (using profile endpoint from backend)
   async getPaymentMethods(): Promise<ApiResponse<Array<{
     id: string;
     type: 'card' | 'bank' | 'wallet';
@@ -163,43 +163,53 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get('/api/payment-methods', {
+    // Backend endpoint is /api/profile/payment-methods
+    return apiClient.get('/api/profile/payment-methods', {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  // Add payment method
-  async addPaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
+  // Add payment method (using profile endpoint from backend)
+  async addPaymentMethod(data: {
+    type: 'CARD' | 'BANK_TRANSFER';
+    accountNumber?: string;
+    bankCode?: string;
+    accountName?: string;
+    isDefault?: boolean;
+  }): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post('/api/payment-methods', { paymentMethodId }, {
+    // Backend endpoint is /api/profile/payment-methods
+    return apiClient.post('/api/profile/payment-methods', data, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  // Remove payment method
+  // Remove payment method (using profile endpoint from backend)
   async removePaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete(`/api/payment-methods/${paymentMethodId}`, {
+    // Backend endpoint is /api/profile/payment-methods/:id
+    return apiClient.delete(`/api/profile/payment-methods/${paymentMethodId}`, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  // Set default payment method
+  // Set default payment method (using profile endpoint from backend)
   async setDefaultPaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put(`/api/payment-methods/${paymentMethodId}/default`, {}, {
+    // Backend endpoint is /api/profile/payment-methods/:id with isDefault: true
+    return apiClient.put(`/api/profile/payment-methods/${paymentMethodId}`, { isDefault: true }, {
       Authorization: `Bearer ${token}`,
     });
   }
