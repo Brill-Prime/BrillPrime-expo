@@ -28,7 +28,9 @@ export default function MerchantReviewsScreen() {
   const [averageRating, setAverageRating] = useState(0);
 
   useEffect(() => {
-    loadReviews();
+    if (id) {
+      loadReviews();
+    }
   }, [id]);
 
   const loadReviews = async () => {
@@ -37,9 +39,14 @@ export default function MerchantReviewsScreen() {
       if (response.success && response.data) {
         setReviews(response.data.reviews || []);
         setAverageRating(response.data.averageRating || 0);
+      } else {
+        setReviews([]);
+        setAverageRating(0);
       }
     } catch (error) {
       console.error('Error loading reviews:', error);
+      setReviews([]);
+      setAverageRating(0);
     } finally {
       setLoading(false);
     }

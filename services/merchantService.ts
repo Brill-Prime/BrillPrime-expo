@@ -173,6 +173,36 @@ export const deleteCommodity = async (merchantId: string, commodityId: string): 
         }
 }
 
+// Get merchant analytics
+export const getAnalytics = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+                
+                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
+        }
+};
+
+// Get merchant reviews
+export const getMerchantReviews = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
+        try {
+                const token = await authService.getToken();
+                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/reviews`, token ? {
+                        Authorization: `Bearer ${token}`
+                } : {});
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
+        }
+};
+
 export const merchantService = {
         getMerchants,
         getMerchantById,
@@ -183,5 +213,7 @@ export const merchantService = {
         getMerchantCommodities,
         addCommodity,
         updateCommodity,
-        deleteCommodity
+        deleteCommodity,
+        getAnalytics,
+        getMerchantReviews
 };

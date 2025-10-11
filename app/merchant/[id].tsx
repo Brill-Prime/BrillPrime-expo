@@ -89,28 +89,28 @@ export default function MerchantDetailScreen() {
   const [showCommunicationModal, setShowCommunicationModal] = useState(false);
   const merchantId = id; // Assign id to merchantId for clarity in the reviews button onPress
 
-  // Import merchantService
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { merchantService } = require('../../services/merchantService');
-
   useEffect(() => {
     if (!id) return;
     setMerchant(null);
-    merchantService.getMerchant(id)
-      .then((response: any) => {
-        if (response.success && response.data) {
-          setMerchant(response.data);
-        } else {
+    
+    // Import and use merchantService
+    import('../../services/merchantService').then(({ merchantService }) => {
+      merchantService.getMerchantById(id)
+        .then((merchant: any) => {
+          if (merchant) {
+            setMerchant(merchant);
+          } else {
+            Alert.alert("Error", "Merchant not found", [
+              { text: "Go Back", onPress: () => router.back() }
+            ]);
+          }
+        })
+        .catch(() => {
           Alert.alert("Error", "Merchant not found", [
             { text: "Go Back", onPress: () => router.back() }
           ]);
-        }
-      })
-      .catch(() => {
-        Alert.alert("Error", "Merchant not found", [
-          { text: "Go Back", onPress: () => router.back() }
-        ]);
-      });
+        });
+    });
   }, [id]);
 
   if (!merchant) {

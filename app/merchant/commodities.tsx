@@ -29,6 +29,9 @@ interface Commodity {
   merchantId: string;
 }
 
+// Import merchantService at the top
+import { merchantService } from '../../services/merchantService';
+
 const CATEGORIES = [
   { id: 'all', name: 'All', color: '#4682B4' },
   { id: 'petrol', name: 'Petrol', color: '#4682B4' },
@@ -57,10 +60,6 @@ export default function MerchantCommoditiesScreen() {
   // Get merchantId from navigation params or context (update as needed)
   // TODO: Replace with actual merchantId from auth/user context or navigation params
   const merchantId = 'merchant1'; // fallback for demo
-
-  // Import merchantService
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { merchantService } = require('../../services/merchantService');
   
 
   useEffect(() => {

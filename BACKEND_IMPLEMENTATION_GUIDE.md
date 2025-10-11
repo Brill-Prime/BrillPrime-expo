@@ -221,10 +221,74 @@ PUT    /api/calls/{id}/answer              - Answer call
 PUT    /api/calls/{id}/end                 - End call
 ```
 
-### Merchant Management (2 endpoints)
+### Merchant Management (4 endpoints)
 ```
 DELETE /api/merchants/{id}                                       - Delete merchant
 DELETE /api/merchants/{merchantId}/commodities/{commodityId}     - Delete commodity
+GET    /api/merchants/{merchantId}/analytics                     - Get merchant analytics
+GET    /api/merchants/{merchantId}/reviews                       - Get merchant reviews
+```
+
+**Analytics Response Example:**
+```typescript
+{
+  success: true,
+  data: {
+    totalSales: number,
+    totalOrders: number,
+    averageOrderValue: number,
+    monthlyGrowth: number,
+    customerRetention: number,
+    topSellingProducts: [{
+      name: string,
+      sales: number,
+      revenue: number
+    }],
+    dailySales: [{
+      date: string,
+      sales: number
+    }],
+    categoryBreakdown: [{
+      category: string,
+      revenue: number,
+      percentage: number
+    }],
+    customerMetrics: {
+      newCustomers: number,
+      returningCustomers: number,
+      averageOrdersPerCustomer: number,
+      customerSatisfaction: number
+    },
+    inventoryMetrics: {
+      totalItems: number,
+      lowStockItems: number,
+      outOfStockItems: number,
+      turnoverRate: number
+    },
+    paymentMethods: [{
+      method: string,
+      amount: number,
+      percentage: number
+    }]
+  }
+}
+```
+
+**Reviews Response Example:**
+```typescript
+{
+  success: true,
+  data: {
+    averageRating: number,
+    reviews: [{
+      id: string,
+      userName: string,
+      rating: number,
+      comment: string,
+      date: string
+    }]
+  }
+}
 ```
 
 ### Notification Settings (2 endpoints)

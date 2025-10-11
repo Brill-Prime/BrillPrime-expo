@@ -5,10 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Activ
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
-
-// Import merchantService
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { merchantService } = require('../../services/merchantService');
+import { merchantService } from '../../services/merchantService';
 
 export default function MerchantAnalytics() {
   const router = useRouter();
