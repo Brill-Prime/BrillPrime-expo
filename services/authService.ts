@@ -32,7 +32,8 @@ import {
   SignInRequest,
   VerifyOTPRequest,
   ResetPasswordRequest,
-  ConfirmPasswordResetRequest
+  ConfirmPasswordResetRequest,
+  ApiResponse
 } from './types';
 
 class AuthService {
@@ -227,8 +228,31 @@ class AuthService {
       } catch (backendError: any) {
         clearTimeout(timeoutId);
         
+        // If backend times out but Firebase auth succeeded, get Firebase token
         if (backendError.name === 'AbortError') {
-          throw new Error('Request timed out. Please check your internet connection and try again.');
+          console.log('Backend timeout, using Firebase token directly');
+          const firebaseToken = await user.getIdToken();
+          
+          // Store minimal auth data with Firebase token
+          const authData: AuthResponse = {
+            token: firebaseToken,
+            user: {
+              id: user.uid,
+              email: user.email || '',
+              fullName: user.displayName || '',
+              role: role || 'consumer',
+              phoneNumber: user.phoneNumber || '',
+              isEmailVerified: user.emailVerified,
+              profilePicture: user.photoURL || undefined
+            }
+          };
+          
+          await this.storeAuthData(authData);
+          
+          return {
+            success: true,
+            data: authData
+          };
         }
         
         throw backendError;
