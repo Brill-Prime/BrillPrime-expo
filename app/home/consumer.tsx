@@ -146,7 +146,8 @@ export default function ConsumerHome() {
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
   const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
 
-  const slideAnim = useRef(new Animated.Value(width * 0.5)).current;
+  const sidebarWidth = Math.min(300, width * 0.85);
+  const slideAnim = useRef(new Animated.Value(sidebarWidth)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
 
@@ -194,29 +195,22 @@ export default function ConsumerHome() {
 
   const loadNearbyMerchants = async (latitude: number, longitude: number) => {
     try {
-      // Load merchants from backend
-      const { merchantService } = await import('../../services/merchantService');
-      const response = await merchantService.getNearbyMerchants(latitude, longitude, 10000); // 10km radius
-
-      if (response.success && response.data) {
-        // Convert merchants to store locations format
-        const locations: StoreLocation[] = response.data.map(merchant => ({
-          title: merchant.name,
-          address: merchant.address,
-          coords: { lat: merchant.latitude, lng: merchant.longitude }
-        }));
-
-        setStoreLocations(locations);
-
-        // Also set as nearby merchants for tracking
-        setNearbyDrivers(response.data.map(m => ({
-          id: m.id,
-          latitude: m.latitude,
-          longitude: m.longitude,
-          name: m.name,
-          eta: calculateETA(latitude, longitude, m.latitude, m.longitude)
-        })));
-      }
+      // For now, using mock data since backend API doesn't have location-based search yet
+      // TODO: Implement backend API endpoint for nearby merchants with lat/lng
+      const mockStores: StoreLocation[] = [
+        {
+          title: "NASCO FOODS",
+          address: "Yakubu Gowon Way, Jos",
+          coords: { lat: 9.868215, lng: 8.870632 }
+        },
+        {
+          title: "Airforce Masjid",
+          address: "Abattoir Rd, Jos",
+          coords: { lat: 9.882716, lng: 8.886276 }
+        }
+      ];
+      
+      setStoreLocations(mockStores);
     } catch (error) {
       console.error('Error loading nearby merchants:', error);
       showError("Loading Error", "Could not load nearby merchants. Please try again.");
@@ -234,25 +228,8 @@ export default function ConsumerHome() {
     try {
       const location = await locationService.getCurrentLocation();
       if (location) {
-        const response = await merchantService.getNearbyMerchants(
-          location.latitude,
-          location.longitude,
-          5000
-        );
-        if (response.success && response.data) {
-          setStoreLocations(response.data.map(merchant => ({
-            title: merchant.name,
-            address: merchant.address,
-            coords: { lat: merchant.latitude, lng: merchant.longitude }
-          })));
-          setNearbyDrivers(response.data.map(m => ({
-            id: m.id,
-            latitude: m.latitude,
-            longitude: m.longitude,
-            name: m.name,
-            eta: calculateETA(location.latitude, location.longitude, m.latitude, m.longitude)
-          })));
-        }
+        // Load merchants near the location
+        await loadNearbyMerchants(location.latitude, location.longitude);
       }
     } catch (error) {
       console.error('Error fetching nearby merchants:', error);
