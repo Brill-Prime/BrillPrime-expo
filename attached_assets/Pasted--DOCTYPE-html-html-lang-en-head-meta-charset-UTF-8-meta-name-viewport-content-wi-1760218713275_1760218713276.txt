@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Brill Prime - Driver Dashboard</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Montserrat Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;500;600;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* CSS Reset and Base Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      background: #f5f5f5;
+    }
+
+    /* Map Container - Full Screen */
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    /* Navigation Buttons */
+    .nav-button {
+      position: absolute;
+      top: 20px;
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .back-button {
+      left: 20px;
+    }
+
+    .menu-button {
+      right: 20px;
+    }
+
+    .nav-button i {
+      color: #4682B4;
+      font-size: 18px;
+    }
+
+    /* Tabs - Responsive */
+    .tabs {
+      position: absolute;
+      left: 5%;
+      top: 80px;
+      display: flex;
+      gap: 10px;
+      z-index: 2;
+      pointer-events: auto;
+      flex-wrap: wrap;
+      max-width: 90%;
+    }
+
+    .tab {
+      min-width: 100px;
+      height: 35px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: clamp(10px, 3vw, 14px);
+      font-weight: 500;
+      padding: 0 15px;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+    }
+
+    .tab.available {
+      background: white;
+      color: #4682B4;
+      border: 1px solid #4682B4;
+    }
+
+    .tab.on-delivery {
+      background: #4682B4;
+      color: white;
+    }
+
+    .tab.off-duty {
+      background: white;
+      color: #4682B4;
+      border: 1px solid #4682B4;
+    }
+
+    /* Circular Progress - Dynamic */
+    .progress-container {
+      position: absolute;
+      width: 80vw;
+      height: 80vw;
+      max-width: 340px;
+      max-height: 340px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -40%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .progress-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid rgba(70, 130, 180, 0.5);
+    }
+
+    .progress-ring.outer {
+      width: 100%;
+      height: 100%;
+      background: rgba(70, 130, 180, 0.1);
+    }
+
+    .progress-ring.middle {
+      width: 60%;
+      height: 60%;
+      left: 20%;
+      top: 20%;
+      background: rgba(70, 130, 180, 0.2);
+    }
+
+    .progress-ring.inner {
+      width: 30%;
+      height: 30%;
+      left: 35%;
+      top: 35%;
+      background: rgba(70, 130, 180, 0.3);
+    }
+
+    /* Progress Animation */
+    .progress-ring::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 4px solid #4682B4;
+      border-color: #4682B4 transparent transparent transparent;
+      animation: spin 2s linear infinite;
+      transform-origin: center;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Truck Icon - Responsive */
+    .truck-icon {
+      position: absolute;
+      width: clamp(30px, 8vw, 50px);
+      height: clamp(30px, 8vw, 50px);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -40%);
+      background: url('https://cdn-icons-png.flaticon.com/512/447/447031.png') no-repeat center;
+      background-size: contain;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    /* Total Energy Text */
+    .total-energy {
+      position: absolute;
+      left: 50%;
+      top: 60%;
+      transform: translateX(-50%);
+      font-size: clamp(8px, 2vw, 12px);
+      font-weight: 600;
+      color: black;
+      z-index: 2;
+      pointer-events: none;
+      text-align: center;
+    }
+
+    /* Divider Line */
+    .divider {
+      position: absolute;
+      left: 50%;
+      top: 70%;
+      width: 20vw;
+      max-width: 100px;
+      height: 3px;
+      background: #D9D9D9;
+      border-radius: 5px;
+      transform: translateX(-50%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Bottom Button - Responsive */
+    .bottom-button {
+      position: absolute;
+      left: 5%;
+      bottom: 5%;
+      width: 90%;
+      max-width: 350px;
+      height: clamp(40px, 10vw, 60px);
+      background: #4682B4;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .bottom-button-text {
+      color: white;
+      font-size: clamp(12px, 3vw, 16px);
+      font-weight: 500;
+    }
+
+    /* Package Icon */
+    .package-icon {
+      position: absolute;
+      left: 50%;
+      bottom: 20%;
+      transform: translateX(-50%);
+      width: clamp(20px, 5vw, 30px);
+      height: clamp(20px, 5vw, 30px);
+      background: url('https://cdn-icons-png.flaticon.com/512/3278/3278774.png') no-repeat center;
+      background-size: contain;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Energy Percentage */
+    .energy-percentage {
+      position: absolute;
+      left: 50%;
+      top: 55%;
+      transform: translateX(-50%);
+      font-size: clamp(16px, 5vw, 24px);
+      font-weight: 800;
+      color: #4682B4;
+      z-index: 2;
+      pointer-events: none;
+      text-align: center;
+    }
+
+    /* Menu Dropdown (hidden by default) */
+    .menu-dropdown {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      width: 200px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      display: none;
+      flex-direction: column;
+      z-index: 1001;
+      pointer-events: auto;
+    }
+
+    .menu-dropdown.active {
+      display: flex;
+    }
+
+    .menu-item {
+      padding: 12px 15px;
+      color: #333;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+
+    .menu-item:last-child {
+      border-bottom: none;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .tabs {
+        top: 70px;
+        left: 3%;
+      }
+
+      .tab {
+        font-size: 10px;
+        height: 30px;
+        min-width: 80px;
+      }
+
+      .progress-container {
+        top: 45%;
+      }
+
+      .menu-dropdown {
+        width: 180px;
+        top: 60px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .tabs {
+        left: 10%;
+      }
+
+      .progress-container {
+        width: 300px;
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Navigation Buttons -->
+  <div class="nav-button back-button" id="backButton">
+    <i class="fas fa-arrow-left"></i>
+  </div>
+
+  <div class="nav-button menu-button" id="menuButton">
+    <i class="fas fa-bars"></i>
+  </div>
+
+  <!-- Menu Dropdown -->
+  <div class="menu-dropdown" id="menuDropdown">
+    <div class="menu-item">Profile</div>
+    <div class="menu-item">Settings</div>
+    <div class="menu-item">Earnings</div>
+    <div class="menu-item">Support</div>
+    <div class="menu-item">Logout</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab available">Available</div>
+    <div class="tab on-delivery">On delivery</div>
+    <div class="tab off-duty">Off duty</div>
+  </div>
+
+  <!-- Circular Progress with Animation -->
+  <div class="progress-container">
+    <div class="progress-ring outer"></div>
+    <div class="progress-ring middle"></div>
+    <div class="progress-ring inner"></div>
+  </div>
+
+  <!-- Energy Percentage -->
+  <div class="energy-percentage" id="energyPercentage">75%</div>
+
+  <!-- Truck Icon -->
+  <div class="truck-icon"></div>
+
+  <!-- Total Energy Text -->
+  <div class="total-energy">Total energy</div>
+
+  <!-- Divider Line -->
+  <div class="divider"></div>
+
+  <!-- Bottom Button -->
+  <div class="bottom-button" id="viewOrdersButton">
+    <div class="bottom-button-text">View orders</div>
+  </div>
+
+  <!-- Package Icon -->
+  <div class="package-icon"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize the map with responsive view
+    const map = L.map('map', {
+      zoomControl: false, // Disable default zoom controls
+      attributionControl: false
+    }).setView([9.0765, 7.3986], 13); // Default to Jos, Nigeria
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Handle window resize for responsiveness
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+    });
+
+    // Dynamic energy percentage (simulated)
+    let energyLevel = 75;
+    const energyPercentageElement = document.getElementById('energyPercentage');
+
+    // Simulate energy level changes
+    setInterval(() => {
+      energyLevel = Math.max(0, Math.min(100, energyLevel + (Math.random() * 2 - 1)));
+      energyPercentageElement.textContent = `${Math.round(energyLevel)}%`;
+    }, 2000);
+
+    // Tab functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('on-delivery'));
+        tab.classList.add('on-delivery');
+      });
+    });
+
+    // View orders button
+    document.getElementById('viewOrdersButton').addEventListener('click', () => {
+      alert('Viewing orders...');
+    });
+
+    // Back button functionality
+    document.getElementById('backButton').addEventListener('click', () => {
+      alert('Going back...');
+      // In a real app, this would navigate to the previous screen
+    });
+
+    // Menu button functionality
+    const menuButton = document.getElementById('menuButton');
+    const menuDropdown = document.getElementById('menuDropdown');
+
+    menuButton.addEventListener('click', () => {
+      menuDropdown.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (event) => {
+      if (!menuButton.contains(event.target) && !menuDropdown.contains(event.target)) {
+        menuDropdown.classList.remove('active');
+      }
+    });
+
+    // Menu item functionality
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        alert(`Navigating to ${item.textContent}...`);
+        menuDropdown.classList.remove('active');
+      });
+    });
+  </script>
+</body>
+</html>
