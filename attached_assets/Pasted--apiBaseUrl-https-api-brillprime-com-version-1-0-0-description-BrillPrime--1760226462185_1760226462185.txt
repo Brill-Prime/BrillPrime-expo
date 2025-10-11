@@ -1,0 +1,726 @@
+
+{
+  "apiBaseUrl": "https://api.brillprime.com",
+  "version": "1.0.0",
+  "description": "BrillPrime Backend API Documentation",
+  "authentication": {
+    "type": "Bearer Token",
+    "header": "Authorization: Bearer <token>",
+    "tokenTypes": ["Firebase ID Token", "JWT Token"],
+    "note": "Firebase tokens are verified first, JWT tokens are used as fallback"
+  },
+  "endpoints": {
+    "health": [
+      {
+        "method": "GET",
+        "path": "/",
+        "description": "API status check",
+        "requiresAuth": false,
+        "response": { "status": "ok", "message": "BrillPrime API is running" }
+      },
+      {
+        "method": "GET",
+        "path": "/health",
+        "description": "Enhanced health check",
+        "requiresAuth": false,
+        "response": { "status": "healthy", "uptime": "number", "database": "connected" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "description": "Basic health check",
+        "requiresAuth": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/health/detailed",
+        "description": "Detailed health check",
+        "requiresAuth": false,
+        "response": { "status": "healthy", "database": "object", "memory": "object", "uptime": "number" }
+      }
+    ],
+    "authentication": [
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "description": "Register a new user",
+        "requiresAuth": false,
+        "requestBody": {
+          "email": "string (required)",
+          "password": "string (required, min 8 chars)",
+          "fullName": "string (required)",
+          "phone": "string (required)",
+          "role": "enum: CONSUMER | MERCHANT | DRIVER (default: CONSUMER)",
+          "firebaseUid": "string (optional)"
+        },
+        "response": { "success": true, "message": "string", "data": { "user": "object", "token": "string" } }
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "description": "User login",
+        "requiresAuth": false,
+        "requestBody": {
+          "email": "string (required)",
+          "password": "string (optional, for email/password login)",
+          "firebaseUid": "string (optional, for Firebase auth)"
+        },
+        "response": { "success": true, "data": { "user": "object", "token": "string" } }
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/social-login",
+        "description": "Social login (Google, Facebook, Apple)",
+        "requiresAuth": false,
+        "requestBody": {
+          "provider": "enum: GOOGLE | FACEBOOK | APPLE",
+          "idToken": "string (required)",
+          "role": "enum: CONSUMER | MERCHANT | DRIVER (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "description": "User logout",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/refresh",
+        "description": "Refresh access token",
+        "requiresAuth": false,
+        "requestBody": { "refreshToken": "string (required)" },
+        "response": { "success": true, "data": { "accessToken": "string", "refreshToken": "string" } }
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/verify-email",
+        "description": "Verify email with OTP",
+        "requiresAuth": true,
+        "requestBody": { "otp": "string (required)" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/resend-otp",
+        "description": "Resend OTP",
+        "requiresAuth": true
+      }
+    ],
+    "users": [
+      {
+        "method": "GET",
+        "path": "/api/users",
+        "description": "List all users (Admin only)",
+        "requiresAuth": true,
+        "requiredRole": "ADMIN",
+        "queryParams": { "page": "number", "limit": "number", "role": "string", "search": "string" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/users/:id",
+        "description": "Get user by ID",
+        "requiresAuth": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/users/:id",
+        "description": "Update user",
+        "requiresAuth": true,
+        "requestBody": { "fullName": "string", "phone": "string", "profilePicture": "string" }
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/users/:id",
+        "description": "Delete user (soft delete)",
+        "requiresAuth": true,
+        "requiredRole": "ADMIN"
+      }
+    ],
+    "profile": [
+      {
+        "method": "GET",
+        "path": "/api/profile",
+        "description": "Get current user profile",
+        "requiresAuth": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/profile",
+        "description": "Update profile",
+        "requiresAuth": true,
+        "requestBody": { "fullName": "string", "phone": "string", "profilePicture": "string", "bio": "string" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/profile/addresses",
+        "description": "Get user addresses",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/profile/addresses",
+        "description": "Add new address",
+        "requiresAuth": true,
+        "requestBody": { "label": "string", "street": "string", "city": "string", "state": "string", "country": "string", "postalCode": "string", "latitude": "number", "longitude": "number", "isDefault": "boolean" }
+      },
+      {
+        "method": "PUT",
+        "path": "/api/profile/addresses/:id",
+        "description": "Update address",
+        "requiresAuth": true
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/profile/addresses/:id",
+        "description": "Delete address",
+        "requiresAuth": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/profile/payment-methods",
+        "description": "Get payment methods",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/profile/payment-methods",
+        "description": "Add payment method",
+        "requiresAuth": true,
+        "requestBody": { "type": "enum: CARD | BANK_TRANSFER", "accountNumber": "string", "bankCode": "string", "accountName": "string", "isDefault": "boolean" }
+      },
+      {
+        "method": "PUT",
+        "path": "/api/profile/payment-methods/:id",
+        "description": "Update payment method",
+        "requiresAuth": true
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/profile/payment-methods/:id",
+        "description": "Delete payment method",
+        "requiresAuth": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/profile/privacy-settings",
+        "description": "Get privacy settings",
+        "requiresAuth": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/profile/privacy-settings",
+        "description": "Update privacy settings",
+        "requiresAuth": true,
+        "requestBody": { "shareLocation": "boolean", "showOnlineStatus": "boolean", "allowNotifications": "boolean" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/profile/change-password",
+        "description": "Change password",
+        "requiresAuth": true,
+        "requestBody": { "currentPassword": "string", "newPassword": "string" }
+      }
+    ],
+    "products": [
+      {
+        "method": "GET",
+        "path": "/api/products",
+        "description": "List all products",
+        "requiresAuth": false,
+        "queryParams": { "page": "number", "limit": "number", "categoryId": "number", "search": "string", "minPrice": "number", "maxPrice": "number" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/products",
+        "description": "Create product (Merchant only)",
+        "requiresAuth": true,
+        "requiredRole": "MERCHANT",
+        "requestBody": { "name": "string", "description": "string", "price": "number", "categoryId": "number", "stock": "number", "images": "array", "isActive": "boolean" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/:id",
+        "description": "Get product details",
+        "requiresAuth": false
+      },
+      {
+        "method": "PUT",
+        "path": "/api/products/:id",
+        "description": "Update product",
+        "requiresAuth": true,
+        "requiredRole": "MERCHANT"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/products/:id",
+        "description": "Delete product",
+        "requiresAuth": true,
+        "requiredRole": "MERCHANT"
+      }
+    ],
+    "categories": [
+      {
+        "method": "GET",
+        "path": "/api/categories",
+        "description": "List all categories",
+        "requiresAuth": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/categories",
+        "description": "Create category (Admin only)",
+        "requiresAuth": true,
+        "requiredRole": "ADMIN",
+        "requestBody": { "name": "string", "description": "string", "icon": "string" }
+      }
+    ],
+    "cart": [
+      {
+        "method": "GET",
+        "path": "/api/cart",
+        "description": "Get user cart",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/cart",
+        "description": "Add item to cart",
+        "requiresAuth": true,
+        "requestBody": { "productId": "number", "quantity": "number" }
+      },
+      {
+        "method": "PUT",
+        "path": "/api/cart/:itemId",
+        "description": "Update cart item",
+        "requiresAuth": true,
+        "requestBody": { "quantity": "number" }
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/cart/:itemId",
+        "description": "Remove item from cart",
+        "requiresAuth": true
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/cart",
+        "description": "Clear cart",
+        "requiresAuth": true
+      }
+    ],
+    "orders": [
+      {
+        "method": "GET",
+        "path": "/api/orders",
+        "description": "List user orders",
+        "requiresAuth": true,
+        "queryParams": { "page": "number", "limit": "number", "status": "string" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders",
+        "description": "Create order",
+        "requiresAuth": true,
+        "requestBody": { "items": "array", "deliveryAddressId": "number", "paymentMethodId": "number", "notes": "string" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:id",
+        "description": "Get order details",
+        "requiresAuth": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/orders/:id/status",
+        "description": "Update order status",
+        "requiresAuth": true,
+        "requestBody": { "status": "enum: PENDING | CONFIRMED | IN_TRANSIT | DELIVERED | CANCELLED" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/cancel",
+        "description": "Cancel order",
+        "requiresAuth": true,
+        "requestBody": { "reason": "string" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:id/eta",
+        "description": "Get order ETA",
+        "requiresAuth": true
+      }
+    ],
+    "payments": [
+      {
+        "method": "POST",
+        "path": "/api/payments/initialize",
+        "description": "Initialize payment",
+        "requiresAuth": true,
+        "requestBody": { "orderId": "number", "amount": "number", "paymentMethod": "enum: CARD | BANK_TRANSFER" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/payments/verify/:reference",
+        "description": "Verify payment",
+        "requiresAuth": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/payments/history",
+        "description": "Get payment history",
+        "requiresAuth": true,
+        "queryParams": { "page": "number", "limit": "number" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/refund",
+        "description": "Request refund",
+        "requiresAuth": true,
+        "requestBody": { "transactionId": "number", "reason": "string" }
+      }
+    ],
+    "escrow": [
+      {
+        "method": "GET",
+        "path": "/api/escrows",
+        "description": "List escrow transactions",
+        "requiresAuth": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/escrows/:id",
+        "description": "Get escrow details",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/escrows/:id/release",
+        "description": "Release escrow (buyer confirms delivery)",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/escrows/:id/dispute",
+        "description": "Dispute escrow",
+        "requiresAuth": true,
+        "requestBody": { "reason": "string", "description": "string" }
+      }
+    ],
+    "drivers": [
+      {
+        "method": "GET",
+        "path": "/api/drivers",
+        "description": "List drivers",
+        "requiresAuth": true,
+        "queryParams": { "status": "string", "isOnline": "boolean" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/drivers/:id",
+        "description": "Get driver details",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/drivers/register",
+        "description": "Register as driver",
+        "requiresAuth": true,
+        "requestBody": { "vehicleType": "string", "vehicleNumber": "string", "licenseNumber": "string", "documents": "array" }
+      },
+      {
+        "method": "PUT",
+        "path": "/api/drivers/:id/status",
+        "description": "Update driver status",
+        "requiresAuth": true,
+        "requiredRole": "DRIVER",
+        "requestBody": { "isOnline": "boolean", "isAvailable": "boolean" }
+      },
+      {
+        "method": "POST",
+        "path": "/api/drivers/location",
+        "description": "Update driver location",
+        "requiresAuth": true,
+        "requiredRole": "DRIVER",
+        "requestBody": { "latitude": "number", "longitude": "number" }
+      }
+    ],
+    "tracking": [
+      {
+        "method": "GET",
+        "path": "/api/tracking/order/:orderId",
+        "description": "Track order",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/tracking/:orderId/location",
+        "description": "Update delivery location",
+        "requiresAuth": true,
+        "requiredRole": "DRIVER",
+        "requestBody": { "latitude": "number", "longitude": "number", "status": "string" }
+      }
+    ],
+    "notifications": [
+      {
+        "method": "GET",
+        "path": "/api/notifications",
+        "description": "Get user notifications",
+        "requiresAuth": true,
+        "queryParams": { "page": "number", "limit": "number", "isRead": "boolean" }
+      },
+      {
+        "method": "PUT",
+        "path": "/api/notifications/:id/read",
+        "description": "Mark notification as read",
+        "requiresAuth": true
+      },
+      {
+        "method": "PUT",
+        "path": "/api/notifications/read-all",
+        "description": "Mark all notifications as read",
+        "requiresAuth": true
+      }
+    ],
+    "messages": [
+      {
+        "method": "GET",
+        "path": "/api/conversations",
+        "description": "Get user conversations",
+        "requiresAuth": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/conversations/:conversationId/messages",
+        "description": "Get conversation messages",
+        "requiresAuth": true
+      },
+      {
+        "method": "POST",
+        "path": "/api/messages",
+        "description": "Send message",
+        "requiresAuth": true,
+        "requestBody": { "conversationId": "number", "receiverId": "number", "message": "string", "orderId": "number (optional)" }
+      }
+    ],
+    "ratings": [
+      {
+        "method": "POST",
+        "path": "/api/ratings",
+        "description": "Create rating",
+        "requiresAuth": true,
+        "requestBody": { "orderId": "number", "driverId": "number", "merchantId": "number", "rating": "number (1-5)", "comment": "string" }
+      },
+      {
+        "method": "GET",
+        "path": "/api/ratings/user/:userId",
+        "description": "Get user ratings",
+        "requiresAuth": true
+      }
+    ],
+    "admin": {
+      "users": [
+        {
+          "method": "GET",
+          "path": "/api/admin-users",
+          "description": "List admin users",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin-users",
+          "description": "Create admin user",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "requestBody": { "userId": "number", "permissions": "array", "department": "string" }
+        }
+      ],
+      "dashboard": [
+        {
+          "method": "GET",
+          "path": "/api/admin-dashboard/overview",
+          "description": "Admin dashboard overview",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin-dashboard/alerts",
+          "description": "System alerts",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        }
+      ],
+      "moderation": [
+        {
+          "method": "GET",
+          "path": "/api/admin/moderation",
+          "description": "Get pending moderation items",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/moderation/:reportId/action",
+          "description": "Take moderation action",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "requestBody": { "action": "enum: APPROVE | REJECT | SUSPEND | DELETE | WARN", "reason": "string", "notes": "string" }
+        }
+      ],
+      "controlCenter": [
+        {
+          "method": "GET",
+          "path": "/api/admin/control-center",
+          "description": "Control center dashboard",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/control-center/action",
+          "description": "Execute system action",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "requestBody": { "action": "enum: PAUSE_ORDERS | RESUME_ORDERS | ENABLE_MAINTENANCE | DISABLE_MAINTENANCE | CLEAR_CACHE", "reason": "string" }
+        }
+      ],
+      "escrowManagement": [
+        {
+          "method": "GET",
+          "path": "/api/admin/escrow-management",
+          "description": "List all escrow transactions",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "queryParams": { "page": "number", "limit": "number", "status": "string" }
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/escrow-management/:escrowId/action",
+          "description": "Take action on escrow",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "requestBody": { "action": "enum: RELEASE | REFUND | HOLD | DISPUTE", "reason": "string", "notes": "string" }
+        }
+      ],
+      "kyc": [
+        {
+          "method": "GET",
+          "path": "/api/admin/kyc-verification",
+          "description": "List KYC submissions",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "queryParams": { "page": "number", "limit": "number", "status": "string" }
+        }
+      ],
+      "reports": [
+        {
+          "method": "GET",
+          "path": "/api/admin/reports/financial",
+          "description": "Financial reports",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "queryParams": { "startDate": "string", "endDate": "string" }
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/reports/user-growth",
+          "description": "User growth reports",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "queryParams": { "period": "enum: 7d | 30d | 90d" }
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/reports/performance",
+          "description": "Platform performance",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/reports/export/:reportType",
+          "description": "Export report as CSV",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN",
+          "queryParams": { "format": "csv", "startDate": "string", "endDate": "string" }
+        }
+      ],
+      "systemMetrics": [
+        {
+          "method": "GET",
+          "path": "/api/admin/system-metrics",
+          "description": "System metrics",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/system-metrics/health",
+          "description": "Detailed system health",
+          "requiresAuth": true,
+          "requiredRole": "ADMIN"
+        }
+      ]
+    },
+    "webhooks": [
+      {
+        "method": "POST",
+        "path": "/api/webhooks/paystack",
+        "description": "Paystack webhook handler",
+        "requiresAuth": false,
+        "note": "Secured with Paystack signature verification"
+      }
+    ],
+    "websocket": {
+      "endpoint": "/ws",
+      "description": "WebSocket connection for real-time updates",
+      "authentication": "Query parameter: ?token=<jwt_token>",
+      "events": {
+        "client_to_server": [
+          { "type": "ping", "description": "Keep connection alive" },
+          { "type": "join_order_room", "data": { "orderId": "number" } },
+          { "type": "send_message", "data": { "receiverId": "number", "message": "string", "orderId": "number" } },
+          { "type": "location_update", "data": { "orderId": "number", "latitude": "number", "longitude": "number", "status": "string" } }
+        ],
+        "server_to_client": [
+          { "type": "auth_success", "description": "Authentication successful" },
+          { "type": "order_update", "description": "Order status changed" },
+          { "type": "driver_location", "description": "Driver location updated" },
+          { "type": "new_message", "description": "New chat message received" },
+          { "type": "notification", "description": "New notification" }
+        ]
+      }
+    }
+  },
+  "errorCodes": {
+    "AUTH_REQUIRED": "Authentication token is required",
+    "INVALID_TOKEN": "Invalid or malformed token",
+    "TOKEN_EXPIRED": "Token has expired",
+    "USER_NOT_FOUND": "User not found",
+    "INSUFFICIENT_PERMISSIONS": "User does not have required permissions",
+    "VALIDATION_ERROR": "Request validation failed",
+    "RESOURCE_NOT_FOUND": "Requested resource not found",
+    "DUPLICATE_ENTRY": "Resource already exists",
+    "OPERATION_FAILED": "Operation failed due to server error"
+  },
+  "responseFormat": {
+    "success": {
+      "success": true,
+      "data": "object | array",
+      "message": "string (optional)",
+      "pagination": {
+        "page": "number",
+        "limit": "number",
+        "total": "number",
+        "totalPages": "number"
+      }
+    },
+    "error": {
+      "success": false,
+      "message": "string",
+      "code": "string (optional)",
+      "errors": "array (for validation errors)"
+    }
+  }
+}
