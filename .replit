@@ -14,7 +14,7 @@ run = ["npx", "serve", "dist", "-s", "-l", "5000"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Project"
+runButton = "Start App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -36,7 +36,7 @@ args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --web --port 5000"
+args = "npx expo start --web --port 5000 --host 0.0.0.0"
 
 [[workflows.workflow]]
 name = "Frontend"
