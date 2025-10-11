@@ -866,60 +866,62 @@ export default function ConsumerHome() {
       {/* Navigation Sidebar - Only visible when menu is open */}
       {isMenuOpen && (
         <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
-          <View style={styles.sidebarContent}>
-          <View style={styles.sidebarProfile}>
-            <View style={styles.sidebarProfileImage}>
-              <Ionicons name="person" size={30} color={theme.colors.primary} />
+          <ScrollView style={styles.sidebarScrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.sidebarContent}>
+              <View style={styles.sidebarProfile}>
+                <View style={styles.sidebarProfileImage}>
+                  <Ionicons name="person" size={30} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.sidebarProfileName}>{userName}</Text>
+                <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
+              </View>
+
+              <View style={styles.menuList}>
+                {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    style={styles.menuItem}
+                    onPress={() => handleMenuItemPress(item)}
+                    accessibilityLabel={`Navigate to ${item}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.menuItemText}>{item}</Text>
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.sidebarBottom}>
+                <TouchableOpacity
+                  style={styles.switchButton}
+                  onPress={() => handleMenuItemPress("Switch to Merchant")}
+                  accessibilityLabel="Switch to Merchant view"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.switchButtonText}>Switch to Merchant</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.switchButton}
+                  onPress={() => handleMenuItemPress("Switch to Driver")}
+                  accessibilityLabel="Switch to Driver view"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.switchButtonText}>Switch to Driver</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.signOutButton}
+                  onPress={handleSignOut}
+                  accessibilityLabel="Sign out from the application"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.signOutButtonText}>Sign out</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Text style={styles.sidebarProfileName}>{userName}</Text>
-            <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
-          </View>
-
-          <View style={styles.menuList}>
-            {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.menuItem}
-                onPress={() => handleMenuItemPress(item)}
-                accessibilityLabel={`Navigate to ${item}`}
-                accessibilityRole="button"
-              >
-                <Text style={styles.menuItemText}>{item}</Text>
-                <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.sidebarBottom}>
-            <TouchableOpacity
-              style={styles.switchButton}
-              onPress={() => handleMenuItemPress("Switch to Merchant")}
-              accessibilityLabel="Switch to Merchant view"
-              accessibilityRole="button"
-            >
-              <Text style={styles.switchButtonText}>Switch to Merchant</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.switchButton}
-              onPress={() => handleMenuItemPress("Switch to Driver")}
-              accessibilityLabel="Switch to Driver view"
-              accessibilityRole="button"
-            >
-              <Text style={styles.switchButtonText}>Switch to Driver</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              accessibilityLabel="Sign out from the application"
-              accessibilityRole="button"
-            >
-              <Text style={styles.signOutButtonText}>Sign out</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Animated.View>
+          </ScrollView>
+        </Animated.View>
       )}
 
       {/* Menu Overlay */}
@@ -1188,21 +1190,30 @@ const styles = StyleSheet.create({
   sidebar: {
     position: 'absolute',
     top: 0,
-    width: width * 0.5,
+    right: 0,
+    width: Math.min(350, width * 0.9),
     height: '100%',
     backgroundColor: theme.colors.white,
-    ...theme.shadows.medium,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
     zIndex: 1000,
   },
-  sidebarContent: {
+  sidebarScrollView: {
     flex: 1,
+  },
+  sidebarContent: {
     paddingTop: 60,
+    paddingBottom: 30,
   },
   sidebarProfile: {
     alignItems: 'center',
     paddingVertical: 30,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#f0f0f0',
   },
   sidebarProfileImage: {
     width: 80,
@@ -1216,61 +1227,64 @@ const styles = StyleSheet.create({
   sidebarProfileName: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: '#333',
     marginBottom: 5,
     fontFamily: theme.typography.semiBold,
+    textAlign: 'center',
   },
   sidebarProfileEmail: {
     fontSize: 14,
-    color: theme.colors.textLight,
+    color: '#666',
     fontFamily: theme.typography.regular,
+    textAlign: 'center',
   },
   menuList: {
-    flex: 1,
     paddingTop: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#f0f0f0',
   },
   menuItemText: {
     fontSize: 16,
-    color: theme.colors.text,
+    color: '#333',
     fontFamily: theme.typography.medium,
   },
   sidebarBottom: {
-    padding: 20,
+    padding: 24,
+    paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: '#f0f0f0',
+    marginTop: 10,
   },
   switchButton: {
     backgroundColor: '#f8f9fa',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: 12,
     alignItems: 'center',
   },
   switchButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.primary,
     fontWeight: '500',
     fontFamily: theme.typography.medium,
   },
   signOutButton: {
     backgroundColor: '#ffe6e6',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
   },
   signOutButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.error,
     fontWeight: '500',
     fontFamily: theme.typography.medium,
