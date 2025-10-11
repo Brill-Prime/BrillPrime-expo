@@ -213,7 +213,40 @@ export default function ConsumerHome() {
       setStoreLocations(mockStores);
     } catch (error) {
       console.error('Error loading nearby merchants:', error);
-      showError("Loading Error", "Could not load nearby merchants. Please try again.");
+      // Fallback to loading all merchants
+      await loadAllMerchants();
+    }
+  };
+
+  const loadAllMerchants = async () => {
+    try {
+      // Load all available merchants regardless of location
+      const mockStores: StoreLocation[] = [
+        {
+          title: "NASCO FOODS",
+          address: "Yakubu Gowon Way, Jos",
+          coords: { lat: 9.868215, lng: 8.870632 }
+        },
+        {
+          title: "Airforce Masjid",
+          address: "Abattoir Rd, Jos",
+          coords: { lat: 9.882716, lng: 8.886276 }
+        },
+        {
+          title: "BrillPrime Market",
+          address: "Wuse 2, Abuja",
+          coords: { lat: 9.0765, lng: 7.3986 }
+        },
+        {
+          title: "Prime Fuel Station",
+          address: "Garki, Abuja",
+          coords: { lat: 9.0415, lng: 7.4883 }
+        }
+      ];
+
+      setStoreLocations(mockStores);
+    } catch (error) {
+      console.error('Error loading all merchants:', error);
     }
   };
 
@@ -453,13 +486,19 @@ export default function ConsumerHome() {
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
         // Load merchants near the saved location
-        loadNearbyMerchants(location.latitude, location.longitude);
+        await loadNearbyMerchants(location.latitude, location.longitude);
       } else {
         // If no saved location, try to get current location immediately
-        handleSetLocationAutomatically();
+        await handleSetLocationAutomatically();
       }
     } catch (error) {
       console.error("Error loading saved location:", error);
+      // On error, load all merchants as fallback
+      if (isMountedRef.current) {
+        setIsLocationSet(true);
+        setUserAddress("Nigeria");
+        await loadAllMerchants();
+      }
     }
   };
 
@@ -536,8 +575,15 @@ export default function ConsumerHome() {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
+        // Permission denied - load all merchants instead
+        console.log("Location permission denied, loading all merchants");
         setIsLoadingLocation(false);
-        showError("Permission Denied", "Location permission is required to find nearby merchants. You can set it manually later.");
+        setUserAddress("Nigeria");
+        setIsLocationSet(true);
+        
+        // Load all merchants without location filtering
+        await loadAllMerchants();
+        showInfo("Location Access", "Showing all available merchants. Grant location permission to see nearby merchants.");
         return;
       }
 
@@ -582,7 +628,7 @@ export default function ConsumerHome() {
       await AsyncStorage.setItem("userAddress", addressInfo);
 
       // Load merchants near the newly set location
-      loadNearbyMerchants(latitude, longitude);
+      await loadNearbyMerchants(latitude, longitude);
 
       setIsLoadingLocation(false);
       showSuccess("Location Set!", `Your location has been set to ${addressInfo}.`);
@@ -590,7 +636,11 @@ export default function ConsumerHome() {
       console.error("Error getting location:", error);
       if (isMountedRef.current) {
         setIsLoadingLocation(false);
-        showError("Location Error", "Unable to get your location. Please try again or set manually.");
+        // On error, also load all merchants as fallback
+        setUserAddress("Nigeria");
+        setIsLocationSet(true);
+        await loadAllMerchants();
+        showInfo("Location Access", "Showing all available merchants.");
       }
     }
   };
