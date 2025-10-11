@@ -132,18 +132,7 @@ export default function ConsumerHome() {
   const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
   const [showDriverCard, setShowDriverCard] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
-  const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([
-    {
-      title: "NASCO FOODS",
-      address: "Yakubu Gowon Way, Jos",
-      coords: { lat: 9.868215, lng: 8.870632 }
-    },
-    {
-      title: "Airforce Masjid",
-      address: "Abattoir Rd, Jos",
-      coords: { lat: 9.882716, lng: 8.886276 }
-    }
-  ]);
+  const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
   const [region, setRegion] = useState({
     latitude: 9.0765,
     longitude: 7.3986,
@@ -935,9 +924,10 @@ export default function ConsumerHome() {
         </View>
       )}
 
-      {/* Navigation Sidebar */}
-      <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
-        <View style={styles.sidebarContent}>
+      {/* Navigation Sidebar - Only visible when menu is open */}
+      {isMenuOpen && (
+        <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
+          <View style={styles.sidebarContent}>
           <View style={styles.sidebarProfile}>
             <View style={styles.sidebarProfileImage}>
               <Ionicons name="person" size={30} color={theme.colors.primary} />
@@ -991,6 +981,7 @@ export default function ConsumerHome() {
           </View>
         </View>
       </Animated.View>
+      )}
 
       {/* Menu Overlay */}
       {isMenuOpen && (
