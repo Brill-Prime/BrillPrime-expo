@@ -863,44 +863,6 @@ export default function ConsumerHome() {
         </View>
       </View>
 
-      {/* Store List (when location is set) */}
-      {isLocationSet && storeLocations.length > 0 && (
-        <View style={styles.storeListContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.storeList}
-          >
-            {memoizedStoreLocations.map((store) => (
-              <TouchableOpacity
-                key={store.title}
-                style={styles.storeCard}
-                onPress={() => handleStoreSelect(store)}
-                accessibilityLabel={`View details for ${store.title}`}
-                accessibilityRole="button"
-              >
-                <View style={styles.storeCardIcon}>
-                  <Ionicons name="business" size={24} color={theme.colors.primary} />
-                </View>
-                <Text style={styles.storeCardTitle}>{store.title}</Text>
-                <Text style={styles.storeCardAddress}>{store.address}</Text>
-                <Text style={styles.storeCardDistance}>
-                  {(() => {
-                    const dist = locationService.calculateDistance(
-                      region.latitude,
-                      region.longitude,
-                      store.coords.lat,
-                      store.coords.lng
-                    ).toFixed(1);
-                    return `${dist} km away`;
-                  })()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
       {/* Navigation Sidebar - Only visible when menu is open */}
       {isMenuOpen && (
         <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
@@ -1397,51 +1359,6 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontWeight: '500',
-    fontFamily: theme.typography.medium,
-  },
-  storeListContainer: {
-    position: 'absolute',
-    bottom: 90,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    zIndex: 20,
-  },
-  storeList: {
-    gap: 15,
-  },
-  storeCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    padding: 15,
-    width: 200,
-    ...theme.shadows.small,
-  },
-  storeCardIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#f0f8ff',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  storeCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginBottom: 5,
-    fontFamily: theme.typography.semiBold,
-  },
-  storeCardAddress: {
-    fontSize: 12,
-    color: theme.colors.textLight,
-    marginBottom: 8,
-    fontFamily: theme.typography.regular,
-  },
-  storeCardDistance: {
-    fontSize: 12,
-    color: theme.colors.primary,
     fontFamily: theme.typography.medium,
   },
   filterModalContainer: {
