@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -77,11 +77,10 @@ export default function DriverHome() {
   const [stats, setStats] = useState(defaultStats);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(75);
-  const slideAnim = useState(new Animated.Value(-280))[0];
+  
+  const sidebarWidth = useMemo(() => Math.min(350, width * 0.9), []);
+  const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const progressAnim = useState(new Animated.Value(0))[0];
-
-  // Memoized values
-  const sidebarWidth = useMemo(() => Math.min(280, width * 0.8), []);
 
   // Animated progress rings
   useEffect(() => {
@@ -382,60 +381,61 @@ export default function DriverHome() {
         </TouchableOpacity>
       </View>
 
-      {/* Sidebar */}
-      <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
-        <View style={styles.sidebarContent}>
-          <View style={styles.sidebarProfile}>
-            <View style={styles.sidebarProfileImage}>
-              <Ionicons name="car" size={30} color="#4682B4" />
+      {isMenuOpen && (
+        <Animated.View style={[styles.sidebar, { left: slideAnim }]}>
+          <ScrollView style={styles.sidebarScrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.sidebarContent}>
+              <View style={styles.sidebarProfile}>
+                <View style={styles.sidebarProfileImage}>
+                  <Ionicons name="person" size={30} color="#4682B4" />
+                </View>
+                <Text style={styles.sidebarProfileName}>{driverData.name}</Text>
+                <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
+              </View>
+
+              <View style={styles.menuList}>
+                {["Profile", "Earnings", "Settings", "Support"].map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    style={styles.menuItem}
+                    onPress={() => handleMenuItemPress(item)}
+                  >
+                    <Text style={styles.menuItemText}>{item}</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.sidebarBottom}>
+                <TouchableOpacity
+                  style={styles.switchButton}
+                  onPress={() => handleMenuItemPress("Switch to Consumer")}
+                >
+                  <Text style={styles.switchButtonText}>
+                    Switch to Consumer
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.switchButton}
+                  onPress={() => handleMenuItemPress("Switch to Merchant")}
+                >
+                  <Text style={styles.switchButtonText}>
+                    Switch to Merchant
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.signOutButton}
+                  onPress={handleSignOut}
+                >
+                  <Text style={styles.signOutButtonText}>Sign out</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Text style={styles.sidebarProfileName}>
-              {driverData.name}
-            </Text>
-            <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
-          </View>
-
-          <View style={styles.menuList}>
-            {["Profile", "Earnings", "Settings", "Support"].map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.menuItem}
-                onPress={() => handleMenuItemPress(item)}
-              >
-                <Text style={styles.menuItemText}>{item}</Text>
-                <Ionicons name="chevron-forward" size={20} color="#666" />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.sidebarBottom}>
-            <TouchableOpacity
-              style={styles.switchButton}
-              onPress={() => handleMenuItemPress("Switch to Consumer")}
-            >
-              <Text style={styles.switchButtonText}>
-                Switch to Consumer
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.switchButton}
-              onPress={() => handleMenuItemPress("Switch to Merchant")}
-            >
-              <Text style={styles.switchButtonText}>
-                Switch to Merchant
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-            >
-              <Text style={styles.signOutButtonText}>Sign out</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Animated.View>
+          </ScrollView>
+        </Animated.View>
+      )}
 
       {isMenuOpen && (
         <TouchableOpacity
@@ -700,96 +700,102 @@ const styles = StyleSheet.create({
   sidebar: {
     position: "absolute",
     top: 0,
-    width: Math.min(280, width * 0.8),
+    left: 0,
+    width: Math.min(350, width * 0.9),
     height: "100%",
-    backgroundColor: "white",
-    zIndex: 20,
+    backgroundColor: "#fff",
     shadowColor: "#000",
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 15,
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 20,
+  },
+  sidebarScrollView: {
+    flex: 1,
   },
   sidebarContent: {
-    flex: 1,
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 30,
   },
   sidebarProfile: {
     alignItems: "center",
-    paddingBottom: 20,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
-    marginBottom: 20,
   },
   sidebarProfileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#f0f8ff",
+    width: 80,
+    height: 80,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 15,
   },
   sidebarProfileName: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     color: "#333",
     marginBottom: 5,
-    fontFamily: "Montserrat-Bold",
+    fontFamily: "Montserrat-SemiBold",
+    textAlign: "center",
   },
   sidebarProfileEmail: {
     fontSize: 14,
     color: "#666",
     fontFamily: "Montserrat-Regular",
+    textAlign: "center",
   },
   menuList: {
-    flex: 1,
+    paddingTop: 20,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   menuItemText: {
     fontSize: 16,
     color: "#333",
-    fontWeight: "500",
     fontFamily: "Montserrat-Medium",
   },
   sidebarBottom: {
-    paddingBottom: 30,
+    padding: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    marginTop: 10,
   },
   switchButton: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#2f75c2",
-    borderRadius: 25,
-    paddingVertical: 12,
+    backgroundColor: "#f8f9fa",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 12,
     alignItems: "center",
-    marginBottom: 10,
   },
   switchButtonText: {
-    color: "#2f75c2",
-    fontSize: 16,
+    fontSize: 15,
+    color: "#4682B4",
     fontWeight: "500",
     fontFamily: "Montserrat-Medium",
   },
   signOutButton: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#e74c3c",
-    borderRadius: 25,
-    paddingVertical: 12,
+    backgroundColor: "#ffe6e6",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     alignItems: "center",
   },
   signOutButtonText: {
+    fontSize: 15,
     color: "#e74c3c",
-    fontSize: 16,
     fontWeight: "500",
     fontFamily: "Montserrat-Medium",
   },
