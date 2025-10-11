@@ -209,7 +209,7 @@ export default function ConsumerHome() {
           coords: { lat: 9.882716, lng: 8.886276 }
         }
       ];
-      
+
       setStoreLocations(mockStores);
     } catch (error) {
       console.error('Error loading nearby merchants:', error);
@@ -394,7 +394,7 @@ export default function ConsumerHome() {
   // Simulate starting a delivery
   const simulateDelivery = () => {
     if (storeLocations.length === 0) return;
-    
+
     const merchant = storeLocations[0];
     const driver: Driver = {
       id: 'driver-1',
@@ -419,7 +419,7 @@ export default function ConsumerHome() {
     try {
       // Load user data from AsyncStorage (stored by authService)
       const userDataString = await AsyncStorage.getItem('userData');
-      
+
       if (userDataString && isMountedRef.current) {
         const userData = JSON.parse(userDataString);
         setUserEmail(userData.email || '');
@@ -463,16 +463,15 @@ export default function ConsumerHome() {
     }
   };
 
-  const toggleMenu = () => {
-    const sidebarWidth = width * 0.5;
-    const toValue = isMenuOpen ? sidebarWidth : 0;
+  const toggleMenu = useCallback(() => {
+    const toValue = isMenuOpen ? -sidebarWidth : 0;
     Animated.timing(slideAnim, {
       toValue,
       duration: 300,
       useNativeDriver: false,
     }).start();
     setIsMenuOpen(!isMenuOpen);
-  };
+  }, [isMenuOpen, slideAnim, sidebarWidth]);
 
   const handleGoBack = () => {
     showConfirmDialog(
