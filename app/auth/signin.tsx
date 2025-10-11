@@ -57,9 +57,23 @@ export default function SignIn() {
       const result = await authService.checkRedirectResult();
       if (result?.success && result.data) {
         // Successfully authenticated via redirect
-        router.replace('/role-selection');
+        // Store auth data
+        await AsyncStorage.multiSet([
+          ["userToken", result.data.token],
+          ["userEmail", result.data.user.email],
+          ["userRole", result.data.user.role],
+          ["selectedRole", result.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
+        ]);
+
+        // Route based on user role
+        if (result.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${result.data.user.role}`);
+        }
       } else if (result?.error) {
-        Alert.alert('Authentication Error', result.error);
+        showError('Authentication Error', result.error);
       }
     } catch (error) {
       console.error('Redirect auth check error:', error);

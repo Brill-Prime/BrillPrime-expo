@@ -23,6 +23,40 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
 
+  // Check for redirect auth result on mount
+  React.useEffect(() => {
+    checkRedirectAuth();
+  }, []);
+
+  const checkRedirectAuth = async () => {
+    try {
+      const { authService } = await import('../../services/authService');
+      const result = await authService.checkRedirectResult();
+      
+      if (result?.success && result.data) {
+        // Successfully authenticated via redirect
+        await AsyncStorage.multiSet([
+          ["userToken", result.data.token],
+          ["userEmail", result.data.user.email],
+          ["userRole", result.data.user.role],
+          ["selectedRole", result.data.user.role],
+          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
+        ]);
+
+        // Route based on user role
+        if (result.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${result.data.user.role}`);
+        }
+      } else if (result?.error) {
+        showError('Authentication Error', result.error);
+      }
+    } catch (error) {
+      console.error('Redirect auth check error:', error);
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
