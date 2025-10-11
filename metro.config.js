@@ -6,7 +6,7 @@ const config = getDefaultConfig(__dirname);
 config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2');
 
 // Configure platform-specific extensions
-config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 'tsx', 'json'];
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
 
 // Configure for Replit environment
 config.server = {

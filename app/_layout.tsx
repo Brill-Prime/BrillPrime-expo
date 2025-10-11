@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Stack } from "expo-router";
 import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
-import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
+import { View, StyleSheet, Text, ActivityIndicator, Platform } from "react-native";
 import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from 'react-error-boundary';
 import * as Font from 'expo-font';
@@ -10,6 +10,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from '../contexts/AppContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
+
+// Import Leaflet CSS for web
+if (Platform.OS === 'web') {
+  require('leaflet/dist/leaflet.css');
+}
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
