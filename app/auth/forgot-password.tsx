@@ -30,29 +30,43 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // Call the backend API to request password reset
-      const response = await fetch('https://api.brillprime.com/api/password-reset/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
+      // Import authService to use consistent API client
+      const { authService } = await import('../../services/authService');
+      
+      console.log('Requesting password reset for:', email);
+      
+      // Use authService for consistent error handling and network configuration
+      const response = await authService.requestPasswordReset({ email });
+      
       setIsLoading(false);
 
-      if (response.ok && data.success) {
+      console.log('Password reset response:', response);
+
+      if (response.success) {
         // The backend has sent the email with reset link
         setShowSuccessModal(true);
       } else {
-        throw new Error(data.message || "Failed to send reset link");
+        throw new Error(response.error || "Failed to send reset link");
       }
       
     } catch (error) {
       console.error("Error sending reset link:", error);
       setIsLoading(false);
-      setErrorMessage(error instanceof Error ? error.message : "Failed to send reset link. Please try again.");
+      
+      // Provide more specific error messages
+      let errorMsg = "Failed to send reset link. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMsg = "Network error. Please check your internet connection and try again.";
+        } else if (error.message.includes('timeout')) {
+          errorMsg = "Request timed out. Please try again.";
+        } else {
+          errorMsg = error.message;
+        }
+      }
+      
+      setErrorMessage(errorMsg);
       setShowErrorModal(true);
     }
   };

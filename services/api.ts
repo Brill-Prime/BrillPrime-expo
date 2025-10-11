@@ -26,7 +26,7 @@ class ApiClient {
       // Add timeout to prevent hanging requests
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), ENV.apiTimeout);
-      
+
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ class ApiClient {
         signal: controller.signal,
         ...options,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
@@ -51,9 +51,9 @@ class ApiClient {
       };
     } catch (error) {
       console.error('API request failed:', error);
-      
+
       let errorMessage = 'Unknown error occurred';
-      
+
       if (error.name === 'AbortError') {
         errorMessage = 'Request timeout - please check your connection';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -61,7 +61,7 @@ class ApiClient {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       return {
         success: false,
         error: errorMessage,
@@ -69,28 +69,38 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>(endpoint, { method: 'GET', headers });
+  async get<T>(endpoint: string, headers?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, { method: 'GET', headers, signal });
   }
 
-  async post<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    headers?: Record<string, string>,
+    signal?: AbortSignal
+  ): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
       body: data ? JSON.stringify(data) : undefined,
+      signal,
     });
   }
 
-  async put<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: any, headers?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
       headers,
       body: data ? JSON.stringify(data) : undefined,
+      signal,
     });
   }
 
-  async delete<T>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>(endpoint, { method: 'DELETE', headers });
+  async delete<T>(endpoint: string, headers?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, { method: 'DELETE', headers, signal });
   }
 }
 

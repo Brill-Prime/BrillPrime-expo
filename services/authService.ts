@@ -190,22 +190,49 @@ class AuthService {
         throw new Error('No email associated with Google account');
       }
 
-      // Send user data to backend
-      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
-        provider: 'google',
-        firebaseUid: user.uid,
+      console.log('Google sign-in successful, sending to backend:', {
         email: user.email,
-        fullName: user.displayName || '',
-        photoUrl: user.photoURL || '',
-        role: role || 'consumer',
+        role: role || 'consumer'
       });
 
-      if (response.success && response.data) {
-        await this.storeAuthData(response.data);
-        return response;
-      }
+      // Send user data to backend with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      throw new Error(response.error || 'Google sign-in failed');
+      try {
+        const response = await apiClient.post<AuthResponse>(
+          API_ENDPOINTS.AUTH.SOCIAL_LOGIN, 
+          {
+            provider: 'google',
+            firebaseUid: user.uid,
+            email: user.email,
+            fullName: user.displayName || '',
+            photoUrl: user.photoURL || '',
+            role: role || 'consumer',
+          },
+          undefined,
+          controller.signal
+        );
+
+        clearTimeout(timeoutId);
+
+        console.log('Backend response:', response);
+
+        if (response.success && response.data) {
+          await this.storeAuthData(response.data);
+          return response;
+        }
+
+        throw new Error(response.error || 'Google sign-in failed');
+      } catch (backendError: any) {
+        clearTimeout(timeoutId);
+        
+        if (backendError.name === 'AbortError') {
+          throw new Error('Request timed out. Please check your internet connection and try again.');
+        }
+        
+        throw backendError;
+      }
     } catch (error: any) {
       console.error('Google sign-in error:', error);
 

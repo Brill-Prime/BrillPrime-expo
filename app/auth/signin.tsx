@@ -200,6 +200,8 @@ export default function SignIn() {
         return;
       }
 
+      console.log(`Starting ${provider} sign-in with role:`, selectedRole);
+
       let response;
       if (provider === 'Google') {
         response = await authService.signInWithGoogle(selectedRole);
@@ -209,6 +211,8 @@ export default function SignIn() {
         response = await authService.signInWithFacebook(selectedRole);
       }
 
+      console.log(`${provider} sign-in response:`, response);
+
       // Handle redirecting state
       if (response?.error?.includes('Redirecting')) {
         console.log(`Redirecting to ${provider} sign-in...`);
@@ -217,6 +221,8 @@ export default function SignIn() {
 
       // Common logic for successful social login
       if (response?.success && response.data) {
+        console.log('Social login successful, storing data and routing...');
+        
         // Validate that the user's role matches selected role
         if (response.data.user.role !== selectedRole) {
           showConfirmDialog(
@@ -242,12 +248,14 @@ export default function SignIn() {
         } else {
           router.replace(`/dashboard/${response.data.user.role}`);
         }
-      } else if (provider !== 'Google' && response?.error && response.error !== 'Sign-in cancelled') {
+      } else if (response?.error && response.error !== 'Sign-in cancelled') {
+        console.error(`${provider} sign-in failed:`, response.error);
         showError("Sign In Failed", response.error);
       }
     } catch (error) {
       console.error(`${provider} sign-in error:`, error);
-      showError("Error", `${provider} sign-in failed. Please try again.`);
+      const errorMsg = error instanceof Error ? error.message : `${provider} sign-in failed. Please try again.`;
+      showError("Error", errorMsg);
     } finally {
       setLoading(false);
     }
