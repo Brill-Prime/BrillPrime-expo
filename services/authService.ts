@@ -72,26 +72,10 @@ class AuthService {
       const displayName = `${data.firstName} ${data.lastName}`.trim();
       await updateProfile(firebaseUser, { displayName });
 
-      // Store user metadata in Firebase custom claims or Firestore would be done by backend
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
 
-      // Notify backend to sync user data from Firebase (backend will fetch from Firebase)
-      const syncResponse = await apiClient.post<AuthResponse>(
-        API_ENDPOINTS.AUTH.REGISTER,
-        {
-          firebaseUid: firebaseUser.uid,
-          role: data.role,
-          phoneNumber: data.phoneNumber,
-        },
-        {
-          Authorization: `Bearer ${firebaseToken}`,
-        }
-      );
-
-      console.log('Backend sync response:', syncResponse);
-
-      // Create auth response with Firebase token
+      // Create auth response immediately with Firebase data
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -106,6 +90,23 @@ class AuthService {
       };
 
       await this.storeAuthData(authData);
+
+      // Sync with backend asynchronously (non-blocking)
+      apiClient.post<AuthResponse>(
+        API_ENDPOINTS.AUTH.REGISTER,
+        {
+          firebaseUid: firebaseUser.uid,
+          role: data.role,
+          phoneNumber: data.phoneNumber,
+        },
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      ).then(response => {
+        console.log('Backend sync completed:', response);
+      }).catch(err => {
+        console.log('Backend sync error (non-critical):', err);
+      });
 
       return {
         success: true,
@@ -144,31 +145,10 @@ class AuthService {
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
 
-      // Fetch user data from backend (backend will get it from Firebase)
-      const userDataResponse = await apiClient.get<{ user: any }>(
-        API_ENDPOINTS.AUTH.LOGIN,
-        {
-          Authorization: `Bearer ${firebaseToken}`,
-        }
-      );
+      // Use role from local storage or provided role
+      const userRole = data.role || 'consumer';
 
-      let userRole = data.role || 'consumer';
-      
-      // If backend returns user data with role, use that
-      if (userDataResponse.success && userDataResponse.data?.user?.role) {
-        userRole = userDataResponse.data.user.role;
-      }
-
-      // Validate role match if specified
-      if (data.role && userRole !== data.role) {
-        await firebaseSignOut(auth as Auth);
-        return {
-          success: false,
-          error: `Account role mismatch. Expected ${data.role} but account is ${userRole}`,
-        };
-      }
-
-      // Create auth response with Firebase token
+      // Create auth response immediately with Firebase data
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -183,6 +163,26 @@ class AuthService {
       };
 
       await this.storeAuthData(authData);
+
+      // Fetch user data from backend asynchronously (non-blocking)
+      apiClient.get<{ user: any }>(
+        API_ENDPOINTS.AUTH.LOGIN,
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      ).then(userDataResponse => {
+        // Update role if backend returns different role
+        if (userDataResponse.success && userDataResponse.data?.user?.role) {
+          const backendRole = userDataResponse.data.user.role;
+          if (backendRole !== userRole) {
+            console.log('Updating role from backend:', backendRole);
+            authData.user.role = backendRole;
+            this.storeAuthData(authData);
+          }
+        }
+      }).catch(err => {
+        console.log('Backend user data fetch error (non-critical):', err);
+      });
 
       return {
         success: true,

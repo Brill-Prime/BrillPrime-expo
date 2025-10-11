@@ -51,44 +51,43 @@ export default function ForgotPassword() {
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
-      showError('Error', 'Please enter your email address');
+      setErrorMessage('Please enter your email address');
+      setShowErrorModal(true);
       return;
     }
 
     if (!email.includes('@')) {
-      showError('Error', 'Please enter a valid email address');
+      setErrorMessage('Please enter a valid email address');
+      setShowErrorModal(true);
       return;
     }
 
     setLoading(true);
 
     try {
-      // Use Firebase's sendPasswordResetEmail directly
+      // Import Firebase auth functions
       const { sendPasswordResetEmail } = await import('firebase/auth');
-      // Mocking the firebase import for the sake of this example
-      const firebaseAuth = {
-        // Mock auth instance
-      };
-      const auth = firebaseAuth; // Assign mock auth
+      const { auth } = await import('../../config/firebase');
 
+      // Send password reset email via Firebase
       await sendPasswordResetEmail(auth, email);
 
-      // Show success message
-      showInfo('Success', 'Password reset link sent! Please check your email.');
-      router.push('/auth/signin');
+      // Show success modal
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Password reset error:', error);
 
       // Handle Firebase errors
       if (error.code === 'auth/user-not-found') {
-        showError('Error', 'No account found with this email address');
+        setErrorMessage('No account found with this email address');
       } else if (error.code === 'auth/invalid-email') {
-        showError('Error', 'Invalid email address');
+        setErrorMessage('Invalid email address');
       } else if (error.code === 'auth/too-many-requests') {
-        showError('Error', 'Too many requests. Please try again later');
+        setErrorMessage('Too many requests. Please try again later');
       } else {
-        showError('Error', 'Failed to send reset link. Please try again.');
+        setErrorMessage('Failed to send reset link. Please try again.');
       }
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
