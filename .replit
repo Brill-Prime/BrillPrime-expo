@@ -50,6 +50,32 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Mobile Dev"
+author = 48462500
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --tunnel"
+
+[[workflows.workflow]]
+name = "Mobile Dev (LAN)"
+author = 48462500
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --lan"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
