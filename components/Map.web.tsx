@@ -191,14 +191,18 @@ const MapWeb: React.FC<MapProps> = ({
   const { MapContainer, TileLayer, Marker, Popup, Circle, L } = MapComponents;
 
   // Component to update map view when region changes
-  const MapUpdater = ({ region }: { region: any }) => {
+  const MapUpdater = ({ region: mapRegion }: { region: any }) => {
     const map = MapComponents.useMap();
 
-    useEffect(() => {
-      if (region) {
-        map.setView([region.latitude, region.longitude], getZoomLevel(region.latitudeDelta));
+    React.useEffect(() => {
+      if (mapRegion && map) {
+        try {
+          map.setView([mapRegion.latitude, mapRegion.longitude], getZoomLevel(mapRegion.latitudeDelta));
+        } catch (error) {
+          console.error('Error updating map view:', error);
+        }
       }
-    }, [region, map]);
+    }, [mapRegion, map]);
 
     return null;
   };
