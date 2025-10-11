@@ -733,26 +733,6 @@ export default function ConsumerHome() {
         )}
       </MapView>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Where do you want to shop?"
-            placeholderTextColor={theme.colors.textLight}
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}
-            accessibilityLabel="Open filter options"
-            accessibilityRole="button"
-          >
-            <Ionicons name="options" size={22} color={theme.colors.boltBlue} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {/* Notification */}
       {notificationMessage && (
         <Animated.View style={styles.notification}>
@@ -885,6 +865,26 @@ export default function ConsumerHome() {
           <Text style={styles.testDeliveryText}>Test Delivery</Text>
         </TouchableOpacity>
       )}
+
+      {/* Search Bar - Moved to Bottom */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Where do you want to shop?"
+            placeholderTextColor={theme.colors.textLight}
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
+          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}
+            accessibilityLabel="Open filter options"
+            accessibilityRole="button"
+          >
+            <Ionicons name="options" size={22} color={theme.colors.boltBlue} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Store List (when location is set) */}
       {isLocationSet && storeLocations.length > 0 && (
@@ -1100,9 +1100,9 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 50,
-    left: 70,
-    right: 70,
+    bottom: isLocationSet ? 20 : 420,
+    left: 20,
+    right: 20,
     zIndex: 10,
   },
   searchInputContainer: {
@@ -1425,7 +1425,7 @@ const styles = StyleSheet.create({
   },
   storeListContainer: {
     position: 'absolute',
-    bottom: 150,
+    bottom: 90,
     left: 0,
     right: 0,
     paddingHorizontal: 20,
