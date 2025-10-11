@@ -1,7 +1,7 @@
 # Backend Implementation Guide for Brill Prime
 **Generated**: October 11, 2025  
 **Frontend Analysis**: Complete  
-**Total Endpoints Required**: 98
+**Total Endpoints Required**: 100 (updated)
 
 ---
 
@@ -106,11 +106,26 @@ POST   /api/password-reset/complete        - Complete password reset
 POST   /api/jwt-tokens/logout              - User logout
 ```
 
-### User Profile (3 endpoints)
+### User Profile (4 endpoints)
 ```
 PUT    /api/auth/profile                   - Update user profile
+POST   /api/user/profile-photo             - Upload profile photo (multipart/form-data)
 PUT    /api/user/password                  - Change password
 DELETE /api/user/account                   - Delete user account
+```
+
+**Profile Photo Upload Details:**
+```typescript
+// POST /api/user/profile-photo
+Content-Type: multipart/form-data
+Body: FormData with 'profileImage' field
+
+Response: {
+  success: true,
+  data: {
+    profileImageUrl: string  // URL to the uploaded image
+  }
+}
 ```
 
 ### Merchants & Commodities (7 endpoints)
@@ -262,12 +277,71 @@ POST   /api/favorites                      - Add to favorites
 DELETE /api/favorites/{itemId}             - Remove from favorites
 ```
 
-### Payments (2 endpoints)
+### Payments & Toll (4 endpoints)
 ```
 POST   /api/payments/initialize            - Initialize Paystack payment
 GET    /api/payments/verify/{reference}    - Verify payment
 POST   /api/toll-payments                  - Toll gate payment
 GET    /api/toll-payments                  - Get toll payments
+```
+
+### Toll Gates (1 endpoint) - NEW
+```
+GET    /api/toll-gates                     - Get all toll gates with pricing
+```
+**Response Example:**
+```typescript
+{
+  success: true,
+  data: [
+    {
+      id: string,
+      name: string,
+      location: string,
+      highway: string,
+      distance: number,
+      pricePerVehicle: {
+        motorcycle: number,
+        car: number,
+        suv: number,
+        truck: number
+      },
+      operatingHours: string,
+      isOpen: boolean,
+      estimatedTime: string,
+      paymentMethods: string[]
+    }
+  ]
+}
+```
+
+### Driver Orders (1 endpoint) - NEW
+```
+GET    /api/drivers/orders                 - Get driver orders by status
+```
+**Query Params:** `status` (available, accepted, picked_up, delivered, cancelled)
+**Response Example:**
+```typescript
+{
+  success: true,
+  data: [
+    {
+      id: string,
+      customerId: string,
+      customerName: string,
+      customerPhone: string,
+      pickupAddress: string,
+      deliveryAddress: string,
+      items: string[],
+      totalAmount: number,
+      distance: string,
+      estimatedDuration: string,
+      status: string,
+      timestamp: string,
+      earnings: number
+    }
+  ]
+}
 ```
 
 ---

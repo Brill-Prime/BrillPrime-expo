@@ -157,6 +157,7 @@ export interface UpdateProfileRequest {
   email: string;
   phone: string;
   address?: string;
+  profileImageUrl?: string;
 }
 
 export interface CreateOrderRequest {
