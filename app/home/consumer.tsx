@@ -221,6 +221,7 @@ export default function ConsumerHome() {
 
   useEffect(() => {
     isMountedRef.current = true;
+    setIsMapLoading(false); // Map loads in background
     checkSavedLocation();
     loadUserData();
     initializeLiveTracking();
@@ -376,76 +377,70 @@ export default function ConsumerHome() {
     );
   };
 
-  const handleSetLocationAutomatically = () => {
-    showConfirmDialog(
-      "Location Access",
-      "Allow Brill Prime to access your location to find nearby merchants?",
-      async () => {
-        if (!isMountedRef.current) return;
-        setIsLoadingLocation(true);
+  const handleSetLocationAutomatically = async () => {
+    if (!isMountedRef.current) return;
+    setIsLoadingLocation(true);
 
-        try {
-          let { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') {
-            showError("Permission Denied", "Location permission is required to find nearby merchants.");
-            setIsLoadingLocation(false);
-            return;
-          }
-
-          let location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-
-          if (!isMountedRef.current) return;
-
-          const { latitude, longitude } = location.coords;
-          const deltas = calculateDelta(latitude);
-          const newRegion = {
-            latitude,
-            longitude,
-            ...deltas,
-          };
-
-          setRegion(newRegion);
-
-          let addressInfo = "Your Current Location";
-          try {
-            let reverseGeocode = await Location.reverseGeocodeAsync({
-              latitude,
-              longitude,
-            });
-
-            if (reverseGeocode.length > 0) {
-              const address = reverseGeocode[0];
-              addressInfo = `${address.city || address.region || ''}, ${address.country || ''}`.trim().replace(/^,/, '');
-              if (!addressInfo) addressInfo = "Unknown Location";
-            }
-          } catch (geoError) {
-            console.log("Geocoding failed, using default address");
-          }
-
-          if (!isMountedRef.current) return;
-
-          setUserAddress(addressInfo);
-          setIsLocationSet(true);
-
-          await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
-          await AsyncStorage.setItem("userAddress", addressInfo);
-
-          // Load merchants near the newly set location
-          loadNearbyMerchants(latitude, longitude);
-
-          setIsLoadingLocation(false);
-          showSuccess("Location Set!", `Your location has been set to ${addressInfo}. You can now discover merchants near you.`);
-        } catch (error) {
-          console.error("Error getting location:", error);
-          if (isMountedRef.current) {
-            setIsLoadingLocation(false);
-            showError("Location Error", "Unable to get your location. Please try again or set manually.");
-          }
-        }
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setIsLoadingLocation(false);
+        showError("Permission Denied", "Location permission is required to find nearby merchants. You can set it manually later.");
+        return;
       }
-    );
+
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      if (!isMountedRef.current) return;
+
+      const { latitude, longitude } = location.coords;
+      const deltas = calculateDelta(latitude);
+      const newRegion = {
+        latitude,
+        longitude,
+        ...deltas,
+      };
+
+      setRegion(newRegion);
+
+      let addressInfo = "Your Current Location";
+      try {
+        let reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        if (reverseGeocode.length > 0) {
+          const address = reverseGeocode[0];
+          addressInfo = `${address.city || address.region || ''}, ${address.country || ''}`.trim().replace(/^,/, '');
+          if (!addressInfo) addressInfo = "Unknown Location";
+        }
+      } catch (geoError) {
+        console.log("Geocoding failed, using default address");
+      }
+
+      if (!isMountedRef.current) return;
+
+      setUserAddress(addressInfo);
+      setIsLocationSet(true);
+
+      await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
+      await AsyncStorage.setItem("userAddress", addressInfo);
+
+      // Load merchants near the newly set location
+      loadNearbyMerchants(latitude, longitude);
+
+      setIsLoadingLocation(false);
+      showSuccess("Location Set!", `Your location has been set to ${addressInfo}.`);
+    } catch (error) {
+      console.error("Error getting location:", error);
+      if (isMountedRef.current) {
+        setIsLoadingLocation(false);
+        showError("Location Error", "Unable to get your location. Please try again or set manually.");
+      }
+    }
   };
 
   const handleSetLocationLater = () => {
@@ -495,13 +490,7 @@ export default function ConsumerHome() {
         region={region}
         onRegionChangeComplete={handleRegionChange}
         onMapLoaded={() => {
-          setIsMapLoading(false);
-          setMapError(false);
           fitToUserLocation();
-        }}
-        onMapError={() => {
-          setMapError(true);
-          setIsMapLoading(false);
         }}
         showsUserLocation={true}
         showsMyLocationButton={false}
@@ -515,56 +504,52 @@ export default function ConsumerHome() {
         paddingAdjustmentBehavior="automatic"
         padding={{ top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 }}
       >
-        {!isMapLoading && !mapError && (
-          <>
-            {/* @ts-expect-error - Marker component accepts these props but types are not properly defined */}
-            <MemoizedMarker
-              coordinate={{ latitude: region.latitude, longitude: region.longitude }}
-              title="You are here"
-              pinColor="#4682B4"
-            />
+        {/* @ts-expect-error - Marker component accepts these props but types are not properly defined */}
+        <MemoizedMarker
+          coordinate={{ latitude: region.latitude, longitude: region.longitude }}
+          title="You are here"
+          pinColor="#4682B4"
+        />
 
-            {nearbyDrivers.map((driver) => (
-              // @ts-expect-error - Marker component accepts these props but types are not properly defined
-              <MemoizedMarker
-                key={driver.id}
-                coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
-                title={driver.name}
-                description={`ETA: ${driver.eta}`}
-                pinColor="#34D399"
-              />
-            ))}
+        {nearbyDrivers.map((driver) => (
+          // @ts-expect-error - Marker component accepts these props but types are not properly defined
+          <MemoizedMarker
+            key={driver.id}
+            coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
+            title={driver.name}
+            description={`ETA: ${driver.eta}`}
+            pinColor="#34D399"
+          />
+        ))}
 
-            {memoizedStoreLocations.map((store) => (
-              // @ts-expect-error - Marker component accepts these props but types are not properly defined
-              <MemoizedMarker
-                key={store.title}
-                coordinate={{ latitude: store.coords.lat, longitude: store.coords.lng }}
-                title={store.title}
-                description={store.address}
-                onPress={() => handleStoreSelect(store)}
-              />
-            ))}
+        {memoizedStoreLocations.map((store) => (
+          // @ts-expect-error - Marker component accepts these props but types are not properly defined
+          <MemoizedMarker
+            key={store.title}
+            coordinate={{ latitude: store.coords.lat, longitude: store.coords.lng }}
+            title={store.title}
+            description={store.address}
+            onPress={() => handleStoreSelect(store)}
+          />
+        ))}
 
-            {selectedDestination && MapViewDirections && (
-              <MapViewDirections
-                origin={region}
-                destination={selectedDestination.coords}
-                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"} // Replace with your actual API key
-                strokeWidth={4}
-                strokeColor={theme.colors.primary}
-                optimizeWaypoints={true}
-                onReady={(result: any) => {
-                  console.log(`Distance: ${result.distance} km`);
-                  console.log(`Duration: ${result.duration} min`);
-                }}
-                onError={(error: any) => {
-                  console.error("Directions error:", error);
-                  showError("Navigation Error", "Could not calculate route. Please try again.");
-                }}
-              />
-            )}
-          </>
+        {selectedDestination && MapViewDirections && (
+          <MapViewDirections
+            origin={region}
+            destination={selectedDestination.coords}
+            apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"}
+            strokeWidth={4}
+            strokeColor={theme.colors.primary}
+            optimizeWaypoints={true}
+            onReady={(result: any) => {
+              console.log(`Distance: ${result.distance} km`);
+              console.log(`Duration: ${result.duration} min`);
+            }}
+            onError={(error: any) => {
+              console.error("Directions error:", error);
+              showError("Navigation Error", "Could not calculate route. Please try again.");
+            }}
+          />
         )}
       </MapView>
 
@@ -636,9 +621,11 @@ export default function ConsumerHome() {
               accessibilityLabel="Set location automatically"
               accessibilityRole="button"
             >
-              <Text style={styles.setAutomaticallyText}>
-                {isLoadingLocation ? "Getting location..." : "Set automatically"}
-              </Text>
+              {isLoadingLocation ? (
+                <ActivityIndicator size="small" color={theme.colors.white} />
+              ) : (
+                <Text style={styles.setAutomaticallyText}>Set automatically</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -760,34 +747,12 @@ export default function ConsumerHome() {
         />
       )}
 
-      {/* Loading Overlay */}
-      {(isLoadingLocation || isMapLoading) && !mapError && (
+      {/* Loading Indicator for Location Only */}
+      {isLoadingLocation && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading...</Text>
-            <Text style={styles.loadingSubtext}>
-              {isLoadingLocation ? "Getting your location" : "Loading map"}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Map Error View */}
-      {mapError && (
-        <View style={styles.errorContainer}>
-          <View style={styles.errorContent}>
-            <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
-            <Text style={styles.errorTitle}>Map Loading Error</Text>
-            <Text style={styles.errorMessage}>
-              Unable to load the map. Please check your internet connection.
-            </Text>
-            <TouchableOpacity style={styles.retryButton} onPress={retryLoadMap}
-              accessibilityLabel="Retry loading map"
-              accessibilityRole="button"
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
+            <Text style={styles.loadingText}>Getting your location...</Text>
           </View>
         </View>
       )}
