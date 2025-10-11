@@ -867,7 +867,7 @@ export default function ConsumerHome() {
       )}
 
       {/* Search Bar - Moved to Bottom */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { bottom: isLocationSet ? 20 : 420 }]}>
         <View style={styles.searchInputContainer}>
           <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
           <TextInput
@@ -1100,7 +1100,6 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    bottom: isLocationSet ? 20 : 420,
     left: 20,
     right: 20,
     zIndex: 10,
