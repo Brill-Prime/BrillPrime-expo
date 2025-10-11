@@ -63,32 +63,56 @@ class AuthService {
     try {
       console.log('Starting signup process for:', data.email);
 
-      // First, try to sign up using Firebase
+      // Create user in Firebase
       const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
       console.log('Firebase user created:', firebaseUser.uid);
 
-      // Register the user with your backend API
-      console.log('Calling backend API at:', API_ENDPOINTS.AUTH.REGISTER);
-      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, {
-        ...data,
-        firebaseUid: firebaseUser.uid
-      });
+      // Update Firebase profile with display name
+      const displayName = `${data.firstName} ${data.lastName}`.trim();
+      await updateProfile(firebaseUser, { displayName });
 
-      console.log('Backend API response:', response);
+      // Store user metadata in Firebase custom claims or Firestore would be done by backend
+      // Get Firebase ID token
+      const firebaseToken = await firebaseUser.getIdToken();
 
-      if (response.success && response.data) {
-        await this.storeAuthData(response.data);
-      }
+      // Notify backend to sync user data from Firebase (backend will fetch from Firebase)
+      const syncResponse = await apiClient.post<AuthResponse>(
+        API_ENDPOINTS.AUTH.REGISTER,
+        {
+          firebaseUid: firebaseUser.uid,
+          role: data.role,
+          phoneNumber: data.phoneNumber,
+        },
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      );
 
-      return response;
+      console.log('Backend sync response:', syncResponse);
+
+      // Create auth response with Firebase token
+      const authData: AuthResponse = {
+        token: firebaseToken,
+        user: {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          fullName: displayName,
+          role: data.role,
+          phoneNumber: data.phoneNumber || '',
+          isEmailVerified: firebaseUser.emailVerified,
+          profilePicture: firebaseUser.photoURL || undefined,
+        },
+      };
+
+      await this.storeAuthData(authData);
+
+      return {
+        success: true,
+        data: authData,
+      };
     } catch (error: any) {
       console.error('SignUp error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
 
       if (error.code) {
         switch (error.code) {
@@ -105,7 +129,7 @@ class AuthService {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error occurred'
+        error: error instanceof Error ? error.message : 'Network error occurred',
       };
     }
   }
@@ -113,27 +137,57 @@ class AuthService {
   // Sign in user
   async signIn(data: SignInRequest & { role?: string }): Promise<ApiResponse<AuthResponse>> {
     try {
-      // First, try to sign in with Firebase
+      // Sign in with Firebase
       const firebaseUserCredential = await signInWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
 
-      // Authenticate with your backend using the Firebase UID
-      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
-        email: data.email,
-        firebaseUid: firebaseUser.uid
-      });
+      // Get Firebase ID token
+      const firebaseToken = await firebaseUser.getIdToken();
 
-      if (response.success && response.data) {
-        if (data.role && response.data.user.role !== data.role) {
-          return {
-            success: false,
-            error: `Account role mismatch. Expected ${data.role} but account is ${response.data.user.role}`
-          };
+      // Fetch user data from backend (backend will get it from Firebase)
+      const userDataResponse = await apiClient.get<{ user: any }>(
+        API_ENDPOINTS.AUTH.LOGIN,
+        {
+          Authorization: `Bearer ${firebaseToken}`,
         }
-        await this.storeAuthData(response.data);
+      );
+
+      let userRole = data.role || 'consumer';
+      
+      // If backend returns user data with role, use that
+      if (userDataResponse.success && userDataResponse.data?.user?.role) {
+        userRole = userDataResponse.data.user.role;
       }
 
-      return response;
+      // Validate role match if specified
+      if (data.role && userRole !== data.role) {
+        await firebaseSignOut(auth as Auth);
+        return {
+          success: false,
+          error: `Account role mismatch. Expected ${data.role} but account is ${userRole}`,
+        };
+      }
+
+      // Create auth response with Firebase token
+      const authData: AuthResponse = {
+        token: firebaseToken,
+        user: {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          fullName: firebaseUser.displayName || '',
+          role: userRole,
+          phoneNumber: firebaseUser.phoneNumber || '',
+          isEmailVerified: firebaseUser.emailVerified,
+          profilePicture: firebaseUser.photoURL || undefined,
+        },
+      };
+
+      await this.storeAuthData(authData);
+
+      return {
+        success: true,
+        data: authData,
+      };
     } catch (error: any) {
       console.error('SignIn error:', error);
 
@@ -143,6 +197,8 @@ class AuthService {
             return { success: false, error: 'No user found with that email.' };
           case 'auth/wrong-password':
             return { success: false, error: 'Incorrect password provided.' };
+          case 'auth/invalid-credential':
+            return { success: false, error: 'Invalid email or password.' };
           default:
             return { success: false, error: `Firebase authentication error: ${error.message}` };
         }
@@ -150,7 +206,7 @@ class AuthService {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error occurred'
+        error: error instanceof Error ? error.message : 'Network error occurred',
       };
     }
   }
@@ -191,72 +247,44 @@ class AuthService {
         throw new Error('No email associated with Google account');
       }
 
-      console.log('Google sign-in successful, sending to backend:', {
-        email: user.email,
-        role: role || 'consumer'
-      });
+      console.log('Google sign-in successful, getting Firebase token');
 
-      // Send user data to backend with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      // Get Firebase ID token
+      const firebaseToken = await user.getIdToken();
 
-      try {
-        const response = await apiClient.post<AuthResponse>(
-          API_ENDPOINTS.AUTH.SOCIAL_LOGIN, 
-          {
-            provider: 'google',
-            firebaseUid: user.uid,
-            email: user.email,
-            fullName: user.displayName || '',
-            photoUrl: user.photoURL || '',
-            role: role || 'consumer',
-          },
-          undefined,
-          controller.signal
-        );
-
-        clearTimeout(timeoutId);
-
-        console.log('Backend response:', response);
-
-        if (response.success && response.data) {
-          await this.storeAuthData(response.data);
-          return response;
+      // Notify backend to sync user from Firebase (non-blocking)
+      apiClient.post(
+        API_ENDPOINTS.AUTH.SOCIAL_LOGIN,
+        {
+          provider: 'google',
+          firebaseUid: user.uid,
+          role: role || 'consumer',
+        },
+        {
+          Authorization: `Bearer ${firebaseToken}`,
         }
+      ).catch(err => console.log('Backend sync error (non-critical):', err));
 
-        throw new Error(response.error || 'Google sign-in failed');
-      } catch (backendError: any) {
-        clearTimeout(timeoutId);
-        
-        // If backend times out but Firebase auth succeeded, get Firebase token
-        if (backendError.name === 'AbortError') {
-          console.log('Backend timeout, using Firebase token directly');
-          const firebaseToken = await user.getIdToken();
-          
-          // Store minimal auth data with Firebase token
-          const authData: AuthResponse = {
-            token: firebaseToken,
-            user: {
-              id: user.uid,
-              email: user.email || '',
-              fullName: user.displayName || '',
-              role: role || 'consumer',
-              phoneNumber: user.phoneNumber || '',
-              isEmailVerified: user.emailVerified,
-              profilePicture: user.photoURL || undefined
-            }
-          };
-          
-          await this.storeAuthData(authData);
-          
-          return {
-            success: true,
-            data: authData
-          };
-        }
-        
-        throw backendError;
-      }
+      // Store auth data with Firebase token
+      const authData: AuthResponse = {
+        token: firebaseToken,
+        user: {
+          id: user.uid,
+          email: user.email || '',
+          fullName: user.displayName || '',
+          role: role || 'consumer',
+          phoneNumber: user.phoneNumber || '',
+          isEmailVerified: user.emailVerified,
+          profilePicture: user.photoURL || undefined,
+        },
+      };
+
+      await this.storeAuthData(authData);
+
+      return {
+        success: true,
+        data: authData,
+      };
     } catch (error: any) {
       console.error('Google sign-in error:', error);
 
@@ -375,21 +403,41 @@ class AuthService {
         throw new Error('No email associated with Apple account');
       }
 
-      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
-        provider: 'apple',
-        firebaseUid: user.uid,
-        email: user.email,
-        fullName: user.displayName || '',
-        photoUrl: user.photoURL || '',
-        role: role || 'consumer',
-      });
+      // Get Firebase ID token
+      const firebaseToken = await user.getIdToken();
 
-      if (response.success && response.data) {
-        await this.storeAuthData(response.data);
-        return response;
-      }
+      // Notify backend to sync (non-blocking)
+      apiClient.post(
+        API_ENDPOINTS.AUTH.SOCIAL_LOGIN,
+        {
+          provider: 'apple',
+          firebaseUid: user.uid,
+          role: role || 'consumer',
+        },
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      ).catch(err => console.log('Backend sync error (non-critical):', err));
 
-      throw new Error(response.error || 'Apple sign-in failed');
+      const authData: AuthResponse = {
+        token: firebaseToken,
+        user: {
+          id: user.uid,
+          email: user.email || '',
+          fullName: user.displayName || '',
+          role: role || 'consumer',
+          phoneNumber: user.phoneNumber || '',
+          isEmailVerified: user.emailVerified,
+          profilePicture: user.photoURL || undefined,
+        },
+      };
+
+      await this.storeAuthData(authData);
+
+      return {
+        success: true,
+        data: authData,
+      };
     } catch (error: any) {
       console.error('Apple sign-in error:', error);
 
@@ -436,21 +484,41 @@ class AuthService {
         throw new Error('No email associated with Facebook account');
       }
 
-      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
-        provider: 'facebook',
-        firebaseUid: user.uid,
-        email: user.email,
-        fullName: user.displayName || '',
-        photoUrl: user.photoURL || '',
-        role: role || 'consumer',
-      });
+      // Get Firebase ID token
+      const firebaseToken = await user.getIdToken();
 
-      if (response.success && response.data) {
-        await this.storeAuthData(response.data);
-        return response;
-      }
+      // Notify backend to sync (non-blocking)
+      apiClient.post(
+        API_ENDPOINTS.AUTH.SOCIAL_LOGIN,
+        {
+          provider: 'facebook',
+          firebaseUid: user.uid,
+          role: role || 'consumer',
+        },
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      ).catch(err => console.log('Backend sync error (non-critical):', err));
 
-      throw new Error(response.error || 'Facebook sign-in failed');
+      const authData: AuthResponse = {
+        token: firebaseToken,
+        user: {
+          id: user.uid,
+          email: user.email || '',
+          fullName: user.displayName || '',
+          role: role || 'consumer',
+          phoneNumber: user.phoneNumber || '',
+          isEmailVerified: user.emailVerified,
+          profilePicture: user.photoURL || undefined,
+        },
+      };
+
+      await this.storeAuthData(authData);
+
+      return {
+        success: true,
+        data: authData,
+      };
     } catch (error: any) {
       console.error('Facebook sign-in error:', error);
 
@@ -511,7 +579,26 @@ class AuthService {
 
   // Request password reset
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.REQUEST, data);
+    try {
+      // Use Firebase's built-in password reset
+      await sendPasswordResetEmail(auth as Auth, data.email);
+      
+      return {
+        success: true,
+        data: { message: 'Password reset email sent successfully. Please check your inbox.' },
+      };
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      
+      if (error.code === 'auth/user-not-found') {
+        return { success: false, error: 'No account found with this email address.' };
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Failed to send password reset email',
+      };
+    }
   }
 
   // Verify reset code
