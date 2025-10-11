@@ -71,6 +71,7 @@ export default function ConsumerHome() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
@@ -275,9 +276,20 @@ export default function ConsumerHome() {
 
   const loadUserData = async () => {
     try {
-      const email = await AsyncStorage.getItem("userEmail");
-      if (email && isMountedRef.current) {
-        setUserEmail(email);
+      // Load user data from AsyncStorage (stored by authService)
+      const userDataString = await AsyncStorage.getItem('userData');
+      
+      if (userDataString && isMountedRef.current) {
+        const userData = JSON.parse(userDataString);
+        setUserEmail(userData.email || '');
+        setUserName(userData.name || 'User');
+      } else {
+        // Fallback to email only
+        const email = await AsyncStorage.getItem("userEmail");
+        if (email && isMountedRef.current) {
+          setUserEmail(email);
+          setUserName('User');
+        }
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -687,7 +699,7 @@ export default function ConsumerHome() {
             <View style={styles.sidebarProfileImage}>
               <Ionicons name="person" size={30} color={theme.colors.primary} />
             </View>
-            <Text style={styles.sidebarProfileName}>Consumer</Text>
+            <Text style={styles.sidebarProfileName}>{userName}</Text>
             <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
 

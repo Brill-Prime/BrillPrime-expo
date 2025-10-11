@@ -19,14 +19,15 @@ export default function Account() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [userInfo, setUserInfo] = useState({
-    name: 'ANTHONY',
-    email: 'anthony@example.com',
-    phone: '+1 234 567 8900',
-    address: '123 Main Street, City, State 12345'
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
   });
   const [isEditing, setIsEditing] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -38,26 +39,66 @@ export default function Account() {
 
   const loadUserData = async () => {
     try {
-      const email = await AsyncStorage.getItem("userEmail");
-      if (email) {
-        setUserInfo(prev => ({ ...prev, email }));
+      setLoading(true);
+      // Load user data from AsyncStorage (stored by authService)
+      const userDataString = await AsyncStorage.getItem('userData');
+      
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        setUserInfo({
+          name: userData.name || userData.firstName + ' ' + userData.lastName || '',
+          email: userData.email || '',
+          phone: userData.phone || userData.phoneNumber || '',
+          address: userData.address || ''
+        });
       }
     } catch (error) {
       console.error("Error loading user data:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSave = async () => {
     try {
-      await AsyncStorage.setItem("userEmail", userInfo.email);
+      // Load existing user data
+      const userDataString = await AsyncStorage.getItem('userData');
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        
+        // Update with new values
+        const updatedUserData = {
+          ...userData,
+          name: userInfo.name,
+          email: userInfo.email,
+          phone: userInfo.phone,
+          address: userInfo.address,
+        };
+        
+        // Save back to AsyncStorage
+        await AsyncStorage.multiSet([
+          ['userData', JSON.stringify(updatedUserData)],
+          ['userEmail', userInfo.email],
+        ]);
+      }
+      
       setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully!");
     } catch (error) {
+      console.error("Error saving user data:", error);
       Alert.alert("Error", "Failed to update profile");
     }
   };
 
   const styles = getResponsiveStyles(screenData);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Loading profile...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

@@ -55,16 +55,28 @@ export default function ProfileScreen() {
 
   const loadUserProfile = async () => {
     try {
-      const email = await AsyncStorage.getItem('userEmail');
-      const phone = await AsyncStorage.getItem('userPhone');
-      const name = await AsyncStorage.getItem('userName');
-
-      setUserProfile({
-        name: name || 'John Doe',
-        email: email || 'john.doe@brillprime.com',
-        phone: phone || '+234 803 123 4567',
-        joinDate: '2024-01-15',
-      });
+      // Load user data from AsyncStorage (stored by authService)
+      const userDataString = await AsyncStorage.getItem('userData');
+      
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        setUserProfile({
+          name: userData.name || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          profileImage: userData.profileImageUrl || undefined,
+          joinDate: userData.createdAt || new Date().toISOString(),
+        });
+      } else {
+        // Fallback to loading individual fields
+        const email = await AsyncStorage.getItem('userEmail');
+        setUserProfile({
+          name: 'User',
+          email: email || '',
+          phone: '',
+          joinDate: new Date().toISOString(),
+        });
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
     }
@@ -103,10 +115,9 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('userToken');
-              await AsyncStorage.removeItem('userEmail');
-              await AsyncStorage.removeItem('userName');
-              await AsyncStorage.removeItem('userPhone');
+              // Import and use authService for proper logout
+              const { authService } = await import('../../services/authService');
+              await authService.signOut();
               router.replace('/auth/role-selection');
             } catch (error) {
               console.error('Error during logout:', error);
