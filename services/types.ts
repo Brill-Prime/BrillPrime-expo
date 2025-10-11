@@ -175,3 +175,11 @@ export interface PaymentRequest {
   amount: number;
   paymentMethod: 'card' | 'wallet' | 'cash';
 }
+
+// Generic API Response
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  requiresRedirect?: boolean;
+}

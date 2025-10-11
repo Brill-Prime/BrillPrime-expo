@@ -81,11 +81,13 @@ class AuthService {
         user: {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
-          fullName: displayName,
+          name: displayName,
           role: data.role,
-          phoneNumber: data.phoneNumber || '',
-          isEmailVerified: firebaseUser.emailVerified,
-          profilePicture: firebaseUser.photoURL || undefined,
+          phone: data.phoneNumber || '',
+          isVerified: firebaseUser.emailVerified,
+          profileImageUrl: firebaseUser.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       };
 
@@ -146,7 +148,7 @@ class AuthService {
       const firebaseToken = await firebaseUser.getIdToken();
 
       // Use role from local storage or provided role
-      const userRole = data.role || 'consumer';
+      const userRole: 'consumer' | 'merchant' | 'driver' = (data.role || 'consumer') as 'consumer' | 'merchant' | 'driver';
 
       // Create auth response immediately with Firebase data
       const authData: AuthResponse = {
@@ -154,11 +156,13 @@ class AuthService {
         user: {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
-          fullName: firebaseUser.displayName || '',
+          name: firebaseUser.displayName || '',
           role: userRole,
-          phoneNumber: firebaseUser.phoneNumber || '',
-          isEmailVerified: firebaseUser.emailVerified,
-          profilePicture: firebaseUser.photoURL || undefined,
+          phone: firebaseUser.phoneNumber || '',
+          isVerified: firebaseUser.emailVerified,
+          profileImageUrl: firebaseUser.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       };
 
@@ -266,16 +270,19 @@ class AuthService {
       ).catch(err => console.log('Backend sync error (non-critical):', err));
 
       // Store auth data with Firebase token
+      const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
           id: user.uid,
           email: user.email || '',
-          fullName: user.displayName || '',
-          role: role || 'consumer',
-          phoneNumber: user.phoneNumber || '',
-          isEmailVerified: user.emailVerified,
-          profilePicture: user.photoURL || undefined,
+          name: user.displayName || '',
+          role: userRole,
+          phone: user.phoneNumber || '',
+          isVerified: user.emailVerified,
+          profileImageUrl: user.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       };
 
@@ -300,6 +307,7 @@ class AuthService {
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
         console.log('Popup failed, attempting redirect...');
         try {
+          const provider = new GoogleAuthProvider();
           await signInWithRedirect(auth, provider);
           return { success: false, requiresRedirect: true };
         } catch (redirectError: any) {
@@ -419,16 +427,19 @@ class AuthService {
         }
       ).catch(err => console.log('Backend sync error (non-critical):', err));
 
+      const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
           id: user.uid,
           email: user.email || '',
-          fullName: user.displayName || '',
-          role: role || 'consumer',
-          phoneNumber: user.phoneNumber || '',
-          isEmailVerified: user.emailVerified,
-          profilePicture: user.photoURL || undefined,
+          name: user.displayName || '',
+          role: userRole,
+          phone: user.phoneNumber || '',
+          isVerified: user.emailVerified,
+          profileImageUrl: user.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       };
 
@@ -500,16 +511,19 @@ class AuthService {
         }
       ).catch(err => console.log('Backend sync error (non-critical):', err));
 
+      const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
           id: user.uid,
           email: user.email || '',
-          fullName: user.displayName || '',
-          role: role || 'consumer',
-          phoneNumber: user.phoneNumber || '',
-          isEmailVerified: user.emailVerified,
-          profilePicture: user.photoURL || undefined,
+          name: user.displayName || '',
+          role: userRole,
+          phone: user.phoneNumber || '',
+          isVerified: user.emailVerified,
+          profileImageUrl: user.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       };
 
@@ -533,6 +547,7 @@ class AuthService {
       // If popup fails, try redirect
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
         try {
+          const provider = new FacebookAuthProvider();
           await signInWithRedirect(auth, provider);
           return { success: false, requiresRedirect: true };
         } catch (redirectError: any) {

@@ -19,7 +19,15 @@ export const API_ENDPOINTS = {
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
     VERIFY_EMAIL: '/api/auth/verify-email',
+    VERIFY_OTP: '/api/auth/verify-otp',
     RESEND_OTP: '/api/auth/resend-otp',
+  },
+
+  // Password Reset
+  PASSWORD_RESET: {
+    REQUEST: '/api/auth/forgot-password',
+    VERIFY_CODE: '/api/auth/verify-reset-code',
+    COMPLETE: '/api/auth/reset-password',
   },
 
   // Users
