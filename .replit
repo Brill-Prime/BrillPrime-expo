@@ -76,6 +76,15 @@ args = "npm install"
 task = "shell.exec"
 args = "npx expo start --lan"
 
+[[workflows.workflow]]
+name = "Expo Go Mobile"
+author = 48462500
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --web --port 8081 --host 0.0.0.0"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -87,6 +96,10 @@ externalPort = 3003
 [[ports]]
 localPort = 5002
 externalPort = 4200
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
 
 [[ports]]
 localPort = 35255
