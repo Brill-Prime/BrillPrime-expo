@@ -73,6 +73,10 @@ author = "agent"
 task = "workflow.run"
 args = "App"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Expo Web Server"
+
 [[workflows.workflow]]
 name = "App"
 author = "agent"
@@ -85,13 +89,25 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Expo Web Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run web"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 8082
-externalPort = 6800
+localPort = 5001
+externalPort = 4200
 
 [[ports]]
 localPort = 35255
@@ -112,6 +128,10 @@ externalPort = 5000
 [[ports]]
 localPort = 38123
 externalPort = 3002
+
+[[ports]]
+localPort = 39859
+externalPort = 3003
 
 [[ports]]
 localPort = 46753
