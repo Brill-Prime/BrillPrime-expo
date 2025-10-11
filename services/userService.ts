@@ -153,11 +153,11 @@ class UserService {
       } as any);
 
       // Use fetch for FormData upload (apiClient doesn't handle FormData well)
+      // Note: Do NOT set Content-Type header manually - let fetch set it with the boundary
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/user/profile-photo`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
         body: formData,
       });
