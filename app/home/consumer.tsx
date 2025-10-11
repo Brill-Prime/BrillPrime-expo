@@ -146,7 +146,7 @@ export default function ConsumerHome() {
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
   const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
 
-  const slideAnim = useRef(new Animated.Value(-Math.min(280, width * 0.8))).current;
+  const slideAnim = useRef(new Animated.Value(width * 0.5)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
 
@@ -487,8 +487,8 @@ export default function ConsumerHome() {
   };
 
   const toggleMenu = () => {
-    const sidebarWidth = Math.min(280, width * 0.8);
-    const toValue = isMenuOpen ? -sidebarWidth : 0;
+    const sidebarWidth = width * 0.5;
+    const toValue = isMenuOpen ? sidebarWidth : 0;
     Animated.timing(slideAnim, {
       toValue,
       duration: 300,
@@ -1101,8 +1101,8 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: 'absolute',
     top: 50,
-    left: 20,
-    right: 20,
+    left: 70,
+    right: 70,
     zIndex: 10,
   },
   searchInputContainer: {
@@ -1250,7 +1250,7 @@ const styles = StyleSheet.create({
   sidebar: {
     position: 'absolute',
     top: 0,
-    width: Math.min(280, width * 0.8),
+    width: width * 0.5,
     height: '100%',
     backgroundColor: theme.colors.white,
     ...theme.shadows.medium,
