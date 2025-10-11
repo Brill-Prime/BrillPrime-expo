@@ -376,6 +376,10 @@ const styles = StyleSheet.create({
   },
 });
 
+// Web-compatible Marker component (placeholder for compatibility)
+// Note: For web, markers are handled internally by MapWeb component
+export const Marker: React.FC<any> = () => null;
+
 // Provider constant for web
 export const PROVIDER_GOOGLE = 'leaflet';
 
