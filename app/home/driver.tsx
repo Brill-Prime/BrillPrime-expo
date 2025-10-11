@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
@@ -26,19 +25,19 @@ const SafeMapComponent = React.memo(() => {
     if (Platform.OS === "web") {
       return (
         <View style={styles.mapPlaceholder}>
-          <Ionicons name="map" size={40} color="#4682B4" />
+          <Ionicons name="map" size={40} color="#006AFF" />
           <Text style={styles.mapPlaceholderText}>Map View</Text>
         </View>
       );
     }
 
     const Map = require("../../components/Map").default;
-    return <Map style={styles.map} />;
+    return <Map style={styles.map} customMapStyle={blueMapStyle} />;
   } catch (error) {
     console.warn("Map component failed to load:", error);
     return (
       <View style={styles.mapPlaceholder}>
-        <Ionicons name="map" size={40} color="#4682B4" />
+        <Ionicons name="map" size={40} color="#006AFF" />
         <Text style={styles.mapPlaceholderText}>Map Unavailable</Text>
       </View>
     );
@@ -47,7 +46,87 @@ const SafeMapComponent = React.memo(() => {
 
 const { width, height } = Dimensions.get("window");
 
-// Default data to prevent dependency issues
+// Blue map style (Bolt-inspired) for Google Maps
+const blueMapStyle = [
+  {
+    "elementType": "geometry",
+    "stylers": [{ "color": "#e8f4ff" }]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#333333" }]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{ "color": "#ffffff" }]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#b3d9ff" }]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#ffffff" }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#cce5ff" }]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#d6ebff" }]
+  },
+  {
+    "featureType": "landscape",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#f0f8ff" }]
+  }
+];
+
+// Theme colors
+const theme = {
+  colors: {
+    primary: '#4682B4',
+    boltBlue: '#006AFF',
+    background: '#fff',
+    text: '#333',
+    textLight: '#666',
+    white: '#fff',
+    error: '#e74c3c',
+    success: '#00C853',
+    border: '#f0f0f0',
+    overlay: 'rgba(0, 0, 0, 0.5)',
+  },
+  shadows: {
+    small: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    medium: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+  },
+  typography: {
+    bold: 'Montserrat-Bold',
+    semiBold: 'Montserrat-SemiBold',
+    medium: 'Montserrat-Medium',
+    regular: 'Montserrat-Regular',
+    light: 'Montserrat-Light',
+  },
+};
+
+// Default data
 const defaultDriverData = {
   userId: "DR456789",
   name: "John Doe",
@@ -76,12 +155,10 @@ export default function DriverHome() {
   const [driverData, setDriverData] = useState(defaultDriverData);
   const [stats, setStats] = useState(defaultStats);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const slideAnim = useState(new Animated.Value(-280))[0];
+  const sidebarWidth = useMemo(() => width * 0.8, [width]);
+  const slideAnim = useState(new Animated.Value(-sidebarWidth))[0];
 
-  // Memoized values
-  const sidebarWidth = useMemo(() => Math.min(280, width * 0.8), []);
-
-  // Load data with error handling - fixed dependencies
+  // Load data with error handling
   const loadUserData = useCallback(async () => {
     try {
       const cachedData = PerformanceOptimizer.getCache("driverData");
@@ -106,7 +183,6 @@ export default function DriverHome() {
       setDriverData(driverInfo);
       setStats(statsInfo);
 
-      // Cache the data
       PerformanceOptimizer.setCache("driverData", {
         email: emailValue,
         driver: driverInfo,
@@ -115,12 +191,11 @@ export default function DriverHome() {
     } catch (error) {
       console.error("Error loading user data:", error);
       showError("Loading Error", "Failed to load some data. Please refresh.");
-      // Set defaults on error
       setUserEmail("driver@brillprime.com");
       setDriverData(defaultDriverData);
       setStats(defaultStats);
     }
-  }, []); // Remove showError dependency to prevent infinite loop
+  }, [showError]);
 
   const loadDriverStats = useCallback(async () => {
     try {
@@ -130,7 +205,6 @@ export default function DriverHome() {
         return;
       }
 
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const newStats = {
@@ -147,7 +221,7 @@ export default function DriverHome() {
       console.error("Error loading driver stats:", error);
       setStats(defaultStats);
     }
-  }, []); // No dependencies needed
+  }, []);
 
   const initializeData = useCallback(async () => {
     setIsLoading(true);
@@ -253,7 +327,7 @@ export default function DriverHome() {
   if (authLoading || isLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4682B4" />
+        <ActivityIndicator size="large" color="#006AFF" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -278,103 +352,123 @@ export default function DriverHome() {
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Full Screen Map */}
+      {/* Full Screen Map with Blue Theme */}
       <SafeMapComponent />
 
-      {/* Overlay for UI elements */}
-      <View style={styles.overlay}>
-        {/* Menu Icon */}
-        <TouchableOpacity onPress={toggleMenu} style={styles.menu}>
-          <View style={styles.menuLines}>
-            <View style={styles.menuLine} />
-            <View style={styles.menuLine} />
-            <View style={styles.menuLine} />
-          </View>
+      {/* Header with Back Button and Menu */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handleGoBack}
+          style={styles.backButton}
+          accessibilityLabel="Go back to dashboard"
+          accessibilityRole="button"
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
 
-        {/* Tabs */}
-        <View style={styles.tabs}>
-          {["Available", "On delivery", "Off duty"].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab ? styles.activeTab : styles.inactiveTab,
-              ]}
-              onPress={() => handleTabPress(tab)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? "white" : "#4682B4" },
-                ]}
-              >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Circular Progress */}
-        <View style={styles.progressContainer}>
-          <View style={[styles.progressRing, styles.progressRingOuter]} />
-          <View style={[styles.progressRing, styles.progressRingMiddle]} />
-          <View style={[styles.progressRing, styles.progressRingInner]} />
-        </View>
-
-        {/* Truck Icon */}
-        <View style={styles.truckIconContainer}>
-          <Ionicons
-            name="car-sport"
-            size={30}
-            color="black"
-            style={styles.truckIcon}
-          />
-        </View>
-
-        {/* Total Energy Text */}
-        <Text style={styles.totalEnergy}>Total energy</Text>
-
-        {/* Divider Line */}
-        <View style={styles.divider} />
-
-        {/* Bottom Button */}
         <TouchableOpacity
-          style={styles.bottomButton}
-          onPress={handleManageTrips}
+          onPress={toggleMenu}
+          style={styles.menuButton}
+          accessibilityLabel={isMenuOpen ? "Close menu" : "Open menu"}
+          accessibilityRole="button"
         >
-          <Ionicons
-            name="cube"
-            size={20}
-            color="white"
-            style={styles.packageIcon}
-          />
-          <Text style={styles.bottomButtonText}>View orders</Text>
+          <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Sidebar */}
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        {["Available", "On delivery", "Off duty"].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[
+              styles.tab,
+              activeTab === tab ? styles.activeTab : styles.inactiveTab,
+            ]}
+            onPress={() => handleTabPress(tab)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === tab ? theme.colors.white : theme.colors.boltBlue },
+              ]}
+            >
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Circular Progress with Animation */}
+      <View style={styles.progressContainer}>
+        <View style={[styles.progressRing, styles.progressRingOuter]} />
+        <View style={[styles.progressRing, styles.progressRingMiddle]} />
+        <View style={[styles.progressRing, styles.progressRingInner]} />
+      </View>
+
+      {/* Energy Percentage */}
+      <Text style={styles.energyPercentage}>75%</Text>
+
+      {/* Truck Icon */}
+      <View style={styles.truckIcon}>
+        <Ionicons name="car-sport" size={30} color="black" />
+      </View>
+
+      {/* Total Energy Text */}
+      <Text style={styles.totalEnergy}>Total energy</Text>
+
+      {/* Divider Line */}
+      <View style={styles.divider} />
+
+      {/* Bottom Button */}
+      <TouchableOpacity
+        style={styles.bottomButton}
+        onPress={handleManageTrips}
+      >
+        <Ionicons
+          name="cube"
+          size={20}
+          color="white"
+          style={styles.packageIcon}
+        />
+        <Text style={styles.bottomButtonText}>View orders</Text>
+      </TouchableOpacity>
+
+      {/* Clean, Modern Sidebar */}
       <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
         <View style={styles.sidebarContent}>
+          <View style={styles.sidebarHeader}>
+            <Text style={styles.sidebarTitle}>Menu</Text>
+            <TouchableOpacity onPress={toggleMenu} style={styles.sidebarClose}>
+              <Ionicons name="close" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.sidebarProfile}>
             <View style={styles.sidebarProfileImage}>
-              <Ionicons name="car" size={30} color="#4682B4" />
+              <Ionicons name="car" size={30} color={theme.colors.boltBlue} />
             </View>
-            <Text style={styles.sidebarProfileName}>
-              {driverData.name}
-            </Text>
+            <Text style={styles.sidebarProfileName}>{driverData.name}</Text>
             <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
           </View>
 
           <View style={styles.menuList}>
-            {["Profile", "Earnings", "Settings", "Support"].map((item) => (
+            {[
+              { name: "Profile", icon: "person" },
+              { name: "Earnings", icon: "wallet" },
+              { name: "Settings", icon: "settings" },
+              { name: "Support", icon: "help-circle" }
+            ].map((item) => (
               <TouchableOpacity
-                key={item}
+                key={item.name}
                 style={styles.menuItem}
-                onPress={() => handleMenuItemPress(item)}
+                onPress={() => handleMenuItemPress(item.name)}
               >
-                <Text style={styles.menuItemText}>{item}</Text>
-                <Ionicons name="chevron-forward" size={20} color="#666" />
+                <View style={styles.menuItemContent}>
+                  <Ionicons name={item.icon} size={20} color={theme.colors.boltBlue} />
+                  <Text style={styles.menuItemText}>{item.name}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
               </TouchableOpacity>
             ))}
           </View>
@@ -384,18 +478,14 @@ export default function DriverHome() {
               style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Consumer")}
             >
-              <Text style={styles.switchButtonText}>
-                Switch to Consumer
-              </Text>
+              <Text style={styles.switchButtonText}>Switch to Consumer</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Merchant")}
             >
-              <Text style={styles.switchButtonText}>
-                Switch to Merchant
-              </Text>
+              <Text style={styles.switchButtonText}>Switch to Merchant</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -408,6 +498,7 @@ export default function DriverHome() {
         </View>
       </Animated.View>
 
+      {/* Menu Overlay */}
       {isMenuOpen && (
         <TouchableOpacity
           style={styles.menuOverlay}
@@ -422,55 +513,52 @@ export default function DriverHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
-    position: "relative",
-    width: 399,
-    height: 896,
-    overflow: "hidden",
+    position: 'relative',
+    backgroundColor: theme.colors.background,
   },
   centerContent: {
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
-    fontFamily: "Montserrat-Regular",
+    color: theme.colors.textLight,
+    fontFamily: theme.typography.regular,
   },
   errorText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#e74c3c",
-    fontFamily: "Montserrat-Regular",
-    textAlign: "center",
+    color: theme.colors.error,
+    fontFamily: theme.typography.regular,
+    textAlign: 'center',
   },
   retryButton: {
     marginTop: 20,
-    backgroundColor: "#4682B4",
+    backgroundColor: theme.colors.boltBlue,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
   retryText: {
-    color: "white",
-    fontFamily: "Montserrat-Medium",
+    color: theme.colors.white,
+    fontFamily: theme.typography.medium,
   },
   map: {
-    width: "100%",
-    height: "100%",
-    position: "absolute",
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
     top: 0,
     left: 0,
     zIndex: -1,
   },
   mapPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#f0f8ff",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "absolute",
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
     top: 0,
     left: 0,
     zIndex: -1,
@@ -478,246 +566,287 @@ const styles = StyleSheet.create({
   mapPlaceholderText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#4682B4",
-    fontFamily: "Montserrat-Medium",
+    color: theme.colors.boltBlue,
+    fontFamily: theme.typography.medium,
   },
-  overlay: {
-    position: "absolute",
-    top: 0,
+  header: {
+    position: 'absolute',
+    top: 50,
     left: 0,
-    width: "100%",
-    height: "100%",
-    zIndex: 1,
-  },
-  menu: {
-    position: "absolute",
-    left: 15,
-    top: 15,
-    width: 24,
-    height: 24,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     zIndex: 10,
   },
-  menuLines: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "space-between",
+  backButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: theme.colors.white,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.small,
   },
-  menuLine: {
-    height: 2,
-    backgroundColor: "#333",
-    width: "100%",
+  menuButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: theme.colors.white,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.small,
   },
   tabs: {
-    position: "absolute",
-    left: 15,
-    top: 110,
-    flexDirection: "row",
+    position: 'absolute',
+    left: 20,
+    top: 100,
+    flexDirection: 'row',
     gap: 10,
     zIndex: 10,
   },
   tab: {
-    width: 120,
+    minWidth: 100,
     height: 35,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: "#4682B4",
+    borderColor: theme.colors.boltBlue,
   },
   activeTab: {
-    backgroundColor: "#4682B4",
+    backgroundColor: theme.colors.boltBlue,
   },
   inactiveTab: {
-    backgroundColor: "white",
+    backgroundColor: theme.colors.white,
   },
   tabText: {
     fontSize: 14,
-    fontWeight: "500",
-    fontFamily: "Montserrat-Medium",
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
   },
   progressContainer: {
-    position: "absolute",
-    left: 52.46,
-    top: 295,
-    width: 340,
-    height: 340,
-    transform: [{ rotate: "4deg" }],
+    position: 'absolute',
+    width: '80%',
+    aspectRatio: 1,
+    left: '10%',
+    top: '30%',
+    transform: [{ rotate: '4deg' }],
+    zIndex: 1,
   },
   progressRing: {
-    position: "absolute",
-    borderRadius: 170,
+    position: 'absolute',
+    borderRadius: 999,
   },
   progressRingOuter: {
-    width: 340,
-    height: 340,
-    backgroundColor: "rgba(70, 130, 180, 0.25)",
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 106, 255, 0.1)',
   },
   progressRingMiddle: {
-    width: 210,
-    height: 210,
-    left: 65,
-    top: 65,
-    backgroundColor: "rgba(70, 130, 180, 0.5)",
+    width: '60%',
+    height: '60%',
+    left: '20%',
+    top: '20%',
+    backgroundColor: 'rgba(0, 106, 255, 0.2)',
   },
   progressRingInner: {
-    width: 80,
-    height: 80,
-    left: 130,
-    top: 130,
-    backgroundColor: "rgba(70, 130, 180, 0.75)",
+    width: '30%',
+    height: '30%',
+    left: '35%',
+    top: '35%',
+    backgroundColor: 'rgba(0, 106, 255, 0.3)',
   },
-  truckIconContainer: {
-    position: "absolute",
-    left: 179.39,
-    top: 474.37,
-    transform: [{ rotate: "-47deg" }],
+  energyPercentage: {
+    position: 'absolute',
+    left: '50%',
+    top: '40%',
+    transform: [{ translateX: -25 }],
+    fontSize: 24,
+    fontWeight: '800',
+    color: theme.colors.boltBlue,
+    fontFamily: theme.typography.bold,
   },
   truckIcon: {
-    transform: [{ rotate: "-47deg" }],
+    position: 'absolute',
+    left: '50%',
+    top: '40%',
+    transform: [{ translateX: -15 }, { translateY: 20 }],
+    zIndex: 2,
   },
   totalEnergy: {
-    position: "absolute",
-    left: 45,
-    top: 444,
-    fontSize: 8,
-    fontWeight: "600",
-    color: "black",
-    fontFamily: "Montserrat-SemiBold",
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    transform: [{ translateX: -50 }],
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
   },
   divider: {
-    position: "absolute",
-    left: 170,
-    top: 532,
-    width: 60,
-    height: 5,
-    backgroundColor: "#D9D9D9",
+    position: 'absolute',
+    left: '50%',
+    top: '55%',
+    width: 100,
+    height: 3,
+    backgroundColor: theme.colors.border,
     borderRadius: 5,
+    transform: [{ translateX: -50 }],
   },
   bottomButton: {
-    position: "absolute",
-    left: 30,
-    top: 782,
-    width: 339,
-    height: 54,
-    backgroundColor: "#4682B4",
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 30,
+    height: 50,
+    backgroundColor: theme.colors.boltBlue,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 10,
+    ...theme.shadows.medium,
   },
   bottomButtonText: {
-    color: "white",
+    color: theme.colors.white,
     fontSize: 16,
-    fontWeight: "400",
-    fontFamily: "Montserrat-Regular",
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+    marginLeft: 8,
   },
   packageIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   sidebar: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
-    width: Math.min(280, Dimensions.get("window").width * 0.8),
-    height: "100%",
-    backgroundColor: "white",
-    zIndex: 20,
-    shadowColor: "#000",
+    right: 0,
+    width: '80%',
+    height: '100%',
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+    zIndex: 1000,
+    elevation: 10,
+    shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 15,
   },
   sidebarContent: {
     flex: 1,
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    padding: 20,
   },
-  sidebarProfile: {
-    alignItems: "center",
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+  sidebarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
+  sidebarTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+  },
+  sidebarClose: {
+    padding: 8,
+  },
+  sidebarProfile: {
+    alignItems: 'center',
+    marginBottom: 30,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
   sidebarProfileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#f0f8ff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 106, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
   },
   sidebarProfileName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
     marginBottom: 5,
-    fontFamily: "Montserrat-Bold",
+    fontFamily: theme.typography.semiBold,
   },
   sidebarProfileEmail: {
     fontSize: 14,
-    color: "#666",
-    fontFamily: "Montserrat-Regular",
+    color: theme.colors.textLight,
+    fontFamily: theme.typography.regular,
   },
   menuList: {
     flex: 1,
+    marginBottom: 20,
   },
   menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 15,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: theme.colors.border,
+  },
+  menuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
   },
   menuItemText: {
     fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
-    fontFamily: "Montserrat-Medium",
+    color: theme.colors.text,
+    fontFamily: theme.typography.medium,
   },
   sidebarBottom: {
-    paddingBottom: 30,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   switchButton: {
-    backgroundColor: "white",
+    backgroundColor: theme.colors.white,
     borderWidth: 1,
-    borderColor: "#2f75c2",
+    borderColor: theme.colors.boltBlue,
     borderRadius: 25,
     paddingVertical: 12,
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 10,
   },
   switchButtonText: {
-    color: "#2f75c2",
-    fontSize: 16,
-    fontWeight: "500",
-    fontFamily: "Montserrat-Medium",
+    color: theme.colors.boltBlue,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
   },
   signOutButton: {
-    backgroundColor: "white",
+    backgroundColor: theme.colors.white,
     borderWidth: 1,
-    borderColor: "#e74c3c",
+    borderColor: theme.colors.error,
     borderRadius: 25,
     paddingVertical: 12,
-    alignItems: "center",
+    alignItems: 'center',
   },
   signOutButtonText: {
-    color: "#e74c3c",
-    fontSize: 16,
-    fontWeight: "500",
-    fontFamily: "Montserrat-Medium",
+    color: theme.colors.error,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
   },
   menuOverlay: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    zIndex: 15,
+    backgroundColor: theme.colors.overlay,
+    zIndex: 999,
   },
 });
