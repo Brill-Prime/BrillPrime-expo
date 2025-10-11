@@ -1,17 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import { Ionicons } from '@expo/vector-icons';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Fix default marker icon issue in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
 
 interface MapProps {
   style?: ViewStyle;
@@ -47,24 +37,6 @@ interface MapProps {
   onLiveLocationUpdate?: (location: any) => void;
 }
 
-// Component to update map view when region changes
-const MapUpdater = ({ region }: { region: any }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (region) {
-      map.setView([region.latitude, region.longitude], getZoomLevel(region.latitudeDelta));
-    }
-  }, [region, map]);
-
-  return null;
-};
-
-// Convert latitudeDelta to zoom level
-const getZoomLevel = (latitudeDelta: number): number => {
-  return Math.round(Math.log(360 / latitudeDelta) / Math.LN2);
-};
-
 const MapWeb: React.FC<MapProps> = ({
   style,
   children,
@@ -85,6 +57,7 @@ const MapWeb: React.FC<MapProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [liveLocations, setLiveLocations] = useState<any[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
+  const [MapComponents, setMapComponents] = useState<any>(null);
   const mapRef = useRef<any>(null);
 
   const displayRegion = region || initialRegion || {
@@ -94,17 +67,53 @@ const MapWeb: React.FC<MapProps> = ({
     longitudeDelta: 0.0421,
   };
 
+  // Convert latitudeDelta to zoom level
+  const getZoomLevel = (latitudeDelta: number): number => {
+    return Math.round(Math.log(360 / latitudeDelta) / Math.LN2);
+  };
+
   const center: [number, number] = [displayRegion.latitude, displayRegion.longitude];
   const zoom = getZoomLevel(displayRegion.latitudeDelta);
 
   useEffect(() => {
-    // Map loaded
-    setIsLoading(false);
+    // Dynamically import Leaflet components only in browser environment
+    if (typeof window !== 'undefined') {
+      Promise.all([
+        import('react-leaflet'),
+        import('leaflet'),
+        import('leaflet/dist/leaflet.css')
+      ])
+        .then(([reactLeaflet, L]) => {
+          // Fix default marker icon issue in Leaflet
+          delete (L.default.Icon.Default.prototype as any)._getIconUrl;
+          L.default.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          });
+
+          setMapComponents({
+            MapContainer: reactLeaflet.MapContainer,
+            TileLayer: reactLeaflet.TileLayer,
+            Marker: reactLeaflet.Marker,
+            Popup: reactLeaflet.Popup,
+            useMap: reactLeaflet.useMap,
+            Circle: reactLeaflet.Circle,
+            L: L.default,
+          });
+          setIsLoading(false);
+        })
+        .catch((error) => {
+          console.error('Failed to load map components:', error);
+          setMapError(true);
+          setIsLoading(false);
+        });
+    }
   }, []);
 
   // Live tracking effect
   useEffect(() => {
-    if (enableLiveTracking && trackingUserId) {
+    if (enableLiveTracking && trackingUserId && !isLoading) {
       const interval = setInterval(async () => {
         try {
           const mockLocation = {
@@ -128,7 +137,7 @@ const MapWeb: React.FC<MapProps> = ({
 
       return () => clearInterval(interval);
     }
-  }, [enableLiveTracking, trackingUserId, displayRegion, onLiveLocationUpdate]);
+  }, [enableLiveTracking, trackingUserId, displayRegion, onLiveLocationUpdate, isLoading]);
 
   const handleMarkerPress = (item: any) => {
     setSelectedMarker(item);
@@ -154,7 +163,7 @@ const MapWeb: React.FC<MapProps> = ({
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !MapComponents) {
     return (
       <View style={[styles.container, style]}>
         <View style={styles.loadingContainer}>
@@ -178,6 +187,21 @@ const MapWeb: React.FC<MapProps> = ({
       </View>
     );
   }
+
+  const { MapContainer, TileLayer, Marker, Popup, Circle, L } = MapComponents;
+
+  // Component to update map view when region changes
+  const MapUpdater = ({ region }: { region: any }) => {
+    const map = MapComponents.useMap();
+
+    useEffect(() => {
+      if (region) {
+        map.setView([region.latitude, region.longitude], getZoomLevel(region.latitudeDelta));
+      }
+    }, [region, map]);
+
+    return null;
+  };
 
   return (
     <View style={[styles.container, style]}>
