@@ -69,13 +69,13 @@ class ErrorService {
           message = data?.message || 'Bad request';
           break;
         case 401:
-          message = 'Authentication failed';
+          message = data?.message || 'Authentication failed. Please login again.';
           break;
         case 403:
           message = 'Access denied';
           break;
         case 404:
-          message = 'Resource not found';
+          message = data?.message || 'Resource not found';
           break;
         case 429:
           message = 'Too many requests. Please try again later.';
@@ -86,13 +86,13 @@ class ErrorService {
         default:
           message = data?.message || `HTTP ${status} error`;
       }
-    } else if (error?.code === 'NETWORK_ERROR') {
+    } else if (error?.code === 'NETWORK_ERROR' || error?.request) {
       message = 'Network connection failed. Please check your internet.';
     } else if (error?.message) {
       message = error.message;
     }
 
-    this.logError(error, context);
+    this.logError(error, `${context} - Status: ${error?.response?.status || 'N/A'}`);
     return message;
   }
 }

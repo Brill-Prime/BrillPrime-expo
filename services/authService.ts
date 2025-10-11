@@ -597,18 +597,18 @@ class AuthService {
     try {
       // Use Firebase's built-in password reset
       await sendPasswordResetEmail(auth as Auth, data.email);
-      
+
       return {
         success: true,
         data: { message: 'Password reset email sent successfully. Please check your inbox.' },
       };
     } catch (error: any) {
       console.error('Password reset error:', error);
-      
+
       if (error.code === 'auth/user-not-found') {
         return { success: false, error: 'No account found with this email address.' };
       }
-      
+
       return {
         success: false,
         error: error.message || 'Failed to send password reset email',

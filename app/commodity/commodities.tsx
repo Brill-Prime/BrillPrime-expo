@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,11 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Import merchantService
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { merchantService } = require('../../services/merchantService');
+
 
 interface Category {
   id: number;
@@ -83,41 +88,40 @@ export default function CommoditiesScreen() {
   // Real products state
   const [products, setProducts] = useState<Product[]>([]);
 
-  // Import merchantService
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { merchantService } = require('../../services/merchantService');
-  useEffect(() => {
-  // Fetch products from API when a category is selected
-  useEffect(() => {
+  const fetchCommodities = useCallback(async () => {
     if (viewMode === 'products' && selectedCategory) {
       setLoading(true);
-      merchantService.getCommodities({ category: categories.find(c => c.id === selectedCategory)?.name })
-        .then((response: any) => {
-          if (response.success && Array.isArray(response.data)) {
-            // Map API data to Product[] if needed
-            setProducts(response.data.map((item: any) => ({
-              id: item.id,
-              name: item.name,
-              description: item.description,
-              price: item.price?.toString() || '0',
-              unit: item.unit || '',
-              inStock: item.availability === 'In Stock',
-              rating: item.rating || 0,
-              reviewCount: item.reviewCount || 0,
-              minimumOrder: item.minimumOrder || 1,
-              categoryId: selectedCategory,
-              merchantId: item.merchantId || '',
-              merchantName: item.merchantName || '',
-              merchantLocation: item.merchantLocation || '',
-            })));
-          } else {
-            setProducts([]);
-          }
-        })
-        .catch(() => setProducts([]))
-        .finally(() => setLoading(false));
+      try {
+        const response = await merchantService.getCommodities({ category: categories.find(c => c.id === selectedCategory)?.name });
+        if (response.success && Array.isArray(response.data)) {
+          setProducts(response.data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price?.toString() || '0',
+            unit: item.unit || '',
+            inStock: item.availability === 'In Stock',
+            rating: item.rating || 0,
+            reviewCount: item.reviewCount || 0,
+            minimumOrder: item.minimumOrder || 1,
+            categoryId: selectedCategory,
+            merchantId: item.merchantId || '',
+            merchantName: item.merchantName || '',
+            merchantLocation: item.merchantLocation || '',
+          })));
+        } else {
+          setProducts([]);
+        }
+      } catch (error) {
+        console.error('Error fetching commodities:', error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [viewMode, selectedCategory]);
+  }, [viewMode, selectedCategory, categories]);
+
+  useEffect(() => {
     loadCartItems();
     loadFavorites();
 
@@ -127,6 +131,10 @@ export default function CommoditiesScreen() {
 
     return () => subscription?.remove();
   }, []);
+
+  useEffect(() => {
+    fetchCommodities();
+  }, [fetchCommodities]);
 
   const loadCartItems = async () => {
     try {
