@@ -14,7 +14,7 @@ run = ["npx", "serve", "dist", "-s", "-l", "5000"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Start App"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -42,13 +42,13 @@ args = "npx expo start --web --port 5000 --host 0.0.0.0"
 name = "Frontend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run web"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "expo start --port 5000 --host lan"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Mobile Dev"
@@ -88,10 +88,6 @@ args = "npx expo start --web --port 8081 --host 0.0.0.0"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 5001
-externalPort = 3003
 
 [[ports]]
 localPort = 5002
