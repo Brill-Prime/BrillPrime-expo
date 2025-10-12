@@ -324,6 +324,16 @@ export default function OrderManagement() {
           >
             <Text style={styles.actionButtonText}>Update Status</Text>
           </TouchableOpacity>
+          
+          {!order.assignedDriver && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.assignDriverButton]}
+              onPress={() => router.push(`/merchant/driver-assignment?orderId=${order.id}`)}
+            >
+              <Ionicons name="car" size={16} color="white" />
+              <Text style={styles.actionButtonText}>Assign Driver</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </TouchableOpacity>
@@ -762,6 +772,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     backgroundColor: '#4682B4',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  assignDriverButton: {
+    marginTop: 8,
+    backgroundColor: '#28a745',
   },
   actionButtonText: {
     fontSize: 14,
