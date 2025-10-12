@@ -6,17 +6,26 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
 import { merchantService } from '../../services/merchantService';
+import { useMerchant } from '../../contexts/MerchantContext';
 
 export default function MerchantAnalytics() {
   const router = useRouter();
+  const { merchantId, loadMerchantId } = useMerchant();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  // TODO: Replace with actual merchantId from auth/user context or navigation params
-  const merchantId = 'merchant1';
+
+  useEffect(() => {
+    loadMerchantId();
+  }, [loadMerchantId]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
+      if (!merchantId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const response = await merchantService.getAnalytics
@@ -38,7 +47,7 @@ export default function MerchantAnalytics() {
       setScreenData(window);
     });
     return () => subscription?.remove();
-  }, []);
+  }, [merchantId]);
 
   const styles = getResponsiveStyles(screenData);
 

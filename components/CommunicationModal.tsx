@@ -84,9 +84,17 @@ export default function CommunicationModal({
     }
   };
 
-  const handleChat = () => {
-    onChatPress();
+  const handleChatPress = () => {
     onClose();
+    if (onChatPress) {
+      onChatPress();
+    } else {
+      Alert.alert(
+        "Start Chat",
+        "Opening chat with " + contactName,
+        [{ text: "OK" }]
+      );
+    }
   };
 
   const styles = getResponsiveStyles(screenData);
@@ -128,7 +136,7 @@ export default function CommunicationModal({
             <Text style={styles.optionsTitle}>Choose Communication Method</Text>
 
             {/* In-App Chat */}
-            <TouchableOpacity style={styles.optionButton} onPress={handleChat}>
+            <TouchableOpacity style={styles.optionButton} onPress={handleChatPress}>
               <View style={[styles.optionIcon, { backgroundColor: '#667eea' }]}>
                 <Ionicons name="chatbubble" size={24} color="#fff" />
               </View>

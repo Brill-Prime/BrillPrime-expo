@@ -8,6 +8,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from '../contexts/AppContext';
+import { MerchantProvider } from '../contexts/MerchantContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
 
@@ -89,20 +90,22 @@ export default function RootLayout() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <AppProvider>
-        <AlertProvider>
-          <View style={styles.container}>
-            <OfflineBanner />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: '#fff' },
-                animation: 'fade',
-              }}
-            >
-              <Stack.Screen name="index" />
-            </Stack>
-          </View>
-        </AlertProvider>
+        <MerchantProvider>
+          <AlertProvider>
+            <View style={styles.container}>
+              <OfflineBanner />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: '#fff' },
+                  animation: 'fade',
+                }}
+              >
+                <Stack.Screen name="index" />
+              </Stack>
+            </View>
+          </AlertProvider>
+        </MerchantProvider>
       </AppProvider>
     </ErrorBoundary>
   );

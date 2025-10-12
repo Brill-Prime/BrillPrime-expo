@@ -30,6 +30,7 @@ interface Commodity {
 
 // Import merchantService at the top
 import { merchantService } from '../../services/merchantService';
+import { useMerchant } from '../../contexts/MerchantContext';
 
 const CATEGORIES = [
   { id: 'all', name: 'All', color: '#4682B4' },
@@ -52,17 +53,24 @@ const UNITS = [
 export default function MerchantCommoditiesScreen() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess } = useAlert();
+  const { merchantId, loadMerchantId } = useMerchant();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
-  // Get merchantId from navigation params or context (update as needed)
-  // TODO: Replace with actual merchantId from auth/user context or navigation params
-  const merchantId = 'merchant1'; // fallback for demo
 
 
   useEffect(() => {
+    loadMerchantId();
+  }, [loadMerchantId]);
+
+  useEffect(() => {
     const fetchCommodities = async () => {
+      if (!merchantId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const response = await merchantService.getMerchantCommodities(merchantId);
@@ -89,7 +97,7 @@ export default function MerchantCommoditiesScreen() {
     return () => {
       subscription?.remove();
     };
-  }, []);
+  }, [merchantId]);
 
   // Remove saveCommodities and AsyncStorage usage for real API
 

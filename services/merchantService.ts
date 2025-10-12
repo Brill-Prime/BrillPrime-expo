@@ -257,6 +257,30 @@ const calculateAverageRating = (ratings: any[]): number => {
         return Math.round((sum / ratings.length) * 10) / 10;
 };
 
+// Submit merchant review
+export const submitMerchantReview = async (merchantId: string, review: { rating: number; comment: string }): Promise<{ success: boolean; error?: string; data?: any }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false, error: 'Authentication required' };
+
+                const response = await apiClient.post<any>('/api/ratings', {
+                        merchantId,
+                        rating: review.rating,
+                        comment: review.comment
+                }, {
+                        Authorization: `Bearer ${token}`
+                });
+
+                if (response.success && response.data) {
+                        return { success: true, data: response.data };
+                }
+                return { success: false, error: 'Failed to submit review' };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: 'Failed to submit review' };
+        }
+};
+
 export const merchantService = {
         getMerchants,
         getMerchantById,
@@ -269,5 +293,6 @@ export const merchantService = {
         updateCommodity,
         deleteCommodity,
         getAnalytics,
-        getMerchantReviews
+        getMerchantReviews,
+        submitMerchantReview
 };
