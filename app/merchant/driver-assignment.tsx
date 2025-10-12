@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -32,6 +31,10 @@ interface Driver {
   eta: string;
   status: 'available' | 'busy' | 'offline';
   earnings: number;
+  completionRate?: number; // Added for performance metrics
+  avgDeliveryTime?: number; // Added for performance metrics
+  totalDeliveries?: number; // Added for performance metrics
+  available?: boolean; // Assuming 'available' status can be represented by this boolean for simplicity in the change snippet
 }
 
 interface Order {
@@ -92,6 +95,10 @@ export default function DriverAssignment() {
           eta: '5 mins',
           status: 'available',
           earnings: 125000,
+          completionRate: 95, // Added performance metrics
+          avgDeliveryTime: 15, // Added performance metrics
+          totalDeliveries: 245, // Added performance metrics
+          available: true, // Added for change snippet compatibility
         },
         {
           id: 'DRV002',
@@ -105,6 +112,10 @@ export default function DriverAssignment() {
           eta: '8 mins',
           status: 'available',
           earnings: 185000,
+          completionRate: 98, // Added performance metrics
+          avgDeliveryTime: 18, // Added performance metrics
+          totalDeliveries: 312, // Added performance metrics
+          available: true, // Added for change snippet compatibility
         },
         {
           id: 'DRV003',
@@ -118,6 +129,10 @@ export default function DriverAssignment() {
           eta: '12 mins',
           status: 'available',
           earnings: 98000,
+          completionRate: 92, // Added performance metrics
+          avgDeliveryTime: 20, // Added performance metrics
+          totalDeliveries: 189, // Added performance metrics
+          available: true, // Added for change snippet compatibility
         },
       ];
 
@@ -135,7 +150,7 @@ export default function DriverAssignment() {
     try {
       // Simulate auto-assignment logic - finds best driver based on distance, rating, and availability
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       const availableDrivers = drivers.filter(d => d.status === 'available');
       if (availableDrivers.length === 0) {
         showError('No Drivers Available', 'There are no available drivers at the moment');
@@ -155,10 +170,10 @@ export default function DriverAssignment() {
 
       setSelectedDriver(bestDriver);
       showSuccess('Driver Found', `${bestDriver.name} has been automatically assigned to this order`);
-      
+
       // Save assignment
       await AsyncStorage.setItem(`order_${orderId}_driver`, JSON.stringify(bestDriver));
-      
+
       setTimeout(() => {
         router.back();
       }, 1500);
@@ -257,7 +272,7 @@ export default function DriverAssignment() {
 
         {/* Available Drivers List */}
         <Text style={styles.sectionTitle}>Available Drivers ({drivers.filter(d => d.status === 'available').length})</Text>
-        
+
         <ScrollView style={styles.driversList} showsVerticalScrollIndicator={false}>
           {drivers.map((driver) => (
             <TouchableOpacity
@@ -280,7 +295,17 @@ export default function DriverAssignment() {
                   <View style={styles.driverMeta}>
                     <Ionicons name="star" size={14} color="#ffc107" />
                     <Text style={styles.driverRating}>{driver.rating}</Text>
-                    <Text style={styles.driverDeliveries}>• {driver.completedDeliveries} deliveries</Text>
+                    {driver.completionRate !== undefined && ( // Conditional rendering for completionRate
+                      <Text style={styles.completionRate}>• {driver.completionRate}% completed</Text>
+                    )}
+                  </View>
+                  <View style={styles.metricsRow}>
+                    {driver.avgDeliveryTime !== undefined && ( // Conditional rendering for avgDeliveryTime
+                      <Text style={styles.metricText}>⚡ Avg: {driver.avgDeliveryTime} min</Text>
+                    )}
+                    {driver.totalDeliveries !== undefined && ( // Conditional rendering for totalDeliveries
+                      <Text style={styles.metricText}>📦 {driver.totalDeliveries} deliveries</Text>
+                    )}
                   </View>
                   <Text style={styles.driverVehicle}>🏍️ {driver.vehicleType}</Text>
                 </View>
@@ -328,9 +353,9 @@ export default function DriverAssignment() {
                   <View style={styles.driverAvatarLarge}>
                     <Ionicons name="person" size={48} color="#4682B4" />
                   </View>
-                  
+
                   <Text style={styles.modalDriverName}>{selectedDriver.name}</Text>
-                  
+
                   <View style={styles.modalStats}>
                     <View style={styles.modalStatItem}>
                       <Text style={styles.modalStatValue}>{selectedDriver.rating}</Text>
@@ -686,5 +711,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // Styles added for performance metrics
+  completionRate: {
+    fontSize: 11,
+    color: '#999',
+    marginLeft: 8,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  metricText: {
+    fontSize: 11,
+    color: '#666',
   },
 });

@@ -58,6 +58,23 @@ export default function OrderManagement() {
   const [orderNotes, setOrderNotes] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const previousOrderCount = useRef(0);
+
+  // Check for new orders
+  useEffect(() => {
+    if (orders.length > previousOrderCount.current && previousOrderCount.current > 0) {
+      setNewOrderAlert(true);
+      // Play notification sound (would need Audio API)
+      Alert.alert(
+        '🔔 New Order!',
+        'You have received a new order.',
+        [{ text: 'View', onPress: () => setSelectedTab('pending') }]
+      );
+      setTimeout(() => setNewOrderAlert(false), 3000);
+    }
+    previousOrderCount.current = orders.length;
+  }, [orders]);
 
   useEffect(() => {
     loadOrders();
