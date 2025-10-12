@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  Animated, // Import Animated
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,8 @@ export default function ConfirmationScreen() {
   const [loading, setLoading] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [orderStatus, setOrderStatus] = useState<'idle' | 'success' | 'failed'>('idle'); // Added to track order status
+  const [scaleAnim] = useState(new Animated.Value(0)); // Animation for scale
+  const [fadeAnim] = useState(new Animated.Value(0)); // Animation for opacity
 
   const deliveryFee = 500;
   const serviceFee = 200;
@@ -60,6 +63,31 @@ export default function ConfirmationScreen() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
+
+    // Animate success icon when the component mounts
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Clear cart after successful order
+    const clearCart = async () => {
+      try {
+        await AsyncStorage.removeItem('pendingOrder'); // Changed from 'cartItems' to 'pendingOrder' as per original code logic
+      } catch (error) {
+        console.error('Error clearing pending order:', error);
+      }
+    };
+    clearCart();
 
     return () => subscription?.remove();
   }, []);
@@ -398,6 +426,11 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 20,
+  },
+  successIcon: {
+    alignSelf: 'center',
+    marginBottom: 20,
+    // Styles for animation will be applied dynamically
   },
   summaryCard: {
     backgroundColor: '#fff',

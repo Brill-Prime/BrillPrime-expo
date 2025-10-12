@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   View,
@@ -8,9 +7,24 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Alert, // Import Alert for showing alerts
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+
+// Assuming responsiveFontSize and responsivePadding are defined elsewhere or you'll define them
+// For now, let's use arbitrary values or mock them if not provided.
+// const responsiveFontSize = { small: 12, medium: 16, large: 20 };
+// const responsivePadding = 15;
+
+// Mocking responsiveFontSize and responsivePadding for demonstration
+const responsiveFontSize = {
+  small: 12,
+  medium: 16,
+  large: 20,
+};
+const responsivePadding = 15;
+
 
 interface DriverOrderPreviewProps {
   visible: boolean;
@@ -122,6 +136,28 @@ export default function DriverOrderPreview({
                 <Text style={styles.infoText}>{order?.customerPhone}</Text>
               </View>
             </View>
+
+            {/* Contact Section */}
+            <View style={[styles.contactSection, { marginHorizontal: responsivePadding }]}>
+              <Text style={[styles.sectionTitle, { fontSize: responsiveFontSize.medium }]}>Quick Contact</Text>
+              <View style={styles.contactButtons}>
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  onPress={() => Alert.alert('Call Merchant', 'Calling merchant...')}
+                >
+                  <Ionicons name="call" size={20} color="#fff" />
+                  <Text style={styles.contactButtonText}>Call Merchant</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  onPress={() => Alert.alert('Call Customer', 'Calling customer...')}
+                >
+                  <Ionicons name="call" size={20} color="#fff" />
+                  <Text style={styles.contactButtonText}>Call Customer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
           </ScrollView>
 
           {/* Actions */}
@@ -315,5 +351,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Styles for contact section
+  contactSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  contactButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  contactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4682B4',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  contactButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

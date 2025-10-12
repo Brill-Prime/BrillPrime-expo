@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -326,6 +324,7 @@ const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
   const isTablet = width >= 768;
   const isSmallScreen = width < 350;
+  const responsivePadding = Math.max(16, width * 0.05);
 
   return StyleSheet.create({
     container: {
@@ -335,7 +334,7 @@ const getResponsiveStyles = (screenData: any) => {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: Math.max(16, width * 0.05),
+      padding: responsivePadding,
       paddingTop: Math.max(50, height * 0.07),
     },
     backButton: {
@@ -354,7 +353,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: "white",
       borderTopLeftRadius: 35,
       borderTopRightRadius: 35,
-      paddingHorizontal: Math.max(16, width * 0.05),
+      paddingHorizontal: responsivePadding,
       paddingTop: Math.max(24, height * 0.03),
     },
     sectionTitle: {
@@ -498,7 +497,7 @@ const getResponsiveStyles = (screenData: any) => {
     },
     chart: {
       flexDirection: "row",
-  alignItems: "flex-end",
+      alignItems: "flex-end",
       height: 120,
       justifyContent: "space-around",
     },
@@ -651,6 +650,34 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 12 : 10,
       color: "#666",
       textAlign: "right",
+    },
+    // Chart placeholder styles
+    chartPlaceholder: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 150, // Increased height for better visibility
+      backgroundColor: '#f8f9fa', // Light background for placeholder
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      marginVertical: 10,
+    },
+    placeholderText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+      color: '#999',
+      marginTop: 10,
+    },
+    mockChart: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-around',
+      width: '100%',
+      height: 120,
+      paddingHorizontal: 10,
+    },
+    bar: {
+      width: 30,
+      borderRadius: 4,
     },
   });
 };

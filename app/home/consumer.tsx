@@ -580,7 +580,7 @@ export default function ConsumerHome() {
         setIsLoadingLocation(false);
         setUserAddress("Nigeria");
         setIsLocationSet(true);
-        
+
         // Load all merchants without location filtering
         await loadAllMerchants();
         showInfo("Location Access", "Showing all available merchants. Grant location permission to see nearby merchants.");
@@ -715,7 +715,7 @@ export default function ConsumerHome() {
         />
 
         {nearbyDrivers.map((driver) => (
-          // @ts-expect-error - Marker component accepts these props but types are not properly defined
+          // @ts-expect-error - Marker component accepts these props but types are not properly defined */}
           <MemoizedMarker
             key={driver.id}
             coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
@@ -729,7 +729,7 @@ export default function ConsumerHome() {
         ))}
 
         {memoizedStoreLocations.map((store) => (
-          // @ts-expect-error - Marker component accepts these props but types are not properly defined
+          // @ts-expect-error - Marker component accepts these props but types are not properly defined */}
           <MemoizedMarker
             key={store.title}
             coordinate={{ latitude: store.coords.lat, longitude: store.coords.lng }}
@@ -786,6 +786,25 @@ export default function ConsumerHome() {
           <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
+
+      {/* Active Order Status */}
+        {activeDelivery && (
+          <View style={styles.activeOrderWidget}>
+            <View style={styles.activeOrderHeader}>
+              <Ionicons name="cube" size={24} color="#4682B4" />
+              <Text style={styles.activeOrderTitle}>Active Order</Text>
+            </View>
+            <Text style={styles.activeOrderStatus}>
+              {activeDelivery.status === 'picking_up' ? '📍 Driver heading to merchant' : '🚗 On the way to you'}
+            </Text>
+            <TouchableOpacity 
+              style={styles.trackButton}
+              onPress={() => setShowDriverCard(true)}
+            >
+              <Text style={styles.trackButtonText}>Track Order</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
       {/* Location Setup Modal - Only show if location not set */}
       {!isLocationSet && (
@@ -1602,4 +1621,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: theme.typography.semiBold,
   },
+  activeOrderWidget: {
+      backgroundColor: '#e3f2fd',
+      borderRadius: 15,
+      padding: 15,
+      marginBottom: 20,
+      borderLeftWidth: 4,
+      borderLeftColor: '#4682B4',
+    },
+    activeOrderHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+      gap: 8,
+    },
+    activeOrderTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: '#0c1a2a',
+    },
+    activeOrderStatus: {
+      fontSize: 14,
+      color: '#555',
+      marginBottom: 10,
+    },
+    trackButton: {
+      backgroundColor: '#4682B4',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      alignSelf: 'flex-start',
+    },
+    trackButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    quickActions: {
+      marginBottom: 20,
+    },
 });
