@@ -6,19 +6,23 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
+  Image,
   Dimensions,
+  Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { merchantService } from '../../services/merchantService';
+import { cartService } from '../../services/cartService';
+import { useAppContext } from '../../contexts/AppContext';
+import { FormErrorBoundary } from '../../components/FormErrorBoundary';
 
-// Import merchantService
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { merchantService } = require('../../services/merchantService');
+const { width } = Dimensions.get('window');
 
-
+// Interface definitions from the original code
 interface Category {
   id: number;
   name: string;
@@ -54,13 +58,20 @@ interface CartItem {
 
 export default function CommoditiesScreen() {
   const router = useRouter();
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const { updateCartCount } = useAppContext();
+  const [commodities, setCommodities] = useState<any[]>([]);
+  const [filteredCommodities, setFilteredCommodities] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [viewMode, setViewMode] = useState<'categories' | 'products'>('categories');
-  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+
 
   // Static categories (can be fetched from API if available)
   const categories: Category[] = [
@@ -85,56 +96,101 @@ export default function CommoditiesScreen() {
     { id: 19, name: 'Vehicle Service', icon: 'build-outline', description: 'Auto repair & maintenance' },
   ];
 
-  // Real products state
-  const [products, setProducts] = useState<Product[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCommodities();
+      loadCartCount();
+      loadCartItems();
+      loadFavorites();
+    }, [])
+  );
 
-  const fetchCommodities = useCallback(async () => {
-    if (viewMode === 'products' && selectedCategory) {
-      setLoading(true);
-      try {
-        const response = await merchantService.getCommodities({ category: categories.find(c => c.id === selectedCategory)?.name });
-        if (response.success && Array.isArray(response.data)) {
-          setProducts(response.data.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price?.toString() || '0',
-            unit: item.unit || '',
-            inStock: item.availability === 'In Stock',
-            rating: item.rating || 0,
-            reviewCount: item.reviewCount || 0,
-            minimumOrder: item.minimumOrder || 1,
-            categoryId: selectedCategory,
-            merchantId: item.merchantId || '',
-            merchantName: item.merchantName || '',
-            merchantLocation: item.merchantLocation || '',
-          })));
-        } else {
-          setProducts([]);
-        }
-      } catch (error) {
-        console.error('Error fetching commodities:', error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-  }, [viewMode, selectedCategory, categories]);
-
-  useEffect(() => {
-    loadCartItems();
-    loadFavorites();
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-    });
-
-    return () => subscription?.remove();
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCommodities();
+    await loadCartCount();
+    await loadCartItems();
+    await loadFavorites();
+    setRefreshing(false);
   }, []);
 
-  useEffect(() => {
-    fetchCommodities();
-  }, [fetchCommodities]);
+  const loadCommodities = async () => {
+    try {
+      setLoading(true);
+      const response = await merchantService.getCommodities();
+      if (response.success && response.data && Array.isArray(response.data)) {
+        const processedData = response.data.map((item: any) => ({
+          ...item,
+          id: item.id || item._id || `commodity_${Date.now()}_${Math.random()}`,
+          image: item.image || require('../../assets/images/generated-icon.png'),
+          price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+          merchantId: item.merchantId || item.merchant?.id || '',
+          merchantName: item.merchantName || item.merchant?.name || 'Unknown Merchant',
+        }));
+        setCommodities(processedData);
+        setFilteredCommodities(processedData);
+      } else {
+        // Load mock data if API fails
+        const mockCommodities = [
+          {
+            id: '1',
+            name: 'Premium Petrol',
+            price: 800,
+            unit: 'liter',
+            category: 'fuel',
+            merchantId: 'merchant_1',
+            merchantName: 'Shell Station',
+            image: require('../../assets/images/generated-icon.png'),
+            description: 'High quality premium petrol',
+          },
+          {
+            id: '2',
+            name: 'Diesel',
+            price: 750,
+            unit: 'liter',
+            category: 'fuel',
+            merchantId: 'merchant_1',
+            merchantName: 'Shell Station',
+            image: require('../../assets/images/generated-icon.png'),
+            description: 'Standard diesel fuel',
+          },
+        ];
+        setCommodities(mockCommodities);
+        setFilteredCommodities(mockCommodities);
+      }
+    } catch (error) {
+      console.error('Error loading commodities:', error);
+      Alert.alert('Error', 'Failed to load commodities. Showing sample data.');
+      // Show sample data on error
+      const sampleData = [
+        {
+          id: 'sample_1',
+          name: 'Sample Product',
+          price: 1000,
+          unit: 'piece',
+          category: 'groceries',
+          merchantId: 'sample_merchant',
+          merchantName: 'Sample Store',
+          image: require('../../assets/images/generated-icon.png'),
+          description: 'Sample product',
+        },
+      ];
+      setCommodities(sampleData);
+      setFilteredCommodities(sampleData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCartCount = async () => {
+    try {
+      const savedCart = await AsyncStorage.getItem('cartItems');
+      const cart = savedCart ? JSON.parse(savedCart) : [];
+      setCartCount(cart.reduce((total: number, item: any) => total + item.quantity, 0));
+    } catch (error) {
+      console.error('Error loading cart count:', error);
+    }
+  };
 
   const loadCartItems = async () => {
     try {
@@ -208,7 +264,7 @@ export default function CommoditiesScreen() {
 
       Alert.alert(
         isFavorite ? 'Removed from Favorites' : 'Added to Favorites',
-        isFavorite 
+        isFavorite
           ? `${product.name} has been removed from your favorites`
           : `${product.name} has been added to your favorites`,
         [
@@ -226,37 +282,69 @@ export default function CommoditiesScreen() {
     setViewMode('products');
   };
 
-  const handleAddToCart = (product: Product) => {
-    const existingItem = cartItems.find(item => item.productId === product.id);
 
-    if (existingItem) {
-      const updatedCart = cartItems.map(item =>
-        item.productId === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      );
-      saveCartItems(updatedCart);
-    } else {
-      const newItem: CartItem = {
-        productId: product.id,
+  const addToCart = async (commodity: any) => {
+    try {
+      const cartItem = {
+        id: `cart_${commodity.id}_${Date.now()}`,
+        commodityId: commodity.id,
+        commodityName: commodity.name,
+        merchantId: commodity.merchantId || 'unknown',
+        merchantName: commodity.merchantName || 'Unknown Merchant',
+        price: commodity.price,
         quantity: 1,
-        price: parseFloat(product.price),
-        productName: product.name,
-        productUnit: product.unit,
-        merchantId: product.merchantId,
-        merchantName: product.merchantName,
+        unit: commodity.unit,
+        category: commodity.category || 'product',
+        image: commodity.image,
       };
-      saveCartItems([...cartItems, newItem]);
-    }
 
-    Alert.alert(
-      'Added to Cart',
-      `${product.name} has been added to your cart`,
-      [
-        { text: 'Continue Shopping', style: 'cancel' },
-        { text: 'View Cart', onPress: () => router.push('/cart') }
-      ]
-    );
+      // Get existing cart
+      const existingCartData = await AsyncStorage.getItem('cartItems');
+      const existingCart = existingCartData ? JSON.parse(existingCartData) : [];
+
+      // Check if item already exists
+      const existingItemIndex = existingCart.findIndex(
+        (item: any) => item.commodityId === commodity.id
+      );
+
+      if (existingItemIndex >= 0) {
+        // Update quantity
+        existingCart[existingItemIndex].quantity += 1;
+      } else {
+        // Add new item
+        existingCart.push(cartItem);
+      }
+
+      await AsyncStorage.setItem('cartItems', JSON.stringify(existingCart));
+
+      // Update commodities cart for consistency
+      const commoditiesCartItems = existingCart.map((item: any) => ({
+        productId: item.commodityId,
+        quantity: item.quantity,
+        price: item.price,
+        productName: item.commodityName,
+        productUnit: item.unit,
+        merchantId: item.merchantId,
+        merchantName: item.merchantName,
+      }));
+      await AsyncStorage.setItem('commoditiesCart', JSON.stringify(commoditiesCartItems));
+
+      // Update cart count in context
+      await updateCartCount();
+      await loadCartCount();
+
+      Alert.alert(
+        'Added to Cart',
+        `${commodity.name} has been added to your cart`,
+        [
+          { text: 'Continue Shopping', style: 'cancel' },
+          { text: 'View Cart', onPress: () => router.push('/cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      Alert.alert('Error', 'Failed to add item to cart. Please try again.');
+    }
   };
 
   const handleRemoveFromCart = (productId: string) => {
@@ -284,28 +372,16 @@ export default function CommoditiesScreen() {
     return cartItems.reduce((total, item) => total + item.quantity, 0);
   };
 
-  const handleProductPress = (product: Product) => {
-    // Navigate to commodity details screen
-    router.push({
-      pathname: `/commodity/${product.id}`,
-      params: {
-        commodityId: product.id,
-        commodityName: product.name,
-        commodityType: categories.find(c => c.id === product.categoryId)?.name || 'Product',
-        merchantId: product.merchantId,
-        merchantName: product.merchantName,
-        unitPrice: product.price,
-        unit: product.unit,
-      }
-    });
+  const viewCommodityDetails = (commodity: any) => {
+    router.push(`/commodity/${commodity.id}`);
   };
 
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory ? product.categoryId === selectedCategory : true;
+  const filteredProducts = commodities.filter(product => {
+    const matchesCategory = selectedCategory === 'all' ? true : product.category === selectedCategory;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -314,230 +390,149 @@ export default function CommoditiesScreen() {
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#0c1a2a" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {viewMode === 'categories' ? 'Marketplace' : 'Products'}
-        </Text>
-        <TouchableOpacity 
-          onPress={() => router.push('/cart')} 
-          style={styles.cartButton}
-        >
-          <Ionicons name="cart-outline" size={24} color="#0c1a2a" />
-          {getTotalCartItems() > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{getTotalCartItems()}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, { paddingHorizontal: responsivePadding }]}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search-outline" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={viewMode === 'categories' ? 'Search categories...' : 'Search products...'}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
-          />
+    <FormErrorBoundary fallbackMessage="Failed to load products. Please try again.">
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Browse Products</Text>
+          <TouchableOpacity onPress={() => router.push('/cart')} style={styles.cartButton}>
+            <Ionicons name="cart-outline" size={24} color="#1b1b1b" />
+            {cartCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
-      </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingHorizontal: responsivePadding }}>
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { paddingHorizontal: responsivePadding }]}>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search-outline" size={20} color="#666" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={viewMode === 'categories' ? 'Search categories...' : 'Search products...'}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
 
-          {/* Categories View */}
-          {viewMode === 'categories' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Browse Categories</Text>
-              <View style={styles.categoriesGrid}>
-                {filteredCategories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    style={styles.categoryCard}
-                    onPress={() => handleCategorySelect(category.id)}
-                    onPressIn={() => {}} // Placeholder for potential hover effects if needed later
-                    onPressOut={() => {}} // Placeholder for potential hover effects if needed later
-                  >
-                    <View style={styles.categoryIcon}>
-                      <Ionicons name={category.icon as any} size={32} color="#4682B4" />
-                    </View>
-                    <Text style={styles.categoryName}>{category.name}</Text>
-                    <Text style={styles.categoryDescription}>{category.description}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#4682B4']}
+              tintColor="#4682B4"
+            />
+          }
+        >
+          <View style={{ paddingHorizontal: responsivePadding }}>
 
-          {/* Products View */}
-          {viewMode === 'products' && (
-            <View style={styles.section}>
-              <View style={styles.productsHeader}>
-                <TouchableOpacity
-                  style={styles.backToCategoriesButton}
-                  onPress={() => {
-                    setViewMode('categories');
-                    setSelectedCategory(null);
-                  }}
-                >
-                  <Ionicons name="chevron-back" size={20} color="#4682B4" />
-                  <Text style={styles.backToCategoriesText}>Back to Categories</Text>
-                </TouchableOpacity>
-                <Text style={styles.productsCount}>
-                  {filteredProducts.length} products found
-                </Text>
-              </View>
-
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#4682B4" />
-                  <Text style={styles.loadingText}>Loading products...</Text>
-                </View>
-              ) : (
-                <View style={styles.productsGrid}>
-                  {filteredProducts.map((product) => (
+            {/* Categories View */}
+            {viewMode === 'categories' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Browse Categories</Text>
+                <View style={styles.categoriesGrid}>
+                  {filteredCategories.map((category) => (
                     <TouchableOpacity
-                      key={product.id}
-                      style={styles.productCard}
-                      onPress={() => handleProductPress(product)}
-                      onPressIn={() => {
-                        // Note: setNativeProps not available in web, handled by pressable state
-                      }}
-                      onPressOut={() => {
-                        // Note: setNativeProps not available in web, handled by pressable state
-                      }}
+                      key={category.id}
+                      style={styles.categoryCard}
+                      onPress={() => handleCategorySelect(category.id)}
                     >
-                      <View style={styles.productHeader}>
-                        <Text style={styles.productName}>{product.name}</Text>
-                        <View style={[
-                          styles.stockBadge, 
-                          { backgroundColor: product.inStock ? '#e8f5e8' : '#f5e8e8' }
-                        ]}>
-                          <Text style={[
-                            styles.stockText, 
-                            { color: product.inStock ? '#2d5a2d' : '#8b0000' }
-                          ]}>
-                            {product.inStock ? 'In Stock' : 'Out of Stock'}
-                          </Text>
-                        </View>
+                      <View style={styles.categoryIcon}>
+                        <Ionicons name={category.icon as any} size={32} color="#4682B4" />
                       </View>
-
-                      <Text style={styles.productDescription} numberOfLines={2}>
-                        {product.description}
-                      </Text>
-
-                      <View style={styles.ratingContainer}>
-                        <Ionicons name="star" size={14} color="#FFD700" />
-                        <Text style={styles.ratingText}>
-                          {product.rating} ({product.reviewCount} reviews)
-                        </Text>
-                      </View>
-
-                      <View style={styles.priceContainer}>
-                        <Text style={styles.price}>₦{parseFloat(product.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                        <Text style={styles.unit}>/ {product.unit}</Text>
-                      </View>
-
-                      <View style={styles.merchantInfo}>
-                        <View style={styles.merchantAvatar}>
-                          <Text style={styles.merchantInitial}>
-                            {product.merchantName.charAt(0)}
-                          </Text>
-                        </View>
-                        <View style={styles.merchantDetails}>
-                          <Text style={styles.merchantName}>{product.merchantName}</Text>
-                          <Text style={styles.merchantLocation}>{product.merchantLocation}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.productActions}>
-                        <View style={styles.actionRow}>
-                          {getCartQuantity(product.id) > 0 ? (
-                            <View style={styles.quantityControls}>
-                              <TouchableOpacity
-                                style={[styles.quantityButton, styles.quantityButtonHover]}
-                                onPress={() => handleRemoveFromCart(product.id)}
-                                onPressIn={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#0B1A51' }] }); }}
-                                onPressOut={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#fff' }] }); }}
-                              >
-                                <Ionicons name="remove" size={16} color="#4682B4" />
-                              </TouchableOpacity>
-                              <Text style={styles.quantityText}>{getCartQuantity(product.id)}</Text>
-                              <TouchableOpacity
-                                style={[styles.quantityButton, styles.quantityButtonHover]}
-                                onPress={() => handleAddToCart(product)}
-                                onPressIn={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#0B1A51' }] }); }}
-                                onPressOut={(e) => { e.currentTarget.setNativeProps({ style: [styles.quantityButton, styles.quantityButtonHover, { backgroundColor: '#fff' }] }); }}
-                              >
-                                <Ionicons name="add" size={16} color="#4682B4" />
-                              </TouchableOpacity>
-                            </View>
-                          ) : (
-                            <TouchableOpacity
-                              style={[
-                                styles.addToCartButton,
-                                !product.inStock && styles.disabledButton,
-                                styles.addToCartButtonHover
-                              ]}
-                              onPress={() => handleAddToCart(product)}
-                              disabled={!product.inStock}
-                              onPressIn={(e) => {
-                                if (!product.inStock) return; // Do not apply hover effect if disabled
-                                e.currentTarget.setNativeProps({ style: [styles.addToCartButton, styles.addToCartButtonHover, { backgroundColor: '#0B1A51' }] });
-                              }}
-                              onPressOut={(e) => {
-                                if (!product.inStock) return; // Do not apply hover effect if disabled
-                                e.currentTarget.setNativeProps({ style: [styles.addToCartButton, styles.addToCartButtonHover, { backgroundColor: '#4682B4' }] });
-                              }}
-                            >
-                              <Ionicons name="cart-outline" size={16} color="#fff" />
-                              <Text style={styles.addToCartText}>Add to Cart</Text>
-                            </TouchableOpacity>
-                          )}
-                          <TouchableOpacity
-                            style={styles.favoriteButton}
-                            onPress={() => toggleFavorite(product)}
-                            onPressIn={(e) => { e.currentTarget.setNativeProps({ style: [styles.favoriteButton, { backgroundColor: '#0B1A51' }] }); }}
-                            onPressOut={(e) => { e.currentTarget.setNativeProps({ style: [styles.favoriteButton, { backgroundColor: '#f8f9fa' }] }); }}
-                          >
-                            <Ionicons 
-                              name={favorites.includes(product.id) ? "heart" : "heart-outline"} 
-                              size={20} 
-                              color={favorites.includes(product.id) ? "#e74c3c" : "#666"} 
-                            />
-                          </TouchableOpacity>
-                        </View>
-                        <Text style={styles.minimumOrder}>
-                          Min: {product.minimumOrder} {product.unit}
-                        </Text>
-                      </View>
+                      <Text style={styles.categoryName}>{category.name}</Text>
+                      <Text style={styles.categoryDescription}>{category.description}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              )}
+              </View>
+            )}
 
-              {!loading && filteredProducts.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Ionicons name="search-outline" size={64} color="#ccc" />
-                  <Text style={styles.emptyStateTitle}>No products found</Text>
-                  <Text style={styles.emptyStateText}>
-                    Try adjusting your search or browse different categories
+            {/* Products View */}
+            {viewMode === 'products' && (
+              <View style={styles.section}>
+                <View style={styles.productsHeader}>
+                  <TouchableOpacity
+                    style={styles.backToCategoriesButton}
+                    onPress={() => {
+                      setViewMode('categories');
+                      setSelectedCategory('all');
+                    }}
+                  >
+                    <Ionicons name="chevron-back" size={20} color="#4682B4" />
+                    <Text style={styles.backToCategoriesText}>Back to Categories</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.productsCount}>
+                    {filteredProducts.length} products found
                   </Text>
                 </View>
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </View>
+
+                {loading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#4682B4" />
+                    <Text style={styles.loadingText}>Loading products...</Text>
+                  </View>
+                ) : filteredProducts.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="basket-outline" size={64} color="#ccc" />
+                    <Text style={styles.emptyText}>No products found</Text>
+                    <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+                    <TouchableOpacity
+                      style={styles.refreshButton}
+                      onPress={loadCommodities}
+                    >
+                      <Text style={styles.refreshButtonText}>Refresh</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.productsGrid}>
+                    {filteredProducts.map((commodity) => (
+                      <TouchableOpacity
+                        key={commodity.id}
+                        style={styles.productCard}
+                        onPress={() => viewCommodityDetails(commodity)}
+                        activeOpacity={0.8}
+                      >
+                        <Image
+                          source={commodity.image}
+                          style={styles.productImage}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.productInfo}>
+                          <Text style={styles.productName} numberOfLines={2}>{commodity.name}</Text>
+                          <Text style={styles.merchantName} numberOfLines={1}>{commodity.merchantName}</Text>
+                          <Text style={styles.productPrice}>₦{commodity.price.toLocaleString()}/{commodity.unit}</Text>
+                          <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              addToCart(commodity);
+                            }}
+                          >
+                            <Ionicons name="cart-outline" size={16} color="#fff" />
+                            <Text style={styles.addButtonText}>Add to Cart</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    </FormErrorBoundary>
   );
 }
 
@@ -687,14 +682,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Regular',
   },
   loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 100,
   },
   loadingText: {
+    marginTop: 16,
     fontSize: 16,
     color: '#666',
-    marginTop: 10,
-    fontFamily: 'Montserrat-Regular',
   },
   productsGrid: {
     gap: 15,
@@ -708,182 +704,81 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  productHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center',
+    gap: 10,
+  },
+  productImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  productInfo: {
+    flex: 1,
   },
   productName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#0c1a2a',
-    flex: 1,
-    marginRight: 10,
     fontFamily: 'Montserrat-Bold',
+    marginBottom: 4,
   },
-  stockBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  stockText: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  productDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-    lineHeight: 20,
-    fontFamily: 'Montserrat-Regular',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  ratingText: {
+  merchantName: {
     fontSize: 13,
     color: '#666',
-    marginLeft: 5,
     fontFamily: 'Montserrat-Regular',
+    marginBottom: 6,
   },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 12,
-  },
-  price: {
+  productPrice: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#4682B4',
     fontFamily: 'Montserrat-Bold',
+    marginBottom: 8,
   },
-  unit: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 5,
-    fontFamily: 'Montserrat-Regular',
-  },
-  merchantInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  merchantAvatar: {
-    width: 32,
-    height: 32,
-    backgroundColor: '#e9ecef',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  merchantInitial: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4682B4',
-    fontFamily: 'Montserrat-Bold',
-  },
-  merchantDetails: {
-    flex: 1,
-  },
-  merchantName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0c1a2a',
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  merchantLocation: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'Montserrat-Regular',
-  },
-  productActions: {
-    flexDirection: 'column',
-    gap: 8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    paddingHorizontal: 5,
-  },
-  quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 2,
-  },
-  quantityButtonHover: {
-    backgroundColor: '#4682B4', // Default color, will be changed on hover
-  },
-  quantityText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    paddingHorizontal: 15,
-    fontFamily: 'Montserrat-Bold',
-  },
-  addToCartButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  addButton: {
     backgroundColor: '#4682B4',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
-  addToCartButtonHover: {
-    backgroundColor: '#0B1A51', // Default color, will be changed on hover
-  },
-  disabledButton: {
-    backgroundColor: '#bdc3c7',
-  },
-  addToCartText: {
+  addButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 5,
-    fontFamily: 'Montserrat-SemiBold',
   },
-  favoriteButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f8f9fa',
-  },
-  minimumOrder: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'Montserrat-Regular',
-  },
-  emptyState: {
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 100,
   },
-  emptyStateTitle: {
+  emptyText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    marginTop: 15,
-    marginBottom: 5,
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
   },
-  emptyStateText: {
+  emptySubtext: {
     fontSize: 14,
     color: '#666',
-    textAlign: 'center',
-    fontFamily: 'Montserrat-Regular',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  refreshButton: {
+    backgroundColor: '#4682B4',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  refreshButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
