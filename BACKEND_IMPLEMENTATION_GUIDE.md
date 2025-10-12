@@ -15,6 +15,12 @@ GET    /api/cart                    - Get user's cart items
 POST   /api/cart                    - Add item to cart  
 PUT    /api/cart/{itemId}           - Update item quantity
 ```
+
+**CRITICAL: Current cart endpoints returning 401 errors. Backend must:**
+1. Accept Firebase tokens in Authorization header
+2. Validate token and extract user ID
+3. Associate cart with authenticated user
+4. Return proper error messages for auth failures
 **Request/Response Examples:**
 ```typescript
 // GET /api/cart
@@ -154,11 +160,55 @@ GET    /api/orders/summary                 - Get order statistics
 GET    /api/transactions                   - Get transaction history
 GET    /api/transactions/{id}              - Get transaction details
 POST   /api/transactions/{id}/refund       - Request refund
-GET    /api/payment-methods                - Get user's payment methods
-POST   /api/payment-methods                - Add payment method
-DELETE /api/payment-methods/{id}           - Remove payment method
-PUT    /api/payment-methods/{id}/default   - Set default payment method
+❌ GET    /api/payment-methods                - Get user's payment methods (404 - NOT IMPLEMENTED)
+❌ POST   /api/payment-methods                - Add payment method (404 - NOT IMPLEMENTED)
+❌ DELETE /api/payment-methods/{id}           - Remove payment method (404 - NOT IMPLEMENTED)
+❌ PUT    /api/payment-methods/{id}/default   - Set default payment method (404 - NOT IMPLEMENTED)
 GET    /api/payments/history               - Payment history
+```
+
+**URGENT: Payment Methods Implementation Required**
+```typescript
+// GET /api/payment-methods
+Response: {
+  success: true,
+  data: [
+    {
+      id: string,
+      type: 'card' | 'bank_account',
+      last4: string,
+      brand?: string, // For cards: 'visa', 'mastercard', etc.
+      expiryMonth?: number,
+      expiryYear?: number,
+      bankName?: string, // For bank accounts
+      accountNumber?: string, // Last 4 digits
+      isDefault: boolean,
+      createdAt: string
+    }
+  ]
+}
+
+// POST /api/payment-methods
+Request: {
+  type: 'card' | 'bank_account',
+  // For cards:
+  cardNumber?: string,
+  expiryMonth?: number,
+  expiryYear?: number,
+  cvv?: string,
+  // For bank accounts:
+  accountNumber?: string,
+  routingNumber?: string,
+  bankName?: string,
+  // Common:
+  isDefault?: boolean
+}
+
+// DELETE /api/payment-methods/{id}
+Response: { success: true, message: "Payment method removed" }
+
+// PUT /api/payment-methods/{id}/default
+Response: { success: true, message: "Default payment method updated" }
 ```
 
 ### Cart Operations (2 endpoints)
@@ -276,17 +326,51 @@ GET    /api/merchants/{merchantId}/reviews                       - Get merchant 
 
 **Reviews Response Example:**
 ```typescript
-{
+// GET /api/merchants/{merchantId}/reviews
+Response: {
   success: true,
   data: {
+    merchantId: string,
+    merchantName: string,
     averageRating: number,
+    totalReviews: number,
+    ratingDistribution: {
+      5: number,
+      4: number,
+      3: number,
+      2: number,
+      1: number
+    },
     reviews: [{
       id: string,
+      userId: string,
       userName: string,
+      userImage?: string,
       rating: number,
       comment: string,
-      date: string
+      orderId?: string,
+      commodityName?: string,
+      helpful: number, // Number of users who found it helpful
+      createdAt: string,
+      updatedAt?: string
     }]
+  }
+}
+
+// POST /api/merchants/{merchantId}/reviews (New endpoint needed)
+Request: {
+  rating: number, // 1-5
+  comment: string,
+  orderId?: string,
+  commodityId?: string
+}
+
+Response: {
+  success: true,
+  message: "Review submitted successfully",
+  data: {
+    reviewId: string,
+    merchantRating: number // Updated average rating
   }
 }
 ```
@@ -486,6 +570,36 @@ POST   /api/admin/reports/export           - Export data reports
 **Header Format:**
 ```
 Authorization: Bearer <firebase-jwt-token>
+```
+
+**CRITICAL: Token Validation Issues**
+
+Currently experiencing 401 errors with message: `{"success":false,"message":"Invalid or expired token","code":"INVALID_TOKEN"}`
+
+**Backend must handle:**
+1. **Firebase Token Verification**: Verify Firebase ID tokens as primary authentication
+2. **Token Refresh**: Implement automatic token refresh when tokens expire
+3. **Graceful Degradation**: Return specific error codes for different auth failures:
+   - `TOKEN_EXPIRED` - Token is expired (trigger refresh)
+   - `TOKEN_INVALID` - Token is malformed or invalid
+   - `TOKEN_MISSING` - No token provided
+   - `INSUFFICIENT_PERMISSIONS` - Valid token but insufficient role permissions
+
+**Token Refresh Endpoint Required:**
+```typescript
+POST /api/auth/refresh
+Request: {
+  refreshToken?: string, // Optional, can use existing token
+  firebaseUid: string
+}
+
+Response: {
+  success: true,
+  data: {
+    token: string, // New Firebase token
+    expiresIn: number // Seconds until expiration
+  }
+}
 ```
 
 ---

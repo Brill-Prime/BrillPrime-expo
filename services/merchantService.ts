@@ -54,7 +54,7 @@ export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Me
         try {
                 const token = await authService.getToken();
                 if (!token) return null;
-                
+
                 const response = await apiClient.post<Merchant>('/api/merchants', merchant, {
                         Authorization: `Bearer ${token}`
                 });
@@ -70,7 +70,7 @@ export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant
         try {
                 const token = await authService.getToken();
                 if (!token) return null;
-                
+
                 const response = await apiClient.put<Merchant>(`/api/merchants/${id}`, merchant, {
                         Authorization: `Bearer ${token}`
                 });
@@ -86,7 +86,7 @@ export const deleteMerchant = async (id: string): Promise<boolean> => {
         try {
                 const token = await authService.getToken();
                 if (!token) return false;
-                
+
                 const response = await apiClient.delete(`/api/merchants/${id}`, {
                         Authorization: `Bearer ${token}`
                 });
@@ -130,7 +130,7 @@ export const addCommodity = async (merchantId: string, commodity: any): Promise<
         try {
                 const token = await authService.getToken();
                 if (!token) return { success: false };
-                
+
                 const response = await apiClient.post<Commodity>(`/api/merchants/${merchantId}/commodities`, commodity, {
                         Authorization: `Bearer ${token}`
                 });
@@ -146,7 +146,7 @@ export const updateCommodity = async (merchantId: string, commodityId: string, c
         try {
                 const token = await authService.getToken();
                 if (!token) return { success: false };
-                
+
                 const response = await apiClient.put<Commodity>(`/api/merchants/${merchantId}/commodities/${commodityId}`, commodity, {
                         Authorization: `Bearer ${token}`
                 });
@@ -162,7 +162,7 @@ export const deleteCommodity = async (merchantId: string, commodityId: string): 
         try {
                 const token = await authService.getToken();
                 if (!token) return false;
-                
+
                 const response = await apiClient.delete(`/api/merchants/${merchantId}/commodities/${commodityId}`, {
                         Authorization: `Bearer ${token}`
                 });
@@ -178,7 +178,7 @@ export const getAnalytics = async (merchantId: string): Promise<{ success: boole
         try {
                 const token = await authService.getToken();
                 if (!token) return { success: false };
-                
+
                 // Note: This endpoint needs to be implemented in backend
                 // For now, return mock data structure
                 const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`, {
@@ -188,7 +188,7 @@ export const getAnalytics = async (merchantId: string): Promise<{ success: boole
         } catch (error) {
                 console.error('API Error:', error);
                 // Return structured mock data on error until backend implements this endpoint
-                return { 
+                return {
                         success: false,
                         data: {
                                 totalSales: 0,
@@ -226,7 +226,7 @@ export const getMerchantReviews = async (merchantId: string): Promise<{ success:
                 const response = await apiClient.get<any>(`/api/ratings/user/${merchantId}`, token ? {
                         Authorization: `Bearer ${token}`
                 } : {});
-                
+
                 if (response.success && response.data) {
                         // Transform the ratings data to reviews format
                         return {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -60,7 +59,7 @@ export default function MerchantCommoditiesScreen() {
   // Get merchantId from navigation params or context (update as needed)
   // TODO: Replace with actual merchantId from auth/user context or navigation params
   const merchantId = 'merchant1'; // fallback for demo
-  
+
 
   useEffect(() => {
     const fetchCommodities = async () => {
@@ -139,7 +138,7 @@ export default function MerchantCommoditiesScreen() {
     }
   };
 
-  
+
 
   const filteredCommodities = selectedCategory === 'all' 
     ? commodities 
@@ -201,7 +200,7 @@ export default function MerchantCommoditiesScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.commodityActions}>
           <TouchableOpacity
             style={styles.editButton}
@@ -255,7 +254,7 @@ export default function MerchantCommoditiesScreen() {
               </Text>
             </TouchableOpacity>
           ))}
-          
+
           <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCommodity}>
             <Text style={styles.addCategoryText}>+</Text>
           </TouchableOpacity>
@@ -296,7 +295,7 @@ export default function MerchantCommoditiesScreen() {
         </TouchableOpacity>
       </View>
 
-      
+
     </View>
   );
 }
@@ -569,5 +568,5 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontFamily: 'Montserrat-Regular',
   },
-  
+
 });
