@@ -104,25 +104,24 @@ export default function MerchantHome() {
 
   const handleMenuItemPress = (item: string) => {
     toggleMenu();
-
     switch (item) {
-      case "Profile":
-        router.push("/profile");
+      case 'Profile':
+        router.push('/profile');
         break;
-      case "Analytics":
-        router.push("/transactions");
+      case 'Analytics':
+        router.push('/merchant/analytics');
         break;
-      case "Settings":
-        router.push("/profile/edit");
+      case 'Settings':
+        router.push('/profile/privacy-settings');
         break;
-      case "Support":
-        router.push("/support");
+      case 'Support':
+        router.push('/support');
         break;
-      case "Switch to Consumer":
-        router.push("/home/consumer");
+      case 'Switch to Consumer':
+        router.push('/home/consumer');
         break;
-      case "Switch to Driver":
-        router.push("/home/driver");
+      case 'Switch to Driver':
+        router.push('/home/driver');
         break;
       default:
         showInfo("Navigation", `Navigating to ${item}`);

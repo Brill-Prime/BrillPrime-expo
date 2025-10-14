@@ -77,7 +77,7 @@ export default function DriverHome() {
   const [stats, setStats] = useState(defaultStats);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(75);
-  
+
   const sidebarWidth = useMemo(() => Math.min(350, width * 0.9), []);
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const progressAnim = useState(new Animated.Value(0))[0];
@@ -205,35 +205,31 @@ export default function DriverHome() {
     router.push("/orders/driver-orders");
   }, [router]);
 
-  const handleMenuItemPress = useCallback(
-    (item) => {
-      toggleMenu();
-
-      switch (item) {
-        case "Profile":
-          router.push("/profile");
-          break;
-        case "Earnings":
-          router.push("/transactions");
-          break;
-        case "Settings":
-          router.push("/profile/edit");
-          break;
-        case "Support":
-          router.push("/support");
-          break;
-        case "Switch to Consumer":
-          router.push("/home/consumer");
-          break;
-        case "Switch to Merchant":
-          router.push("/home/merchant");
-          break;
-        default:
-          showInfo("Navigation", `Navigating to ${item}`);
-      }
-    },
-    [toggleMenu, router, showInfo],
-  );
+  const handleMenuItemPress = useCallback((item: string) => {
+    toggleMenu();
+    switch (item) {
+      case "Profile":
+        router.push("/profile");
+        break;
+      case "Earnings":
+        router.push("/transactions");
+        break;
+      case "Settings":
+        router.push("/profile/privacy-settings");
+        break;
+      case "Support":
+        router.push("/support");
+        break;
+      case "Switch to Consumer":
+        router.push("/home/consumer");
+        break;
+      case "Switch to Merchant":
+        router.push("/home/merchant");
+        break;
+      default:
+        showInfo("Navigation", `Navigating to ${item}`);
+    }
+  }, [router, toggleMenu, showInfo]);
 
   const handleSignOut = useCallback(async () => {
     showConfirmDialog(
@@ -332,26 +328,26 @@ export default function DriverHome() {
 
         {/* Circular Progress Rings */}
         <View style={styles.progressContainer}>
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.progressRing, 
+              styles.progressRing,
               styles.progressRingOuter,
               { transform: [{ rotate: rotateAnimation }] }
-            ]} 
+            ]}
           />
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.progressRing, 
+              styles.progressRing,
               styles.progressRingMiddle,
               { transform: [{ rotate: rotateAnimation }] }
-            ]} 
+            ]}
           />
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.progressRing, 
+              styles.progressRing,
               styles.progressRingInner,
               { transform: [{ rotate: rotateAnimation }] }
-            ]} 
+            ]}
           />
         </View>
 

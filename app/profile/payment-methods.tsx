@@ -568,3 +568,300 @@ const styles = StyleSheet.create({
     height: 30,
   },
 });
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Dimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface PaymentMethod {
+  id: string;
+  type: 'card' | 'bank' | 'wallet';
+  title: string;
+  subtitle: string;
+  isDefault: boolean;
+}
+
+export default function PaymentMethodsScreen() {
+  const router = useRouter();
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    loadPaymentMethods();
+    
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const loadPaymentMethods = async () => {
+    try {
+      const savedMethods = await AsyncStorage.getItem('paymentMethods');
+      if (savedMethods) {
+        setPaymentMethods(JSON.parse(savedMethods));
+      } else {
+        // Set default payment methods
+        const defaultMethods: PaymentMethod[] = [
+          {
+            id: '1',
+            type: 'wallet',
+            title: 'Brill Prime Wallet',
+            subtitle: '₦0.00',
+            isDefault: true,
+          }
+        ];
+        setPaymentMethods(defaultMethods);
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+    }
+  };
+
+  const handleAddPaymentMethod = () => {
+    router.push('/payment/add-payment-method');
+  };
+
+  const handleEditPaymentMethod = (method: PaymentMethod) => {
+    Alert.alert('Edit Payment Method', `Editing "${method.title}" - Feature coming soon!`);
+  };
+
+  const handleDeletePaymentMethod = (methodId: string) => {
+    Alert.alert(
+      'Remove Payment Method',
+      'Are you sure you want to remove this payment method?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            const updatedMethods = paymentMethods.filter(method => method.id !== methodId);
+            setPaymentMethods(updatedMethods);
+            AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+          }
+        }
+      ]
+    );
+  };
+
+  const getPaymentIcon = (type: string) => {
+    switch (type) {
+      case 'card':
+        return 'card-outline';
+      case 'bank':
+        return 'business-outline';
+      case 'wallet':
+        return 'wallet-outline';
+      default:
+        return 'card-outline';
+    }
+  };
+
+  const PaymentMethodItem = ({ method }: { method: PaymentMethod }) => (
+    <View style={styles.paymentItem}>
+      <View style={styles.paymentIcon}>
+        <Ionicons name={getPaymentIcon(method.type) as any} size={24} color="#4682B4" />
+      </View>
+      <View style={styles.paymentContent}>
+        <View style={styles.paymentHeader}>
+          <Text style={styles.paymentTitle}>{method.title}</Text>
+          {method.isDefault && (
+            <View style={styles.defaultBadge}>
+              <Text style={styles.defaultText}>Default</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.paymentSubtitle}>{method.subtitle}</Text>
+      </View>
+      <View style={styles.paymentActions}>
+        <TouchableOpacity 
+          onPress={() => handleEditPaymentMethod(method)}
+          style={styles.actionButton}
+        >
+          <Ionicons name="pencil" size={18} color="#4682B4" />
+        </TouchableOpacity>
+        {!method.isDefault && (
+          <TouchableOpacity 
+            onPress={() => handleDeletePaymentMethod(method.id)}
+            style={styles.actionButton}
+          >
+            <Ionicons name="trash" size={18} color="#e74c3c" />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Payment Methods</Text>
+        <TouchableOpacity onPress={handleAddPaymentMethod} style={styles.addButton}>
+          <Ionicons name="add" size={24} color="#4682B4" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal: responsivePadding }}>
+          {paymentMethods.length > 0 ? (
+            <View style={styles.paymentList}>
+              {paymentMethods.map((method) => (
+                <PaymentMethodItem key={method.id} method={method} />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="card-outline" size={64} color="#ccc" />
+              <Text style={styles.emptyTitle}>No Payment Methods</Text>
+              <Text style={styles.emptySubtitle}>
+                Add a payment method to make purchases easier
+              </Text>
+              <TouchableOpacity style={styles.addFirstButton} onPress={handleAddPaymentMethod}>
+                <Text style={styles.addFirstButtonText}>Add Payment Method</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingBottom: 15,
+    backgroundColor: '#f5f5f5',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
+    flex: 1,
+    textAlign: 'center',
+  },
+  addButton: {
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+  },
+  paymentList: {
+    paddingVertical: 10,
+  },
+  paymentItem: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 18,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  paymentIcon: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#f8f9ff',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  paymentContent: {
+    flex: 1,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  paymentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1b1b1b',
+    marginRight: 10,
+  },
+  defaultBadge: {
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  defaultText: {
+    fontSize: 12,
+    color: '#28a745',
+    fontWeight: '500',
+  },
+  paymentSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  paymentActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1b1b1b',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  addFirstButton: {
+    backgroundColor: '#4682B4',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+  },
+  addFirstButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

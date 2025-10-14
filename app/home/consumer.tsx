@@ -546,7 +546,7 @@ export default function ConsumerHome() {
         router.push("/favorites");
         break;
       case "Settings":
-        router.push("/profile/edit");
+        router.push("/profile/privacy-settings");
         break;
       case "Support":
         router.push("/support");

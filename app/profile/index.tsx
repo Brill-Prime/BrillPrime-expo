@@ -137,6 +137,15 @@ export default function ProfileScreen() {
     </View>
   );
 
+  const handleNavigateToItem = (route: string) => {
+    try {
+      router.push(route as any);
+    } catch (error) {
+      console.error(`Navigation error to ${route}:`, error);
+      Alert.alert('Navigation Error', `Could not navigate to ${route}. This feature may not be implemented yet.`);
+    }
+  };
+
   const MenuItem = ({ 
     icon, 
     title, 
@@ -225,31 +234,31 @@ export default function ProfileScreen() {
             icon="person-outline"
             title="Personal Information"
             subtitle="Update your personal details"
-            onPress={() => router.push('/profile/edit')}
+            onPress={() => handleNavigateToItem('/profile/edit')}
           />
           <MenuItem
             icon="location-outline"
             title="Saved Addresses"
             subtitle="Manage your delivery addresses"
-            onPress={() => router.push('/profile/addresses')}
+            onPress={() => handleNavigateToItem('/profile/addresses')}
           />
           <MenuItem
             icon="card-outline"
             title="Payment Methods"
             subtitle="Manage cards and payment options"
-            onPress={() => router.push('/profile/payment-methods')}
+            onPress={() => handleNavigateToItem('/profile/payment-methods')}
           />
           <MenuItem
             icon="shield-checkmark-outline"
             title="Identity Verification"
             subtitle="Verify your identity for enhanced security"
-            onPress={() => router.push('/kyc')}
+            onPress={() => handleNavigateToItem('/kyc')}
           />
           <MenuItem
             icon="receipt-outline"
             title="Order History"
             subtitle="View your past orders"
-            onPress={() => router.push('/orders/consumer-orders')}
+            onPress={() => handleNavigateToItem('/orders/consumer-orders')}
           />
         </MenuSection>
 
@@ -323,25 +332,25 @@ export default function ProfileScreen() {
             icon="help-circle-outline"
             title="Help & Support"
             subtitle="Get help with your account or orders"
-            onPress={() => router.push('/support')}
+            onPress={() => handleNavigateToItem('/support')}
           />
           <MenuItem
             icon="document-text-outline"
             title="Terms & Conditions"
             subtitle="Read our terms of service"
-            onPress={() => router.push('/about')}
+            onPress={() => handleNavigateToItem('/about')}
           />
           <MenuItem
             icon="shield-checkmark-outline"
             title="Privacy Policy"
             subtitle="How we protect your privacy"
-            onPress={() => router.push('/profile/privacy-settings')}
+            onPress={() => handleNavigateToItem('/profile/privacy-settings')}
           />
           <MenuItem
             icon="star-outline"
             title="Rate Brill Prime"
             subtitle="Share your feedback with us"
-            onPress={() => router.push('/support')}
+            onPress={() => handleNavigateToItem('/support')}
           />
         </MenuSection>
 
