@@ -43,8 +43,12 @@ class PaymentService {
     return { isValid: true };
   }
 
-  // Process payment
-  async processPayment(paymentData: PaymentRequest): Promise<ApiResponse<{
+  // Initialize payment (updated to match backend)
+  async initializePayment(data: {
+    orderId: number;
+    amount: number;
+    paymentMethod: 'CARD' | 'BANK_TRANSFER';
+  }): Promise<ApiResponse<{
     transactionId: string;
     status: 'success' | 'failed' | 'pending';
     message: string;
@@ -54,32 +58,36 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    // Validate before processing
-    const validation = this.validatePaymentData(paymentData);
-    if (!validation.isValid) {
-      return { success: false, error: validation.error };
+    if (data.amount <= 0) {
+      return { success: false, error: 'Valid payment amount is required' };
     }
 
-    return apiClient.post('/api/payments/process', paymentData, {
+    if (data.amount > 10000000) {
+      return { success: false, error: 'Payment amount exceeds maximum limit (₦10,000,000)' };
+    }
+
+    const validPaymentMethods = ['CARD', 'BANK_TRANSFER'];
+    if (!validPaymentMethods.includes(data.paymentMethod)) {
+      return { success: false, error: 'Invalid payment method. Use CARD or BANK_TRANSFER only.' };
+    }
+
+    return apiClient.post('/api/payments/initialize', data, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  // Get user transactions
-  async getTransactions(filters?: {
-    type?: string;
-    status?: string;
-    dateFrom?: string;
-    dateTo?: string;
+  // Get payment history (updated to match backend endpoint)
+  async getPaymentHistory(filters?: {
+    page?: number;
     limit?: number;
-    offset?: number;
   }): Promise<ApiResponse<{
-    transactions: Transaction[];
+    payments: Transaction[];
     total: number;
-    summary: {
-      totalSpent: number;
-      totalRefunds: number;
-      totalRewards: number;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
     };
   }>> {
     const token = await authService.getToken();
@@ -87,16 +95,12 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    let endpoint = '/api/transactions';
+    let endpoint = '/api/payments/history';
     const queryParams = new URLSearchParams();
 
     if (filters) {
-      if (filters.type) queryParams.append('type', filters.type);
-      if (filters.status) queryParams.append('status', filters.status);
-      if (filters.dateFrom) queryParams.append('dateFrom', filters.dateFrom);
-      if (filters.dateTo) queryParams.append('dateTo', filters.dateTo);
+      if (filters.page) queryParams.append('page', filters.page.toString());
       if (filters.limit) queryParams.append('limit', filters.limit.toString());
-      if (filters.offset) queryParams.append('offset', filters.offset.toString());
     }
 
     if (queryParams.toString()) {
@@ -150,8 +154,11 @@ class PaymentService {
 
   // Get payment methods (using profile endpoint from backend)
   async getPaymentMethods(): Promise<ApiResponse<Array<{
-    id: string;
-    type: 'card' | 'bank' | 'wallet';
+    id: number;
+    type: 'CARD' | 'BANK_TRANSFER';
+    accountNumber?: string;
+    bankCode?: string;
+    accountName?: string;
     last4?: string;
     brand?: string;
     expiryMonth?: number;
