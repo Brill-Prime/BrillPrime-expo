@@ -123,12 +123,12 @@ export const validateCommodityForm = (data: CommodityFormData): { isValid: boole
   }
 
   // Validate category
-  if (!data.category || !CATEGORIES.find(c => c.id === data.category)) {
+  if (!data.category || !COMMODITY_CATEGORIES.find(c => c.value === data.category)) {
     errors.category = 'Please select a valid category';
   }
 
   // Validate unit
-  if (!data.unit || !UNITS.includes(data.unit)) {
+  if (!data.unit || !COMMODITY_UNITS.find(u => u.value === data.unit)) {
     errors.unit = 'Please select a valid unit';
   }
 

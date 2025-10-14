@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import { 
   validateCommodityForm, 
   COMMODITY_CATEGORIES, 
@@ -39,8 +38,7 @@ export default function AddCommodityScreen() {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CommodityFormData>({
     name: '',
     description: '',
     category: 'electronics',
@@ -48,9 +46,9 @@ export default function AddCommodityScreen() {
     price: '',
     availableQuantity: '1',
     minOrderQuantity: '1',
-    images: [] as string[],
+    images: [],
     specifications: {},
-    tags: [] as string[],
+    tags: [],
   });
 
   const [errors, setErrors] = useState({
@@ -105,14 +103,19 @@ export default function AddCommodityScreen() {
   const validateForm = () => {
     const validation = validateCommodityForm(formData);
     setErrors({
-      name: validation.errors.name,
-      description: validation.errors.description,
-      price: validation.errors.price,
+      name: validation.errors.name || '',
+      description: validation.errors.description || '',
+      price: validation.errors.price || '',
     });
     return validation.isValid;
   };
 
   const handleSelectImage = async () => {
+    if (Platform.OS === 'web') {
+      imageInputRef.current?.click();
+      return;
+    }
+
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -128,7 +131,7 @@ export default function AddCommodityScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setFormData({ ...formData, image: result.assets[0].uri });
+        setFormData({ ...formData, images: [result.assets[0].uri] });
       }
     } catch (error) {
       console.error('Error selecting image:', error);
@@ -137,6 +140,11 @@ export default function AddCommodityScreen() {
   };
 
   const handleTakePhoto = async () => {
+    if (Platform.OS === 'web') {
+      showError('Not Available', 'Camera is not available on web. Please select an image instead.');
+      return;
+    }
+
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -151,7 +159,7 @@ export default function AddCommodityScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setFormData({ ...formData, image: result.assets[0].uri });
+        setFormData({ ...formData, images: [result.assets[0].uri] });
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -159,43 +167,42 @@ export default function AddCommodityScreen() {
     }
   };
 
-  const showImageOptions = () => {
-    Alert.alert(
-      'Select Image',
-      'Choose how you want to add an image',
-      [
-        { text: 'Camera', onPress: handleTakePhoto },
-        { text: 'Gallery', onPress: handleSelectImage },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleWebImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showError('File Too Large', 'Image must be less than 5MB');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showError('Invalid File', 'Please select an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setFormData({ ...formData, images: [reader.result] });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleAddAttachment = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'],
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-
-        // Validate file size (max 5MB)
-        if (file.size && file.size > 5 * 1024 * 1024) {
-          Alert.alert('Error', 'File size must be less than 5MB');
-          return;
-        }
-
-        setAttachments([...attachments, {
-          uri: file.uri,
-          name: file.name,
-          type: file.mimeType || 'application/octet-stream',
-        }]);
-      }
-    } catch (error) {
-      console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document. Please try again.');
+  const showImageOptions = () => {
+    if (Platform.OS === 'web') {
+      handleSelectImage();
+    } else {
+      Alert.alert(
+        'Select Image',
+        'Choose how you want to add an image',
+        [
+          { text: 'Camera', onPress: handleTakePhoto },
+          { text: 'Gallery', onPress: handleSelectImage },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
     }
   };
 
@@ -211,9 +218,10 @@ export default function AddCommodityScreen() {
       let commodities: Commodity[] = savedCommodities ? JSON.parse(savedCommodities) : [];
 
       const price = parseFloat(formData.price);
+      const availableQuantity = parseInt(formData.availableQuantity) || 1;
+      const minOrderQuantity = parseInt(formData.minOrderQuantity) || 1;
 
       if (isEditing && commodityId) {
-        // Update existing commodity
         commodities = commodities.map(c =>
           c.id === commodityId
             ? {
@@ -223,26 +231,33 @@ export default function AddCommodityScreen() {
                 category: formData.category,
                 unit: formData.unit,
                 price: price,
-                image: formData.image || c.image,
-                attachments: attachments,
+                availableQuantity,
+                minOrderQuantity,
+                images: formData.images.length > 0 ? formData.images : c.images,
+                specifications: formData.specifications,
+                tags: formData.tags,
+                updatedAt: new Date().toISOString(),
               }
             : c
         );
         showSuccess('Success', 'Commodity updated successfully');
       } else {
-        // Add new commodity
         const newCommodity: Commodity = {
           id: Date.now().toString(),
+          merchantId: 'merchant1',
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
           unit: formData.unit,
           price: price,
-          image: formData.image || require('../../assets/images/consumer_order_fuel_icon.png'),
-          inStock: true,
+          availableQuantity,
+          minOrderQuantity,
+          images: formData.images.length > 0 ? formData.images : ['https://via.placeholder.com/300'],
+          specifications: formData.specifications,
+          tags: formData.tags,
+          status: 'active',
           createdAt: new Date().toISOString(),
-          merchantId: 'merchant1',
-          attachments: attachments,
+          updatedAt: new Date().toISOString(),
         };
 
         commodities.push(newCommodity);
@@ -251,20 +266,21 @@ export default function AddCommodityScreen() {
 
       await AsyncStorage.setItem('merchantCommodities', JSON.stringify(commodities));
 
-      // Clear form after successful save
       if (!isEditing) {
         setFormData({
           name: '',
           description: '',
-          category: 'petrol',
-          unit: 'Litres',
+          category: 'electronics',
+          unit: 'piece',
           price: '',
-          image: '',
+          availableQuantity: '1',
+          minOrderQuantity: '1',
+          images: [],
+          specifications: {},
+          tags: [],
         });
-        setAttachments([]);
       }
 
-      // Navigate back with a small delay to ensure the success message is seen
       setTimeout(() => {
         router.back();
       }, 1500);
@@ -291,9 +307,20 @@ export default function AddCommodityScreen() {
     );
   }
 
+  const mainImage = formData.images.length > 0 ? formData.images[0] : '';
+
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {Platform.OS === 'web' && (
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleWebImageChange}
+        />
+      )}
+
       <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <View style={styles.backButtonCircle}>
@@ -307,36 +334,34 @@ export default function AddCommodityScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.formContainer, { paddingHorizontal: responsivePadding }]}>
-          {/* Category Filter */}
           <View style={styles.categoriesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {CATEGORIES.map((category) => (
+              {COMMODITY_CATEGORIES.map((category) => (
                 <TouchableOpacity
-                  key={category.id}
+                  key={category.value}
                   style={[
                     styles.categoryButton,
-                    formData.category === category.id && styles.selectedCategoryButton,
+                    formData.category === category.value && styles.selectedCategoryButton,
                   ]}
-                  onPress={() => setFormData({ ...formData, category: category.id })}
+                  onPress={() => setFormData({ ...formData, category: category.value })}
                 >
                   <Text
                     style={[
                       styles.categoryButtonText,
-                      formData.category === category.id && styles.selectedCategoryButtonText,
+                      formData.category === category.value && styles.selectedCategoryButtonText,
                     ]}
                   >
-                    {category.name}
+                    {category.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
-          {/* Image Picker */}
           <TouchableOpacity style={styles.imagePickerContainer} onPress={showImageOptions}>
-            {formData.image ? (
+            {mainImage ? (
               <Image 
-                source={formData.image.startsWith('http') || formData.image.startsWith('file') ? { uri: formData.image } : { uri: formData.image }}
+                source={{ uri: mainImage }}
                 style={styles.selectedImage}
                 resizeMode="cover"
               />
@@ -344,35 +369,18 @@ export default function AddCommodityScreen() {
               <View style={styles.imagePickerPlaceholder}>
                 <Ionicons name="camera" size={40} color="#4682B4" />
                 <Text style={styles.imagePickerText}>Add Image</Text>
-                <Text style={styles.imagePickerSubtext}>Tap to select from gallery or take photo</Text>
+                <Text style={styles.imagePickerSubtext}>
+                  {Platform.OS === 'web' ? 'Tap to select image' : 'Tap to select from gallery or take photo'}
+                </Text>
               </View>
             )}
-            {formData.image && (
+            {mainImage && (
               <View style={styles.imageEditOverlay}>
                 <Ionicons name="camera" size={20} color="white" />
               </View>
             )}
           </TouchableOpacity>
 
-          {/* Attachments Section */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.attachmentTitle}>Attachments</Text>
-            <TouchableOpacity style={styles.addAttachmentButton} onPress={handleAddAttachment}>
-              <Ionicons name="attach" size={20} color="#4682B4" />
-              <Text style={styles.addAttachmentButtonText}>Add Attachment</Text>
-            </TouchableOpacity>
-            {attachments.map((att, index) => (
-              <View key={index} style={styles.attachmentItem}>
-                <Ionicons name={att.type === 'image' ? 'image-outline' : 'document-text-outline'} size={20} color="#4682B4" />
-                <Text style={styles.attachmentName} numberOfLines={1} ellipsizeMode="tail">{att.name}</Text>
-                <TouchableOpacity onPress={() => setAttachments(attachments.filter((_, i) => i !== index))}>
-                  <Ionicons name="close-circle" size={20} color="#e74c3c" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-
-          {/* Form Fields */}
           <View style={styles.inputContainer}>
             <TextInput
               style={[styles.textInput, errors.name && styles.inputError]}
@@ -413,15 +421,15 @@ export default function AddCommodityScreen() {
                 Alert.alert(
                   'Select Unit',
                   'Choose the basic unit for this item',
-                  UNITS.map(unit => ({
-                    text: unit,
-                    onPress: () => setFormData({ ...formData, unit })
+                  COMMODITY_UNITS.map(unit => ({
+                    text: unit.label,
+                    onPress: () => setFormData({ ...formData, unit: unit.value })
                   }))
                 );
               }}
             >
               <Text style={[styles.textInput, { color: '#131313' }]}>
-                {formData.unit}
+                {COMMODITY_UNITS.find(u => u.value === formData.unit)?.label || formData.unit}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#4682B4" />
             </TouchableOpacity>
@@ -433,7 +441,6 @@ export default function AddCommodityScreen() {
               placeholder="Price per Item (₦) *"
               value={formData.price}
               onChangeText={(text) => {
-                // Allow only numbers and decimal point
                 const numericValue = text.replace(/[^0-9.]/g, '');
                 setFormData({ ...formData, price: numericValue });
                 setErrors({ ...errors, price: '' });
@@ -444,7 +451,34 @@ export default function AddCommodityScreen() {
             {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
           </View>
 
-          {/* Save Button */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Available Quantity *"
+              value={formData.availableQuantity}
+              onChangeText={(text) => {
+                const numericValue = text.replace(/[^0-9]/g, '');
+                setFormData({ ...formData, availableQuantity: numericValue });
+              }}
+              placeholderTextColor="#B7B7B7"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Minimum Order Quantity *"
+              value={formData.minOrderQuantity}
+              onChangeText={(text) => {
+                const numericValue = text.replace(/[^0-9]/g, '');
+                setFormData({ ...formData, minOrderQuantity: numericValue });
+              }}
+              placeholderTextColor="#B7B7B7"
+              keyboardType="numeric"
+            />
+          </View>
+
           <TouchableOpacity 
             style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
             onPress={handleSave}
@@ -583,48 +617,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
-  },
-  attachmentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-SemiBold',
-    color: '#131313',
-    marginBottom: 10,
-  },
-  addAttachmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 50,
-    backgroundColor: 'white',
-    marginBottom: 15,
-  },
-  addAttachmentButtonText: {
-    color: '#4682B4',
-    fontSize: 16,
-    fontFamily: 'Montserrat-Medium',
-    marginLeft: 10,
-  },
-  attachmentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  attachmentName: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-    fontFamily: 'Montserrat-Regular',
-    marginHorizontal: 10,
   },
   textInput: {
     borderWidth: 1,
