@@ -488,15 +488,22 @@ export default function ConsumerHome() {
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
-        // Load merchants near the saved location
         await loadNearbyMerchants(location.latitude, location.longitude);
       } else {
-        // If no saved location, try to get current location immediately
-        await handleSetLocationAutomatically();
+        // If no saved location, check permission status first
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          // Permission granted, try to get location
+          await handleSetLocationAutomatically();
+        } else {
+          // No permission, set default location and load all merchants
+          setIsLocationSet(true);
+          setUserAddress("Nigeria");
+          await loadAllMerchants();
+        }
       }
     } catch (error) {
       console.error("Error loading saved location:", error);
-      // On error, load all merchants as fallback
       if (isMountedRef.current) {
         setIsLocationSet(true);
         setUserAddress("Nigeria");
@@ -576,17 +583,22 @@ export default function ConsumerHome() {
     setIsLoadingLocation(true);
 
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      // Check if we already have permission
+      let { status } = await Location.getForegroundPermissionsAsync();
+      
+      // If permission is not granted, request it
       if (status !== 'granted') {
-        // Permission denied - load all merchants instead
+        let permissionResult = await Location.requestForegroundPermissionsAsync();
+        status = permissionResult.status;
+      }
+
+      if (status !== 'granted') {
+        // Permission denied - load all merchants silently
         console.log("Location permission denied, loading all merchants");
         setIsLoadingLocation(false);
         setUserAddress("Nigeria");
         setIsLocationSet(true);
-
-        // Load all merchants without location filtering
         await loadAllMerchants();
-        showInfo("Location Access", "Showing all available merchants. Grant location permission to see nearby merchants.");
         return;
       }
 
@@ -639,11 +651,9 @@ export default function ConsumerHome() {
       console.error("Error getting location:", error);
       if (isMountedRef.current) {
         setIsLoadingLocation(false);
-        // On error, also load all merchants as fallback
         setUserAddress("Nigeria");
         setIsLocationSet(true);
         await loadAllMerchants();
-        showInfo("Location Access", "Showing all available merchants.");
       }
     }
   };
