@@ -71,7 +71,7 @@ export default function MerchantDashboard() {
         router.push('/merchant/inventory');
         break;
       case 'store-settings':
-        router.push('/profile/edit');
+        router.push('/merchant/store-settings');
         break;
       default:
         router.push(`/${feature.route}` || '/profile');

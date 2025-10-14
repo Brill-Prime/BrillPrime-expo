@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -33,7 +32,7 @@ export default function AddressesScreen() {
 
   useEffect(() => {
     loadAddresses();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -97,7 +96,7 @@ export default function AddressesScreen() {
     saveAddresses([...addresses, address]);
     setNewAddress({ label: '', address: '' });
     setShowAddModal(false);
-    
+
     Alert.alert('Success', 'Address added successfully');
   };
 
@@ -132,7 +131,7 @@ export default function AddressesScreen() {
     setEditingAddress(null);
     setNewAddress({ label: '', address: '' });
     setShowAddModal(false);
-    
+
     Alert.alert('Success', 'Address updated successfully');
   };
 
@@ -230,9 +229,9 @@ export default function AddressesScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-                
+
                 <Text style={styles.addressText}>{address.address}</Text>
-                
+
                 {!address.isDefault && (
                   <TouchableOpacity
                     style={styles.setDefaultButton}
@@ -465,274 +464,5 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
-  },
-});
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Dimensions,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-interface Address {
-  id: string;
-  title: string;
-  address: string;
-  isDefault: boolean;
-}
-
-export default function AddressesScreen() {
-  const router = useRouter();
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
-
-  useEffect(() => {
-    loadAddresses();
-    
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  const loadAddresses = async () => {
-    try {
-      const savedAddresses = await AsyncStorage.getItem('userAddresses');
-      if (savedAddresses) {
-        setAddresses(JSON.parse(savedAddresses));
-      } else {
-        // Load default address
-        const userAddress = await AsyncStorage.getItem('userAddress');
-        if (userAddress) {
-          setAddresses([
-            {
-              id: '1',
-              title: 'Home',
-              address: userAddress,
-              isDefault: true,
-            }
-          ]);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading addresses:', error);
-    }
-  };
-
-  const handleAddAddress = () => {
-    Alert.alert('Add Address', 'Address management feature is coming soon!');
-  };
-
-  const handleEditAddress = (address: Address) => {
-    Alert.alert('Edit Address', `Editing "${address.title}" - Feature coming soon!`);
-  };
-
-  const handleDeleteAddress = (addressId: string) => {
-    Alert.alert(
-      'Delete Address',
-      'Are you sure you want to delete this address?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
-            setAddresses(updatedAddresses);
-            AsyncStorage.setItem('userAddresses', JSON.stringify(updatedAddresses));
-          }
-        }
-      ]
-    );
-  };
-
-  const AddressItem = ({ address }: { address: Address }) => (
-    <View style={styles.addressItem}>
-      <View style={styles.addressContent}>
-        <View style={styles.addressHeader}>
-          <Text style={styles.addressTitle}>{address.title}</Text>
-          {address.isDefault && (
-            <View style={styles.defaultBadge}>
-              <Text style={styles.defaultText}>Default</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.addressText}>{address.address}</Text>
-      </View>
-      <View style={styles.addressActions}>
-        <TouchableOpacity 
-          onPress={() => handleEditAddress(address)}
-          style={styles.actionButton}
-        >
-          <Ionicons name="pencil" size={18} color="#4682B4" />
-        </TouchableOpacity>
-        {!address.isDefault && (
-          <TouchableOpacity 
-            onPress={() => handleDeleteAddress(address.id)}
-            style={styles.actionButton}
-          >
-            <Ionicons name="trash" size={18} color="#e74c3c" />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-
-  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
-
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved Addresses</Text>
-        <TouchableOpacity onPress={handleAddAddress} style={styles.addButton}>
-          <Ionicons name="add" size={24} color="#4682B4" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingHorizontal: responsivePadding }}>
-          {addresses.length > 0 ? (
-            <View style={styles.addressList}>
-              {addresses.map((address) => (
-                <AddressItem key={address.id} address={address} />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="location-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyTitle}>No Addresses Saved</Text>
-              <Text style={styles.emptySubtitle}>
-                Add your delivery addresses to make ordering faster
-              </Text>
-              <TouchableOpacity style={styles.addFirstButton} onPress={handleAddAddress}>
-                <Text style={styles.addFirstButtonText}>Add Address</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: '#f5f5f5',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1b1b1b',
-    flex: 1,
-    textAlign: 'center',
-  },
-  addButton: {
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-  },
-  addressList: {
-    paddingVertical: 10,
-  },
-  addressItem: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 18,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  addressContent: {
-    flex: 1,
-  },
-  addressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  addressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1b1b1b',
-    marginRight: 10,
-  },
-  defaultBadge: {
-    backgroundColor: '#e8f5e8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  defaultText: {
-    fontSize: 12,
-    color: '#28a745',
-    fontWeight: '500',
-  },
-  addressText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  addressActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1b1b1b',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  addFirstButton: {
-    backgroundColor: '#4682B4',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-  },
-  addFirstButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

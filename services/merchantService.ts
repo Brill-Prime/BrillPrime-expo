@@ -179,41 +179,85 @@ export const getAnalytics = async (merchantId: string): Promise<{ success: boole
                 const token = await authService.getToken();
                 if (!token) return { success: false };
 
-                // Note: This endpoint needs to be implemented in backend
-                // For now, return mock data structure
                 const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`, {
                         Authorization: `Bearer ${token}`
                 });
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
-                // Return structured mock data on error until backend implements this endpoint
-                return {
-                        success: false,
-                        data: {
-                                totalSales: 0,
-                                totalOrders: 0,
-                                averageOrderValue: 0,
-                                monthlyGrowth: 0,
-                                customerRetention: 0,
-                                topSellingProducts: [],
-                                dailySales: [],
-                                categoryBreakdown: [],
-                                customerMetrics: {
-                                        newCustomers: 0,
-                                        returningCustomers: 0,
-                                        averageOrdersPerCustomer: 0,
-                                        customerSatisfaction: 0
-                                },
-                                inventoryMetrics: {
-                                        totalItems: 0,
-                                        lowStockItems: 0,
-                                        outOfStockItems: 0,
-                                        turnoverRate: 0
-                                },
-                                paymentMethods: []
-                        }
-                };
+                return { success: false };
+        }
+};
+
+// Get merchant orders
+export const getMerchantOrders = async (merchantId: string, filters?: {
+        status?: string;
+        limit?: number;
+        offset?: number;
+}): Promise<{ success: boolean; data?: any[] }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+
+                let endpoint = `/api/merchants/${merchantId}/orders`;
+                const queryParams = new URLSearchParams();
+
+                if (filters) {
+                        if (filters.status) queryParams.append('status', filters.status);
+                        if (filters.limit) queryParams.append('limit', filters.limit.toString());
+                        if (filters.offset) queryParams.append('offset', filters.offset.toString());
+                }
+
+                if (queryParams.toString()) {
+                        endpoint += `?${queryParams.toString()}`;
+                }
+
+                const response = await apiClient.get<any[]>(endpoint, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, data: [] };
+        }
+};
+
+// Update merchant store settings
+export const updateStoreSettings = async (merchantId: string, settings: {
+        businessHours?: Record<string, string>;
+        deliveryRadius?: number;
+        minimumOrder?: number;
+        deliveryFee?: number;
+        isOpen?: boolean;
+        acceptsOrders?: boolean;
+}): Promise<{ success: boolean; data?: any }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+
+                const response = await apiClient.put<any>(`/api/merchants/${merchantId}/settings`, settings, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
+        }
+};
+
+// Get merchant store settings
+export const getStoreSettings = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+
+                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/settings`, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
         }
 };
 
@@ -293,6 +337,9 @@ export const merchantService = {
         updateCommodity,
         deleteCommodity,
         getAnalytics,
+        getMerchantOrders,
+        updateStoreSettings,
+        getStoreSettings,
         getMerchantReviews,
         submitMerchantReview
 };
