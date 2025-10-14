@@ -145,6 +145,9 @@ export default function ConsumerHome() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
   const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
+  const [selectedDistance, setSelectedDistance] = useState<string>('Any');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedRating, setSelectedRating] = useState<number>(0);
 
   const sidebarWidth = Math.min(300, width * 0.85);
   const slideAnim = useRef(new Animated.Value(sidebarWidth)).current;
@@ -651,7 +654,60 @@ export default function ConsumerHome() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Implement search logic here (filter storeLocations or call API)
+  };
+
+  // Filter stores based on search query and filters
+  const filteredStoreLocations = useMemo(() => {
+    let filtered = [...storeLocations];
+
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(store => 
+        store.title.toLowerCase().includes(query) ||
+        store.address.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply distance filter (simplified - in production, calculate actual distance)
+    if (selectedDistance !== 'Any' && region) {
+      const maxDistance = selectedDistance === '<1km' ? 1 : selectedDistance === '<5km' ? 5 : 10;
+      filtered = filtered.filter(store => {
+        const distance = locationService.calculateDistance(
+          region.latitude,
+          region.longitude,
+          store.coords.lat,
+          store.coords.lng
+        );
+        return distance <= maxDistance;
+      });
+    }
+
+    // Apply category filter (when backend supports categories)
+    if (selectedCategory !== 'All') {
+      // TODO: Filter by category when store data includes category field
+      // filtered = filtered.filter(store => store.category === selectedCategory);
+    }
+
+    // Apply rating filter (when backend supports ratings)
+    if (selectedRating > 0) {
+      // TODO: Filter by rating when store data includes rating field
+      // filtered = filtered.filter(store => store.rating >= selectedRating);
+    }
+
+    return filtered;
+  }, [storeLocations, searchQuery, selectedDistance, selectedCategory, selectedRating, region]);
+
+  const handleResetFilters = () => {
+    setSelectedDistance('Any');
+    setSelectedCategory('All');
+    setSelectedRating(0);
+    setSearchQuery('');
+  };
+
+  const handleApplyFilters = () => {
+    setIsFilterModalOpen(false);
+    // Filters are already applied via the filteredStoreLocations memo
   };
 
   const handleStoreSelect = (store: StoreLocation) => {
@@ -674,8 +730,8 @@ export default function ConsumerHome() {
   const MemoizedMarker = React.memo(Marker);
 
   const memoizedStoreLocations = useMemo(() => {
-    return storeLocations;
-  }, [storeLocations]);
+    return filteredStoreLocations;
+  }, [filteredStoreLocations]);
 
   // Mock cart item count for badge display
   const cartItemCount = 3;
@@ -1027,11 +1083,23 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Distance</Text>
               <View style={styles.filterOptionValues}>
                 {['<1km', '<5km', '<10km', 'Any'].map((option) => (
-                  <TouchableOpacity key={option} style={styles.filterChip}
+                  <TouchableOpacity 
+                    key={option} 
+                    style={[
+                      styles.filterChip,
+                      selectedDistance === option && { 
+                        backgroundColor: theme.colors.primary,
+                        borderColor: theme.colors.primary
+                      }
+                    ]}
+                    onPress={() => setSelectedDistance(option)}
                     accessibilityLabel={`Filter by ${option} distance`}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.filterChipText}>{option}</Text>
+                    <Text style={[
+                      styles.filterChipText,
+                      selectedDistance === option && { color: '#fff' }
+                    ]}>{option}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1041,11 +1109,23 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Category</Text>
               <View style={styles.filterOptionValues}>
                 {['Food', 'Gas', 'Retail', 'All'].map((option) => (
-                  <TouchableOpacity key={option} style={styles.filterChip}
+                  <TouchableOpacity 
+                    key={option} 
+                    style={[
+                      styles.filterChip,
+                      selectedCategory === option && { 
+                        backgroundColor: theme.colors.primary,
+                        borderColor: theme.colors.primary
+                      }
+                    ]}
+                    onPress={() => setSelectedCategory(option)}
                     accessibilityLabel={`Filter by ${option} category`}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.filterChipText}>{option}</Text>
+                    <Text style={[
+                      styles.filterChipText,
+                      selectedCategory === option && { color: '#fff' }
+                    ]}>{option}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1055,12 +1135,14 @@ export default function ConsumerHome() {
               <Text style={styles.filterOptionText}>Rating</Text>
               <View style={styles.ratingStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star}
+                  <TouchableOpacity 
+                    key={star}
+                    onPress={() => setSelectedRating(star === selectedRating ? 0 : star)}
                     accessibilityLabel={`Filter by ${star} star rating`}
                     accessibilityRole="button"
                   >
                     <Ionicons
-                      name={star <= 3 ? "star" : "star-outline"}
+                      name={star <= selectedRating ? "star" : "star-outline"}
                       size={24}
                       color={theme.colors.primary}
                     />
@@ -1072,7 +1154,7 @@ export default function ConsumerHome() {
             <View style={styles.filterModalButtons}>
               <TouchableOpacity
                 style={[styles.filterModalButton, styles.filterModalButtonOutline]}
-                onPress={() => setIsFilterModalOpen(false)}
+                onPress={handleResetFilters}
                 accessibilityLabel="Reset filters"
                 accessibilityRole="button"
               >
@@ -1080,7 +1162,7 @@ export default function ConsumerHome() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterModalButton, styles.filterModalButtonFilled]}
-                onPress={() => setIsFilterModalOpen(false)}
+                onPress={handleApplyFilters}
                 accessibilityLabel="Apply filters"
                 accessibilityRole="button"
               >

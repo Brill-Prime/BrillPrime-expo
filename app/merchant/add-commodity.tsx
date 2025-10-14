@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,13 +20,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { 
   validateCommodityForm, 
-  CATEGORIES, 
-  UNITS, 
+  COMMODITY_CATEGORIES, 
+  COMMODITY_UNITS, 
   generateCommodityId,
   formatPrice,
   type Commodity,
   type CommodityFormData,
-  type Attachment
 } from '../../utils/commodityUtils';
 
 const { width } = Dimensions.get('window');
@@ -34,6 +34,7 @@ export default function AddCommodityScreen() {
   const router = useRouter();
   const { commodityId } = useLocalSearchParams<{ commodityId?: string }>();
   const { showError, showSuccess } = useAlert();
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -42,13 +43,15 @@ export default function AddCommodityScreen() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    category: 'petrol',
-    unit: 'Litres',
+    category: 'electronics',
+    unit: 'piece',
     price: '',
-    image: '',
+    availableQuantity: '1',
+    minOrderQuantity: '1',
+    images: [] as string[],
+    specifications: {},
+    tags: [] as string[],
   });
-
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const [errors, setErrors] = useState({
     name: '',
@@ -83,9 +86,12 @@ export default function AddCommodityScreen() {
             category: commodity.category,
             unit: commodity.unit,
             price: commodity.price.toString(),
-            image: commodity.image,
+            availableQuantity: commodity.availableQuantity?.toString() || '1',
+            minOrderQuantity: commodity.minOrderQuantity?.toString() || '1',
+            images: commodity.images || [],
+            specifications: commodity.specifications || {},
+            tags: commodity.tags || [],
           });
-          setAttachments(commodity.attachments || []);
         }
       }
     } catch (error) {

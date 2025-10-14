@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,6 +49,8 @@ export default function AttachmentUploader({
 }: AttachmentUploaderProps) {
   const { showError, showSuccess } = useAlert();
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const requestPermissions = async () => {
     if (allowedTypes.includes('image')) {
@@ -127,6 +130,14 @@ export default function AttachmentUploader({
   const selectFromGallery = async () => {
     try {
       setUploading(true);
+      
+      // Use web input for web platform
+      if (Platform.OS === 'web') {
+        selectFromGalleryWeb();
+        setUploading(false);
+        return;
+      }
+
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) return;
 
@@ -165,6 +176,14 @@ export default function AttachmentUploader({
   const selectDocument = async () => {
     try {
       setUploading(true);
+      
+      // Use web input for web platform
+      if (Platform.OS === 'web') {
+        handleWebDocumentSelect();
+        setUploading(false);
+        return;
+      }
+
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
@@ -194,14 +213,93 @@ export default function AttachmentUploader({
     }
   };
 
+  const selectFromGalleryWeb = () => {
+    if (imageInputRef.current) {
+      imageInputRef.current.click();
+    }
+  };
+
+  const handleWebDocumentSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleWebImageChange = (event: any) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    Array.from(files).forEach((file: any) => {
+      if (file.size > maxFileSize * 1024 * 1024) {
+        showError('File Too Large', `File size must be less than ${maxFileSize}MB`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const attachment: Attachment = {
+          id: `${Date.now()}_${Math.random()}`,
+          uri: e.target?.result as string,
+          name: file.name,
+          type: 'image',
+          size: file.size,
+          mimeType: file.type,
+        };
+        addAttachment(attachment);
+      };
+      reader.readAsDataURL(file);
+    });
+    setUploading(false);
+    
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const handleWebFileChange = (event: any) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    Array.from(files).forEach((file: any) => {
+      if (file.size > maxFileSize * 1024 * 1024) {
+        showError('File Too Large', `File size must be less than ${maxFileSize}MB`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const attachment: Attachment = {
+          id: `${Date.now()}_${Math.random()}`,
+          uri: e.target?.result as string,
+          name: file.name,
+          type: 'document',
+          size: file.size,
+          mimeType: file.type,
+        };
+        addAttachment(attachment);
+      };
+      reader.readAsDataURL(file);
+    });
+    setUploading(false);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const showUploadOptions = () => {
-    const options = [];
+    const options: any[] = [];
     
     if (allowedTypes.includes('image')) {
-      options.push(
-        { text: 'Take Photo', onPress: takePhoto },
-        { text: 'Choose from Gallery', onPress: selectFromGallery }
-      );
+      // On web, don't show "Take Photo" option
+      if (Platform.OS !== 'web') {
+        options.push({ text: 'Take Photo', onPress: takePhoto });
+      }
+      options.push({ text: 'Choose from Gallery', onPress: selectFromGallery });
     }
     
     if (allowedTypes.includes('document')) {
@@ -245,6 +343,28 @@ export default function AttachmentUploader({
 
   return (
     <View style={[styles.container, style]}>
+      {/* Hidden file inputs for web */}
+      {Platform.OS === 'web' && (
+        <>
+          <input
+            ref={imageInputRef as any}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleWebImageChange}
+          />
+          <input
+            ref={fileInputRef as any}
+            type="file"
+            accept="*/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleWebFileChange}
+          />
+        </>
+      )}
+
       {/* Upload Button */}
       <TouchableOpacity
         style={styles.uploadButton}

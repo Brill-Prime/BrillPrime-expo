@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,7 @@ interface MerchantProfile {
 export default function EditProfileScreen() {
   const router = useRouter();
   const { showSuccess, showError } = useAlert();
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<MerchantProfile>({
     businessName: '',
     category: '',
@@ -139,16 +141,21 @@ export default function EditProfileScreen() {
   };
 
   const handleChangePhoto = () => {
-    Alert.alert(
-      'Change Profile Photo',
-      'Choose an option',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Camera', onPress: openCamera },
-        { text: 'Photo Library', onPress: openImageLibrary },
-        { text: 'Remove Photo', onPress: removePhoto, style: 'destructive' },
-      ]
+    const options: any[] = [
+      { text: 'Cancel', style: 'cancel' },
+    ];
+
+    // Only show camera option on native platforms
+    if (Platform.OS !== 'web') {
+      options.push({ text: 'Camera', onPress: openCamera });
+    }
+
+    options.push(
+      { text: 'Photo Library', onPress: openImageLibrary },
+      { text: 'Remove Photo', onPress: removePhoto, style: 'destructive' }
     );
+
+    Alert.alert('Change Profile Photo', 'Choose an option', options);
   };
 
   const requestPermissions = async () => {
@@ -189,6 +196,14 @@ export default function EditProfileScreen() {
   };
 
   const openImageLibrary = async () => {
+    // Use web input for web platform
+    if (Platform.OS === 'web') {
+      if (imageInputRef.current) {
+        imageInputRef.current.click();
+      }
+      return;
+    }
+
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) return;
 
@@ -207,6 +222,30 @@ export default function EditProfileScreen() {
     } catch (error) {
       console.error('Error opening image library:', error);
       Alert.alert('Error', 'Failed to open photo library. Please try again.');
+    }
+  };
+
+  const handleWebImageChange = (event: any) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showError('File Too Large', 'Profile photo must be less than 5MB');
+      return;
+    }
+
+    // Read file as data URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUri = e.target?.result as string;
+      setProfile(prev => ({ ...prev, profileImage: imageUri }));
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
     }
   };
 
@@ -280,6 +319,17 @@ export default function EditProfileScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Hidden file input for web */}
+      {Platform.OS === 'web' && (
+        <input
+          ref={imageInputRef as any}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleWebImageChange}
+        />
+      )}
+
       {/* Header */}
       <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
