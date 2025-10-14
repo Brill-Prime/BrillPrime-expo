@@ -732,11 +732,24 @@ class AuthService {
 
   async getToken(): Promise<string | null> {
     try {
-      // Prefer token from Firebase if available and valid, otherwise use stored token
-      if (this.authToken) {
-        return this.authToken;
+      // Check if Firebase user is available and get fresh token
+      if (this.currentUser) {
+        try {
+          const freshToken = await this.currentUser.getIdToken(false);
+          this.authToken = freshToken;
+          return freshToken;
+        } catch (firebaseError) {
+          console.warn('Firebase token refresh failed, using stored token');
+        }
       }
-      return await AsyncStorage.getItem(this.TOKEN_KEY);
+      
+      // Fallback to stored token
+      const storedToken = await AsyncStorage.getItem(this.TOKEN_KEY);
+      if (storedToken && this.isValidTokenFormat(storedToken)) {
+        return storedToken;
+      }
+      
+      return null;
     } catch (error: any) {
       console.error('Error getting token:', error);
       return null;

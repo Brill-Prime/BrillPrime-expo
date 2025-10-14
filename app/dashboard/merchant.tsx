@@ -65,13 +65,16 @@ export default function MerchantDashboard() {
         router.push('/merchant/analytics');
         break;
       case 'customer-communication':
-        router.push('/merchant/customer-communication');
+        router.push('/chat');
         break;
       case 'inventory':
         router.push('/merchant/inventory');
         break;
+      case 'store-settings':
+        router.push('/profile/edit');
+        break;
       default:
-        Alert.alert("Info", `${feature.title} feature coming soon`);
+        router.push(`/${feature.route}` || '/profile');
     }
   };
 

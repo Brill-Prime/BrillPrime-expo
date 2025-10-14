@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -200,9 +199,9 @@ export default function CustomerCommunication() {
     try {
       // Simulate sending message
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       showSuccess('Message Sent', `Message sent to ${selectedCustomers.length} customer(s)`);
-      
+
       // Update last contact date for selected customers
       const updatedCustomers = customers.map(customer => 
         selectedCustomers.includes(customer.id)
@@ -260,7 +259,7 @@ export default function CustomerCommunication() {
     const daysSinceLastOrder = Math.floor(
       (Date.now() - new Date(customer.lastOrder).getTime()) / (1000 * 60 * 60 * 24)
     );
-    
+
     if (daysSinceLastOrder <= 7) return { color: '#28a745', text: 'Recent' };
     if (daysSinceLastOrder <= 30) return { color: '#ffc107', text: 'Active' };
     return { color: '#dc3545', text: 'Inactive' };
@@ -462,7 +461,7 @@ export default function CustomerCommunication() {
         <View style={styles.content}>
           <View style={styles.broadcastContainer}>
             <Text style={styles.sectionTitle}>Send Broadcast Message</Text>
-            
+
             <TextInput
               style={styles.subjectInput}
               placeholder="Message Subject"

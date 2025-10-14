@@ -65,6 +65,7 @@ export default function DriverDashboard() {
   const handleFeaturePress = (feature: any) => {
     switch (feature.id) {
       case 'available-orders':
+      case 'my-deliveries':
         router.push('/orders/driver-orders');
         break;
       case 'earnings':
@@ -73,11 +74,14 @@ export default function DriverDashboard() {
       case 'navigation':
         router.push('/store-locator');
         break;
+      case 'vehicle-info':
+        router.push('/profile/edit');
+        break;
       case 'support':
         router.push('/support');
         break;
       default:
-        Alert.alert("Info", `${feature.title} feature coming soon`);
+        router.push(feature.route || '/profile');
     }
   };
 
