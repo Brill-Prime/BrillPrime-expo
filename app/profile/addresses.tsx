@@ -467,10 +467,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
 });
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
