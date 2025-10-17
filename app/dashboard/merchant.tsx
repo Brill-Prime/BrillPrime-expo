@@ -83,35 +83,35 @@ export default function MerchantDashboard() {
       id: "manage-commodities",
       title: "Add Products",
       description: "List new items",
-      icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'),
+      icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'),
       route: "/merchant/add-commodity"
     },
     {
       id: "manage-commodities",
       title: "Manage Inventory",
       description: "Track your stock",
-      icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'),
+      icon: require('../../attached_assets/stock_images/3d_package_box_icon_1d5ed216.jpg'),
       route: "/merchant/commodities"
     },
     {
       id: "manage-orders",
       title: "Orders",
       description: "View customer orders",
-      icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'),
+      icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'),
       route: "/orders/consumer-orders"
     },
     {
       id: "analytics",
       title: "Analytics",
       description: "Sales insights",
-      icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'),
+      icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'),
       route: "/merchant/analytics"
     },
     {
       id: "store-settings",
       title: "Store Settings",
       description: "Manage your store",
-      icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'),
+      icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'),
       route: "/profile/edit"
     }
   ];

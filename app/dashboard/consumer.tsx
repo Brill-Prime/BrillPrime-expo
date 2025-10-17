@@ -97,11 +97,11 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_da3fd56f.jpg'), route: "/commodity/commodities" },
-    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon,_7337f405.jpg'), route: "/orders/consumer-orders" },
-    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon,_09d7368d.jpg'), route: "/messages" },
-    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon,_favor_cc7abce4.jpg'), route: "/favorites" },
-    { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon,__8d7235fd.jpg'), route: "/support" }
+    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'), route: "/commodity/commodities" },
+    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon_1d5ed216.jpg'), route: "/orders/consumer-orders" },
+    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'), route: "/messages" },
+    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'), route: "/favorites" },
+    { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'), route: "/support" }
   ];
 
   const styles = getResponsiveStyles(screenData);
