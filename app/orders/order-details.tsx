@@ -178,24 +178,11 @@ Thank you for your order!
   };
 
   const handleCancelOrder = async () => {
-    try {
-      // const response = await orderService.cancelOrder(order?.id as string, 'Customer request'); // Uncomment and replace with actual service call
-      // if (response.success) {
-      //   Alert.alert('Success', 'Order cancelled successfully');
-      //   router.back();
-      // }
-      // Mocking successful cancellation for now
-      const updatedOrder = { ...order, status: 'cancelled' as const };
-      setOrder(updatedOrder);
-      Alert.alert('Order Cancelled', 'Your order has been successfully cancelled.');
-      router.back(); // Or navigate away, depending on desired behavior
-    } catch (error) {
-      Alert.alert('Error', 'Failed to cancel order');
-    }
+    router.push(`/orders/cancel-order?orderId=${order?.id}&orderTotal=${order?.totalAmount}`);
   };
 
   const handleChangeAddress = () => {
-    router.push(`/orders/${order?.id}/change-address`);
+    router.push(`/orders/change-address?orderId=${order?.id}`);
   };
 
 
