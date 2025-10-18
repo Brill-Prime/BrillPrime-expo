@@ -55,6 +55,10 @@ class CommunicationService {
   private messageCallbacks: Array<(message: ChatMessage) => void> = [];
   private callCallbacks: Array<(call: CallSession) => void> = [];
 
+  private wsUrl = process.env.NODE_ENV === 'development' 
+    ? 'wss://brill-backend-wjyl.onrender.com/ws' 
+    : 'wss://api.brillprime.com/ws';
+
   // Initialize WebSocket connection for real-time communication
   async initializeConnection(): Promise<void> {
     const token = await authService.getToken();
@@ -64,7 +68,7 @@ class CommunicationService {
 
     try {
       // Use wss:// for production (HTTPS) or ws:// for development (HTTP)
-      const wsUrl = `wss://api.brillprime.com/ws?token=${token}`;
+      const wsUrl = `${this.wsUrl}?token=${token}`;
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {

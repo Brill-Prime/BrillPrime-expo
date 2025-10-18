@@ -46,10 +46,24 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
   return config;
 };
 
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Determine API base URL based on environment
+const getApiBaseUrl = () => {
+  if (isDevelopment) {
+    // Use Replit dev backend for development
+    return 'https://brill-backend-wjyl.onrender.com';
+  } else {
+    // Use production API for production
+    return 'https://api.brillprime.com';
+  }
+};
+
 export const ENV = {
-  isDevelopment: process.env.NODE_ENV === 'development',
-  isProduction: process.env.NODE_ENV === 'production',
-  apiBaseUrl: 'https://api.brillprime.com',
+  isDevelopment,
+  isProduction,
+  apiBaseUrl: getApiBaseUrl(),
   apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'), // Increased to 30s for real API
   mapApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
