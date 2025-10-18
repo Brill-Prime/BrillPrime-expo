@@ -10,8 +10,16 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, style, shadow = 'base', ...props }) => {
+  const shadowStyles = {
+    none: {},
+    sm: { boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)' },
+    base: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' },
+    md: { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)' },
+    lg: { boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.2)' }
+  };
+  
   return (
-    <View style={[styles.card, theme.shadows[shadow], style]} {...props}>
+    <View style={[styles.card, shadowStyles[shadow], style]} {...props}>
       {children}
     </View>
   );

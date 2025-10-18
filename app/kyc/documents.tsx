@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -23,7 +22,7 @@ export default function DocumentsScreen() {
   const router = useRouter();
   const { type } = useLocalSearchParams<{ type: string }>();
   const { showError, showSuccess, showConfirmDialog } = useAlert();
-  
+
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [backImage, setBackImage] = useState<string | null>(null);
   const [documentNumber, setDocumentNumber] = useState('');
@@ -218,7 +217,7 @@ export default function DocumentsScreen() {
       };
 
       const response = await kycService.uploadDocument(uploadData);
-      
+
       if (response.success) {
         showSuccess('Success', 'Document uploaded successfully');
         router.back();
@@ -294,7 +293,7 @@ export default function DocumentsScreen() {
           {/* Description */}
           <View style={styles.descriptionCard}>
             <Text style={styles.description}>{documentInfo.description}</Text>
-            
+
             {documentInfo.examples.length > 0 && (
               <View style={styles.examplesContainer}>
                 <Text style={styles.examplesTitle}>Accepted Documents:</Text>
@@ -308,7 +307,7 @@ export default function DocumentsScreen() {
           {/* Upload Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Upload Documents</Text>
-            
+
             <View style={styles.uploadGrid}>
               <ImageUploadCard
                 title="Front Side"
@@ -316,7 +315,7 @@ export default function DocumentsScreen() {
                 onPress={() => pickImage(true)}
                 isRequired={true}
               />
-              
+
               {documentInfo.requiresBack && (
                 <ImageUploadCard
                   title="Back Side"

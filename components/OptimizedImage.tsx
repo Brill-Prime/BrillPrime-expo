@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 interface OptimizedImageProps extends ImageProps {
   fallback?: boolean;
   showLoader?: boolean;
+  resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -13,6 +14,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fallback = true,
   showLoader = true,
   style,
+  resizeMode = 'cover',
   ...props
 }) => {
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           <Image
             source={source}
             style={[styles.image, style]}
+            resizeMode={resizeMode}
             onLoadStart={() => setLoading(true)}
             onLoadEnd={() => setLoading(false)}
             onError={() => {

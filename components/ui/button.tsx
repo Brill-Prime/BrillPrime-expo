@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   default: {
     backgroundColor: theme.colors.primary,
-    ...theme.shadows.base,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
   },
   outline: {
     backgroundColor: 'transparent',
@@ -97,11 +97,11 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: theme.colors.backgroundSecondary,
-    ...theme.shadows.sm,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.05)',
   },
   destructive: {
     backgroundColor: theme.colors.error,
-    ...theme.shadows.base,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
   },
   ghost: {
     backgroundColor: 'transparent',

@@ -242,6 +242,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       borderBottomWidth: 1,
       borderBottomColor: '#e9ecef',
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
     },
     backButton: {
       padding: 8,
@@ -271,6 +272,7 @@ const getResponsiveStyles = (screenData: any) => {
       marginVertical: Math.max(8, height * 0.01),
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
+      boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.08)',
     },
     sectionTitle: {
       fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
