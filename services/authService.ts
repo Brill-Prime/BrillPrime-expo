@@ -735,8 +735,22 @@ class AuthService {
       // Check if Firebase user is available and get fresh token
       if (this.currentUser) {
         try {
-          const freshToken = await this.currentUser.getIdToken(false);
+          // Check if token needs refresh
+          const expiry = await AsyncStorage.getItem('tokenExpiry');
+          const needsRefresh = !expiry || Date.now() > (parseInt(expiry) - 5 * 60 * 1000); // 5 min buffer
+          
+          // Force refresh if token is expiring soon
+          const freshToken = await this.currentUser.getIdToken(needsRefresh);
           this.authToken = freshToken;
+          
+          // Update stored token and expiry
+          if (needsRefresh) {
+            await AsyncStorage.setItem(this.TOKEN_KEY, freshToken);
+            const newExpiry = Date.now() + (55 * 60 * 1000); // 55 minutes
+            await AsyncStorage.setItem('tokenExpiry', newExpiry.toString());
+            console.log('Token refreshed successfully');
+          }
+          
           return freshToken;
         } catch (firebaseError) {
           console.warn('Firebase token refresh failed, using stored token');
