@@ -71,7 +71,7 @@ export default {
     firebaseDatabaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://brillprimefirebase-default-rtdb.firebaseio.com",
     firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
     // API configuration
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.brillprime.com",
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || (process.env.NODE_ENV === 'development' ? "https://brill-backend-wjyl.onrender.com" : "https://api.brillprime.com"),
     apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "30000", 10)
   }
 };
