@@ -141,19 +141,19 @@ export default function EditProfileScreen() {
   };
 
   const handleChangePhoto = () => {
-    const options: any[] = [
-      { text: 'Cancel', style: 'cancel' },
-    ];
-
-    // Only show camera option on native platforms
-    if (Platform.OS !== 'web') {
-      options.push({ text: 'Camera', onPress: openCamera });
+    // For web, directly open file picker
+    if (Platform.OS === 'web') {
+      openImageLibrary();
+      return;
     }
 
-    options.push(
+    // For mobile, show alert dialog with options
+    const options: any[] = [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Camera', onPress: openCamera },
       { text: 'Photo Library', onPress: openImageLibrary },
       { text: 'Remove Photo', onPress: removePhoto, style: 'destructive' }
-    );
+    ];
 
     Alert.alert('Change Profile Photo', 'Choose an option', options);
   };
@@ -367,6 +367,15 @@ export default function EditProfileScreen() {
               </View>
             </TouchableOpacity>
             <Text style={styles.changePhotoText}>Tap to change photo</Text>
+            {Platform.OS === 'web' && profile.profileImage && (
+              <TouchableOpacity 
+                style={styles.removePhotoButton}
+                onPress={removePhoto}
+              >
+                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                <Text style={styles.removePhotoText}>Remove Photo</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Business Name */}
@@ -568,6 +577,21 @@ const styles = StyleSheet.create({
     color: '#4682B4',
     fontFamily: 'Montserrat-Medium',
     marginTop: 8,
+  },
+  removePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFF5F5',
+  },
+  removePhotoText: {
+    fontSize: 13,
+    color: '#FF3B30',
+    fontWeight: '500',
   },
   formSection: {
     marginBottom: 25,
