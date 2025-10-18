@@ -33,10 +33,18 @@ class NotificationService {
     read?: boolean;
     limit?: number;
     offset?: number;
+    role?: string;
   }): Promise<ApiResponse<Notification[]>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // Get user role if not provided
+    let userRole = filters?.role;
+    if (!userRole) {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      userRole = await AsyncStorage.getItem('userRole') || 'consumer';
     }
 
     let endpoint = '/api/notifications';
@@ -48,6 +56,9 @@ class NotificationService {
       if (filters.limit) queryParams.append('limit', filters.limit.toString());
       if (filters.offset) queryParams.append('offset', filters.offset.toString());
     }
+    
+    // Add role filter
+    queryParams.append('role', userRole);
 
     if (queryParams.toString()) {
       endpoint += `?${queryParams.toString()}`;
@@ -217,13 +228,22 @@ class NotificationService {
   }
 
   // Get unread count
-  async getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+  async getUnreadCount(role?: string): Promise<ApiResponse<{ count: number }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get('/api/notifications/unread-count', {
+    // Get user role if not provided
+    let userRole = role;
+    if (!userRole) {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+    }
+
+    const endpoint = `/api/notifications/unread-count?role=${userRole}`;
+
+    return apiClient.get(endpoint, {
       Authorization: `Bearer ${token}`,
     });
   }

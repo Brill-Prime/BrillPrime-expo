@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { 
   View, 
   Text, 
@@ -24,8 +24,11 @@ const { width, height } = Dimensions.get('window');
 export default function MerchantHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
-  const [userEmail, setUserEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("Merchant");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [merchantData, setMerchantData] = useState({
     userId: "MER123456",
     businessName: "Prime Merchant",
@@ -36,7 +39,6 @@ export default function MerchantHome() {
     todaysSales: 45000,
     rating: 4.8
   });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-280)).current;
   const [region, setRegion] = useState({
     latitude: 9.0765, // Abuja, Nigeria
@@ -63,16 +65,36 @@ export default function MerchantHome() {
     };
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
-      const email = await AsyncStorage.getItem("userEmail");
+      const [email, name] = await Promise.all([
+        AsyncStorage.getItem("userEmail"),
+        AsyncStorage.getItem("userName")
+      ]);
+
       setUserEmail(email || "merchant@brillprime.com");
-      setIsLoading(false);
+      setUserName(name || "Merchant");
+
+      // Load notification count
+      await loadNotificationCount();
     } catch (error) {
       console.error("Error loading user data:", error);
-      setIsLoading(false);
+      setUserEmail("merchant@brillprime.com");
+      setUserName("Merchant");
     }
-  };
+  }, []);
+
+  const loadNotificationCount = useCallback(async () => {
+    try {
+      const { notificationService } = await import("../../services/notificationService");
+      const response = await notificationService.getUnreadCount();
+      if (response.success && response.data) {
+        setUnreadNotifications(response.data.count);
+      }
+    } catch (error) {
+      console.error("Error loading notification count:", error);
+    }
+  }, []);
 
   const loadCurrentLocation = async () => {
     try {
@@ -91,7 +113,7 @@ export default function MerchantHome() {
     }
   };
 
-  const toggleMenu = () => {
+  const toggleMenu = useCallback(() => {
     const sidebarWidth = Math.min(280, width * 0.8);
     const toValue = isMenuOpen ? -sidebarWidth : 0;
     Animated.timing(slideAnim, {
@@ -100,33 +122,38 @@ export default function MerchantHome() {
       useNativeDriver: false,
     }).start();
     setIsMenuOpen(!isMenuOpen);
-  };
+  }, [isMenuOpen, slideAnim]);
 
-  const handleMenuItemPress = (item: string) => {
+  const handleMenuItemPress = useCallback((item: string) => {
     toggleMenu();
-    switch (item) {
-      case 'Profile':
-        router.push('/profile');
-        break;
-      case 'Analytics':
-        router.push('/merchant/analytics');
-        break;
-      case 'Settings':
-        router.push('/profile/privacy-settings');
-        break;
-      case 'Support':
-        router.push('/support');
-        break;
-      case 'Switch to Consumer':
-        router.push('/home/consumer');
-        break;
-      case 'Switch to Driver':
-        router.push('/home/driver');
-        break;
-      default:
-        showInfo("Navigation", `Navigating to ${item}`);
-    }
-  };
+    setTimeout(() => {
+      switch (item) {
+        case "Dashboard":
+          router.push("/dashboard/merchant");
+          break;
+        case "Profile":
+          router.push("/profile");
+          break;
+        case "Notifications":
+          router.push("/notifications");
+          break;
+        case "Settings":
+          router.push("/profile/privacy-settings");
+          break;
+        case "Support":
+          router.push("/support");
+          break;
+        case "Switch to Consumer":
+          router.push("/home/consumer");
+          break;
+        case "Switch to Driver":
+          router.push("/home/driver");
+          break;
+        default:
+          showInfo("Navigation", `Navigating to ${item}`);
+      }
+    }, 300);
+  }, [router, toggleMenu, showInfo]);
 
   const handleSignOut = async () => {
     showConfirmDialog(
@@ -219,9 +246,22 @@ export default function MerchantHome() {
           <Ionicons name="arrow-back" size={20} color="#333" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={toggleMenu} style={styles.headerButton}>
-          <Ionicons name="menu" size={20} color="#333" />
-        </TouchableOpacity>
+        <View style={styles.headerButtonsContainer}>
+          <TouchableOpacity 
+            onPress={() => router.push('/notifications')} 
+            style={styles.headerButton}
+          >
+            <Ionicons name="notifications" size={20} color="#333" />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{unreadNotifications}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleMenu} style={styles.headerButton}>
+            <Ionicons name="menu" size={20} color="#333" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Merchant Info Card */}
@@ -317,7 +357,7 @@ export default function MerchantHome() {
 
           {/* Menu Items */}
           <View style={styles.menuList}>
-            {['Profile', 'Analytics', 'Settings', 'Support'].map((item) => (
+            {['Dashboard', 'Profile', 'Notifications', 'Settings', 'Support'].map((item) => (
               <TouchableOpacity 
                 key={item}
                 style={styles.menuItem} 
@@ -411,6 +451,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
+    position: 'relative', // Needed for badge positioning
+  },
+  headerButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+    fontFamily: 'Montserrat-Bold',
   },
   merchantCard: {
     position: 'absolute',

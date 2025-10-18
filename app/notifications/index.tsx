@@ -88,7 +88,14 @@ export default function Notifications() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await notificationService.getNotifications();
+      
+      // Get current user role
+      const userRole = await AsyncStorage.getItem('userRole');
+      
+      const response = await notificationService.getNotifications({
+        role: userRole || 'consumer'
+      });
+      
       if (response.success && response.data) {
         const formattedNotifications = response.data.map(notif => ({
           ...notif,

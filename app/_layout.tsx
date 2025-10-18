@@ -9,6 +9,7 @@ import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from '../contexts/AppContext';
 import { MerchantProvider } from '../contexts/MerchantContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
 
@@ -91,20 +92,22 @@ export default function RootLayout() {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <AppProvider>
         <MerchantProvider>
-          <AlertProvider>
-            <View style={styles.container}>
-              <OfflineBanner />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: '#fff' },
-                  animation: 'fade',
-                }}
-              >
-                <Stack.Screen name="index" />
-              </Stack>
-            </View>
-          </AlertProvider>
+          <NotificationProvider>
+            <AlertProvider>
+              <View style={styles.container}>
+                <OfflineBanner />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: '#fff' },
+                    animation: 'fade',
+                  }}
+                >
+                  <Stack.Screen name="index" />
+                </Stack>
+              </View>
+            </AlertProvider>
+          </NotificationProvider>
         </MerchantProvider>
       </AppProvider>
     </ErrorBoundary>

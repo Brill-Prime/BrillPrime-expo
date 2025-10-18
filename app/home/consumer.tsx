@@ -125,8 +125,9 @@ export default function ConsumerHome() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const [userName, setUserName] = useState("");
+  const [userName, setUserName] = useState("Consumer");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
   const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
@@ -451,27 +452,36 @@ export default function ConsumerHome() {
     setShowDriverCard(true);
   };
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
-      // Load user data from AsyncStorage (stored by authService)
-      const userDataString = await AsyncStorage.getItem('userData');
+      const [email, name] = await Promise.all([
+        AsyncStorage.getItem("userEmail"),
+        AsyncStorage.getItem("userName")
+      ]);
 
-      if (userDataString && isMountedRef.current) {
-        const userData = JSON.parse(userDataString);
-        setUserEmail(userData.email || '');
-        setUserName(userData.name || 'User');
-      } else {
-        // Fallback to email only
-        const email = await AsyncStorage.getItem("userEmail");
-        if (email && isMountedRef.current) {
-          setUserEmail(email);
-          setUserName('User');
-        }
-      }
+      setUserEmail(email || "consumer@brillprime.com");
+      setUserName(name || "Consumer");
+
+      // Load notification count
+      await loadNotificationCount();
     } catch (error) {
       console.error("Error loading user data:", error);
+      setUserEmail("consumer@brillprime.com");
+      setUserName("Consumer");
     }
-  };
+  }, []);
+
+  const loadNotificationCount = useCallback(async () => {
+    try {
+      const { notificationService } = await import("../../services/notificationService");
+      const response = await notificationService.getUnreadCount();
+      if (response.success && response.data) {
+        setUnreadNotifications(response.data.count);
+      }
+    } catch (error) {
+      console.error("Error loading notification count:", error);
+    }
+  }, []);
 
   const checkSavedLocation = async () => {
     try {
@@ -530,37 +540,36 @@ export default function ConsumerHome() {
     );
   };
 
-  const handleMenuItemPress = (item: string) => {
+  const handleMenuItemPress = useCallback((item: string) => {
     toggleMenu();
-    switch (item) {
-      case "Profile":
-        router.push("/profile");
-        break;
-      case "Orders":
-        router.push("/orders/consumer-orders");
-        break;
-      case "Cart":
-        router.push("/cart");
-        break;
-      case "Favorites":
-        router.push("/favorites");
-        break;
-      case "Settings":
-        router.push("/profile/privacy-settings");
-        break;
-      case "Support":
-        router.push("/support");
-        break;
-      case "Switch to Merchant":
-        router.push("/home/merchant");
-        break;
-      case "Switch to Driver":
-        router.push("/home/driver");
-        break;
-      default:
-        showInfo("Navigation", `Navigating to ${item}`);
-    }
-  };
+    setTimeout(() => {
+      switch (item) {
+        case "Dashboard":
+          router.push("/dashboard/consumer");
+          break;
+        case "Profile":
+          router.push("/profile");
+          break;
+        case "Notifications":
+          router.push("/notifications");
+          break;
+        case "Settings":
+          router.push("/profile/privacy-settings");
+          break;
+        case "Support":
+          router.push("/support");
+          break;
+        case "Switch to Merchant":
+          router.push("/home/merchant");
+          break;
+        case "Switch to Driver":
+          router.push("/home/driver");
+          break;
+        default:
+          showInfo("Navigation", `Navigating to ${item}`);
+      }
+    }, 300);
+  }, [router, toggleMenu, showInfo]);
 
   const handleSignOut = async () => {
     showConfirmDialog(
@@ -585,7 +594,7 @@ export default function ConsumerHome() {
     try {
       // Check if we already have permission
       let { status } = await Location.getForegroundPermissionsAsync();
-      
+
       // If permission is not granted, request it
       if (status !== 'granted') {
         let permissionResult = await Location.requestForegroundPermissionsAsync();
@@ -1023,6 +1032,24 @@ export default function ConsumerHome() {
                     <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
                   </TouchableOpacity>
                 ))}
+                {/* Notifications Menu Item */}
+                <TouchableOpacity
+                  key="Notifications"
+                  style={styles.menuItem}
+                  onPress={() => handleMenuItemPress("Notifications")}
+                  accessibilityLabel="Navigate to Notifications"
+                  accessibilityRole="button"
+                >
+                  <View style={styles.menuItemWithBadge}>
+                    <Text style={styles.menuItemText}>Notifications</Text>
+                    {unreadNotifications > 0 && (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{unreadNotifications}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.sidebarBottom}>
@@ -1409,6 +1436,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  menuItemWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  badge: {
+    backgroundColor: theme.colors.error,
+    borderRadius: 10,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: theme.colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: theme.typography.semiBold,
   },
   menuItemText: {
     fontSize: 16,

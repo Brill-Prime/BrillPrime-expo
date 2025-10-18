@@ -77,6 +77,7 @@ export default function DriverHome() {
   const [stats, setStats] = useState(defaultStats);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(75);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const sidebarWidth = useMemo(() => Math.min(350, width * 0.9), []);
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
@@ -166,9 +167,24 @@ export default function DriverHome() {
 
       setStats(newStats);
       PerformanceOptimizer.setCache("driverStats", newStats);
+
+      // Load notification count
+      await loadNotificationCount();
     } catch (error) {
       console.error("Error loading driver stats:", error);
       setStats(defaultStats);
+    }
+  }, []);
+
+  const loadNotificationCount = useCallback(async () => {
+    try {
+      const { notificationService } = await import("../../services/notificationService");
+      const response = await notificationService.getUnreadCount();
+      if (response.success && response.data) {
+        setUnreadNotifications(response.data.count);
+      }
+    } catch (error) {
+      console.error("Error loading notification count:", error);
     }
   }, []);
 
@@ -210,6 +226,9 @@ export default function DriverHome() {
     switch (item) {
       case "Profile":
         router.push("/profile");
+        break;
+      case "Notifications":
+        router.push("/notifications");
         break;
       case "Earnings":
         router.push("/transactions");
@@ -390,13 +409,22 @@ export default function DriverHome() {
               </View>
 
               <View style={styles.menuList}>
-                {["Profile", "Earnings", "Settings", "Support"].map((item) => (
+                {["Profile", "Notifications", "Earnings", "Settings", "Support"].map((item) => (
                   <TouchableOpacity
                     key={item}
                     style={styles.menuItem}
                     onPress={() => handleMenuItemPress(item)}
                   >
-                    <Text style={styles.menuItemText}>{item}</Text>
+                    <View style={styles.menuItemContent}>
+                      <Text style={styles.menuItemText}>{item}</Text>
+                      {item === "Notifications" && unreadNotifications > 0 && (
+                        <View style={styles.notificationBadge}>
+                          <Text style={styles.notificationBadgeText}>
+                            {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     <Ionicons name="chevron-forward" size={20} color="#666" />
                   </TouchableOpacity>
                 ))}
@@ -756,10 +784,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
+  menuItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   menuItemText: {
     fontSize: 16,
     color: "#333",
     fontFamily: "Montserrat-Medium",
+  },
+  notificationBadge: {
+    backgroundColor: "#e74c3c",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notificationBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+    fontFamily: "Montserrat-Bold",
   },
   sidebarBottom: {
     padding: 24,
