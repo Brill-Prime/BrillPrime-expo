@@ -160,13 +160,7 @@ export default function AdminDashboard() {
             <TouchableOpacity
               key={index}
               style={styles.featureCard}
-              onPress={() => {
-                if (feature.route.includes('/users') || feature.route.includes('/analytics')) {
-                  Alert.alert('Coming Soon', 'This feature is under development.');
-                } else {
-                  router.push(feature.route as any);
-                }
-              }}
+              onPress={() => router.push(feature.route as any)}
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
