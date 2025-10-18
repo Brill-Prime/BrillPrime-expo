@@ -4,575 +4,443 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ScrollView,
+  TextInput,
   Alert,
-  ActivityIndicator,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { paymentService } from '../../services/paymentService';
-import { validateCardNumber, validateCVV, validateExpiryDate } from '../../utils/validation';
-import { theme } from '../../config/theme';
-import { useAlert } from '../../components/AlertProvider';
 
-type PaymentType = 'CARD' | 'BANK_TRANSFER';
+type PaymentMethodType = 'card' | 'bank';
 
 export default function AddPaymentMethodScreen() {
   const router = useRouter();
-  const { showSuccess, showError } = useAlert();
+  const [screenData] = useState(Dimensions.get('window'));
+  const [methodType, setMethodType] = useState<PaymentMethodType>('card');
   const [loading, setLoading] = useState(false);
-  const [paymentType, setPaymentType] = useState<PaymentType>('CARD');
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
-  
+
   // Card details
   const [cardNumber, setCardNumber] = useState('');
-  const [cardHolder, setCardHolder] = useState('');
+  const [cardName, setCardName] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
-  
+
   // Bank details
+  const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
-  const [bankCode, setBankCode] = useState('');
-  const [bankName, setBankName] = useState('');
-  
-  const [setAsDefault, setSetAsDefault] = useState(false);
-  const [errors, setErrors] = useState<any>({});
-
-  React.useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-    });
-    return () => subscription?.remove();
-  }, []);
 
   const formatCardNumber = (text: string) => {
     const cleaned = text.replace(/\s/g, '');
     const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-    return formatted;
+    return formatted.substring(0, 19); // Max 16 digits + 3 spaces
   };
 
   const formatExpiryDate = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
     if (cleaned.length >= 2) {
-      return cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4);
+      return cleaned.substring(0, 2) + '/' + cleaned.substring(2, 4);
     }
     return cleaned;
   };
 
-  const formatAccountNumber = (text: string) => {
-    return text.replace(/\D/g, '').slice(0, 10);
+  const validateCardDetails = () => {
+    const cleanedCardNumber = cardNumber.replace(/\s/g, '');
+
+    if (!cardName.trim()) {
+      Alert.alert('Error', 'Please enter cardholder name');
+      return false;
+    }
+
+    if (cleanedCardNumber.length !== 16) {
+      Alert.alert('Error', 'Please enter a valid 16-digit card number');
+      return false;
+    }
+
+    if (!expiryDate.match(/^\d{2}\/\d{2}$/)) {
+      Alert.alert('Error', 'Please enter expiry date in MM/YY format');
+      return false;
+    }
+
+    const [month, year] = expiryDate.split('/').map(Number);
+    if (month < 1 || month > 12) {
+      Alert.alert('Error', 'Invalid expiry month');
+      return false;
+    }
+
+    const currentYear = new Date().getFullYear() % 100;
+    const currentMonth = new Date().getMonth() + 1;
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      Alert.alert('Error', 'Card has expired');
+      return false;
+    }
+
+    if (cvv.length !== 3) {
+      Alert.alert('Error', 'Please enter a valid 3-digit CVV');
+      return false;
+    }
+
+    return true;
   };
 
-  const validateCardForm = () => {
-    const newErrors: any = {};
-
-    if (!validateCardNumber(cardNumber.replace(/\s/g, ''))) {
-      newErrors.cardNumber = 'Invalid card number';
+  const validateBankDetails = () => {
+    if (!bankName.trim()) {
+      Alert.alert('Error', 'Please select a bank');
+      return false;
     }
 
-    if (!cardHolder.trim()) {
-      newErrors.cardHolder = 'Card holder name is required';
-    }
-
-    if (!validateExpiryDate(expiryDate)) {
-      newErrors.expiryDate = 'Invalid expiry date (MM/YY)';
-    }
-
-    if (!validateCVV(cvv)) {
-      newErrors.cvv = 'Invalid CVV';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validateBankForm = () => {
-    const newErrors: any = {};
-
-    if (!accountNumber || accountNumber.length !== 10) {
-      newErrors.accountNumber = 'Invalid account number (10 digits required)';
+    if (accountNumber.length !== 10) {
+      Alert.alert('Error', 'Please enter a valid 10-digit account number');
+      return false;
     }
 
     if (!accountName.trim()) {
-      newErrors.accountName = 'Account name is required';
+      Alert.alert('Error', 'Please enter account name');
+      return false;
     }
 
-    if (!bankCode.trim()) {
-      newErrors.bankCode = 'Bank code is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return true;
   };
 
   const handleAddPaymentMethod = async () => {
-    if (paymentType === 'CARD' && !validateCardForm()) {
-      return;
-    }
-
-    if (paymentType === 'BANK_TRANSFER' && !validateBankForm()) {
-      return;
-    }
+    if (methodType === 'card' && !validateCardDetails()) return;
+    if (methodType === 'bank' && !validateBankDetails()) return;
 
     setLoading(true);
+
     try {
-      const data = paymentType === 'CARD'
-        ? {
-            type: 'CARD' as const,
-            cardNumber: cardNumber.replace(/\s/g, ''),
-            cardHolder,
-            expiryDate,
-            cvv,
-            isDefault: setAsDefault,
-          }
-        : {
-            type: 'BANK_TRANSFER' as const,
-            accountNumber,
-            accountName,
-            bankCode,
-            isDefault: setAsDefault,
-          };
+      const result = await paymentService.addPaymentMethod({
+        type: methodType,
+        ...(methodType === 'card' ? {
+          cardNumber: cardNumber.replace(/\s/g, ''),
+          cardholderName: cardName,
+          expiryDate,
+          cvv,
+        } : {
+          bankName,
+          accountNumber,
+          accountName,
+        }),
+      });
 
-      const response = await paymentService.addPaymentMethod(data);
-
-      if (response.success) {
-        showSuccess('Success', 'Payment method added successfully');
-        router.back();
+      if (result.success) {
+        Alert.alert('Success', 'Payment method added successfully', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
       } else {
-        showError('Error', response.error || 'Failed to add payment method');
+        Alert.alert('Error', result.error || 'Failed to add payment method');
       }
     } catch (error) {
-      console.error('Error adding payment method:', error);
-      showError('Error', 'Failed to add payment method. Please try again.');
+      console.error('Add payment method error:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const NIGERIAN_BANKS = [
-    { code: '044', name: 'Access Bank' },
-    { code: '063', name: 'Access Bank (Diamond)' },
-    { code: '050', name: 'Ecobank Nigeria' },
-    { code: '070', name: 'Fidelity Bank' },
-    { code: '011', name: 'First Bank of Nigeria' },
-    { code: '214', name: 'First City Monument Bank' },
-    { code: '058', name: 'Guaranty Trust Bank' },
-    { code: '030', name: 'Heritage Bank' },
-    { code: '301', name: 'Jaiz Bank' },
-    { code: '082', name: 'Keystone Bank' },
-    { code: '526', name: 'Parallex Bank' },
-    { code: '076', name: 'Polaris Bank' },
-    { code: '101', name: 'Providus Bank' },
-    { code: '221', name: 'Stanbic IBTC Bank' },
-    { code: '068', name: 'Standard Chartered Bank' },
-    { code: '232', name: 'Sterling Bank' },
-    { code: '100', name: 'Suntrust Bank' },
-    { code: '032', name: 'Union Bank of Nigeria' },
-    { code: '033', name: 'United Bank For Africa' },
-    { code: '215', name: 'Unity Bank' },
-    { code: '035', name: 'Wema Bank' },
-    { code: '057', name: 'Zenith Bank' },
-  ];
-
-  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
-  const isTablet = screenDimensions.width >= theme.breakpoints.tablet;
+  const isTablet = screenData.width >= 768;
+  const isSmallScreen = screenData.width < 350;
+  const styles = getResponsiveStyles(screenData);
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+    <LinearGradient
+      colors={['rgb(11, 26, 81)', '#1e3a8a']}
+      style={styles.container}
+    >
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Payment Method</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* Tab Selector */}
-      <View style={[styles.tabContainer, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity
-          style={[styles.tab, paymentType === 'CARD' && styles.activeTab]}
-          onPress={() => setPaymentType('CARD')}
-        >
-          <Ionicons 
-            name="card" 
-            size={20} 
-            color={paymentType === 'CARD' ? theme.colors.white : theme.colors.textSecondary} 
-          />
-          <Text style={[styles.tabText, paymentType === 'CARD' && styles.activeTabText]}>
-            Card
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, paymentType === 'BANK_TRANSFER' && styles.activeTab]}
-          onPress={() => setPaymentType('BANK_TRANSFER')}
-        >
-          <Ionicons 
-            name="business" 
-            size={20} 
-            color={paymentType === 'BANK_TRANSFER' ? theme.colors.white : theme.colors.textSecondary} 
-          />
-          <Text style={[styles.tabText, paymentType === 'BANK_TRANSFER' && styles.activeTabText]}>
-            Bank Account
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.form, { paddingHorizontal: responsivePadding }]}>
-          {paymentType === 'CARD' ? (
-            <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Card Number</Text>
-                <TextInput
-                  style={[styles.input, errors.cardNumber && styles.inputError]}
-                  placeholder="1234 5678 9012 3456"
-                  placeholderTextColor={theme.colors.textLight}
-                  value={cardNumber}
-                  onChangeText={(text) => setCardNumber(formatCardNumber(text))}
-                  keyboardType="numeric"
-                  maxLength={19}
-                />
-                {errors.cardNumber && (
-                  <Text style={styles.errorText}>{errors.cardNumber}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Card Holder Name</Text>
-                <TextInput
-                  style={[styles.input, errors.cardHolder && styles.inputError]}
-                  placeholder="John Doe"
-                  placeholderTextColor={theme.colors.textLight}
-                  value={cardHolder}
-                  onChangeText={setCardHolder}
-                  autoCapitalize="words"
-                />
-                {errors.cardHolder && (
-                  <Text style={styles.errorText}>{errors.cardHolder}</Text>
-                )}
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.label}>Expiry Date</Text>
-                  <TextInput
-                    style={[styles.input, errors.expiryDate && styles.inputError]}
-                    placeholder="MM/YY"
-                    placeholderTextColor={theme.colors.textLight}
-                    value={expiryDate}
-                    onChangeText={(text) => setExpiryDate(formatExpiryDate(text))}
-                    keyboardType="numeric"
-                    maxLength={5}
-                  />
-                  {errors.expiryDate && (
-                    <Text style={styles.errorText}>{errors.expiryDate}</Text>
-                  )}
-                </View>
-
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>CVV</Text>
-                  <TextInput
-                    style={[styles.input, errors.cvv && styles.inputError]}
-                    placeholder="123"
-                    placeholderTextColor={theme.colors.textLight}
-                    value={cvv}
-                    onChangeText={setCvv}
-                    keyboardType="numeric"
-                    maxLength={4}
-                    secureTextEntry
-                  />
-                  {errors.cvv && (
-                    <Text style={styles.errorText}>{errors.cvv}</Text>
-                  )}
-                </View>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Select Bank</Text>
-                <View style={styles.bankSelector}>
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.bankList}
-                  >
-                    {NIGERIAN_BANKS.map((bank) => (
-                      <TouchableOpacity
-                        key={bank.code}
-                        style={[
-                          styles.bankChip,
-                          bankCode === bank.code && styles.bankChipSelected
-                        ]}
-                        onPress={() => {
-                          setBankCode(bank.code);
-                          setBankName(bank.name);
-                        }}
-                      >
-                        <Text style={[
-                          styles.bankChipText,
-                          bankCode === bank.code && styles.bankChipTextSelected
-                        ]}>
-                          {bank.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-                {errors.bankCode && (
-                  <Text style={styles.errorText}>{errors.bankCode}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Account Number</Text>
-                <TextInput
-                  style={[styles.input, errors.accountNumber && styles.inputError]}
-                  placeholder="0123456789"
-                  placeholderTextColor={theme.colors.textLight}
-                  value={accountNumber}
-                  onChangeText={(text) => setAccountNumber(formatAccountNumber(text))}
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-                {errors.accountNumber && (
-                  <Text style={styles.errorText}>{errors.accountNumber}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Account Name</Text>
-                <TextInput
-                  style={[styles.input, errors.accountName && styles.inputError]}
-                  placeholder="John Doe"
-                  placeholderTextColor={theme.colors.textLight}
-                  value={accountName}
-                  onChangeText={setAccountName}
-                  autoCapitalize="words"
-                />
-                {errors.accountName && (
-                  <Text style={styles.errorText}>{errors.accountName}</Text>
-                )}
-              </View>
-            </>
-          )}
-
-          {/* Set as Default Toggle */}
-          <TouchableOpacity 
-            style={styles.defaultToggle}
-            onPress={() => setSetAsDefault(!setAsDefault)}
+        {/* Method Type Selector */}
+        <View style={styles.methodTypeContainer}>
+          <TouchableOpacity
+            style={[
+              styles.methodTypeButton,
+              methodType === 'card' && styles.methodTypeButtonActive
+            ]}
+            onPress={() => setMethodType('card')}
           >
-            <View style={styles.defaultToggleLeft}>
-              <Ionicons 
-                name={setAsDefault ? "checkbox" : "square-outline"} 
-                size={24} 
-                color={setAsDefault ? theme.colors.primary : theme.colors.textSecondary} 
-              />
-              <Text style={styles.defaultToggleText}>Set as default payment method</Text>
-            </View>
+            <Ionicons 
+              name="card" 
+              size={24} 
+              color={methodType === 'card' ? 'white' : 'rgb(11, 26, 81)'} 
+            />
+            <Text style={[
+              styles.methodTypeText,
+              methodType === 'card' && styles.methodTypeTextActive
+            ]}>
+              Card
+            </Text>
           </TouchableOpacity>
 
-          <View style={styles.securityNote}>
-            <Ionicons name="shield-checkmark" size={20} color={theme.colors.success} />
-            <Text style={styles.securityText}>
-              Your payment information is encrypted and secure
+          <TouchableOpacity
+            style={[
+              styles.methodTypeButton,
+              methodType === 'bank' && styles.methodTypeButtonActive
+            ]}
+            onPress={() => setMethodType('bank')}
+          >
+            <Ionicons 
+              name="business" 
+              size={24} 
+              color={methodType === 'bank' ? 'white' : 'rgb(11, 26, 81)'} 
+            />
+            <Text style={[
+              styles.methodTypeText,
+              methodType === 'bank' && styles.methodTypeTextActive
+            ]}>
+              Bank Account
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
+        {/* Card Form */}
+        {methodType === 'card' && (
+          <View style={styles.formContainer}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Cardholder Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="John Doe"
+                value={cardName}
+                onChangeText={setCardName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Card Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="1234 5678 9012 3456"
+                value={cardNumber}
+                onChangeText={(text) => setCardNumber(formatCardNumber(text))}
+                keyboardType="numeric"
+                maxLength={19}
+              />
+            </View>
+
+            <View style={styles.rowInputs}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                <Text style={styles.label}>Expiry Date</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="MM/YY"
+                  value={expiryDate}
+                  onChangeText={(text) => setExpiryDate(formatExpiryDate(text))}
+                  keyboardType="numeric"
+                  maxLength={5}
+                />
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={styles.label}>CVV</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="123"
+                  value={cvv}
+                  onChangeText={(text) => setCvv(text.replace(/\D/g, ''))}
+                  keyboardType="numeric"
+                  maxLength={3}
+                  secureTextEntry
+                />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Bank Form */}
+        {methodType === 'bank' && (
+          <View style={styles.formContainer}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Bank Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Select Bank"
+                value={bankName}
+                onChangeText={setBankName}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Account Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0123456789"
+                value={accountNumber}
+                onChangeText={(text) => setAccountNumber(text.replace(/\D/g, ''))}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Account Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="John Doe"
+                value={accountName}
+                onChangeText={setAccountName}
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Security Notice */}
+        <View style={styles.securityNotice}>
+          <Ionicons name="shield-checkmark" size={20} color="#10b981" />
+          <Text style={styles.securityText}>
+            Your payment information is encrypted and secure
+          </Text>
+        </View>
+
+        {/* Add Button */}
         <TouchableOpacity
           style={[styles.addButton, loading && styles.addButtonDisabled]}
           onPress={handleAddPaymentMethod}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={theme.colors.white} />
+            <ActivityIndicator color="white" />
           ) : (
-            <Text style={styles.addButtonText}>
-              Add {paymentType === 'CARD' ? 'Card' : 'Bank Account'}
-            </Text>
+            <Text style={styles.addButtonText}>Add Payment Method</Text>
           )}
         </TouchableOpacity>
-      </View>
-    </View>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: theme.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.text,
-    flex: 1,
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 40,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    paddingVertical: theme.spacing.base,
-    gap: theme.spacing.md,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.base,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.backgroundSecondary,
-    gap: theme.spacing.sm,
-  },
-  activeTab: {
-    backgroundColor: theme.colors.primary,
-  },
-  tabText: {
-    fontSize: theme.typography.fontSize.base,
-    fontFamily: theme.typography.fontFamily.medium,
-    color: theme.colors.textSecondary,
-  },
-  activeTabText: {
-    color: theme.colors.white,
-  },
-  content: {
-    flex: 1,
-  },
-  form: {
-    paddingVertical: theme.spacing.lg,
-  },
-  inputGroup: {
-    marginBottom: theme.spacing.lg,
-  },
-  label: {
-    fontSize: theme.typography.fontSize.base,
-    fontFamily: theme.typography.fontFamily.medium,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    fontSize: theme.typography.fontSize.md,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.text,
-    backgroundColor: theme.colors.background,
-  },
-  inputError: {
-    borderColor: theme.colors.error,
-  },
-  errorText: {
-    color: theme.colors.error,
-    fontSize: theme.typography.fontSize.sm,
-    fontFamily: theme.typography.fontFamily.regular,
-    marginTop: theme.spacing.xs,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  bankSelector: {
-    marginBottom: theme.spacing.sm,
-  },
-  bankList: {
-    flexGrow: 0,
-  },
-  bankChip: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.base,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.backgroundSecondary,
-    marginRight: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  bankChipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  bankChipText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontFamily: theme.typography.fontFamily.medium,
-    color: theme.colors.textSecondary,
-  },
-  bankChipTextSelected: {
-    color: theme.colors.white,
-  },
-  defaultToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.base,
-  },
-  defaultToggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  defaultToggleText: {
-    fontSize: theme.typography.fontSize.base,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.text,
-  },
-  securityNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f9ff',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginTop: theme.spacing.base,
-  },
-  securityText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.textSecondary,
-    marginLeft: theme.spacing.sm,
-    flex: 1,
-  },
-  footer: {
-    padding: theme.spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderLight,
-    backgroundColor: theme.colors.background,
-  },
-  addButton: {
-    backgroundColor: theme.colors.primaryDark,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.base,
-    alignItems: 'center',
-    ...theme.shadows.base,
-  },
-  addButtonDisabled: {
-    opacity: 0.6,
-  },
-  addButtonText: {
-    color: theme.colors.white,
-    fontSize: theme.typography.fontSize.md,
-    fontFamily: theme.typography.fontFamily.semiBold,
-  },
-});
+const getResponsiveStyles = (screenData: any) => {
+  const { width, height } = screenData;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 350;
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: Math.max(16, width * 0.05),
+      paddingTop: Math.max(50, height * 0.07),
+    },
+    backButton: {
+      padding: Math.max(8, width * 0.02),
+    },
+    headerTitle: {
+      fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
+      fontWeight: "bold",
+      color: "white",
+    },
+    placeholder: {
+      width: 40,
+    },
+    content: {
+      flex: 1,
+      backgroundColor: "white",
+      borderTopLeftRadius: 35,
+      borderTopRightRadius: 35,
+      paddingTop: Math.max(24, height * 0.03),
+      paddingHorizontal: Math.max(16, width * 0.05),
+    },
+    methodTypeContainer: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 24,
+    },
+    methodTypeButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 16,
+      borderRadius: 12,
+      backgroundColor: '#f3f4f6',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    methodTypeButtonActive: {
+      backgroundColor: 'rgb(11, 26, 81)',
+      borderColor: 'rgb(11, 26, 81)',
+    },
+    methodTypeText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+      color: 'rgb(11, 26, 81)',
+    },
+    methodTypeTextActive: {
+      color: 'white',
+    },
+    formContainer: {
+      marginBottom: 24,
+    },
+    inputGroup: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
+      fontWeight: '600',
+      color: '#374151',
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: '#f9fafb',
+      borderWidth: 1,
+      borderColor: '#e5e7eb',
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      color: '#111827',
+    },
+    rowInputs: {
+      flexDirection: 'row',
+    },
+    securityNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: '#f0fdf4',
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 24,
+    },
+    securityText: {
+      flex: 1,
+      fontSize: isTablet ? 13 : isSmallScreen ? 11 : 12,
+      color: '#166534',
+    },
+    addButton: {
+      backgroundColor: 'rgb(11, 26, 81)',
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginBottom: Math.max(32, height * 0.04),
+    },
+    addButtonDisabled: {
+      opacity: 0.6,
+    },
+    addButtonText: {
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '600',
+      color: 'white',
+    },
+  });
+};
