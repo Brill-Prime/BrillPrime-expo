@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 interface CartItem {
   id: string;
@@ -181,9 +182,10 @@ export default function CheckoutScreen() {
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
+    <ErrorBoundary>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
         </TouchableOpacity>
@@ -312,7 +314,8 @@ export default function CheckoutScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </ErrorBoundary>
   );
 }
 

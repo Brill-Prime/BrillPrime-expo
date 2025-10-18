@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppContext } from '../../contexts/AppContext';
 import { FormErrorBoundary } from '../../components/FormErrorBoundary';
+import ErrorBoundary from '../../components/ErrorBoundary';
 import { errorService } from '../../services/errorService';
 
 interface CartItem {
@@ -194,8 +195,9 @@ export default function CartScreen() {
   }
 
   return (
-    <FormErrorBoundary fallbackMessage="Failed to load cart. Please try again.">
-      <View style={styles.container}>
+    <ErrorBoundary>
+      <FormErrorBoundary fallbackMessage="Failed to load cart. Please try again.">
+        <View style={styles.container}>
         {/* Header */}
         <View style={responsiveStyles.header}>
           <TouchableOpacity onPress={() => router.back()} style={responsiveStyles.backButton}>
@@ -295,7 +297,8 @@ export default function CartScreen() {
         </View>
         )}
       </View>
-    </FormErrorBoundary>
+      </FormErrorBoundary>
+    </ErrorBoundary>
   );
 }
 

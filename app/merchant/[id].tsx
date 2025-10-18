@@ -16,6 +16,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import { Svg, Path } from 'react-native-svg';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 const { width } = Dimensions.get('window');
 
@@ -232,9 +233,10 @@ export default function MerchantDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <ErrorBoundary>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <Path
@@ -426,7 +428,8 @@ export default function MerchantDetailScreen() {
           <Text style={[styles.actionText, styles.primaryActionText]}>Directions</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </ErrorBoundary>
   );
 }
 
