@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import LiveOrderTracker from '../../components/LiveOrderTracker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
+import ReceiptSharingModal from '../../components/ReceiptSharingModal';
 
 // Assuming orderService is imported and has methods like cancelOrder
 // import orderService from '../../services/orderService'; // Placeholder for actual import
@@ -59,6 +60,7 @@ export default function OrderDetails() {
   const [userRole, setUserRole] = useState<'consumer' | 'driver'>('consumer');
   const [showDriverCommunication, setShowDriverCommunication] = useState(false);
   const [showMerchantCommunication, setShowMerchantCommunication] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   useEffect(() => {
     loadOrderDetails();
@@ -131,129 +133,11 @@ export default function OrderDetails() {
   };
 
   const handleReportIssue = () => {
-    const issueTypes = [
-      'Wrong item delivered',
-      'Missing items',
-      'Late delivery',
-      'Poor quality',
-      'Damaged package',
-      'Driver behavior',
-      'Payment issue',
-      'Other'
-    ];
-
-    Alert.alert(
-      'Report Issue',
-      'What issue would you like to report?',
-      [
-        ...issueTypes.map(type => ({
-          text: type,
-          onPress: () => handleIssueSelection(type)
-        })),
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+    router.push(`/orders/report-issue?orderId=${order?.id}`);
   };
 
-  const handleIssueSelection = (issueType: string) => {
-    Alert.prompt(
-      'Describe the Issue',
-      `Please provide details about: ${issueType}`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Submit',
-          onPress: async (description) => {
-            if (!description || description.trim().length === 0) {
-              showWarning('Description Required', 'Please provide details about the issue');
-              return;
-            }
-
-            try {
-              // Here you would call the API to submit the issue
-              // await orderService.reportIssue(order.id, { type: issueType, description });
-              
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 1000));
-
-              showSuccess(
-                'Issue Reported',
-                'Your issue has been submitted. Our support team will contact you soon.'
-              );
-
-              // Optionally navigate to support
-              setTimeout(() => {
-                router.push('/support');
-              }, 2000);
-            } catch (error) {
-              console.error('Error reporting issue:', error);
-              showError('Submission Failed', 'Failed to report issue. Please try again or contact support.');
-            }
-          }
-        }
-      ],
-      'plain-text',
-      '',
-      'default'
-    );
-  };
-
-  const handleShareReceipt = async () => {
-    try {
-      const receipt = `
-Order Receipt - Brill Prime
-------------------------
-Order ID: ${order?.id}
-Date: ${order?.date || formatDate(order?.orderDate)}
-Status: ${getStatusText(order?.status)}
-Merchant: ${order?.merchantName}
-
-Items:
-${order?.items.map(item => `${item.name} x${item.quantity} - ₦${(item.price * item.quantity).toLocaleString()}`).join('\n')}
-
-Subtotal: ₦${order?.subtotal?.toLocaleString()}
-Delivery Fee: ₦${order?.deliveryFee?.toLocaleString()}
-Total: ₦${order?.totalAmount?.toLocaleString()}
-
-Delivery Address: ${order?.deliveryAddress}
-Payment Method: ${order?.paymentMethod}
-
-Thank you for your order!
-      `.trim();
-
-      if (Platform.OS === 'web') {
-        // Copy to clipboard for web
-        await navigator.clipboard.writeText(receipt);
-        showSuccess('Receipt Copied', 'Receipt has been copied to clipboard');
-      } else {
-        // For mobile, show options
-        showConfirmDialog(
-          'Share Receipt',
-          'How would you like to share your receipt?',
-          async () => {
-            // Copy to clipboard
-            Clipboard.setString(receipt);
-            showSuccess('Copied', 'Receipt copied to clipboard');
-          },
-          () => {
-            // Show receipt in modal
-            Alert.alert('Order Receipt', receipt, [
-              { text: 'Copy', onPress: () => {
-                Clipboard.setString(receipt);
-                showSuccess('Copied', 'Receipt copied to clipboard');
-              }},
-              { text: 'Close', style: 'cancel' }
-            ]);
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Error sharing receipt:', error);
-      showError('Share Failed', 'Failed to share receipt. Please try again.');
-    }
+  const handleShareReceipt = () => {
+    setShowReceiptModal(true);
   };
 
   const handleModifyOrder = () => {
@@ -758,6 +642,26 @@ Thank you for your order!
           </View>
         </View>
       </Modal>
+
+      {/* Receipt Sharing Modal */}
+      {order && (
+        <ReceiptSharingModal
+          visible={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          receiptData={{
+            orderId: order.id,
+            date: order.date || formatDate(order.orderDate),
+            status: getStatusText(order.status),
+            merchantName: order.merchantName,
+            items: order.items,
+            subtotal: order.subtotal,
+            deliveryFee: order.deliveryFee,
+            totalAmount: order.totalAmount,
+            deliveryAddress: order.deliveryAddress,
+            paymentMethod: order.paymentMethod,
+          }}
+        />
+      )}
     </View>
   );
 }
