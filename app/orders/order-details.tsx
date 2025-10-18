@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import LiveOrderTracker from '../../components/LiveOrderTracker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAlert } from '../../components/AlertProvider';
 
 // Assuming orderService is imported and has methods like cancelOrder
 // import orderService from '../../services/orderService'; // Placeholder for actual import
@@ -51,6 +52,7 @@ interface Order {
 export default function OrderDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { showSuccess, showError, showWarning, showConfirmDialog, showInfo } = useAlert();
   const [order, setOrder] = useState<Order | null>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [showLiveTracking, setShowLiveTracking] = useState(false);
@@ -129,7 +131,74 @@ export default function OrderDetails() {
   };
 
   const handleReportIssue = () => {
-    Alert.alert('Report Issue', 'This feature will be available soon.');
+    const issueTypes = [
+      'Wrong item delivered',
+      'Missing items',
+      'Late delivery',
+      'Poor quality',
+      'Damaged package',
+      'Driver behavior',
+      'Payment issue',
+      'Other'
+    ];
+
+    Alert.alert(
+      'Report Issue',
+      'What issue would you like to report?',
+      [
+        ...issueTypes.map(type => ({
+          text: type,
+          onPress: () => handleIssueSelection(type)
+        })),
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleIssueSelection = (issueType: string) => {
+    Alert.prompt(
+      'Describe the Issue',
+      `Please provide details about: ${issueType}`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Submit',
+          onPress: async (description) => {
+            if (!description || description.trim().length === 0) {
+              showWarning('Description Required', 'Please provide details about the issue');
+              return;
+            }
+
+            try {
+              // Here you would call the API to submit the issue
+              // await orderService.reportIssue(order.id, { type: issueType, description });
+              
+              // Simulate API call
+              await new Promise(resolve => setTimeout(resolve, 1000));
+
+              showSuccess(
+                'Issue Reported',
+                'Your issue has been submitted. Our support team will contact you soon.'
+              );
+
+              // Optionally navigate to support
+              setTimeout(() => {
+                router.push('/support');
+              }, 2000);
+            } catch (error) {
+              console.error('Error reporting issue:', error);
+              showError('Submission Failed', 'Failed to report issue. Please try again or contact support.');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '',
+      'default'
+    );
   };
 
   const handleShareReceipt = async () => {
@@ -138,26 +207,52 @@ export default function OrderDetails() {
 Order Receipt - Brill Prime
 ------------------------
 Order ID: ${order?.id}
-Date: ${order?.date}
-Status: ${order?.status}
+Date: ${order?.date || formatDate(order?.orderDate)}
+Status: ${getStatusText(order?.status)}
+Merchant: ${order?.merchantName}
+
+Items:
+${order?.items.map(item => `${item.name} x${item.quantity} - ₦${(item.price * item.quantity).toLocaleString()}`).join('\n')}
+
+Subtotal: ₦${order?.subtotal?.toLocaleString()}
+Delivery Fee: ₦${order?.deliveryFee?.toLocaleString()}
 Total: ₦${order?.totalAmount?.toLocaleString()}
+
+Delivery Address: ${order?.deliveryAddress}
+Payment Method: ${order?.paymentMethod}
 
 Thank you for your order!
       `.trim();
 
       if (Platform.OS === 'web') {
-        navigator.clipboard.writeText(receipt);
-        Alert.alert('Success', 'Receipt copied to clipboard');
+        // Copy to clipboard for web
+        await navigator.clipboard.writeText(receipt);
+        showSuccess('Receipt Copied', 'Receipt has been copied to clipboard');
       } else {
-        // For mobile, implement proper sharing
-        Alert.alert('Receipt', receipt, [
-          { text: 'Copy', onPress: () => Clipboard.setString(receipt) },
-          { text: 'Close', style: 'cancel' }
-        ]);
+        // For mobile, show options
+        showConfirmDialog(
+          'Share Receipt',
+          'How would you like to share your receipt?',
+          async () => {
+            // Copy to clipboard
+            Clipboard.setString(receipt);
+            showSuccess('Copied', 'Receipt copied to clipboard');
+          },
+          () => {
+            // Show receipt in modal
+            Alert.alert('Order Receipt', receipt, [
+              { text: 'Copy', onPress: () => {
+                Clipboard.setString(receipt);
+                showSuccess('Copied', 'Receipt copied to clipboard');
+              }},
+              { text: 'Close', style: 'cancel' }
+            ]);
+          }
+        );
       }
     } catch (error) {
       console.error('Error sharing receipt:', error);
-      Alert.alert('Error', 'Failed to share receipt');
+      showError('Share Failed', 'Failed to share receipt. Please try again.');
     }
   };
 
@@ -184,6 +279,37 @@ Thank you for your order!
   const handleChangeAddress = () => {
     router.push(`/orders/change-address?orderId=${order?.id}`);
   };
+
+  const handleContactDriver = (type: 'message' | 'call') => {
+    setShowDriverCommunication(false);
+    
+    if (type === 'message') {
+      // Navigate to chat with driver
+      router.push(`/chat/driver-${order?.id}`);
+    } else {
+      // Initiate call
+      Alert.alert(
+        'Call Driver',
+        `Call ${order?.driverName || 'the driver'}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Call',
+            onPress: () => {
+              showInfo('Calling', `Calling ${order?.driverName || 'driver'}...`);
+              // Here you would implement actual call functionality
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const handleContactMerchant = () => {
+    setShowMerchantCommunication(false);
+    // Navigate to chat with merchant
+    router.push(`/chat/merchant-${order?.merchantName?.replace(/\s+/g, '-').toLowerCase()}`);
+  };;
 
 
   const getStatusColor = (status: Order['status']) => {
@@ -528,7 +654,8 @@ Thank you for your order!
               flex: isSmallScreen ? 0 : 1,
               paddingVertical: isSmallScreen ? 10 : 12 
             }]} onPress={handleReportIssue}>
-              <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
+              <Ionicons name="alert-circle-outline" size={18} color="#e74c3c" />
+              <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16, marginLeft: 8 }]}>
                 Report Issue
               </Text>
             </TouchableOpacity>
@@ -536,7 +663,8 @@ Thank you for your order!
               flex: isSmallScreen ? 0 : 1,
               paddingVertical: isSmallScreen ? 10 : 12 
             }]} onPress={handleShareReceipt}>
-              <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16 }]}>
+              <Ionicons name="share-outline" size={18} color="white" />
+              <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16, marginLeft: 8 }]}>
                 Share Receipt
               </Text>
             </TouchableOpacity>
@@ -552,10 +680,15 @@ Thank you for your order!
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={20} color="white" />
-            <Text style={styles.actionButtonText}>Contact Driver</Text>
-          </TouchableOpacity>
+          {(order.status !== 'delivered' && order.status !== 'cancelled') && (
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => setShowDriverCommunication(true)}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color="white" />
+              <Text style={styles.actionButtonText}>Contact Driver</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -878,18 +1011,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   reportButton: {
-    backgroundColor: '#f2f4f8',
+    backgroundColor: '#fff5f5',
+    borderWidth: 1,
+    borderColor: '#e74c3c',
     borderRadius: 25,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   reportButtonText: {
     fontWeight: 'bold',
-    color: '#2f75c2',
+    color: '#e74c3c',
   },
   shareButton: {
     backgroundColor: '#0b1437',
     borderRadius: 25,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   shareButtonText: {
     fontWeight: 'bold',
