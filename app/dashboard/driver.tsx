@@ -69,13 +69,13 @@ export default function DriverDashboard() {
         router.push('/orders/driver-orders');
         break;
       case 'earnings':
-        router.push('/transactions');
+        router.push('/driver/earnings-details');
         break;
       case 'navigation':
         router.push('/store-locator');
         break;
       case 'vehicle-info':
-        router.push('/profile/edit');
+        router.push('/driver/vehicle-management');
         break;
       case 'support':
         router.push('/support');
@@ -91,7 +91,7 @@ export default function DriverDashboard() {
       style={styles.container}
     >
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.push('/home/consumer')}
         >
@@ -110,7 +110,7 @@ export default function DriverDashboard() {
         <View style={styles.statusContainer}>
           <View style={styles.statusCard}>
             <Text style={styles.statusTitle}>Driver Status</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.statusToggle, isOnline && styles.onlineToggle]}
               onPress={toggleOnlineStatus}
             >
@@ -126,8 +126,8 @@ export default function DriverDashboard() {
 
         <View style={styles.featuresGrid}>
           {features.map((feature, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               style={styles.featureCard}
               onPress={() => handleFeaturePress(feature)}
             >
