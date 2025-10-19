@@ -22,7 +22,7 @@ const { width } = Dimensions.get('window');
 
 // ...existing code...
 
-// Mock communication modal component
+// Communication modal will use the real communicationService
 type CommModalProps = {
   visible: boolean;
   onClose: () => void;

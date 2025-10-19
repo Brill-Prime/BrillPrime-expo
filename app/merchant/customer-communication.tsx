@@ -40,6 +40,21 @@ export default function CustomerCommunication() {
   const { showSuccess, showError } = useAlert();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [customers, setCustomers] = useState<Customer[]>([]);
+  
+  // Load real customers from backend
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await merchantService.getCustomers(merchantId);
+        if (response.success) {
+          setCustomers(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+      }
+    };
+    fetchCustomers();
+  }, [merchantId]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [selectedTab, setSelectedTab] = useState<'customers' | 'templates' | 'broadcast'>('customers');
   const [searchQuery, setSearchQuery] = useState('');

@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as locationService from '../services/locationService'; // Assuming locationService is available
 
 interface MapProps {
   style?: ViewStyle;
@@ -116,19 +116,16 @@ const MapWeb: React.FC<MapProps> = ({
     if (enableLiveTracking && trackingUserId && !isLoading) {
       const interval = setInterval(async () => {
         try {
-          const mockLocation = {
-            latitude: displayRegion.latitude + (Math.random() - 0.5) * 0.01,
-            longitude: displayRegion.longitude + (Math.random() - 0.5) * 0.01,
-            timestamp: Date.now(),
-          };
+          // Fetch real driver location from backend
+          const driverLocation = await locationService.getDriverLocation(trackingUserId); // Use trackingUserId as driverId
 
           setLiveLocations(prev => {
             const updated = prev.filter(loc => loc.userId !== trackingUserId);
-            return [...updated, { ...mockLocation, userId: trackingUserId }];
+            return [...updated, { ...driverLocation, userId: trackingUserId }];
           });
 
           if (onLiveLocationUpdate) {
-            onLiveLocationUpdate(mockLocation);
+            onLiveLocationUpdate(driverLocation);
           }
         } catch (error) {
           console.error('Live tracking error:', error);
@@ -290,7 +287,7 @@ const MapWeb: React.FC<MapProps> = ({
           {selectedMarker.address && (
             <Text style={styles.markerAddress}>{selectedMarker.address}</Text>
           )}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.closeInfo}
             onPress={() => setSelectedMarker(null)}
           >

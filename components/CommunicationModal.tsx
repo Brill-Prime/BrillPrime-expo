@@ -64,7 +64,8 @@ export default function CommunicationModal({
 
   const handleInAppCall = async () => {
     try {
-      // Mock in-app call functionality
+      // Initiate real call using communicationService
+    await communicationService.initiateCall(conversationId, participantId);
       Alert.alert(
         'In-App Call',
         `Starting in-app call with ${contactName}...`,

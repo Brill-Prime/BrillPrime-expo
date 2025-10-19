@@ -6,10 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { merchantService } from '../../services/merchantService';
 import { paymentService } from '../../services/paymentService';
 import { useMerchant } from '../../contexts/MerchantContext';
+import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext provides user info
 
 export default function MerchantAnalytics() {
   const router = useRouter();
-  const { merchantId, loadMerchantId } = useMerchant();
+  const { loadMerchantId } = useMerchant();
+  const { user } = useAuth(); // Get user info from AuthContext
+  const merchantId = user?.merchantId; // Get merchantId from user object
+
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +32,7 @@ export default function MerchantAnalytics() {
       try {
         setLoading(true);
         const response = await merchantService.getAnalytics(merchantId);
-        
+
         if (response.success && response.data) {
           setAnalyticsData(response.data);
         } else {
@@ -70,7 +74,7 @@ export default function MerchantAnalytics() {
             processedAnalytics.totalOrders = orders.length;
             processedAnalytics.totalSales = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
             processedAnalytics.averageOrderValue = orders.length > 0 ? processedAnalytics.totalSales / orders.length : 0;
-            
+
             // Generate daily sales from orders
             const today = new Date();
             processedAnalytics.dailySales = Array.from({ length: 7 }, (_, i) => {

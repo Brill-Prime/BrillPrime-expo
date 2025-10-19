@@ -31,6 +31,7 @@ interface Commodity {
 // Import merchantService at the top
 import { merchantService } from '../../services/merchantService';
 import { useMerchant } from '../../contexts/MerchantContext';
+import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext provides user info
 
 const CATEGORIES = [
   { id: 'all', name: 'All', color: '#4682B4' },
@@ -53,7 +54,12 @@ const UNITS = [
 export default function MerchantCommoditiesScreen() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess } = useAlert();
-  const { merchantId, loadMerchantId } = useMerchant();
+  const { loadMerchantId } = useMerchant();
+  const { user } = useAuth(); // Get user from AuthContext
+  const { params } = router.useSearchParams(); // Get route parameters
+
+  const merchantId = user?.merchantId || params?.merchantId; // Get merchantId from user or params
+
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -137,7 +143,7 @@ export default function MerchantCommoditiesScreen() {
       );
       setCommodities(updatedCommodities);
       showSuccess(
-        'Stock Updated', 
+        'Stock Updated',
         `${commodity.name} is now ${!commodity.inStock ? 'in stock' : 'out of stock'}`
       );
     } catch (error) {
@@ -148,8 +154,8 @@ export default function MerchantCommoditiesScreen() {
 
 
 
-  const filteredCommodities = selectedCategory === 'all' 
-    ? commodities 
+  const filteredCommodities = selectedCategory === 'all'
+    ? commodities
     : commodities.filter(c => c.category === selectedCategory);
 
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
@@ -166,7 +172,7 @@ export default function MerchantCommoditiesScreen() {
 
       <View style={styles.commodityContent}>
         <View style={styles.imageContainer}>
-          <Image 
+          <Image
             source={typeof commodity.image === 'string' ? { uri: commodity.image } : commodity.image}
             style={styles.commodityImage}
             resizeMode="contain"
@@ -281,7 +287,7 @@ export default function MerchantCommoditiesScreen() {
               <Ionicons name="cube-outline" size={64} color="#ccc" />
               <Text style={styles.emptyTitle}>No commodities found</Text>
               <Text style={styles.emptyText}>
-                {selectedCategory === 'all' 
+                {selectedCategory === 'all'
                   ? "You haven't added any commodities yet"
                   : `No commodities in ${CATEGORIES.find(c => c.id === selectedCategory)?.name} category`
                 }
