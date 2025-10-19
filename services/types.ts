@@ -13,6 +13,48 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   address?: string;
+  roles?: UserRoleStatus;
+  currentRole?: 'consumer' | 'merchant' | 'driver';
+}
+
+export interface UserRoleStatus {
+  consumer: RoleVerification;
+  merchant: RoleVerification;
+  driver: RoleVerification;
+}
+
+export interface RoleVerification {
+  isRegistered: boolean;
+  isVerified: boolean;
+  registeredAt?: string;
+  verifiedAt?: string;
+  verificationStatus?: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  documents?: RoleDocument[];
+}
+
+export interface RoleDocument {
+  id: string;
+  type: string;
+  url: string;
+  status: 'pending' | 'approved' | 'rejected';
+  uploadedAt: string;
+}
+
+export interface RoleRegistrationRequest {
+  role: 'merchant' | 'driver';
+  businessName?: string;
+  businessType?: string;
+  businessAddress?: string;
+  licenseNumber?: string;
+  vehicleInfo?: {
+    make: string;
+    model: string;
+    year: string;
+    licensePlate: string;
+    insurance: string;
+  };
+  documents?: File[];
 }
 
 export interface AuthResponse {

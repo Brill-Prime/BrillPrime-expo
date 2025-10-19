@@ -10,8 +10,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
+import { withRoleAccess } from '../../components/withRoleAccess';
+import { merchantService } from '../../services/merchantService';
+import { useMerchant } from '../../contexts/MerchantContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { theme } from '../../config/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -28,17 +32,12 @@ interface Commodity {
   merchantId: string;
 }
 
-// Import merchantService at the top
-import { merchantService } from '../../services/merchantService';
-import { useMerchant } from '../../contexts/MerchantContext';
-import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext provides user info
-
 const CATEGORIES = [
-  { id: 'all', name: 'All', color: '#4682B4' },
-  { id: 'petrol', name: 'Petrol', color: '#4682B4' },
-  { id: 'lubricant', name: 'Car Lubricant', color: '#4682B4' },
-  { id: 'aviation', name: 'Aviation', color: '#4682B4' },
-  { id: 'industrial', name: 'Industrial', color: '#4682B4' },
+  { id: 'all', name: 'All', color: theme.colors.primary },
+  { id: 'petrol', name: 'Petrol', color: theme.colors.primary },
+  { id: 'lubricant', name: 'Car Lubricant', color: theme.colors.primary },
+  { id: 'aviation', name: 'Aviation', color: theme.colors.primary },
+  { id: 'industrial', name: 'Industrial', color: theme.colors.primary },
 ];
 
 const UNITS = [
@@ -51,7 +50,7 @@ const UNITS = [
   'Meters',
 ];
 
-export default function MerchantCommoditiesScreen() {
+function MerchantCommoditiesScreen() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess } = useAlert();
   const { loadMerchantId } = useMerchant();
@@ -163,7 +162,7 @@ export default function MerchantCommoditiesScreen() {
   const renderCommodityItem = (commodity: Commodity) => (
     <View key={commodity.id} style={styles.commodityCard}>
       <View style={styles.commodityHeader}>
-        <View style={[styles.categoryBadge, { backgroundColor: '#4682B4' }]}>
+        <View style={[styles.categoryBadge, { backgroundColor: 'theme.colors.primary' }]}>
           <Text style={styles.categoryText}>
             {CATEGORIES.find(c => c.id === commodity.category)?.name || commodity.category}
           </Text>
@@ -355,13 +354,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#4682B4',
+    borderColor: 'theme.colors.primary',
     marginRight: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectedCategoryButton: {
-    backgroundColor: '#4682B4',
+    backgroundColor: 'theme.colors.primary',
   },
   categoryButtonText: {
     fontSize: 12,
@@ -376,7 +375,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#4682B4',
+    borderColor: 'theme.colors.primary',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -397,7 +396,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontFamily: 'Montserrat-Regular',
   },
   emptyContainer: {
@@ -414,7 +413,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     fontFamily: 'Montserrat-Regular',
   },
@@ -480,7 +479,7 @@ const styles = StyleSheet.create({
   unitLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#4682B4',
+    color: 'theme.colors.primary',
     fontFamily: 'Montserrat-Bold',
   },
   unitValue: {
@@ -496,7 +495,7 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#4682B4',
+    color: 'theme.colors.primary',
     fontFamily: 'Montserrat-Bold',
   },
   priceValue: {
@@ -506,7 +505,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   descriptionBadge: {
-    backgroundColor: '#4682B4',
+    backgroundColor: 'theme.colors.primary',
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -547,7 +546,7 @@ const styles = StyleSheet.create({
   editButton: {
     width: 30,
     height: 30,
-    backgroundColor: '#4682B4',
+    backgroundColor: 'theme.colors.primary',
     borderRadius: 5,
     justifyContent: 'center',
     alignItems: 'center',
@@ -555,7 +554,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     width: 30,
     height: 30,
-    backgroundColor: '#4682B4',
+    backgroundColor: 'theme.colors.primary',
     borderRadius: 5,
     justifyContent: 'center',
     alignItems: 'center',
@@ -583,4 +582,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Regular',
   },
 
+});
+export default withRoleAccess(MerchantCommoditiesScreen, {
+  requiredRole: 'merchant',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
 });

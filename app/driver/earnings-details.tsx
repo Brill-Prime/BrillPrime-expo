@@ -1,3 +1,4 @@
+import { withRoleAccess } from '../../components/withRoleAccess';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -46,7 +47,7 @@ interface Transaction {
   orderId?: string;
 }
 
-export default function DriverEarningsDetails() {
+function DriverEarningsDetails() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
@@ -674,3 +675,9 @@ const getResponsiveStyles = (screenData: any) => {
     },
   });
 };
+
+export default withRoleAccess(DriverEarningsDetails, {
+  requiredRole: 'driver',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
+});

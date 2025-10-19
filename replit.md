@@ -5,7 +5,26 @@ Brill Prime is a multi-role React Native application built with Expo for web dep
 
 ## Recent Changes
 
-### October 11, 2025 (Latest)
+### October 19, 2025 (Latest)
+- ✅ **Role-Based Access Control System** - Implemented comprehensive multi-role management
+  - Created UserRoleStatus interface to track registration and verification for each role
+  - Built RoleManagementService for role registration, verification checks, and switching
+  - Implemented withRoleAccess HOC to protect merchant and driver routes
+  - Added role registration flow for users to register as merchant or driver
+  - Created RoleSwitcher component for users with multiple verified roles
+  - Applied role guards to all merchant and driver routes
+  - Integrated role initialization into authentication flow
+  - **Access Rules**:
+    - Consumers can only access merchant/driver features after registration and verification
+    - Merchants and drivers can have a consumer account as personal account
+    - Merchants cannot access driver features unless separately registered and verified
+- ✅ **Consistent Design System** - Updated all components to use centralized theme
+  - Applied theme colors (#4682B4 primary, #0B1A51 primaryDark)
+  - Used Montserrat font family throughout
+  - Standardized spacing, border radius, and shadows
+  - Ensured consistent UI/UX across all new components
+
+### October 11, 2025
 - ✅ **Profile Photo Upload Feature** - Implemented complete profile photo upload functionality
   - Added uploadProfilePhoto() method to userService.ts for multipart/form-data uploads
   - Updated app/profile/edit.tsx to upload photos before updating profile
@@ -61,12 +80,16 @@ Brill Prime is a multi-role React Native application built with Expo for web dep
 - **Payment**: Paystack integration
 
 ### Key Features
-1. **Multi-Role Authentication**
-   - Consumer, Merchant, and Driver roles
+1. **Multi-Role Authentication & Access Control**
+   - Consumer, Merchant, and Driver roles with strict boundaries
+   - Role-based access control with verification requirements
    - Email/Password authentication
    - Social logins (Google, Apple, Facebook)
    - OTP verification
    - Password reset flow
+   - Multi-role support: users can register for multiple roles
+   - Role switching interface for users with multiple verified roles
+   - Protected routes requiring role registration and verification
 
 2. **Core Modules**
    - Location-based merchant discovery

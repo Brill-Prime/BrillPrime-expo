@@ -35,6 +35,7 @@ import {
   ConfirmPasswordResetRequest,
   ApiResponse
 } from './types';
+import { roleManagementService } from './roleManagementService';
 
 class AuthService {
   private readonly TOKEN_KEY = 'userToken';
@@ -92,6 +93,9 @@ class AuthService {
       };
 
       await this.storeAuthData(authData);
+
+      // Initialize role status for the user
+      await roleManagementService.initializeRoleStatus(data.role);
 
       // Sync with backend asynchronously (non-blocking)
       apiClient.post<AuthResponse>(
@@ -167,6 +171,9 @@ class AuthService {
       };
 
       await this.storeAuthData(authData);
+
+      // Initialize role status for the user
+      await roleManagementService.initializeRoleStatus(userRole);
 
       // Fetch user data from backend asynchronously (non-blocking)
       apiClient.get<{ user: any }>(

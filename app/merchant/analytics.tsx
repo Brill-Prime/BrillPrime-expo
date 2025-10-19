@@ -1,3 +1,4 @@
+import { withRoleAccess } from '../../components/withRoleAccess';
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -8,7 +9,7 @@ import { paymentService } from '../../services/paymentService';
 import { useMerchant } from '../../contexts/MerchantContext';
 import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext provides user info
 
-export default function MerchantAnalytics() {
+function MerchantAnalytics() {
   const router = useRouter();
   const { loadMerchantId } = useMerchant();
   const { user } = useAuth(); // Get user info from AuthContext
@@ -841,3 +842,8 @@ const getResponsiveStyles = (screenData: any) => {
     },
   });
 };
+export default withRoleAccess(MerchantAnalytics, {
+  requiredRole: 'merchant',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
+});

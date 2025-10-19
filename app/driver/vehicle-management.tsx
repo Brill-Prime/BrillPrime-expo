@@ -1,3 +1,4 @@
+import { withRoleAccess } from '../../components/withRoleAccess';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -39,7 +40,7 @@ interface VehicleDocument {
   status: 'valid' | 'expiring' | 'expired';
 }
 
-export default function VehicleManagement() {
+function VehicleManagement() {
   const router = useRouter();
   const { showError, showSuccess, showConfirmDialog } = useAlert();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
@@ -658,3 +659,9 @@ const getResponsiveStyles = (screenData: any) => {
     },
   });
 };
+
+export default withRoleAccess(VehicleManagement, {
+  requiredRole: 'driver',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
+});

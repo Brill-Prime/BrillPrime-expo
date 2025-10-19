@@ -1,3 +1,4 @@
+import { withRoleAccess } from '../../components/withRoleAccess';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -34,7 +35,7 @@ interface InventoryItem {
   status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'expired';
 }
 
-export default function InventoryManagement() {
+function InventoryManagement() {
   const router = useRouter();
   const { showSuccess, showError, showConfirmDialog } = useAlert();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
@@ -796,4 +797,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+});
+
+export default withRoleAccess(InventoryManagement, {
+  requiredRole: 'merchant',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
 });

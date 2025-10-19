@@ -1,3 +1,4 @@
+import { withRoleAccess } from '../../components/withRoleAccess';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -44,7 +45,7 @@ interface MerchantOrder {
   assignedDriver?: string;
 }
 
-export default function OrderManagement() {
+function OrderManagement() {
   const router = useRouter();
   const { showSuccess, showError, showConfirmDialog } = useAlert();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
@@ -956,4 +957,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+});
+
+export default withRoleAccess(OrderManagement, {
+  requiredRole: 'merchant',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
 });

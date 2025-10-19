@@ -1,3 +1,4 @@
+import { withRoleAccess } from '../../components/withRoleAccess';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -40,7 +41,7 @@ const CATEGORIES = [
   'Fuel Station', 'General Store', 'Restaurant', 'Pharmacy', 'Electronics', 'Grocery', 'Other'
 ];
 
-export default function StoreSettings() {
+function StoreSettings() {
   const router = useRouter();
   const { merchantId, loadMerchantId } = useMerchant();
   const { showSuccess, showError } = useAlert();
@@ -541,4 +542,10 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 40,
   },
+});
+
+export default withRoleAccess(StoreSettings, {
+  requiredRole: 'merchant',
+  fallbackRoute: '/home/consumer',
+  showUnauthorizedMessage: true,
 });
