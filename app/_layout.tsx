@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from '../contexts/AppContext';
 import { MerchantProvider } from '../contexts/MerchantContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { AuthProvider } from '../contexts/AuthContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
 
@@ -90,26 +91,28 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AppProvider>
-        <MerchantProvider>
+      <AuthProvider>
+        <AppProvider>
           <NotificationProvider>
-            <AlertProvider>
-              <View style={styles.container}>
-                <OfflineBanner />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: '#fff' },
-                    animation: 'fade',
-                  }}
-                >
-                  <Stack.Screen name="index" />
-                </Stack>
-              </View>
-            </AlertProvider>
+            <MerchantProvider>
+              <AlertProvider>
+                <View style={styles.container}>
+                  <OfflineBanner />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: '#fff' },
+                      animation: 'fade',
+                    }}
+                  >
+                    <Stack.Screen name="index" />
+                  </Stack>
+                </View>
+              </AlertProvider>
+            </MerchantProvider>
           </NotificationProvider>
-        </MerchantProvider>
-      </AppProvider>
+        </AppProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
