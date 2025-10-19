@@ -41,23 +41,10 @@ interface CommunicationTemplate {
 export default function CustomerCommunication() {
   const router = useRouter();
   const { showSuccess, showError } = useAlert();
+  const { user } = useAuth();
+  const merchantId = user?.merchantId;
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [customers, setCustomers] = useState<Customer[]>([]);
-  
-  // Load real customers from backend
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await merchantService.getCustomers(merchantId);
-        if (response.success) {
-          setCustomers(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching customers:', error);
-      }
-    };
-    fetchCustomers();
-  }, [merchantId]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [selectedTab, setSelectedTab] = useState<'customers' | 'templates' | 'broadcast'>('customers');
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,13 +61,15 @@ export default function CustomerCommunication() {
   });
 
   useEffect(() => {
-    loadCustomers();
-    loadTemplates();
+    if (merchantId) {
+      loadCustomers();
+      loadTemplates();
+    }
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
     return () => subscription?.remove();
-  }, []);
+  }, [merchantId]);
 
   useEffect(() => {
     filterCustomers();
@@ -88,9 +77,6 @@ export default function CustomerCommunication() {
 
   const loadCustomers = async () => {
     try {
-      const { user } = useAuth();
-      const merchantId = user?.merchantId;
-      
       if (!merchantId) {
         console.error('No merchant ID available');
         return;
