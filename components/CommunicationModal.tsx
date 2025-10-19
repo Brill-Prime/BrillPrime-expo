@@ -64,19 +64,45 @@ export default function CommunicationModal({
 
   const handleInAppCall = async () => {
     try {
-      // Initiate real call using communicationService
-    await communicationService.initiateCall(conversationId, participantId);
-      Alert.alert(
-        'In-App Call',
-        `Starting in-app call with ${contactName}...`,
-        [
-          { text: 'End Call', style: 'destructive' },
-          { text: 'Continue', style: 'default' },
-        ]
-      );
+      if (!orderId) {
+        Alert.alert('Error', 'Order information not available');
+        return;
+      }
 
-      // In a real implementation, you would integrate with WebRTC or similar
-      // const response = await communicationService.initiateCall(conversationId, participantId);
+      // Get or create conversation for the order
+      const convResponse = await communicationService.getOrCreateConversation(orderId);
+      
+      if (!convResponse.success || !convResponse.data) {
+        Alert.alert('Error', 'Failed to initialize call');
+        return;
+      }
+
+      const conversationId = convResponse.data.id;
+      const participant = convResponse.data.participants.find(p => p.role === contactRole);
+      
+      if (!participant) {
+        Alert.alert('Error', 'Contact information not available');
+        return;
+      }
+
+      const callResponse = await communicationService.initiateCall(conversationId, participant.userId);
+
+      if (callResponse.success) {
+        Alert.alert(
+          'In-App Call',
+          `Starting in-app call with ${contactName}...`,
+          [
+            { text: 'End Call', style: 'destructive', onPress: () => {
+              if (callResponse.data) {
+                communicationService.endCall(callResponse.data.id);
+              }
+            }},
+            { text: 'Continue', style: 'default' },
+          ]
+        );
+      } else {
+        Alert.alert('Error', callResponse.error || 'Failed to start call');
+      }
 
       onClose();
     } catch (error) {

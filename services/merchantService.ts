@@ -325,6 +325,22 @@ export const submitMerchantReview = async (merchantId: string, review: { rating:
         }
 };
 
+// Get merchant customers
+export const getCustomers = async (merchantId: string): Promise<{ success: boolean; data?: any[] }> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) return { success: false };
+
+                const response = await apiClient.get<any[]>(`/api/merchants/${merchantId}/customers`, {
+                        Authorization: `Bearer ${token}`
+                });
+                return { success: response.success, data: response.data };
+        } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, data: [] };
+        }
+};
+
 export const merchantService = {
         getMerchants,
         getMerchantById,
@@ -341,5 +357,6 @@ export const merchantService = {
         updateStoreSettings,
         getStoreSettings,
         getMerchantReviews,
-        submitMerchantReview
+        submitMerchantReview,
+        getCustomers
 };

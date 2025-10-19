@@ -12,8 +12,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { useAlert } from '../../components/AlertProvider';
+import { communicationService } from '../../services/communicationService';
+import { merchantService } from '../../services/merchantService';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Customer {
   id: string;
@@ -85,49 +88,19 @@ export default function CustomerCommunication() {
 
   const loadCustomers = async () => {
     try {
-      const savedCustomers = await AsyncStorage.getItem('merchantCustomers');
-      if (savedCustomers) {
-        setCustomers(JSON.parse(savedCustomers));
+      const { user } = useAuth();
+      const merchantId = user?.merchantId;
+      
+      if (!merchantId) {
+        console.error('No merchant ID available');
+        return;
+      }
+
+      const response = await merchantService.getCustomers(merchantId);
+      if (response.success && response.data) {
+        setCustomers(response.data);
       } else {
-        // Sample data
-        const sampleCustomers: Customer[] = [
-          {
-            id: '1',
-            name: 'John Doe',
-            email: 'john@example.com',
-            phone: '+2348012345678',
-            lastOrder: new Date(Date.now() - 86400000).toISOString(),
-            totalOrders: 15,
-            totalSpent: 450000,
-            status: 'active',
-            joinDate: new Date(Date.now() - 86400000 * 30).toISOString(),
-            lastContactDate: new Date(Date.now() - 86400000 * 5).toISOString(),
-          },
-          {
-            id: '2',
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            phone: '+2348098765432',
-            lastOrder: new Date(Date.now() - 86400000 * 3).toISOString(),
-            totalOrders: 8,
-            totalSpent: 250000,
-            status: 'active',
-            joinDate: new Date(Date.now() - 86400000 * 60).toISOString(),
-          },
-          {
-            id: '3',
-            name: 'Mike Johnson',
-            email: 'mike@example.com',
-            phone: '+2347012345678',
-            lastOrder: new Date(Date.now() - 86400000 * 30).toISOString(),
-            totalOrders: 3,
-            totalSpent: 85000,
-            status: 'inactive',
-            joinDate: new Date(Date.now() - 86400000 * 90).toISOString(),
-          }
-        ];
-        setCustomers(sampleCustomers);
-        await AsyncStorage.setItem('merchantCustomers', JSON.stringify(sampleCustomers));
+        showError('Error', 'Failed to load customers');
       }
     } catch (error) {
       console.error('Error loading customers:', error);
@@ -137,33 +110,9 @@ export default function CustomerCommunication() {
 
   const loadTemplates = async () => {
     try {
-      const savedTemplates = await AsyncStorage.getItem('communicationTemplates');
-      if (savedTemplates) {
-        setTemplates(JSON.parse(savedTemplates));
-      } else {
-        // Sample templates
-        const sampleTemplates: CommunicationTemplate[] = [
-          {
-            id: '1',
-            title: 'Welcome New Customer',
-            content: 'Welcome to our store! We\'re excited to serve you with the best fuel and services.',
-            type: 'welcome'
-          },
-          {
-            id: '2',
-            title: 'Order Ready for Pickup',
-            content: 'Your order #{ORDER_ID} is ready for pickup. Please come collect it at your convenience.',
-            type: 'order_update'
-          },
-          {
-            id: '3',
-            title: 'Special Promotion',
-            content: 'Limited time offer! Get 10% discount on your next fuel purchase. Valid until {DATE}.',
-            type: 'promotion'
-          }
-        ];
-        setTemplates(sampleTemplates);
-        await AsyncStorage.setItem('communicationTemplates', JSON.stringify(sampleTemplates));
+      const response = await communicationService.getMessageTemplates();
+      if (response.success && response.data) {
+        setTemplates(response.data);
       }
     } catch (error) {
       console.error('Error loading templates:', error);
@@ -212,26 +161,28 @@ export default function CustomerCommunication() {
     }
 
     try {
-      // Simulate sending message
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await communicationService.sendBroadcastMessage({
+        subject: messageSubject,
+        content: messageContent,
+        recipientIds: selectedCustomers
+      });
 
-      showSuccess('Message Sent', `Message sent to ${selectedCustomers.length} customer(s)`);
+      if (response.success) {
+        showSuccess('Message Sent', `Message sent to ${selectedCustomers.length} customer(s)`);
+        
+        // Reload customers to get updated contact dates
+        await loadCustomers();
 
-      // Update last contact date for selected customers
-      const updatedCustomers = customers.map(customer => 
-        selectedCustomers.includes(customer.id)
-          ? { ...customer, lastContactDate: new Date().toISOString() }
-          : customer
-      );
-      setCustomers(updatedCustomers);
-      await AsyncStorage.setItem('merchantCustomers', JSON.stringify(updatedCustomers));
-
-      // Reset form
-      setMessageSubject('');
-      setMessageContent('');
-      setSelectedCustomers([]);
-      setShowMessageModal(false);
+        // Reset form
+        setMessageSubject('');
+        setMessageContent('');
+        setSelectedCustomers([]);
+        setShowMessageModal(false);
+      } else {
+        showError('Error', response.error || 'Failed to send message');
+      }
     } catch (error) {
+      console.error('Error sending message:', error);
       showError('Error', 'Failed to send message');
     }
   };
@@ -243,19 +194,18 @@ export default function CustomerCommunication() {
     }
 
     try {
-      const template: CommunicationTemplate = {
-        id: Date.now().toString(),
-        ...newTemplate
-      };
+      const response = await communicationService.saveMessageTemplate(newTemplate);
 
-      const updatedTemplates = [...templates, template];
-      setTemplates(updatedTemplates);
-      await AsyncStorage.setItem('communicationTemplates', JSON.stringify(updatedTemplates));
-
-      showSuccess('Template Saved', 'Communication template saved successfully');
-      setNewTemplate({ title: '', content: '', type: 'promotion' });
-      setShowTemplateModal(false);
+      if (response.success) {
+        showSuccess('Template Saved', 'Communication template saved successfully');
+        await loadTemplates();
+        setNewTemplate({ title: '', content: '', type: 'promotion' });
+        setShowTemplateModal(false);
+      } else {
+        showError('Error', response.error || 'Failed to save template');
+      }
     } catch (error) {
+      console.error('Error saving template:', error);
       showError('Error', 'Failed to save template');
     }
   };

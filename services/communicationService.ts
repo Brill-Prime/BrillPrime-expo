@@ -339,6 +339,55 @@ class CommunicationService {
     });
   }
 
+  // Get message templates
+  async getMessageTemplates(): Promise<ApiResponse<Array<{
+    id: string;
+    title: string;
+    content: string;
+    type: 'promotion' | 'order_update' | 'welcome' | 'feedback' | 'announcement';
+  }>>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.get('/api/communication/templates', {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Save message template
+  async saveMessageTemplate(template: {
+    title: string;
+    content: string;
+    type: string;
+  }): Promise<ApiResponse<any>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post('/api/communication/templates', template, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  // Send broadcast message
+  async sendBroadcastMessage(message: {
+    subject: string;
+    content: string;
+    recipientIds: string[];
+  }): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post('/api/communication/broadcast', message, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
   // Disconnect WebSocket
   disconnect(): void {
     if (this.websocket) {

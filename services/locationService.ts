@@ -345,6 +345,15 @@ class LocationService {
     }
   }
 
+  // Get driver location (alias for getLiveLocation for compatibility)
+  async getDriverLocation(driverId: string): Promise<LocationData> {
+    const response = await this.getLiveLocation(driverId);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(response.error || 'Failed to get driver location');
+  }
+
   // Get nearby merchants with live locations
   async getNearbyMerchantsLive(
     latitude: number, 
