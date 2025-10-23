@@ -1,5 +1,21 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, Animated, StatusBar, ScrollView, Platform, ActivityIndicator, TextInput, Modal, RefreshControl } from "react-native";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Dimensions, 
+  Image, 
+  Animated, 
+  StatusBar, 
+  ScrollView, 
+  Platform, 
+  ActivityIndicator, 
+  TextInput, 
+  Modal, 
+  RefreshControl, 
+  Alert 
+} from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
@@ -10,6 +26,38 @@ import * as Location from 'expo-location';
 import { useAlert } from '../../components/AlertProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { debounce } from 'lodash';
+
+// Define missing types
+interface Merchant {
+  id: string;
+  name: string;
+  // Add other merchant properties as needed
+}
+
+interface Driver {
+  id: string;
+  name: string;
+  // Add other driver properties as needed
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  // Add other menu item properties as needed
+}
+
+interface StoreLocation {
+  title: string;
+  address: string;
+  coords: { lat: number; lng: number };
+}
+
+interface ActiveDelivery {
+  driverId: string;
+  merchantLocation: { latitude: number; longitude: number };
+  status: 'picking_up' | 'delivering';
+  driverLocation: { latitude: number; longitude: number };
+}
 
 const { width, height } = Dimensions.get('window');
 
@@ -71,18 +119,25 @@ const theme = {
   },
   shadows: {
     small: {
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 2,
     },
     medium: {
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.15,
-      shadowRadius: 10,
+      shadowRadius: 8,
       elevation: 5,
+    },
+    large: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 10,
     },
   },
   typography: {
@@ -94,34 +149,14 @@ const theme = {
   },
 };
 
-interface StoreLocation {
-  title: string;
-  address: string;
-  coords: { lat: number; lng: number };
-}
-
-interface Driver {
-  id: string;
-  latitude: number;
-  longitude: number;
-  name: string;
-  eta: string;
-  status?: 'idle' | 'picking_up' | 'delivering';
-  distanceToMerchant?: number;
-  distanceToConsumer?: number;
-}
-
-interface ActiveDelivery {
-  driverId: string;
-  merchantLocation: { latitude: number; longitude: number };
-  status: 'picking_up' | 'delivering';
-  driverLocation: { latitude: number; longitude: number };
-}
-
 export default function ConsumerHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
-  const [isLocationSet, setIsLocationSet] = useState(false);
+  const [isLocationSet, setIsLocationSet] = useState<boolean | null>(null);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [liveDrivers, setLiveDrivers] = useState<Driver[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [showFilters, setShowFilters] = useState(false); // Initialize as null to indicate loading state
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -498,27 +533,17 @@ export default function ConsumerHome() {
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
+        
+        // Load merchants near the saved location
         await loadNearbyMerchants(location.latitude, location.longitude);
       } else {
-        // If no saved location, check permission status first
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status === 'granted') {
-          // Permission granted, try to get location
-          await handleSetLocationAutomatically();
-        } else {
-          // No permission, set default location and load all merchants
-          setIsLocationSet(true);
-          setUserAddress("Nigeria");
-          await loadAllMerchants();
-        }
+        // Explicitly set to false if no saved location
+        setIsLocationSet(false);
       }
     } catch (error) {
-      console.error("Error loading saved location:", error);
-      if (isMountedRef.current) {
-        setIsLocationSet(true);
-        setUserAddress("Nigeria");
-        await loadAllMerchants();
-      }
+      console.error("Error checking saved location:", error);
+      // Ensure we set a definite state even on error
+      setIsLocationSet(false);
     }
   };
 
@@ -587,302 +612,60 @@ export default function ConsumerHome() {
     );
   };
 
-  const handleSetLocationAutomatically = async () => {
-    if (!isMountedRef.current) return;
-    setIsLoadingLocation(true);
-
-    try {
-      // Check if we already have permission
-      let { status } = await Location.getForegroundPermissionsAsync();
-
-      // If permission is not granted, request it
-      if (status !== 'granted') {
-        let permissionResult = await Location.requestForegroundPermissionsAsync();
-        status = permissionResult.status;
-      }
-
-      if (status !== 'granted') {
-        // Permission denied - load all merchants silently
-        console.log("Location permission denied, loading all merchants");
-        setIsLoadingLocation(false);
-        setUserAddress("Nigeria");
-        setIsLocationSet(true);
-        await loadAllMerchants();
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      if (!isMountedRef.current) return;
-
-      const { latitude, longitude } = location.coords;
-      const deltas = calculateDelta(latitude);
-      const newRegion = {
-        latitude,
-        longitude,
-        ...deltas,
-      };
-
-      setRegion(newRegion);
-
-      let addressInfo = "Your Current Location";
-      try {
-        let reverseGeocode = await Location.reverseGeocodeAsync({
-          latitude,
-          longitude,
-        });
-
-        if (reverseGeocode.length > 0) {
-          const address = reverseGeocode[0];
-          addressInfo = `${address.city || address.region || ''}, ${address.country || ''}`.trim().replace(/^,/, '');
-          if (!addressInfo) addressInfo = "Unknown Location";
-        }
-      } catch (geoError) {
-        console.log("Geocoding failed, using default address");
-      }
-
-      if (!isMountedRef.current) return;
-
-      setUserAddress(addressInfo);
-      setIsLocationSet(true);
-
-      await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
-      await AsyncStorage.setItem("userAddress", addressInfo);
-
-      // Load merchants near the newly set location
-      await loadNearbyMerchants(latitude, longitude);
-
-      setIsLoadingLocation(false);
-      showSuccess("Location Set!", `Your location has been set to ${addressInfo}.`);
-    } catch (error) {
-      console.error("Error getting location:", error);
-      if (isMountedRef.current) {
-        setIsLoadingLocation(false);
-        setUserAddress("Nigeria");
-        setIsLocationSet(true);
-        await loadAllMerchants();
-      }
-    }
-  };
-
   const handleSetLocationLater = () => {
-    router.push("/search");
+    setIsLocationSet(true); // Ensure location is marked as set
+    setTimeout(() => {
+      router.push("/search"); // Navigate only after state is updated
+    }, 100); // Small delay to ensure state update completes
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
-  // Filter stores based on search query and filters
-  const filteredStoreLocations = useMemo(() => {
-    let filtered = [...storeLocations];
-
-    // Apply search query filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(store => 
-        store.title.toLowerCase().includes(query) ||
-        store.address.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply distance filter (simplified - in production, calculate actual distance)
-    if (selectedDistance !== 'Any' && region) {
-      const maxDistance = selectedDistance === '<1km' ? 1 : selectedDistance === '<5km' ? 5 : 10;
-      filtered = filtered.filter(store => {
-        const distance = locationService.calculateDistance(
-          region.latitude,
-          region.longitude,
-          store.coords.lat,
-          store.coords.lng
-        );
-        return distance <= maxDistance;
-      });
-    }
-
-    // Apply category filter (when backend supports categories)
-    if (selectedCategory !== 'All') {
-      // TODO: Filter by category when store data includes category field
-      // filtered = filtered.filter(store => store.category === selectedCategory);
-    }
-
-    // Apply rating filter (when backend supports ratings)
-    if (selectedRating > 0) {
-      // TODO: Filter by rating when store data includes rating field
-      // filtered = filtered.filter(store => store.rating >= selectedRating);
-    }
-
-    return filtered;
-  }, [storeLocations, searchQuery, selectedDistance, selectedCategory, selectedRating, region]);
-
-  const handleResetFilters = () => {
-    setSelectedDistance('Any');
-    setSelectedCategory('All');
-    setSelectedRating(0);
-    setSearchQuery('');
-  };
-
-  const handleApplyFilters = () => {
-    setIsFilterModalOpen(false);
-    // Filters are already applied via the filteredStoreLocations memo
-  };
-
-  const handleStoreSelect = (store: StoreLocation) => {
-    setSelectedDestination(store);
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: store.coords.lat,
-        longitude: store.coords.lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
+  // Fix Alert to alert
+  const handleSetLocationAutomatically = async () => {
+    setIsLoadingLocation(true);
+    try {
+      await fitToUserLocation(); // Simulate location setting
+      setIsLocationSet(true); // Ensure location is marked as set
+    } catch (error) {
+      alert("Error - Failed to set location automatically. Please try again.");
+    } finally {
+      setIsLoadingLocation(false);
     }
   };
-
-  const retryLoadMap = () => {
-    setMapError(false);
-    setIsMapLoading(true);
+  
+  // Add handleMerchantPress function
+  const handleMerchantPress = (merchant: Merchant) => {
+    router.push(`/merchant/${merchant.id}` as any);
   };
 
-  const MemoizedMarker = React.memo(Marker);
+  const handleNavigationGuard = (route: string) => {
+    if (!isLocationSet) {
+      alert("Please set your location first");
+      return;
+    }
+    router.push(route as any);
+  };
 
-  const memoizedStoreLocations = useMemo(() => {
-    return filteredStoreLocations;
-  }, [filteredStoreLocations]);
+  const handleSearchNavigation = () => handleNavigationGuard("/search");
 
-  // Mock cart item count for badge display
-  const cartItemCount = 3;
+  const handleMerchantPress = useCallback((merchantId: string) => {
+    router.push({
+      pathname: "/merchant/[id]",
+      params: { id: merchantId }
+    });
+  }, [router]);
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="transparent" translucent />
-
-      {/* Map View */}
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={region}
-        onRegionChangeComplete={handleRegionChange}
-        onMapLoaded={() => {
-          fitToUserLocation();
-        }}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        mapType="standard"
-        pitchEnabled={false}
-        rotateEnabled={false}
-        scrollEnabled={true}
-        zoomEnabled={true}
-        paddingAdjustmentBehavior="automatic"
-        padding={{ top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 }}
-        customMapStyle={Platform.OS !== 'web' ? blueMapStyle : undefined}
-      >
-        {/* @ts-expect-error - Marker component accepts these props but types are not properly defined */}
-        <MemoizedMarker
-          coordinate={{ latitude: region.latitude, longitude: region.longitude }}
-          title="You are here"
-          pinColor="#4682B4"
-        />
-
-        {nearbyDrivers.map((driver) => (
-          // @ts-expect-error - Marker component accepts these props but types are not properly defined */}
-          <MemoizedMarker
-            key={driver.id}
-            coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
-            title={driver.name}
-            description={`ETA: ${driver.eta}`}
-          >
-            <View style={styles.driverMarker}>
-              <Ionicons name="car" size={24} color={activeDelivery?.driverId === driver.id ? theme.colors.boltBlue : theme.colors.success} />
-            </View>
-          </MemoizedMarker>
-        ))}
-
-        {memoizedStoreLocations.map((store) => (
-          // @ts-expect-error - Marker component accepts these props but types are not properly defined */}
-          <MemoizedMarker
-            key={store.title}
-            coordinate={{ latitude: store.coords.lat, longitude: store.coords.lng }}
-            title={store.title}
-            description={store.address}
-            onPress={() => handleStoreSelect(store)}
-          />
-        ))}
-
-        {selectedDestination && MapViewDirections && (
-          <MapViewDirections
-            origin={region}
-            destination={selectedDestination.coords}
-            apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"}
-            strokeWidth={4}
-            strokeColor={theme.colors.primary}
-            optimizeWaypoints={true}
-            onReady={(result: any) => {
-              console.log(`Distance: ${result.distance} km`);
-              console.log(`Duration: ${result.duration} min`);
-            }}
-            onError={(error: any) => {
-              console.error("Directions error:", error);
-              showError("Navigation Error", "Could not calculate route. Please try again.");
-            }}
-          />
-        )}
-      </MapView>
-
-      {/* Notification */}
-      {notificationMessage && (
-        <Animated.View style={styles.notification}>
-          <Text style={styles.notificationText}>{notificationMessage}</Text>
-        </Animated.View>
+      {/* Fallback UI for loading state */}
+      {isLocationSet === null && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       )}
 
-      {/* Header with Back Button and Menu */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleGoBack}
-          style={styles.backButton}
-          accessibilityLabel="Go back to dashboard"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={toggleMenu}
-          style={styles.menuButton}
-          accessibilityLabel={isMenuOpen ? "Close menu" : "Open menu"}
-          accessibilityRole="button"
-        >
-          <Ionicons name={isMenuOpen ? "close" : "menu"} size={30} color={theme.colors.text} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Active Order Status */}
-        {activeDelivery && (
-          <View style={styles.activeOrderWidget}>
-            <View style={styles.activeOrderHeader}>
-              <Ionicons name="cube" size={24} color="#4682B4" />
-              <Text style={styles.activeOrderTitle}>Active Order</Text>
-            </View>
-            <Text style={styles.activeOrderStatus}>
-              {activeDelivery.status === 'picking_up' ? '📍 Driver heading to merchant' : '🚗 On the way to you'}
-            </Text>
-            <TouchableOpacity 
-              style={styles.trackButton}
-              onPress={() => setShowDriverCard(true)}
-            >
-              <Text style={styles.trackButtonText}>Track Order</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
       {/* Location Setup Modal - Only show if location not set */}
-      {!isLocationSet && (
+      {isLocationSet === false && (
         <View style={styles.bottomCard}>
           <View style={styles.locationIconContainer}>
             <View style={styles.locationIconInner}>
@@ -911,7 +694,7 @@ export default function ConsumerHome() {
               {isLoadingLocation ? (
                 <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
-                <Text style={styles.setAutomaticallyText}>Set automatically</Text>
+                <Text style={styles.setAutomaticallyButtonText}>Set Automatically</Text>
               )}
             </TouchableOpacity>
 
@@ -919,296 +702,177 @@ export default function ConsumerHome() {
               style={styles.setLaterButton}
               onPress={handleSetLocationLater}
               activeOpacity={0.9}
-              disabled={isLoadingLocation}
               accessibilityLabel="Set location later"
               accessibilityRole="button"
             >
-              <Text style={styles.setLaterText}>Set later</Text>
+              <Text style={styles.setLaterButtonText}>Set Later</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Floating Driver Card */}
-      {showDriverCard && activeDelivery && (
-        <View style={styles.floatingCard}>
-          {(() => {
-            const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
-            if (!driver) return null;
-
-            return (
-              <>
-                <View style={styles.driverCardHeader}>
-                  <View style={styles.driverAvatar}>
-                    <Ionicons name="person" size={24} color={theme.colors.white} />
-                  </View>
-                  <View style={styles.driverInfo}>
-                    <Text style={styles.driverName}>{driver.name}</Text>
-                    <Text style={styles.driverStatus}>
-                      {activeDelivery.status === 'picking_up' ? '📦 Picking up order' : '🚗 On the way'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setShowDriverCard(false)}>
-                    <Ionicons name="close" size={24} color={theme.colors.text} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.driverCardBody}>
-                  {activeDelivery.status === 'picking_up' && driver.distanceToMerchant !== undefined && (
-                    <View style={styles.distanceRow}>
-                      <Ionicons name="storefront" size={16} color={theme.colors.boltBlue} />
-                      <Text style={styles.distanceText}>
-                        {driver.distanceToMerchant.toFixed(1)} km to merchant
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.distanceRow}>
-                    <Ionicons name="location" size={16} color={theme.colors.boltBlue} />
-                    <Text style={styles.distanceText}>
-                      {driver.distanceToConsumer?.toFixed(1) || '0'} km to you • ETA: {driver.eta}
-                    </Text>
-                  </View>
-                </View>
-              </>
-            );
-          })()}
-        </View>
-      )}
-
-      {/* Test Delivery Button (for demo) */}
-      {isLocationSet && !activeDelivery && storeLocations.length > 0 && (
-        <TouchableOpacity 
-          style={styles.testDeliveryButton}
-          onPress={simulateDelivery}
-        >
-          <Ionicons name="play" size={20} color={theme.colors.white} />
-          <Text style={styles.testDeliveryText}>Test Delivery</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Search Bar - Moved to Bottom */}
-      <View style={[styles.searchContainer, { bottom: isLocationSet ? 20 : 420 }]}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Where do you want to shop?"
-            placeholderTextColor={theme.colors.textLight}
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterModalOpen(true)}
-            accessibilityLabel="Open filter options"
-            accessibilityRole="button"
+      {/* Other components - Only show when location is set */}
+      {isLocationSet === true && (
+        <>
+          {/* Map View */}
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            customMapStyle={blueMapStyle}
+            region={region}
+            onRegionChangeComplete={handleRegionChange}
           >
-            <Ionicons name="options" size={22} color={theme.colors.boltBlue} />
-          </TouchableOpacity>
-        </View>
-      </View>
+            {/* User's current location marker */}
+            <Marker
+              coordinate={{
+                latitude: region.latitude,
+                longitude: region.longitude,
+              }}
+              title="Your Location"
+              description={userAddress}
+            >
+              <View style={styles.userMarker}>
+                <View style={styles.userMarkerDot} />
+              </View>
+            </Marker>
 
-      {/* Navigation Sidebar - Only visible when menu is open */}
-      {isMenuOpen && (
-        <Animated.View style={[styles.sidebar, { right: slideAnim }]}>
-          <ScrollView style={styles.sidebarScrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.sidebarContent}>
-              <View style={styles.sidebarProfile}>
-                <View style={styles.sidebarProfileImage}>
-                  <Ionicons name="person" size={30} color={theme.colors.primary} />
+            {/* Merchant markers */}
+            {merchants && merchants.map((merchant) => (
+              <Marker
+                key={merchant.id}
+                coordinate={{
+                  latitude: merchant.location.latitude,
+                  longitude: merchant.location.longitude,
+                }}
+                title={merchant.name}
+                description={merchant.address}
+                onPress={() => handleMerchantPress(merchant)}
+              >
+                <View style={styles.merchantMarker}>
+                  <Image
+                    source={require('../../assets/images/view_commodities_icon.png')}
+                    style={styles.merchantMarkerIcon}
+                  />
                 </View>
-                <Text style={styles.sidebarProfileName}>{userName}</Text>
-                <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
-              </View>
+              </Marker>
+            ))}
 
-              <View style={styles.menuList}>
-                {['Profile', 'Orders', 'Cart', 'Favorites', 'Settings', 'Support'].map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    style={styles.menuItem}
-                    onPress={() => handleMenuItemPress(item)}
-                    accessibilityLabel={`Navigate to ${item}`}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.menuItemText}>{item}</Text>
-                    <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
-                  </TouchableOpacity>
-                ))}
-                {/* Notifications Menu Item */}
+            {/* Driver markers for live tracking */}
+            {liveDrivers && liveDrivers.map((driver) => (
+              <Marker
+                key={driver.id}
+                coordinate={{
+                  latitude: driver.location.latitude,
+                  longitude: driver.location.longitude,
+                }}
+                title={`Driver ${driver.name}`}
+                description={`ETA: ${driver.eta} mins`}
+              >
+                <View style={styles.driverMarker}>
+                  <Image
+                    source={require('../../assets/images/order_fuel_icon.png')}
+                    style={styles.driverMarkerIcon}
+                  />
+                </View>
+              </Marker>
+            ))}
+          </MapView>
+
+          {/* Header with back and menu buttons */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleGoBack}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+            >
+              <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={toggleMenu}
+              accessibilityLabel="Open menu"
+              accessibilityRole="button"
+            >
+              <Ionicons name="menu" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Search bar */}
+          <View style={styles.searchContainer}>
+            <TouchableOpacity
+              style={styles.searchInputContainer}
+              onPress={handleSearchNavigation}
+              activeOpacity={0.9}
+              accessibilityLabel="Search"
+              accessibilityRole="search"
+            >
+              <Ionicons
+                name="search"
+                size={20}
+                color={theme.colors.textLight}
+                style={styles.searchIcon}
+              />
+              <Text style={[styles.searchInput, { color: theme.colors.textLight }]}>
+                Search for merchants, products...
+              </Text>
+              <TouchableOpacity
+                style={styles.filterButton}
+                onPress={() => setShowFilters(true)}
+                accessibilityLabel="Filter"
+                accessibilityRole="button"
+              >
+                <Ionicons name="options" size={20} color={theme.colors.primary} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+
+          {/* Sidebar Menu */}
+          <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+            <View style={styles.sidebarHeader}>
+              <Image
+                source={require('../../assets/images/account_circle.svg')}
+                style={styles.userAvatar}
+              />
+              <Text style={styles.userName}>{userName || 'User'}</Text>
+              <TouchableOpacity
+                style={styles.closeMenuButton}
+                onPress={toggleMenu}
+                accessibilityLabel="Close menu"
+                accessibilityRole="button"
+              >
+                <Ionicons name="close" size={24} color={theme.colors.white} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.menuItems}>
+              {menuItems.map((item, index) => (
                 <TouchableOpacity
-                  key="Notifications"
+                  key={index}
                   style={styles.menuItem}
-                  onPress={() => handleMenuItemPress("Notifications")}
-                  accessibilityLabel="Navigate to Notifications"
-                  accessibilityRole="button"
+                  onPress={() => handleMenuItemPress(item)}
+                  accessibilityLabel={item}
+                  accessibilityRole="menuitem"
                 >
-                  <View style={styles.menuItemWithBadge}>
-                    <Text style={styles.menuItemText}>Notifications</Text>
-                    {unreadNotifications > 0 && (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{unreadNotifications}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
+                  <Text style={styles.menuItemText}>{item}</Text>
                 </TouchableOpacity>
-              </View>
+              ))}
+            </ScrollView>
 
-              <View style={styles.sidebarBottom}>
-                <TouchableOpacity
-                  style={styles.switchButton}
-                  onPress={() => handleMenuItemPress("Switch to Merchant")}
-                  accessibilityLabel="Switch to Merchant view"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.switchButtonText}>Switch to Merchant</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.switchButton}
-                  onPress={() => handleMenuItemPress("Switch to Driver")}
-                  accessibilityLabel="Switch to Driver view"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.switchButtonText}>Switch to Driver</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.signOutButton}
-                  onPress={handleSignOut}
-                  accessibilityLabel="Sign out from the application"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.signOutButtonText}>Sign out</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </ScrollView>
-        </Animated.View>
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+              accessibilityLabel="Sign out"
+              accessibilityRole="button"
+            >
+              <Ionicons name="log-out-outline" size={20} color={theme.colors.white} style={styles.signOutIcon} />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </>
       )}
-
-      {/* Menu Overlay */}
-      {isMenuOpen && (
-        <TouchableOpacity
-          style={styles.menuOverlay}
-          onPress={toggleMenu}
-          activeOpacity={1}
-          accessibilityLabel="Close menu overlay"
-        />
-      )}
-
-      {/* Loading Indicator for Location Only */}
-      {isLoadingLocation && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Getting your location...</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Filter Modal */}
-      <Modal
-        visible={isFilterModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsFilterModalOpen(false)}
-      >
-        <View style={styles.filterModalContainer}>
-          <View style={styles.filterModal}>
-            <Text style={styles.filterModalTitle}>Filter Options</Text>
-
-            <View style={styles.filterOption}>
-              <Text style={styles.filterOptionText}>Distance</Text>
-              <View style={styles.filterOptionValues}>
-                {['<1km', '<5km', '<10km', 'Any'].map((option) => (
-                  <TouchableOpacity 
-                    key={option} 
-                    style={[
-                      styles.filterChip,
-                      selectedDistance === option && { 
-                        backgroundColor: theme.colors.primary,
-                        borderColor: theme.colors.primary
-                      }
-                    ]}
-                    onPress={() => setSelectedDistance(option)}
-                    accessibilityLabel={`Filter by ${option} distance`}
-                    accessibilityRole="button"
-                  >
-                    <Text style={[
-                      styles.filterChipText,
-                      selectedDistance === option && { color: '#fff' }
-                    ]}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.filterOption}>
-              <Text style={styles.filterOptionText}>Category</Text>
-              <View style={styles.filterOptionValues}>
-                {['Food', 'Gas', 'Retail', 'All'].map((option) => (
-                  <TouchableOpacity 
-                    key={option} 
-                    style={[
-                      styles.filterChip,
-                      selectedCategory === option && { 
-                        backgroundColor: theme.colors.primary,
-                        borderColor: theme.colors.primary
-                      }
-                    ]}
-                    onPress={() => setSelectedCategory(option)}
-                    accessibilityLabel={`Filter by ${option} category`}
-                    accessibilityRole="button"
-                  >
-                    <Text style={[
-                      styles.filterChipText,
-                      selectedCategory === option && { color: '#fff' }
-                    ]}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.filterOption}>
-              <Text style={styles.filterOptionText}>Rating</Text>
-              <View style={styles.ratingStars}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity 
-                    key={star}
-                    onPress={() => setSelectedRating(star === selectedRating ? 0 : star)}
-                    accessibilityLabel={`Filter by ${star} star rating`}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons
-                      name={star <= selectedRating ? "star" : "star-outline"}
-                      size={24}
-                      color={theme.colors.primary}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.filterModalButtons}>
-              <TouchableOpacity
-                style={[styles.filterModalButton, styles.filterModalButtonOutline]}
-                onPress={handleResetFilters}
-                accessibilityLabel="Reset filters"
-                accessibilityRole="button"
-              >
-                <Text style={styles.filterModalButtonOutlineText}>Reset</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterModalButton, styles.filterModalButtonFilled]}
-                onPress={handleApplyFilters}
-                accessibilityLabel="Apply filters"
-                accessibilityRole="button"
-              >
-                <Text style={styles.filterModalButtonFilledText}>Apply</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -1380,118 +1044,86 @@ const styles = StyleSheet.create({
     right: 0,
     width: Math.min(350, width * 0.9),
     height: '100%',
-    backgroundColor: theme.colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: theme.colors.primary,
     zIndex: 1000,
+    ...theme.shadows.large,
   },
-  sidebarScrollView: {
-    flex: 1,
-  },
-  sidebarContent: {
+  sidebarHeader: {
     paddingTop: 60,
-    paddingBottom: 30,
-  },
-  sidebarProfile: {
-    alignItems: 'center',
-    paddingVertical: 30,
+    paddingBottom: 20,
     paddingHorizontal: 20,
+    alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
-  sidebarProfileImage: {
+  userAvatar: {
     width: 80,
     height: 80,
-    backgroundColor: '#f8f9fa',
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 15,
+    borderWidth: 2,
+    borderColor: theme.colors.white,
   },
-  sidebarProfileName: {
+  userName: {
+    color: theme.colors.white,
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 5,
     fontFamily: theme.typography.semiBold,
-    textAlign: 'center',
   },
-  sidebarProfileEmail: {
-    fontSize: 14,
-    color: '#666',
-    fontFamily: theme.typography.regular,
-    textAlign: 'center',
+  closeMenuButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  menuList: {
+  menuItems: {
+    flex: 1,
     paddingTop: 20,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 15,
+    paddingHorizontal: 25,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  menuItemWithBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  badge: {
-    backgroundColor: theme.colors.error,
-    borderRadius: 10,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: theme.colors.white,
-    fontSize: 12,
-    fontWeight: 'bold',
-    fontFamily: theme.typography.semiBold,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   menuItemText: {
+    color: theme.colors.white,
     fontSize: 16,
-    color: '#333',
-    fontFamily: theme.typography.medium,
-  },
-  sidebarBottom: {
-    padding: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    marginTop: 10,
-  },
-  switchButton: {
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  switchButtonText: {
-    fontSize: 15,
-    color: theme.colors.primary,
-    fontWeight: '500',
     fontFamily: theme.typography.medium,
   },
   signOutButton: {
-    backgroundColor: '#ffe6e6',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 25,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 10,
   },
-  signOutButtonText: {
-    fontSize: 15,
-    color: theme.colors.error,
+  signOutIcon: {
+    marginRight: 5,
+  },
+  signOutText: {
+    color: theme.colors.white,
+    fontSize: 16,
+    fontFamily: theme.typography.medium,
+  },
+  setAutomaticallyButtonText: {
+    color: theme.colors.white,
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  setLaterButtonText: {
+    color: theme.colors.primary,
+    fontSize: 16,
     fontWeight: '500',
     fontFamily: theme.typography.medium,
   },
@@ -1738,6 +1370,35 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 8,
     ...theme.shadows.small,
+  },
+  driverMarkerIcon: {
+    width: 24,
+    height: 24,
+  },
+  userMarker: {
+    width: 40,
+    height: 40,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.small,
+  },
+  userMarkerDot: {
+    width: 20,
+    height: 20,
+    backgroundColor: theme.colors.white,
+    borderRadius: 10,
+  },
+  merchantMarker: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 20,
+    padding: 8,
+    ...theme.shadows.small,
+  },
+  merchantMarkerIcon: {
+    width: 24,
+    height: 24,
   },
   testDeliveryButton: {
     position: 'absolute',

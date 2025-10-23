@@ -1,7 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as locationService from '../services/locationService'; // Assuming locationService is available
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ViewStyle, 
+  TouchableOpacity, 
+  TextInput,
+  ActivityIndicator,
+  Platform
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import * as locationService from '../services/locationService';
+
+// Types for drawing tools
+type DrawingMode = 'marker' | 'polygon' | 'circle' | 'rectangle' | null;
 
 interface MapProps {
   style?: ViewStyle;
@@ -35,6 +48,11 @@ interface MapProps {
   enableLiveTracking?: boolean;
   trackingUserId?: string;
   onLiveLocationUpdate?: (location: any) => void;
+  // New props for search and drawing
+  showSearch?: boolean;
+  showDrawingTools?: boolean;
+  onMapClick?: (lat: number, lng: number) => void;
+  onDrawingComplete?: (geojson: any) => void;
 }
 
 const MapWeb: React.FC<MapProps> = ({
@@ -49,16 +67,29 @@ const MapWeb: React.FC<MapProps> = ({
   enableLiveTracking,
   trackingUserId,
   onLiveLocationUpdate,
+  showSearch = true,
+  showDrawingTools = true,
+  onMapClick,
+  onDrawingComplete,
   markers = [],
   showsUserLocation = false,
   ...props
 }) => {
   const [mapError, setMapError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [liveLocations, setLiveLocations] = useState<any[]>([]);
-  const [selectedMarker, setSelectedMarker] = useState<any>(null);
-  const [MapComponents, setMapComponents] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<any>(null);
+  const [stores, setStores] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [drawingMode, setDrawingMode] = useState<DrawingMode>(null);
+  const webViewRef = useRef<WebView>(null);
+  const [mapComponents, setMapComponents] = useState<{
+    Map: React.ComponentType<any>;
+    Marker: React.ComponentType<any>;
+  } | null>(null);
   const mapRef = useRef<any>(null);
+  const [selectedMarker, setSelectedMarker] = useState<any>(null);
+  const [liveLocations, setLiveLocations] = useState<any[]>([]);
 
   const displayRegion = region || initialRegion || {
     latitude: 6.5244,
@@ -111,62 +142,440 @@ const MapWeb: React.FC<MapProps> = ({
     }
   }, []);
 
-  // Live tracking effect
-  useEffect(() => {
-    if (enableLiveTracking && trackingUserId && !isLoading) {
-      const interval = setInterval(async () => {
-        try {
-          // Fetch real driver location from backend
-          const driverLocation = await locationService.getDriverLocation(trackingUserId); // Use trackingUserId as driverId
+  // Handle map click
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    if (onMapClick) {
+      onMapClick(lat, lng);
+    }
+    
+    if (drawingMode === 'marker' && webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        const marker = L.marker([${lat}, ${lng}], {
+          draggable: true
+        }).addTo(map);
+        
+        marker.on('click', () => {
+          map.removeLayer(marker);
+        });
+        
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'drawingComplete',
+          data: {
+            type: 'Point',
+            coordinates: [${lng}, ${lat}]
+          }
+        }));
+      `);
+    }
+  }, [drawingMode, onMapClick]);
 
-          setLiveLocations(prev => {
-            const updated = prev.filter(loc => loc.userId !== trackingUserId);
-            return [...updated, { ...driverLocation, userId: trackingUserId }];
+  // Handle map move
+  const handleMapMove = useCallback((region: any) => {
+    if (onRegionChangeComplete) {
+      onRegionChangeComplete(region);
+    }
+  }, [onRegionChangeComplete]);
+
+  // Handle search
+  const handleSearch = useCallback(() => {
+    if (webViewRef.current && searchQuery.trim()) {
+      webViewRef.current.injectJavaScript(`
+        const searchControl = document.querySelector('.geosearch');
+        if (searchControl) {
+          const input = searchControl.querySelector('input[type="text"]');
+          const button = searchControl.querySelector('button');
+          
+          if (input && button) {
+            input.value = ${JSON.stringify(searchQuery)};
+            const event = new Event('input', { bubbles: true });
+            input.dispatchEvent(event);
+            
+            setTimeout(() => {
+              button.click();
+            }, 100);
+          }
+        }
+        true;
+      `);
+    }
+  }, [searchQuery]);
+
+  // Handle drawing tools
+  const handleDrawingTool = useCallback((tool: DrawingMode) => {
+    setDrawingMode(tool);
+    
+    if (webViewRef.current) {
+      if (tool) {
+        webViewRef.current.injectJavaScript(`
+          window.leafletMap.enableDrawing('${tool}');
+          true;
+        `);
+      } else {
+        webViewRef.current.injectJavaScript(`
+          window.leafletMap.disableDrawing();
+          true;
+        `);
+      }
+    }
+  }, []);
+
+  // Clear drawings
+  const clearDrawings = useCallback(() => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.leafletMap.clearDrawings();
+        true;
+      `);
+    }
+  }, []);
+
+  // Handle marker press
+  const handleMarkerPress = useCallback((marker: any) => {
+    setSelectedMarker(marker);
+    if (onLocationSelect) {
+      onLocationSelect(marker);
+    }
+  }, [onLocationSelect]);
+
+  // Handle WebView messages
+  const handleWebViewMessage = useCallback((event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      
+      switch (data.type) {
+        case 'mapClick':
+          if (onMapClick) onMapClick(data.lat, data.lng);
+          break;
+        case 'drawingComplete':
+          if (onDrawingComplete) onDrawingComplete(data.data);
+          break;
+      }
+    } catch (error) {
+      console.error('Error parsing WebView message:', error);
+    }
+  }, [onMapClick, onDrawingComplete]);
+
+  // Initialize map with Leaflet
+  useEffect(() => {
+    const initMap = () => {
+      // Your existing map initialization code
+      if (webViewRef.current) {
+        // Add any additional initialization for search and drawing
+        webViewRef.current.injectJavaScript(`
+          // Initialize search control
+          const searchControl = new GeoSearch.GeoSearchControl({
+            provider: new GeoSearch.OpenStreetMapProvider(),
+            style: 'bar',
+            showMarker: true,
+            showPopup: false,
+            autoClose: true,
+            retainZoomLevel: false,
+            animateZoom: true,
+            keepResult: true,
+            searchLabel: 'Search location',
+          });
+          
+          // Add search control to map
+          map.addControl(searchControl);
+
+          // Initialize drawing control
+          const drawnItems = new L.FeatureGroup();
+          map.addLayer(drawnItems);
+
+          const drawControl = new L.Control.Draw({
+            position: 'topleft',
+            draw: {
+              polygon: true,
+              polyline: false,
+              rectangle: true,
+              circle: true,
+              marker: true,
+              circlemarker: false
+            },
+            edit: {
+              featureGroup: drawnItems,
+              remove: true
+            }
+          });
+          
+          map.addControl(drawControl);
+
+          // Handle drawing events
+          map.on(L.Draw.Event.CREATED, function (e) {
+            const type = e.layerType;
+            const layer = e.layer;
+            
+            // Add the drawn item to the map
+            drawnItems.addLayer(layer);
+            
+            // Send the GeoJSON back to React Native
+            const geoJson = layer.toGeoJSON();
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'drawingComplete',
+              data: geoJson
+            }));
           });
 
-          if (onLiveLocationUpdate) {
-            onLiveLocationUpdate(driverLocation);
-          }
-        } catch (error) {
-          console.error('Live tracking error:', error);
-        }
-      }, 5000);
+          // Handle map click
+          map.on('click', (e) => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'mapClick',
+              lat: e.latlng.lat,
+              lng: e.latlng.lng
+            }));
+          });
 
-      return () => clearInterval(interval);
-    }
-  }, [enableLiveTracking, trackingUserId, displayRegion, onLiveLocationUpdate, isLoading]);
+          // Expose functions to window for React Native to call
+          window.leafletMap = {
+            setView: (lat, lng, zoom) => map.setView([lat, lng], zoom),
+            enableDrawing: (type) => {
+              // Enable drawing mode
+              const drawControl = new L.Draw[type.charAt(0).toUpperCase() + type.slice(1)](map, {
+                shapeOptions: {
+                  color: '#0066ff',
+                  weight: 2,
+                  opacity: 1,
+                  fillColor: '#0066ff',
+                  fillOpacity: 0.2
+                }
+              });
+              drawControl.enable();
+            },
+            disableDrawing: () => {
+              // Disable drawing mode
+              if (map._drawToolbar) {
+                map._drawToolbar.disable();
+              }
+            },
+            clearDrawings: () => {
+              drawnItems.clearLayers();
+            }
+          };
+        `);
+      }
+    };
 
-  const handleMarkerPress = (item: any) => {
-    setSelectedMarker(item);
-    if (onLocationSelect) {
-      onLocationSelect(item);
-    }
-  };
+    initMap();
+  }, []);
 
-  const handleMapMove = () => {
-    if (mapRef.current && onRegionChangeComplete) {
-      const map = mapRef.current;
-      const center = map.getCenter();
-      const bounds = map.getBounds();
-      const latitudeDelta = bounds.getNorth() - bounds.getSouth();
-      const longitudeDelta = bounds.getEast() - bounds.getWest();
-
-      onRegionChangeComplete({
-        latitude: center.lat,
-        longitude: center.lng,
-        latitudeDelta,
-        longitudeDelta,
-      });
-    }
-  };
-
-  if (isLoading || !MapComponents) {
+  if (isLoading || !mapComponents) {
     return (
       <View style={[styles.container, style]}>
-        <View style={styles.loadingContainer}>
-          <Ionicons name="map" size={32} color="#4682B4" />
-          <Text style={styles.loadingText}>Loading map...</Text>
-        </View>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0066FF" />
+            <Text style={styles.loadingText}>Loading map...</Text>
+          </View>
+        ) : (
+          <View style={styles.mapContainer}>
+            <WebView
+              ref={webViewRef}
+              source={{ 
+                html: `
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <link 
+                      rel="stylesheet" 
+                      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                      crossorigin=""
+                    />
+                    <link 
+                      rel="stylesheet" 
+                      href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"
+                    />
+                    <style>
+                      body, #map { 
+                        margin: 0; 
+                        padding: 0; 
+                        width: 100%; 
+                        height: 100%; 
+                        overflow: hidden;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                      }
+                      .geosearch {
+                        position: absolute !important;
+                        top: 20px !important;
+                        left: 20px !important;
+                        right: 20px !important;
+                        z-index: 1000 !important;
+                        max-width: 500px !important;
+                      }
+                      .leaflet-draw-toolbar {
+                        margin-top: 60px !important;
+                      }
+                    </style>
+                  </head>
+                  <body>
+                    <div id="map"></div>
+                    
+                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                      crossorigin=""></script>
+                    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+                    <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.umd.js"></script>
+                    
+                    <script>
+                      // Initialize map
+                      const map = L.map('map').setView([${initialRegion?.latitude || 0}, ${initialRegion?.longitude || 0}], ${initialRegion?.zoom || 13});
+                      
+                      // Add tile layer (OpenStreetMap)
+                      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      }).addTo(map);
+
+                      // Add user location marker if available
+                      ${userLocation ? `
+                      L.circleMarker([${userLocation.latitude}, ${userLocation.longitude}], {
+                        radius: 8,
+                        fillColor: "#0066ff",
+                        color: "#fff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                      }).addTo(map);
+                      ` : ''}
+
+                      // Add store markers if available
+                      ${storeLocations.length > 0 ? `
+                      const stores = ${JSON.stringify(storeLocations)};
+                      stores.forEach(store => {
+                        L.marker([store.latitude, store.longitude], {
+                          icon: L.divIcon({
+                            html: '<div style="background: #ff4444; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">S</div>',
+                            className: 'store-marker',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 30]
+                          })
+                        }).addTo(map);
+                      });
+                      ` : ''}
+
+                      // Handle map click
+                      map.on('click', (e) => {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                          type: 'mapClick',
+                          lat: e.latlng.lat,
+                          lng: e.latlng.lng
+                        }));
+                      });
+
+                      // Expose map to window
+                      window.map = map;
+                    </script>
+                  </body>
+                  </html>
+                `
+              }}
+              style={styles.webview}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              onMessage={handleWebViewMessage}
+              originWhitelist={['*']}
+              scrollEnabled={false}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.warn('WebView error: ', nativeEvent);
+              }}
+              onLoadEnd={() => {
+                setIsLoading(false);
+              }}
+            />
+            
+            {/* Search Bar */}
+            {showSearch && (
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search location..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onSubmitEditing={handleSearch}
+                  returnKeyType="search"
+                />
+                <TouchableOpacity 
+                  style={styles.searchButton} 
+                  onPress={handleSearch}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="search" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Drawing Tools */}
+            {showDrawingTools && (
+              <View style={styles.drawingTools}>
+                <TouchableOpacity
+                  style={[
+                    styles.toolButton,
+                    drawingMode === 'marker' && styles.activeToolButton
+                  ]}
+                  onPress={() => handleDrawingTool(drawingMode === 'marker' ? null : 'marker')}
+                >
+                  <MaterialIcons 
+                    name="location-on" 
+                    size={24} 
+                    color={drawingMode === 'marker' ? '#fff' : '#0066ff'} 
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.toolButton,
+                    drawingMode === 'polygon' && styles.activeToolButton
+                  ]}
+                  onPress={() => handleDrawingTool(drawingMode === 'polygon' ? null : 'polygon')}
+                >
+                  <MaterialIcons 
+                    name="polyline" 
+                    size={24} 
+                    color={drawingMode === 'polygon' ? '#fff' : '#0066ff'} 
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.toolButton,
+                    drawingMode === 'rectangle' && styles.activeToolButton
+                  ]}
+                  onPress={() => handleDrawingTool(drawingMode === 'rectangle' ? null : 'rectangle')}
+                >
+                  <MaterialIcons 
+                    name="crop-square" 
+                    size={24} 
+                    color={drawingMode === 'rectangle' ? '#fff' : '#0066ff'} 
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.toolButton,
+                    drawingMode === 'circle' && styles.activeToolButton
+                  ]}
+                  onPress={() => handleDrawingTool(drawingMode === 'circle' ? null : 'circle')}
+                >
+                  <MaterialIcons 
+                    name="panorama-fish-eye" 
+                    size={24} 
+                    color={drawingMode === 'circle' ? '#fff' : '#0066ff'} 
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.toolButton, styles.clearButton]}
+                  onPress={clearDrawings}
+                >
+                  <MaterialIcons name="clear" size={24} color="#ff4444" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     );
   }
@@ -185,11 +594,11 @@ const MapWeb: React.FC<MapProps> = ({
     );
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, Circle, L } = MapComponents;
+  const { MapContainer, TileLayer, Marker, Popup, Circle, L } = mapComponents;
 
   // Component to update map view when region changes
   const MapUpdater = ({ region: mapRegion }: { region: any }) => {
-    const map = MapComponents.useMap();
+    const map = mapComponents.useMap();
 
     React.useEffect(() => {
       if (mapRegion && map) {
@@ -250,7 +659,7 @@ const MapWeb: React.FC<MapProps> = ({
         ))}
 
         {/* Store locations */}
-        {enableStoreLocator && storeLocations.map((store, index) => (
+        {mapComponents && stores.map((store, index) => (
           <Marker
             key={`store-${index}`}
             position={[store.coords?.lat || store.latitude, store.coords?.lng || store.longitude]}
@@ -300,9 +709,80 @@ const MapWeb: React.FC<MapProps> = ({
 };
 
 const styles = StyleSheet.create({
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  webview: {
+    flex: 1,
+    width: '100%',
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    zIndex: 1000,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    paddingHorizontal: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  searchButton: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawingTools: {
+    position: 'absolute',
+    bottom: 24,
+    right: 16,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    padding: 8,
+  },
+  toolButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  activeToolButton: {
+    backgroundColor: '#e3f2fd',
+    borderWidth: 2,
+    borderColor: '#007bff',
+  },
+  clearButton: {
+    backgroundColor: '#ff4444',
+  },
   container: {
+    flex: 1,
     backgroundColor: '#f0f8ff',
     borderRadius: 15,
+    position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#e0e0e0',
