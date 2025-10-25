@@ -118,9 +118,9 @@ const MapWeb: React.FC<MapProps> = ({
           // Fix default marker icon issue in Leaflet
           delete (L.default.Icon.Default.prototype as any)._getIconUrl;
           L.default.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
           });
 
           setMapComponents({
@@ -388,12 +388,19 @@ const MapWeb: React.FC<MapProps> = ({
                       href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"
                     />
                     <style>
-                      body, #map { 
-                        margin: 0; 
-                        padding: 0; 
-                        width: 100%; 
-                        height: 100%; 
+                      html, body {
+                        height: 100%;
+                        margin: 0;
+                        padding: 0;
                         overflow: hidden;
+                      }
+                      #map {
+                        height: 100vh;
+                        width: 100vw;
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        z-index: 0;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                       }
                       .geosearch {
@@ -412,6 +419,9 @@ const MapWeb: React.FC<MapProps> = ({
                   <body>
                     <div id="map"></div>
                     
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                      crossorigin="" />
                     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
                       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
                       crossorigin=""></script>
@@ -422,9 +432,11 @@ const MapWeb: React.FC<MapProps> = ({
                       // Initialize map
                       const map = L.map('map').setView([${initialRegion?.latitude || 0}, ${initialRegion?.longitude || 0}], ${initialRegion?.zoom || 13});
                       
-                      // Add tile layer (OpenStreetMap)
-                      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      // Add tile layer (OpenStreetMap with CORS support)
+                      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                        subdomains: 'abcd',
+                        maxZoom: 20
                       }).addTo(map);
 
                       // Add user location marker if available

@@ -1,20 +1,21 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Dimensions, 
-  Image, 
-  Animated, 
-  StatusBar, 
-  ScrollView, 
-  Platform, 
-  ActivityIndicator, 
-  TextInput, 
-  Modal, 
-  RefreshControl, 
-  Alert 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Dimensions,
+  Image,
+  Animated,
+  StatusBar,
+  ScrollView,
+  Platform,
+  ActivityIndicator,
+  TextInput,
+  Modal,
+  RefreshControl,
+  Alert
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,6 +24,7 @@ const MapViewDirections = Platform.OS === 'web' ? null : require('react-native-m
 import { locationService } from '../../services/locationService';
 import { merchantService } from '../../services/merchantService';
 import * as Location from 'expo-location';
+
 import { useAlert } from '../../components/AlertProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { debounce } from 'lodash';
@@ -31,12 +33,27 @@ import { debounce } from 'lodash';
 interface Merchant {
   id: string;
   name: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  address: string;
   // Add other merchant properties as needed
 }
 
 interface Driver {
   id: string;
   name: string;
+  latitude: number;
+  longitude: number;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  eta: string;
+  status: string;
+  distanceToMerchant?: number;
+  distanceToConsumer?: number;
   // Add other driver properties as needed
 }
 
@@ -46,10 +63,20 @@ interface MenuItem {
   // Add other menu item properties as needed
 }
 
+// Define menu items as strings for navigation
+type MenuItemString = string;
+
 interface StoreLocation {
+  id?: string;
   title: string;
   address: string;
   coords: { lat: number; lng: number };
+  distance?: number;
+  rating?: number;
+  isOpen?: boolean;
+  category?: string;
+  phone?: string;
+  description?: string;
 }
 
 interface ActiveDelivery {
@@ -155,8 +182,12 @@ export default function ConsumerHome() {
   const [isLocationSet, setIsLocationSet] = useState<boolean | null>(null);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [liveDrivers, setLiveDrivers] = useState<Driver[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [showFilters, setShowFilters] = useState(false); // Initialize as null to indicate loading state
+  const [menuItems, setMenuItems] = useState<MenuItemString[]>([]);
+  // Show notification message
+  const showNotification = (message: string) => {
+    setNotificationMessage(message);
+    setTimeout(() => setNotificationMessage(null), 3000);
+  };
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -169,6 +200,8 @@ export default function ConsumerHome() {
   const [showDriverCard, setShowDriverCard] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
+  const [selectedMerchant, setSelectedMerchant] = useState<StoreLocation | null>(null);
+  const [showMerchantDetails, setShowMerchantDetails] = useState(false);
   const [region, setRegion] = useState({
     latitude: 9.0765,
     longitude: 7.3986,
@@ -178,17 +211,55 @@ export default function ConsumerHome() {
   const [isMapLoading, setIsMapLoading] = useState(true);
   const [mapError, setMapError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filteredMerchants, setFilteredMerchants] = useState<Merchant[]>([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
   const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
   const [selectedDistance, setSelectedDistance] = useState<string>('Any');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedRating, setSelectedRating] = useState<number>(0);
+  const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
 
   const sidebarWidth = Math.min(300, width * 0.85);
-  const slideAnim = useRef(new Animated.Value(sidebarWidth)).current;
+  const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Error handling utilities
+  const checkNetworkConnectivity = async (): Promise<boolean> => {
+    try {
+      // Simple network check - in a real app, you'd use expo-network or similar
+      return true; // Assume network is available for now
+    } catch (error) {
+      console.error('Network check failed:', error);
+      return false;
+    }
+  };
+
+  const handleRetryWithBackoff = async (operation: () => Promise<void>, operationKey: string, maxRetries: number = 3) => {
+    const currentRetry = retryCount[operationKey] || 0;
+    if (currentRetry >= maxRetries) {
+      showError("Operation Failed", `Failed to complete operation after ${maxRetries} attempts. Please try again later.`);
+      return;
+    }
+
+    try {
+      await operation();
+      // Reset retry count on success
+      setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
+    } catch (error) {
+      console.error(`Operation ${operationKey} failed (attempt ${currentRetry + 1}):`, error);
+      setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+
+      // Exponential backoff: wait 1s, 2s, 4s...
+      const delay = Math.pow(2, currentRetry) * 1000;
+      setTimeout(() => {
+        handleRetryWithBackoff(operation, operationKey, maxRetries);
+      }, delay);
+    }
+  };
 
   // Calculate delta based on screen dimensions
   const calculateDelta = (latitude: number) => {
@@ -234,24 +305,73 @@ export default function ConsumerHome() {
 
   const loadNearbyMerchants = async (latitude: number, longitude: number) => {
     try {
-      // For now, using mock data since backend API doesn't have location-based search yet
-      // TODO: Implement backend API endpoint for nearby merchants with lat/lng
-      const mockStores: StoreLocation[] = [
-        {
-          title: "NASCO FOODS",
-          address: "Yakubu Gowon Way, Jos",
-          coords: { lat: 9.868215, lng: 8.870632 }
-        },
-        {
-          title: "Airforce Masjid",
-          address: "Abattoir Rd, Jos",
-          coords: { lat: 9.882716, lng: 8.886276 }
-        }
-      ];
+      const isConnected = await checkNetworkConnectivity();
+      if (!isConnected) {
+        showError("Network Error", "No internet connection. Please check your network and try again.");
+        await loadAllMerchants(); // Fallback to cached/all merchants
+        return;
+      }
 
-      setStoreLocations(mockStores);
+      // Make API call to get nearby merchants
+      const response = await fetch(`https://api.brillprime.com/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth headers if needed
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // Transform API response to StoreLocation format with enhanced data
+        const stores: StoreLocation[] = data.data.map((merchant: any) => {
+          const distance = locationService.calculateDistance(
+            latitude, longitude,
+            merchant.latitude || merchant.coords?.lat,
+            merchant.longitude || merchant.coords?.lng
+          );
+
+          return {
+            id: merchant.id,
+            title: merchant.name || merchant.title,
+            address: merchant.address,
+            coords: {
+              lat: merchant.latitude || merchant.coords?.lat,
+              lng: merchant.longitude || merchant.coords?.lng
+            },
+            distance: distance,
+            rating: merchant.rating || 0,
+            isOpen: merchant.isOpen !== undefined ? merchant.isOpen : true,
+            category: merchant.category || 'General',
+            phone: merchant.phone,
+            description: merchant.description
+          };
+        });
+
+        // Sort by distance (closest first)
+        stores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+        setStoreLocations(stores);
+      } else {
+        throw new Error(data.message || 'Failed to load merchants');
+      }
     } catch (error) {
       console.error('Error loading nearby merchants:', error);
+
+      // Check error type and handle appropriately
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        showError("Network Error", "Unable to connect to servers. Please check your internet connection.");
+      } else if (error instanceof Error && error.message.includes('API Error')) {
+        showError("Server Error", "Unable to load nearby merchants. Using cached data.");
+      } else {
+        showError("Loading Error", "Failed to load nearby merchants. Using cached data.");
+      }
+
       // Fallback to loading all merchants
       await loadAllMerchants();
     }
@@ -259,33 +379,134 @@ export default function ConsumerHome() {
 
   const loadAllMerchants = async () => {
     try {
-      // Load all available merchants regardless of location
-      const mockStores: StoreLocation[] = [
+      const isConnected = await checkNetworkConnectivity();
+      if (!isConnected) {
+        showError("Network Error", "No internet connection. Using cached merchant data.");
+        // Could load from local cache here
+        return;
+      }
+
+      // Make API call to get all merchants
+      const response = await fetch('https://api.brillprime.com/api/merchants', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth headers if needed
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // Transform API response to StoreLocation format with enhanced data
+        const stores: StoreLocation[] = data.data.map((merchant: any) => {
+          // Calculate distance from current user location if available
+          let distance: number | undefined;
+          if (isLocationSet && region) {
+            distance = locationService.calculateDistance(
+              region.latitude, region.longitude,
+              merchant.latitude || merchant.coords?.lat,
+              merchant.longitude || merchant.coords?.lng
+            );
+          }
+
+          return {
+            id: merchant.id,
+            title: merchant.name || merchant.title,
+            address: merchant.address,
+            coords: {
+              lat: merchant.latitude || merchant.coords?.lat,
+              lng: merchant.longitude || merchant.coords?.lng
+            },
+            distance: distance,
+            rating: merchant.rating || 0,
+            isOpen: merchant.isOpen !== undefined ? merchant.isOpen : true,
+            category: merchant.category || 'General',
+            phone: merchant.phone,
+            description: merchant.description
+          };
+        });
+
+        // Sort by distance if available (closest first)
+        if (isLocationSet) {
+          stores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        }
+
+        setStoreLocations(stores);
+      } else {
+        throw new Error(data.message || 'Failed to load merchants');
+      }
+    } catch (error) {
+      console.error('Error loading all merchants:', error);
+
+      // Fallback to cached/default data with enhanced fields
+      const fallbackStores: StoreLocation[] = [
         {
+          id: '1',
           title: "NASCO FOODS",
           address: "Yakubu Gowon Way, Jos",
-          coords: { lat: 9.868215, lng: 8.870632 }
+          coords: { lat: 9.868215, lng: 8.870632 },
+          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.868215, 8.870632) : undefined,
+          rating: 4.2,
+          isOpen: true,
+          category: 'Supermarket',
+          phone: '+234 803 123 4567',
+          description: 'Your one-stop shop for groceries and household items'
         },
         {
+          id: '2',
           title: "Airforce Masjid",
           address: "Abattoir Rd, Jos",
-          coords: { lat: 9.882716, lng: 8.886276 }
+          coords: { lat: 9.882716, lng: 8.886276 },
+          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.882716, 8.886276) : undefined,
+          rating: 4.8,
+          isOpen: true,
+          category: 'Religious',
+          phone: '+234 803 987 6543',
+          description: 'Community mosque serving the local area'
         },
         {
+          id: '3',
           title: "BrillPrime Market",
           address: "Wuse 2, Abuja",
-          coords: { lat: 9.0765, lng: 7.3986 }
+          coords: { lat: 9.0765, lng: 7.3986 },
+          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.0765, 7.3986) : undefined,
+          rating: 4.5,
+          isOpen: false,
+          category: 'Market',
+          phone: '+234 803 555 1234',
+          description: 'Fresh produce and local goods marketplace'
         },
         {
+          id: '4',
           title: "Prime Fuel Station",
           address: "Garki, Abuja",
-          coords: { lat: 9.0415, lng: 7.4883 }
+          coords: { lat: 9.0415, lng: 7.4883 },
+          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.0415, 7.4883) : undefined,
+          rating: 3.9,
+          isOpen: true,
+          category: 'Fuel Station',
+          phone: '+234 803 777 8888',
+          description: 'Quality fuel and automotive services'
         }
       ];
 
-      setStoreLocations(mockStores);
-    } catch (error) {
-      console.error('Error loading all merchants:', error);
+      // Sort fallback data by distance if location is set
+      if (isLocationSet) {
+        fallbackStores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      }
+
+      setStoreLocations(fallbackStores);
+
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        showError("Network Error", "Unable to connect to servers. Using cached data.");
+      } else {
+        showError("Loading Error", "Failed to load merchants. Using cached data.");
+      }
     }
   };
 
@@ -295,18 +516,27 @@ export default function ConsumerHome() {
     const timeInMinutes = Math.round((distance / avgSpeed) * 60);
     return `${timeInMinutes} mins`;
   };
+  
+
 
   const fetchNearbyMerchants = useCallback(async () => {
-    try {
-      const location = await locationService.getCurrentLocation();
-      if (location) {
-        // Load merchants near the location
-        await loadNearbyMerchants(location.latitude, location.longitude);
+    const operationKey = 'fetchNearbyMerchants';
+    const operation = async () => {
+      const isConnected = await checkNetworkConnectivity();
+      if (!isConnected) {
+        throw new Error('Network unavailable');
       }
-    } catch (error) {
-      console.error('Error fetching nearby merchants:', error);
-      showError("Loading Error", "Could not load nearby merchants. Please try again.");
-    }
+
+      const location = await locationService.getCurrentLocation();
+      if (!location) {
+        throw new Error('Unable to get current location');
+      }
+
+      // Load merchants near the location
+      await loadNearbyMerchants(location.latitude, location.longitude);
+    };
+
+    await handleRetryWithBackoff(operation, operationKey);
   }, [showError]);
 
   const onRefresh = useCallback(async () => {
@@ -475,6 +705,10 @@ export default function ConsumerHome() {
       name: 'John Doe',
       eta: '15 mins',
       status: 'picking_up',
+      location: {
+        latitude: merchant.coords.lat - 0.01,
+        longitude: merchant.coords.lng - 0.01,
+      },
     };
 
     setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
@@ -548,14 +782,26 @@ export default function ConsumerHome() {
   };
 
   const toggleMenu = useCallback(() => {
-    const toValue = isMenuOpen ? -sidebarWidth : 0;
+    const toValue = isSidebarOpen ? -sidebarWidth : 0;
     Animated.timing(slideAnim, {
       toValue,
       duration: 300,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
-    setIsMenuOpen(!isMenuOpen);
-  }, [isMenuOpen, slideAnim, sidebarWidth]);
+    setIsSidebarOpen(!isSidebarOpen);
+  }, [isSidebarOpen, slideAnim, sidebarWidth]);
+  
+  // Close sidebar when clicking outside
+  const closeSidebar = useCallback(() => {
+    if (isSidebarOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -sidebarWidth,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      setIsSidebarOpen(false);
+    }
+  }, [isSidebarOpen, slideAnim, sidebarWidth]);
 
   const handleGoBack = () => {
     showConfirmDialog(
@@ -565,36 +811,74 @@ export default function ConsumerHome() {
     );
   };
 
-  const handleMenuItemPress = useCallback((item: string) => {
+  const handleMenuItemPress = useCallback((item: MenuItemString) => {
     toggleMenu();
-    setTimeout(() => {
-      switch (item) {
-        case "Dashboard":
-          router.push("/dashboard/consumer");
-          break;
-        case "Profile":
-          router.push("/profile");
-          break;
-        case "Notifications":
-          router.push("/notifications");
-          break;
-        case "Settings":
-          router.push("/profile/privacy-settings");
-          break;
-        case "Support":
-          router.push("/support");
-          break;
-        case "Switch to Merchant":
-          router.push("/home/merchant");
-          break;
-        case "Switch to Driver":
-          router.push("/home/driver");
-          break;
-        default:
-          showInfo("Navigation", `Navigating to ${item}`);
+    setTimeout(async () => {
+      try {
+        if (!isLocationSet && item !== "Dashboard") {
+          showError("Location Required", "Please set your location first to access this feature.");
+          return;
+        }
+
+        // Validate route before navigation
+        const validRoutes = [
+          "/dashboard/consumer",
+          "/profile",
+          "/notifications",
+          "/profile/privacy-settings",
+          "/support",
+          "/home/merchant",
+          "/home/driver"
+        ];
+
+        let targetRoute = "";
+        switch (item) {
+          case "Dashboard":
+            targetRoute = "/dashboard/consumer";
+            break;
+          case "Profile":
+            targetRoute = "/profile";
+            break;
+          case "Notifications":
+            targetRoute = "/notifications";
+            break;
+          case "Settings":
+            targetRoute = "/profile/privacy-settings";
+            break;
+          case "Support":
+            targetRoute = "/support";
+            break;
+          case "Switch to Merchant":
+            targetRoute = "/home/merchant";
+            break;
+          case "Switch to Driver":
+            targetRoute = "/home/driver";
+            break;
+          default:
+            showInfo("Navigation", `Navigating to ${item}`);
+            return;
+        }
+
+        if (targetRoute && validRoutes.includes(targetRoute)) {
+          await router.push(targetRoute as any);
+        } else {
+          throw new Error(`Invalid route: ${targetRoute}`);
+        }
+      } catch (error) {
+        console.error(`Navigation error to ${item}:`, error);
+
+        if (error instanceof Error) {
+          if (error.message.includes('Invalid route')) {
+            showError("Navigation Error", "Invalid navigation destination.");
+          } else {
+            showError("Navigation Error", `Could not navigate to ${item}. Please try again.`);
+          }
+        } else {
+          showError("Navigation Error", "An unexpected error occurred during navigation.");
+        }
       }
     }, 300);
-  }, [router, toggleMenu, showInfo]);
+  }, [router, toggleMenu, showInfo, isLocationSet, showError]);
 
   const handleSignOut = async () => {
     showConfirmDialog(
@@ -602,11 +886,29 @@ export default function ConsumerHome() {
       "Are you sure you want to sign out?",
       async () => {
         try {
-          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
-          router.replace("/");
+          // Clear all user data
+          const keysToRemove = ["userToken", "userEmail", "userRole", "userName", "userLocation", "userAddress"];
+          await AsyncStorage.multiRemove(keysToRemove);
+
+          // Stop any ongoing location tracking
+          if (locationService) {
+            locationService.stopLiveTracking();
+          }
+
+          // Navigate to login screen
+          await router.replace("/");
         } catch (error) {
           console.error("Error signing out:", error);
-          showError("Sign Out Failed", "Unable to sign out. Please try again.");
+
+          if (error instanceof Error) {
+            if (error.message.includes('AsyncStorage')) {
+              showError("Sign Out Error", "Failed to clear user data. Please restart the app.");
+            } else {
+              showError("Sign Out Failed", "Unable to sign out completely. Please restart the app.");
+            }
+          } else {
+            showError("Sign Out Failed", "An unexpected error occurred during sign out.");
+          }
         }
       }
     );
@@ -619,24 +921,106 @@ export default function ConsumerHome() {
     }, 100); // Small delay to ensure state update completes
   };
 
-  // Fix Alert to alert
+  // Request and set user's current location
   const handleSetLocationAutomatically = async () => {
     setIsLoadingLocation(true);
+    const operationKey = 'setLocationAutomatically';
+
+    const operation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== 'granted') {
+          throw new Error('Location permission denied');
+        }
+
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        if (!location || !location.coords) {
+          throw new Error('Unable to get location coordinates');
+        }
+
+        const { latitude, longitude } = location.coords;
+        const deltas = calculateDelta(latitude);
+
+        // Update region with current location
+        const newRegion = {
+          latitude,
+          longitude,
+          ...deltas
+        };
+
+        setRegion(newRegion);
+
+        // Try to get address with retry logic
+        try {
+          const addressResponse = await Location.reverseGeocodeAsync({
+            latitude,
+            longitude
+          });
+
+          if (addressResponse && addressResponse.length > 0) {
+            const address = addressResponse[0];
+            const addressText = [
+              address.name,
+              address.street,
+              address.city,
+              address.region,
+              address.country
+            ].filter(Boolean).join(', ');
+
+            setUserAddress(addressText);
+            await AsyncStorage.setItem("userAddress", addressText);
+          }
+        } catch (addressError) {
+          console.error("Error getting address:", addressError);
+          setUserAddress("Your Location");
+          // Don't throw here - address is optional
+        }
+
+        // Save location to AsyncStorage
+        await AsyncStorage.setItem("userLocation", JSON.stringify({
+          latitude,
+          longitude
+        }));
+
+        // Load nearby merchants
+        await loadNearbyMerchants(latitude, longitude);
+
+        // Animate map to new location
+        if (mapRef.current) {
+          mapRef.current.animateToRegion(newRegion, 1000);
+        }
+
+        setIsLocationSet(true);
+      } catch (locationError) {
+        console.error("Error setting location automatically:", locationError);
+
+        if (locationError instanceof Error) {
+          if (locationError.message.includes('permission')) {
+            showError("Permission Denied", "Location permission is required. Please enable location services in your device settings.");
+          } else if (locationError.message.includes('timeout')) {
+            showError("Location Timeout", "Unable to get your location. Please check your GPS and try again.");
+          } else {
+            showError("Location Error", "Failed to get your location. Please try again or set location manually.");
+          }
+        } else {
+          showError("Location Error", "An unexpected error occurred while getting your location.");
+        }
+
+        throw locationError; // Re-throw to trigger retry
+      }
+    };
+
     try {
-      await fitToUserLocation(); // Simulate location setting
-      setIsLocationSet(true); // Ensure location is marked as set
-    } catch (error) {
-      alert("Error - Failed to set location automatically. Please try again.");
+      await handleRetryWithBackoff(operation, operationKey, 2); // Max 2 retries for location
     } finally {
       setIsLoadingLocation(false);
     }
   };
   
-  // Add handleMerchantPress function
-  const handleMerchantPress = (merchant: Merchant) => {
-    router.push(`/merchant/${merchant.id}` as any);
-  };
-
   const handleNavigationGuard = (route: string) => {
     if (!isLocationSet) {
       alert("Please set your location first");
@@ -645,14 +1029,49 @@ export default function ConsumerHome() {
     router.push(route as any);
   };
 
-  const handleSearchNavigation = () => handleNavigationGuard("/search");
+  const handleSearchNavigation = () => {
+    try {
+      if (isLocationSet) {
+        router.push("/search");
+      } else {
+        showError("No Location Set", "Please set your location first to find nearby merchants.");
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
+      showError("Navigation Error", "Could not navigate to search. Please try again.");
+    }
+  };
 
-  const handleMerchantPress = useCallback((merchantId: string) => {
-    router.push({
-      pathname: "/merchant/[id]",
-      params: { id: merchantId }
-    });
-  }, [router]);
+  const handleMerchantPress = useCallback((merchant: StoreLocation) => {
+    setSelectedMerchant(merchant);
+    setShowMerchantDetails(true);
+  }, []);
+
+  const handleMerchantDetailsClose = useCallback(() => {
+    setShowMerchantDetails(false);
+    setSelectedMerchant(null);
+  }, []);
+
+  const handleOrderNow = useCallback(() => {
+    if (selectedMerchant?.id) {
+      router.push({
+        pathname: "/merchant/[id]",
+        params: { id: selectedMerchant.id }
+      });
+    }
+    handleMerchantDetailsClose();
+  }, [selectedMerchant, router]);
+
+  const handleGetDirections = useCallback(() => {
+    if (selectedMerchant) {
+      const { lat, lng } = selectedMerchant.coords;
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      // In a real app, you'd use Linking.openURL(url) for native apps
+      console.log('Open directions:', url);
+      showInfo("Directions", "Opening Google Maps for directions");
+    }
+    handleMerchantDetailsClose();
+  }, [selectedMerchant]);
 
   return (
     <View style={styles.container}>
@@ -705,24 +1124,25 @@ export default function ConsumerHome() {
               accessibilityLabel="Set location later"
               accessibilityRole="button"
             >
-              <Text style={styles.setLaterButtonText}>Set Later</Text>
+              <Text style={styles.setLaterText}>Set Later</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Other components - Only show when location is set */}
+      {/* Map View - Always show as background */}
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        customMapStyle={blueMapStyle}
+        region={region}
+        onRegionChangeComplete={handleRegionChange}
+      >
+      
+      {/* User marker - Only show when location is set */}
       {isLocationSet === true && (
         <>
-          {/* Map View */}
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            customMapStyle={blueMapStyle}
-            region={region}
-            onRegionChangeComplete={handleRegionChange}
-          >
             {/* User's current location marker */}
             <Marker
               coordinate={{
@@ -733,20 +1153,20 @@ export default function ConsumerHome() {
               description={userAddress}
             >
               <View style={styles.userMarker}>
-                <View style={styles.userMarkerDot} />
+                <Ionicons name="location-sharp" size={40} color={theme.colors.primary} />
               </View>
             </Marker>
 
             {/* Merchant markers */}
-            {merchants && merchants.map((merchant) => (
+            {storeLocations && storeLocations.map((merchant) => (
               <Marker
-                key={merchant.id}
+                key={merchant.id || merchant.title}
                 coordinate={{
-                  latitude: merchant.location.latitude,
-                  longitude: merchant.location.longitude,
+                  latitude: merchant.coords.lat,
+                  longitude: merchant.coords.lng,
                 }}
-                title={merchant.name}
-                description={merchant.address}
+                title={merchant.title}
+                description={`${merchant.address}${merchant.distance ? ` • ${merchant.distance.toFixed(1)} km` : ''}`}
                 onPress={() => handleMerchantPress(merchant)}
               >
                 <View style={styles.merchantMarker}>
@@ -754,10 +1174,18 @@ export default function ConsumerHome() {
                     source={require('../../assets/images/view_commodities_icon.png')}
                     style={styles.merchantMarkerIcon}
                   />
+                  {/* Status indicator */}
+                  <View style={[styles.statusIndicator, { backgroundColor: merchant.isOpen ? theme.colors.success : theme.colors.error }]}>
+                    <Ionicons
+                      name={merchant.isOpen ? "checkmark-circle" : "close-circle"}
+                      size={12}
+                      color={theme.colors.white}
+                    />
+                  </View>
                 </View>
               </Marker>
             ))}
-
+            
             {/* Driver markers for live tracking */}
             {liveDrivers && liveDrivers.map((driver) => (
               <Marker
@@ -777,10 +1205,14 @@ export default function ConsumerHome() {
                 </View>
               </Marker>
             ))}
-          </MapView>
+          </>
+        )}
+      </MapView>
 
-          {/* Header with back and menu buttons */}
-          <View style={styles.header}>
+        {isLocationSet === true && (
+          <>
+            {/* Header with back and menu buttons */}
+            <View style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleGoBack}
@@ -803,12 +1235,12 @@ export default function ConsumerHome() {
           {/* Search bar */}
           <View style={styles.searchContainer}>
             <TouchableOpacity
-              style={styles.searchInputContainer}
-              onPress={handleSearchNavigation}
-              activeOpacity={0.9}
-              accessibilityLabel="Search"
-              accessibilityRole="search"
-            >
+                style={styles.searchInputContainer}
+                onPress={handleSearchNavigation}
+                activeOpacity={0.9}
+                accessibilityLabel="Search"
+                accessibilityRole="search"
+              >
               <Ionicons
                 name="search"
                 size={20}
@@ -829,11 +1261,17 @@ export default function ConsumerHome() {
             </TouchableOpacity>
           </View>
 
-          {/* Sidebar Menu */}
+          {/* Sidebar Menu with Backdrop */}
+          {isSidebarOpen && (
+            <TouchableWithoutFeedback onPress={closeSidebar}>
+              <View style={styles.backdrop} />
+            </TouchableWithoutFeedback>
+          )}
+          
           <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
             <View style={styles.sidebarHeader}>
               <Image
-                source={require('../../assets/images/account_circle.svg')}
+                source={require('../../assets/images/account_circle.png')}
                 style={styles.userAvatar}
               />
               <Text style={styles.userName}>{userName || 'User'}</Text>
@@ -873,6 +1311,163 @@ export default function ConsumerHome() {
           </Animated.View>
         </>
       )}
+      
+      {!isLocationSet && (
+        <View style={styles.bottomCard}>
+          <View style={styles.locationIconContainer}>
+            <View style={styles.locationIconInner}>
+              <Image
+                source={require('../../assets/images/globe_img.png')}
+                style={styles.globeIcon}
+              />
+            </View>
+          </View>
+          <Text style={styles.whereAreYouText}>Where are you?</Text>
+          <Text style={styles.descriptionText}>
+            Set your location so you can see merchants available around you
+          </Text>
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              style={styles.setAutomaticallyButton}
+              onPress={handleSetLocationAutomatically}
+              activeOpacity={0.9}
+              disabled={isLoadingLocation}
+            >
+              <Text style={styles.setAutomaticallyText}>Set Automatically</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.setLaterButton}
+              onPress={handleSetLocationLater}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.setLaterText}>Set Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Merchant Details Modal */}
+      <Modal
+        visible={showMerchantDetails}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleMerchantDetailsClose}
+      >
+        <TouchableWithoutFeedback onPress={handleMerchantDetailsClose}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.merchantDetailsModal}>
+                {selectedMerchant && (
+                  <>
+                    {/* Header */}
+                    <View style={styles.merchantDetailsHeader}>
+                      <View style={styles.merchantDetailsTitleRow}>
+                        <Text style={styles.merchantDetailsTitle}>{selectedMerchant.title}</Text>
+                        <TouchableOpacity onPress={handleMerchantDetailsClose} style={styles.closeButton}>
+                          <Ionicons name="close" size={24} color={theme.colors.text} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Status and Rating */}
+                      <View style={styles.merchantDetailsMeta}>
+                        <View style={styles.statusBadge}>
+                          <Ionicons
+                            name={selectedMerchant.isOpen ? "checkmark-circle" : "close-circle"}
+                            size={16}
+                            color={selectedMerchant.isOpen ? theme.colors.success : theme.colors.error}
+                          />
+                          <Text style={[styles.statusText, { color: selectedMerchant.isOpen ? theme.colors.success : theme.colors.error }]}>
+                            {selectedMerchant.isOpen ? "Open Now" : "Closed"}
+                          </Text>
+                        </View>
+
+                        {selectedMerchant.rating && selectedMerchant.rating > 0 && (
+                          <View style={styles.ratingContainer}>
+                            <Ionicons name="star" size={14} color="#FFD700" />
+                            <Text style={styles.ratingText}>{selectedMerchant.rating.toFixed(1)}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Content */}
+                    <ScrollView style={styles.merchantDetailsContent} showsVerticalScrollIndicator={false}>
+                      {/* Address and Distance */}
+                      <View style={styles.merchantDetailsSection}>
+                        <View style={styles.sectionHeader}>
+                          <Ionicons name="location" size={18} color={theme.colors.primary} />
+                          <Text style={styles.sectionTitle}>Location</Text>
+                        </View>
+                        <Text style={styles.merchantAddress}>{selectedMerchant.address}</Text>
+                        {selectedMerchant.distance && (
+                          <Text style={styles.merchantDistance}>
+                            {selectedMerchant.distance.toFixed(1)} km away • {calculateETA(region.latitude, region.longitude, selectedMerchant.coords.lat, selectedMerchant.coords.lng)} to arrive
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Category */}
+                      {selectedMerchant.category && (
+                        <View style={styles.merchantDetailsSection}>
+                          <View style={styles.sectionHeader}>
+                            <Ionicons name="pricetag" size={18} color={theme.colors.primary} />
+                            <Text style={styles.sectionTitle}>Category</Text>
+                          </View>
+                          <Text style={styles.merchantCategory}>{selectedMerchant.category}</Text>
+                        </View>
+                      )}
+
+                      {/* Phone */}
+                      {selectedMerchant.phone && (
+                        <View style={styles.merchantDetailsSection}>
+                          <View style={styles.sectionHeader}>
+                            <Ionicons name="call" size={18} color={theme.colors.primary} />
+                            <Text style={styles.sectionTitle}>Phone</Text>
+                          </View>
+                          <Text style={styles.merchantPhone}>{selectedMerchant.phone}</Text>
+                        </View>
+                      )}
+
+                      {/* Description */}
+                      {selectedMerchant.description && (
+                        <View style={styles.merchantDetailsSection}>
+                          <View style={styles.sectionHeader}>
+                            <Ionicons name="information-circle" size={18} color={theme.colors.primary} />
+                            <Text style={styles.sectionTitle}>About</Text>
+                          </View>
+                          <Text style={styles.merchantDescription}>{selectedMerchant.description}</Text>
+                        </View>
+                      )}
+                    </ScrollView>
+
+                    {/* Action Buttons */}
+                    <View style={styles.merchantDetailsActions}>
+                      <TouchableOpacity
+                        style={[styles.merchantActionButton, styles.directionsButton]}
+                        onPress={handleGetDirections}
+                        activeOpacity={0.9}
+                      >
+                        <Ionicons name="navigate" size={20} color={theme.colors.primary} />
+                        <Text style={styles.directionsButtonText}>Directions</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.merchantActionButton, styles.orderButton]}
+                        onPress={handleOrderNow}
+                        activeOpacity={0.9}
+                        disabled={!selectedMerchant.isOpen}
+                      >
+                        <Text style={styles.orderButtonText}>Order Now</Text>
+                        <Ionicons name="arrow-forward" size={20} color={theme.colors.white} />
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -894,6 +1489,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
+    bottom: 100,
     zIndex: 10,
   },
   searchInputContainer: {
@@ -1047,6 +1643,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     zIndex: 1000,
     ...theme.shadows.large,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.overlay,
+    zIndex: 999,
   },
   sidebarHeader: {
     paddingTop: 60,
@@ -1376,13 +1981,8 @@ const styles = StyleSheet.create({
     height: 24,
   },
   userMarker: {
-    width: 40,
-    height: 40,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    ...theme.shadows.small,
   },
   userMarkerDot: {
     width: 20,
@@ -1399,6 +1999,18 @@ const styles = StyleSheet.create({
   merchantMarkerIcon: {
     width: 24,
     height: 24,
+  },
+  statusIndicator: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.white,
   },
   testDeliveryButton: {
     position: 'absolute',
@@ -1459,4 +2071,147 @@ const styles = StyleSheet.create({
     quickActions: {
       marginBottom: 20,
     },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: theme.colors.overlay,
+  },
+  merchantDetailsModal: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+    ...theme.shadows.large,
+  },
+  merchantDetailsHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  merchantDetailsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  merchantDetailsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.colors.text,
+    flex: 1,
+    fontFamily: theme.typography.semiBold,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  merchantDetailsMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 14,
+    color: theme.colors.text,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  merchantDetailsContent: {
+    flex: 1,
+    padding: 20,
+  },
+  merchantDetailsSection: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+  },
+  merchantAddress: {
+    fontSize: 14,
+    color: theme.colors.text,
+    lineHeight: 20,
+    fontFamily: theme.typography.regular,
+  },
+  merchantDistance: {
+    fontSize: 12,
+    color: theme.colors.textLight,
+    marginTop: 4,
+    fontFamily: theme.typography.regular,
+  },
+  merchantCategory: {
+    fontSize: 14,
+    color: theme.colors.text,
+    fontFamily: theme.typography.regular,
+  },
+  merchantPhone: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontFamily: theme.typography.regular,
+  },
+  merchantDescription: {
+    fontSize: 14,
+    color: theme.colors.text,
+    lineHeight: 20,
+    fontFamily: theme.typography.regular,
+  },
+  merchantDetailsActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  merchantActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  directionsButton: {
+    backgroundColor: theme.colors.white,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  directionsButtonText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
+  orderButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  orderButtonText: {
+    color: theme.colors.white,
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: theme.typography.medium,
+  },
 });

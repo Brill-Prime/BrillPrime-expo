@@ -234,7 +234,13 @@ export default function ProfileScreen() {
             icon="person-outline"
             title="Personal Information"
             subtitle="Update your personal details"
-            onPress={() => handleNavigateToItem('/profile/edit')}
+            onPress={() => handleNavigateToItem('/profile/consumer-edit')}
+          />
+          <MenuItem
+            icon="share-social-outline"
+            title="Social Media"
+            subtitle="Connect your social accounts"
+            onPress={() => handleNavigateToItem('/profile/social-media')}
           />
           <MenuItem
             icon="location-outline"
