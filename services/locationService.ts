@@ -20,6 +20,13 @@ class LocationService {
   // Request location permissions
   async requestLocationPermission(): Promise<boolean> {
     try {
+      // For web platform, check if geolocation is available
+      if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+        // Browser will prompt for permission when getCurrentPosition is called
+        return true;
+      }
+
+      // For native platforms, request permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
       return status === 'granted';
     } catch (error) {
@@ -31,6 +38,32 @@ class LocationService {
   // Get current location
   async getCurrentLocation(): Promise<LocationData | null> {
     try {
+      // For web platform, use browser geolocation API
+      if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+        return new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              this.currentLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                timestamp: Date.now()
+              };
+              resolve(this.currentLocation);
+            },
+            (error) => {
+              console.error('Web geolocation error:', error);
+              reject(error);
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+            }
+          );
+        });
+      }
+
+      // For native platforms, use Expo Location
       const hasPermission = await this.requestLocationPermission();
       if (!hasPermission) {
         throw new Error('Location permission denied');
@@ -56,6 +89,26 @@ class LocationService {
   // Reverse geocode coordinates to address
   async reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
     try {
+      // For web platform, use browser Geocoding API or fallback to a simple address
+      if (typeof window !== 'undefined') {
+        // Use a geocoding service API (OpenStreetMap Nominatim)
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'BrillPrime/1.0'
+            }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          return data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        }
+      }
+
+      // For native platforms, use Expo Location
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
 
       if (results.length > 0) {
@@ -63,10 +116,10 @@ class LocationService {
         return `${address.street || ''} ${address.city || ''}, ${address.region || ''} ${address.country || ''}`.trim();
       }
 
-      return null;
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     } catch (error) {
       console.error('Error reverse geocoding:', error);
-      return null;
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
   }
 

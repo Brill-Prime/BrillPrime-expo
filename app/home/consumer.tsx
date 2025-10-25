@@ -911,43 +911,14 @@ function ConsumerHomeContent() {
 
     const operation = async () => {
       try {
-        const hasPermission = await Location.requestForegroundPermissionsAsync();
+        // Use locationService which handles both web and native platforms
+        const location = await locationService.getCurrentLocation();
 
-        if (hasPermission.status !== 'granted') {
-          Alert.alert(
-            'Permission Denied',
-            'Location permission is required. Please enable location services in your device settings.',
-            [
-              {
-                text: 'Try Again',
-                onPress: () => {
-                  // Reset the flag to allow another attempt
-                  setHasShownLocationPrompt(false);
-                  handleSetLocationAutomatically();
-                }
-              },
-              {
-                text: 'OK',
-                style: 'cancel',
-                onPress: () => {
-                  setIsLoadingLocation(false);
-                }
-              }
-            ],
-            { cancelable: false }
-          );
-          return;
-        }
-
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-
-        if (!location || !location.coords) {
+        if (!location) {
           throw new Error('Unable to get location coordinates');
         }
 
-        const { latitude, longitude } = location.coords;
+        const { latitude, longitude } = location;
         const deltas = calculateDelta(latitude);
 
         // Update region with current location
@@ -961,23 +932,13 @@ function ConsumerHomeContent() {
 
         // Try to get address with retry logic
         try {
-          const addressResponse = await Location.reverseGeocodeAsync({
-            latitude,
-            longitude
-          });
-
-          if (addressResponse && addressResponse.length > 0) {
-            const address = addressResponse[0];
-            const addressText = [
-              address.name,
-              address.street,
-              address.city,
-              address.region,
-              address.country
-            ].filter(Boolean).join(', ');
-
+          const addressText = await locationService.reverseGeocode(latitude, longitude);
+          
+          if (addressText) {
             setUserAddress(addressText);
             await AsyncStorage.setItem("userAddress", addressText);
+          } else {
+            setUserAddress("Your Location");
           }
         } catch (addressError) {
           console.error("Error getting address:", addressError);
