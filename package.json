@@ -32,6 +32,7 @@
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.5.2",
     "concurrently": "^9.2.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "expo": "~53.0.23",
     "expo-blur": "~14.1.5",

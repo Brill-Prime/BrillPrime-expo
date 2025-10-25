@@ -85,6 +85,15 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Backend Server"
+author = 48998815
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server/index.js"
+
 [[ports]]
 localPort = 5000
 externalPort = 80

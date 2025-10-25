@@ -14,7 +14,9 @@ class ApiClient {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = ENV.apiBaseUrl;
+    // Updated API base URL to ensure connection with the backend server.
+    const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:3000';
+    this.baseURL = API_BASE_URL;
     console.log('API Base URL:', this.baseURL);
   }
 

@@ -30,7 +30,17 @@ class ErrorService {
     };
 
     this.errors.push(appError);
-    console.error('App Error:', appError);
+    
+    // Only log unique errors to reduce console spam
+    const isDuplicate = this.errors.slice(-5).some(e => 
+      e.code === appError.code && 
+      e.message === appError.message &&
+      e.context?.endpoint === appError.context?.endpoint
+    );
+    
+    if (!isDuplicate) {
+      console.error('App Error:', appError);
+    }
 
     // Log to external service in production
     if (process.env.NODE_ENV === 'production') {
