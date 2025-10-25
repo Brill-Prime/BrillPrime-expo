@@ -72,6 +72,7 @@ interface ActiveDelivery {
 import { Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+const sidebarWidth = Math.min(300, width * 0.85);
 
 // Blue map style (Bolt-inspired) for Google Maps
 const blueMapStyle = [
@@ -209,7 +210,6 @@ function ConsumerHomeContent() {
   const [selectedRating, setSelectedRating] = useState<number>(0);
   const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
 
-  const sidebarWidth = Math.min(300, width * 0.85);
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
