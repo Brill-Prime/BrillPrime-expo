@@ -19,7 +19,7 @@ interface FuelType {
   name: string;
   rate: number;
   unit: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   available: boolean;
 }
 
@@ -45,10 +45,10 @@ export default function FuelOrderScreen() {
   ];
 
   const fuelTypes: FuelType[] = [
-    { id: 'petrol', name: 'Petrol', rate: 850, unit: 'ltr', icon: '⛽', available: true },
-    { id: 'diesel', name: 'Diesel', rate: 920, unit: 'ltr', icon: '🚛', available: true },
-    { id: 'cng', name: 'CNG', rate: 450, unit: 'Kg', icon: '🔋', available: false },
-    { id: 'lpg', name: 'LPG', rate: 650, unit: 'Kg', icon: '🔥', available: true }
+    { id: 'petrol', name: 'Petrol', rate: 850, unit: 'ltr', icon: 'water', available: true },
+    { id: 'diesel', name: 'Diesel', rate: 920, unit: 'ltr', icon: 'car', available: true },
+    { id: 'cng', name: 'CNG', rate: 450, unit: 'Kg', icon: 'flash', available: false },
+    { id: 'lpg', name: 'LPG', rate: 650, unit: 'Kg', icon: 'flame', available: true }
   ];
 
   useEffect(() => {
@@ -230,7 +230,11 @@ export default function FuelOrderScreen() {
                   onPress={() => handleFuelTypeSelect(fuel.id)}
                   disabled={!fuel.available}
                 >
-                  <Text style={styles.fuelIcon}>{fuel.icon}</Text>
+                  <Ionicons 
+                    name={fuel.icon} 
+                    size={32} 
+                    color={selectedFuelType === fuel.id ? '#2f75c2' : !fuel.available ? '#999' : '#666'} 
+                  />
                   <Text style={[
                     styles.fuelName,
                     selectedFuelType === fuel.id && styles.selectedFuelName,
@@ -406,10 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
     opacity: 0.6,
   },
-  fuelIcon: {
-    fontSize: 30,
-    marginBottom: 8,
-  },
+  
   fuelName: {
     fontSize: 14,
     fontWeight: '500',

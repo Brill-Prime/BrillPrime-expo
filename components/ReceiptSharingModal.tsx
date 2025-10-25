@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAlert } from './AlertProvider';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import ViewShot from 'react-native-view-shot';
 
 interface ReceiptItem {
   name: string;
@@ -49,6 +50,7 @@ export default function ReceiptSharingModal({
 }: ReceiptSharingModalProps) {
   const { showSuccess, showError } = useAlert();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const viewShotRef = useRef<ViewShot>(null);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -116,23 +118,36 @@ www.brillprime.com
 
   const handleShareReceipt = async () => {
     try {
-      const receiptText = generateReceiptText();
+      if (!viewShotRef.current) {
+        showError('Error', 'Unable to capture receipt');
+        return;
+      }
+
+      // Capture the receipt as image
+      const uri = await viewShotRef.current.capture();
       
       if (Platform.OS === 'web') {
-        if (navigator.share) {
-          await navigator.share({
-            title: 'Order Receipt',
-            text: receiptText,
+        // For web, download the image
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `receipt_${receiptData.orderId}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showSuccess('Downloaded!', 'Receipt saved as image');
+      } else {
+        // For mobile, share the image
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/png',
+            dialogTitle: 'Share Receipt',
           });
         } else {
-          await navigator.clipboard.writeText(receiptText);
-          showSuccess('Copied!', 'Receipt copied to clipboard (sharing not supported on this browser)');
+          showSuccess('Saved!', 'Receipt saved to gallery');
         }
-      } else {
-        await Share.share({
-          message: receiptText,
-          title: 'Brill Prime Receipt',
-        });
       }
       onClose();
     } catch (error: any) {
@@ -145,11 +160,17 @@ www.brillprime.com
 
   const handleDownloadReceipt = async () => {
     try {
-      const receiptText = generateReceiptText();
-      const fileName = `receipt_${receiptData.orderId}.txt`;
+      if (!viewShotRef.current) {
+        showError('Error', 'Unable to capture receipt');
+        return;
+      }
+
+      const uri = await viewShotRef.current.capture();
+      const fileName = `receipt_${receiptData.orderId}.png`;
 
       if (Platform.OS === 'web') {
-        const blob = new Blob([receiptText], { type: 'text/plain' });
+        const response = await fetch(uri);
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -159,14 +180,8 @@ www.brillprime.com
         showSuccess('Downloaded!', 'Receipt saved to downloads');
       } else {
         const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        await FileSystem.writeAsStringAsync(fileUri, receiptText);
-        
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) {
-          await Sharing.shareAsync(fileUri);
-        } else {
-          showSuccess('Saved!', `Receipt saved to ${fileUri}`);
-        }
+        await FileSystem.copyAsync({ from: uri, to: fileUri });
+        showSuccess('Saved!', 'Receipt saved to gallery');
       }
       onClose();
     } catch (error) {
@@ -202,7 +217,8 @@ www.brillprime.com
 
           {/* Receipt Preview */}
           <ScrollView style={styles.receiptPreview} showsVerticalScrollIndicator={false}>
-            <View style={styles.receiptHeader}>
+            <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.9 }}>
+            <View style={[styles.receiptHeader, { backgroundColor: '#fff', padding: 20 }]}>
               <Text style={styles.receiptTitle}>BRILL PRIME</Text>
               <Text style={styles.receiptSubtitle}>Order Receipt</Text>
             </View>
@@ -287,6 +303,7 @@ www.brillprime.com
               <Text style={styles.footerText}>Thank you for your order!</Text>
               <Text style={styles.footerLink}>www.brillprime.com</Text>
             </View>
+            </ViewShot>
           </ScrollView>
 
           {/* Action Buttons */}

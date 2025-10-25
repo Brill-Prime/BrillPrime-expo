@@ -1,3 +1,6 @@
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import React, { useState } from 'react';
 import {
   View,
@@ -133,14 +136,31 @@ export default function AddPaymentMethodScreen() {
             accountNumber,
             accountName,
             bankCode,
+            bankName,
             isDefault: setAsDefault,
           };
 
       const response = await paymentService.addPaymentMethod(data);
 
       if (response.success) {
+        // Save to AsyncStorage for offline access
+        const existingMethods = await AsyncStorage.getItem('paymentMethods');
+        const methods = existingMethods ? JSON.parse(existingMethods) : [];
+        methods.push({
+          id: response.data?.id || Date.now().toString(),
+          ...data,
+          createdAt: new Date().toISOString(),
+        });
+        await AsyncStorage.setItem('paymentMethods', JSON.stringify(methods));
+
         showSuccess('Success', 'Payment method added successfully');
-        router.back();
+        
+        // Navigate back to payment methods list or checkout
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.push('/payment');
+        }
       } else {
         showError('Error', response.error || 'Failed to add payment method');
       }

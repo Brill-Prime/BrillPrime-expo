@@ -172,7 +172,7 @@ export default function FuelConfirmationScreen() {
             <Text style={styles.sectionTitle}>Order Summary</Text>
             <View style={styles.orderCard}>
               <View style={styles.orderHeader}>
-                <Text style={styles.orderIcon}>{orderData.fuelType.icon}</Text>
+                <Ionicons name={orderData.fuelType.icon as any} size={40} color="#4682B4" style={styles.orderIcon} />
                 <View style={styles.orderInfo}>
                   <Text style={styles.fuelName}>{orderData.fuelType.name}</Text>
                   <Text style={styles.fuelDetails}>
@@ -351,7 +351,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   orderIcon: {
-    fontSize: 40,
     marginRight: 15,
   },
   orderInfo: {
