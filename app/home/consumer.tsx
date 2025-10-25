@@ -966,15 +966,18 @@ function ConsumerHomeContent() {
         console.error("Error setting location automatically:", locationError);
 
         if (locationError instanceof Error) {
-          if (locationError.message.includes('permission')) {
-            showError("Permission Denied", "Location permission is required. Please enable location services in your device settings.");
-          } else if (locationError.message.includes('timeout')) {
-            showError("Location Timeout", "Unable to get your location. Please check your GPS and try again.");
+          // Show the specific error message from locationService
+          if (locationError.message.includes('permission') || locationError.message.includes('denied')) {
+            showError("Permission Denied", locationError.message);
+          } else if (locationError.message.includes('timeout') || locationError.message.includes('timed out')) {
+            showError("Location Timeout", locationError.message);
+          } else if (locationError.message.includes('unavailable')) {
+            showError("GPS Unavailable", locationError.message);
           } else {
-            showError("Location Error", "Failed to get your location. Please try again or set location manually.");
+            showError("Location Error", locationError.message || "Failed to get your location. Please try again.");
           }
         } else {
-          showError("Location Error", "An unexpected error occurred while getting your location.");
+          showError("Location Error", "An unexpected error occurred while getting your location. Please enable location access in your browser.");
         }
 
         throw locationError; // Re-throw to trigger retry

@@ -51,13 +51,30 @@ class LocationService {
               resolve(this.currentLocation);
             },
             (error) => {
-              console.error('Web geolocation error:', error);
-              reject(error);
+              // Provide detailed error messages based on error code
+              let errorMessage = 'Unknown geolocation error';
+              switch (error.code) {
+                case error.PERMISSION_DENIED:
+                  errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+                  break;
+                case error.POSITION_UNAVAILABLE:
+                  errorMessage = 'Location information unavailable. Please check your device GPS settings.';
+                  break;
+                case error.TIMEOUT:
+                  errorMessage = 'Location request timed out. Please try again.';
+                  break;
+              }
+              console.error('Web geolocation error:', {
+                code: error.code,
+                message: error.message,
+                detailedMessage: errorMessage
+              });
+              reject(new Error(errorMessage));
             },
             {
               enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 0
+              timeout: 20000, // Increased to 20 seconds
+              maximumAge: 5000 // Allow cached position up to 5 seconds old
             }
           );
         });
