@@ -141,12 +141,12 @@ export default function CartScreen() {
     return total;
   };
 
-  const getItemIcon = (category: string) => {
+  const getItemIcon = (category: string): keyof typeof Ionicons.glyphMap => {
     switch (category) {
-      case 'fuel': return '⛽';
-      case 'food': return '🍽️';
-      case 'groceries': return '🛒';
-      default: return '📦';
+      case 'fuel': return 'water';
+      case 'food': return 'restaurant';
+      case 'groceries': return 'cart';
+      default: return 'cube';
     }
   };
 
@@ -228,7 +228,7 @@ export default function CartScreen() {
                 <View key={item.id} style={responsiveStyles.cartItem}>
                   <View style={responsiveStyles.cartLeft}>
                     <View style={responsiveStyles.cartIcon}>
-                      <Text style={responsiveStyles.cartIconText}>{getItemIcon(item.category)}</Text>
+                      <Ionicons name={getItemIcon(item.category)} size={24} color="#4682B4" />
                     </View>
 
                     <View style={responsiveStyles.cartInfo}>
@@ -261,7 +261,7 @@ export default function CartScreen() {
                       style={responsiveStyles.deleteButton}
                       onPress={() => removeItem(item.id)}
                     >
-                      <Text style={responsiveStyles.deleteIcon}>🗑️</Text>
+                      <Ionicons name="trash" size={22} color="#ff6b6b" />
                     </TouchableOpacity>
                   </View>
                 </View>

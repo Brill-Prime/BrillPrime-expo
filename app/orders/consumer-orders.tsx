@@ -112,17 +112,17 @@ export default function ConsumerOrders() {
     }
   };
 
-  const getItemIcon = (itemType: string) => {
+  const getItemIcon = (itemType: string): keyof typeof Ionicons.glyphMap => {
     switch (itemType) {
       case 'petrol':
       case 'diesel':
-        return '⛽';
+        return 'water';
       case 'food':
-        return '🍽️';
+        return 'restaurant';
       case 'groceries':
-        return '🛒';
+        return 'cart';
       default:
-        return '📦';
+        return 'cube';
     }
   };
 
@@ -180,7 +180,7 @@ export default function ConsumerOrders() {
                 <View style={styles.orderTop}>
                   <View style={styles.orderInfo}>
                     <View style={styles.itemIcon}>
-                      <Text style={styles.itemIconText}>{getItemIcon(order.itemType)}</Text>
+                      <Ionicons name={getItemIcon(order.itemType)} size={28} color="#4682B4" />
                     </View>
                     <View style={styles.orderTitleContainer}>
                       <Text style={styles.orderTitle}>
@@ -198,8 +198,8 @@ export default function ConsumerOrders() {
                 {/* Order Bottom */}
                 <View style={styles.orderBottom}>
                   <View style={styles.locationContainer}>
-                    <Text style={styles.locationIcon}>📍</Text>
-                    <Text style={styles.location}>{order.location}</Text>
+                    <Ionicons name="location" size={14} color="#666" />
+                    <Text style={[styles.location, { marginLeft: 5 }]}>{order.location}</Text>
                   </View>
                   <View style={styles.statusDateContainer}>
                     <View style={[styles.statusBadge, { 

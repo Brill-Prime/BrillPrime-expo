@@ -252,17 +252,17 @@ export default function OrderDetails() {
     }));
   };
 
-  const getItemIcon = (itemType: string) => {
+  const getItemIcon = (itemType: string): keyof typeof Ionicons.glyphMap => {
     switch (itemType) {
       case 'petrol':
       case 'diesel':
-        return '⛽';
+        return 'water';
       case 'food':
-        return '🍽️';
+        return 'restaurant';
       case 'groceries':
-        return '🛒';
+        return 'cart';
       default:
-        return '📦';
+        return 'cube';
     }
   };
 
@@ -311,9 +311,11 @@ export default function OrderDetails() {
             width: isSmallScreen ? 60 : 80, 
             height: isSmallScreen ? 60 : 80 
           }]}>
-            <Text style={[styles.itemIconText, { fontSize: isSmallScreen ? 30 : 40 }]}>
-              {getItemIcon(order.itemType)}
-            </Text>
+            <Ionicons 
+              name={getItemIcon(order.itemType)} 
+              size={isSmallScreen ? 40 : 48} 
+              color="#4682B4" 
+            />
           </View>
           <Text style={[styles.orderTitle, { fontSize: responsiveFontSize.orderTitle }]}>
             {order.items[0].name}
@@ -331,8 +333,8 @@ export default function OrderDetails() {
         {/* Details Section */}
         <View style={[styles.details, { paddingHorizontal: responsivePadding }]}>
           <View style={styles.locationContainer}>
-            <Text style={[styles.locationIcon, { fontSize: responsiveFontSize.regular }]}>📍</Text>
-            <Text style={[styles.locationText, { fontSize: responsiveFontSize.regular }]}>
+            <Ionicons name="location" size={responsiveFontSize.regular} color="#4682B4" />
+            <Text style={[styles.locationText, { fontSize: responsiveFontSize.regular, marginLeft: 5 }]}>
               {order.location}
             </Text>
           </View>
@@ -415,11 +417,11 @@ export default function OrderDetails() {
             </Text>
           </View>
           <View style={styles.driverActions}>
-            <TouchableOpacity onPress={() => setShowMerchantCommunication(true)}>
-              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>💬</Text>
+            <TouchableOpacity onPress={() => setShowMerchantCommunication(true)} style={{ paddingHorizontal: 8 }}>
+              <Ionicons name="chatbubble" size={isSmallScreen ? 20 : 22} color="#4682B4" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowMerchantCommunication(true)}>
-              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>📞</Text>
+            <TouchableOpacity onPress={() => setShowMerchantCommunication(true)} style={{ paddingHorizontal: 8 }}>
+              <Ionicons name="call" size={isSmallScreen ? 20 : 22} color="#4682B4" />
             </TouchableOpacity>
           </View>
         </View>
@@ -447,11 +449,11 @@ export default function OrderDetails() {
             </Text>
           </View>
           <View style={styles.driverActions}>
-            <TouchableOpacity onPress={() => setShowDriverCommunication(true)}>
-              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>💬</Text>
+            <TouchableOpacity onPress={() => setShowDriverCommunication(true)} style={{ paddingHorizontal: 8 }}>
+              <Ionicons name="chatbubble" size={isSmallScreen ? 20 : 22} color="#4682B4" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowDriverCommunication(true)}>
-              <Text style={[styles.actionIcon, { fontSize: isSmallScreen ? 16 : 18 }]}>📞</Text>
+            <TouchableOpacity onPress={() => setShowDriverCommunication(true)} style={{ paddingHorizontal: 8 }}>
+              <Ionicons name="call" size={isSmallScreen ? 20 : 22} color="#4682B4" />
             </TouchableOpacity>
           </View>
         </View>

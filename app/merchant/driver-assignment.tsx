@@ -46,6 +46,15 @@ interface Order {
   status: string;
 }
 
+const getVehicleIcon = (vehicleType: string): keyof typeof Ionicons.glyphMap => {
+  const type = vehicleType.toLowerCase();
+  if (type.includes('bike') || type.includes('motorcycle')) return 'bicycle';
+  if (type.includes('car') || type.includes('sedan')) return 'car-sport';
+  if (type.includes('van') || type.includes('suv')) return 'car';
+  if (type.includes('truck')) return 'bus';
+  return 'bicycle'; // default fallback
+};
+
 export default function DriverAssignment() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams();
@@ -240,7 +249,10 @@ export default function DriverAssignment() {
           <View style={styles.orderSummary}>
             <Text style={styles.orderSummaryTitle}>Order #{order.id}</Text>
             <Text style={styles.orderCustomer}>{order.customerName}</Text>
-            <Text style={styles.orderAddress}>📍 {order.deliveryAddress}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="location" size={16} color="#fff" />
+              <Text style={[styles.orderAddress, { marginLeft: 5 }]}>{order.deliveryAddress}</Text>
+            </View>
             <Text style={styles.orderAmount}>₦{order.totalAmount.toLocaleString()}</Text>
           </View>
         )}
@@ -301,13 +313,22 @@ export default function DriverAssignment() {
                   </View>
                   <View style={styles.metricsRow}>
                     {driver.avgDeliveryTime !== undefined && ( // Conditional rendering for avgDeliveryTime
-                      <Text style={styles.metricText}>⚡ Avg: {driver.avgDeliveryTime} min</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="flash" size={14} color="#ffc107" />
+                        <Text style={[styles.metricText, { marginLeft: 3 }]}>Avg: {driver.avgDeliveryTime} min</Text>
+                      </View>
                     )}
                     {driver.totalDeliveries !== undefined && ( // Conditional rendering for totalDeliveries
-                      <Text style={styles.metricText}>📦 {driver.totalDeliveries} deliveries</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                        <Ionicons name="cube" size={14} color="#4682B4" />
+                        <Text style={[styles.metricText, { marginLeft: 3 }]}>{driver.totalDeliveries} deliveries</Text>
+                      </View>
                     )}
                   </View>
-                  <Text style={styles.driverVehicle}>🏍️ {driver.vehicleType}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={getVehicleIcon(driver.vehicleType)} size={14} color="#666" />
+                    <Text style={[styles.driverVehicle, { marginLeft: 3 }]}>{driver.vehicleType}</Text>
+                  </View>
                 </View>
               </View>
 

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "rea
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 
 
 export default function DriverDashboard() {
@@ -54,12 +55,12 @@ export default function DriverDashboard() {
   };
 
   const features = [
-    { id: 'available-orders', title: "Available Jobs", description: "Find deliveries", emoji: "📍", color: "#4682B4", route: "/orders/driver-orders" },
-    { id: 'my-deliveries', title: "My Deliveries", description: "Current orders", emoji: "📦", color: "#f093fb", route: "/orders/driver-orders" },
-    { id: 'earnings', title: "Earnings", description: "Track your income", emoji: "💰", color: "#4facfe", route: "/transactions" },
-    { id: 'navigation', title: "Route Planner", description: "Optimize your routes", emoji: "🗺️", color: "#ff7e5f", route: "/store-locator" },
-    { id: 'vehicle-info', title: "Vehicle Info", description: "Manage your vehicle", emoji: "🚗", color: "#a8e6cf", route: "/profile/vehicle" },
-    { id: 'support', title: "Help & Support", description: "Get assistance", emoji: "📞", color: "#ffd93d", route: "/support" }
+    { id: 'available-orders', title: "Available Jobs", description: "Find deliveries", icon: "location" as const, color: "#4682B4", route: "/orders/driver-orders" },
+    { id: 'my-deliveries', title: "My Deliveries", description: "Current orders", icon: "cube" as const, color: "#f093fb", route: "/orders/driver-orders" },
+    { id: 'earnings', title: "Earnings", description: "Track your income", icon: "cash" as const, color: "#4facfe", route: "/transactions" },
+    { id: 'navigation', title: "Route Planner", description: "Optimize your routes", icon: "map" as const, color: "#ff7e5f", route: "/store-locator" },
+    { id: 'vehicle-info', title: "Vehicle Info", description: "Manage your vehicle", icon: "car" as const, color: "#a8e6cf", route: "/profile/vehicle" },
+    { id: 'support', title: "Help & Support", description: "Get assistance", icon: "headset" as const, color: "#ffd93d", route: "/support" }
   ];
 
   const handleFeaturePress = (feature: any) => {
@@ -98,7 +99,10 @@ export default function DriverDashboard() {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.greeting}>Ready to Drive! 🚗</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.greeting}>Ready to Drive! </Text>
+            <Ionicons name="car-sport" size={24} color="white" />
+          </View>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -132,7 +136,7 @@ export default function DriverDashboard() {
               onPress={() => handleFeaturePress(feature)}
             >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
-                <Text style={styles.featureEmoji}>{feature.emoji}</Text>
+                <Ionicons name={feature.icon} size={32} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -152,7 +156,10 @@ export default function DriverDashboard() {
               <Text style={styles.statLabel}>Earnings</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>4.8⭐</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.statNumber}>4.8 </Text>
+                <Ionicons name="star" size={20} color="#FFD700" />
+              </View>
               <Text style={styles.statLabel}>Rating</Text>
             </View>
           </View>

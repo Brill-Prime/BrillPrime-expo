@@ -47,10 +47,10 @@ export default function TollPaymentScreen() {
   const [loading, setLoading] = useState(false);
 
   const vehicleTypes: VehicleType[] = [
-    { id: 'motorcycle', name: 'Motorcycle', icon: '🏍️', description: '2-wheeled vehicles' },
-    { id: 'car', name: 'Car', icon: '🚗', description: 'Private cars & sedans' },
-    { id: 'suv', name: 'SUV/Bus', icon: '🚙', description: 'SUVs, vans & small buses' },
-    { id: 'truck', name: 'Truck', icon: '🚛', description: 'Heavy vehicles & trailers' }
+    { id: 'motorcycle', name: 'Motorcycle', icon: 'bicycle', description: '2-wheeled vehicles' },
+    { id: 'car', name: 'Car', icon: 'car-sport', description: 'Private cars & sedans' },
+    { id: 'suv', name: 'SUV/Bus', icon: 'car', description: 'SUVs, vans & small buses' },
+    { id: 'truck', name: 'Truck', icon: 'bus', description: 'Heavy vehicles & trailers' }
   ];
 
   const tollGates: TollGate[] = [
@@ -204,7 +204,11 @@ export default function TollPaymentScreen() {
                   ]}
                   onPress={() => setSelectedVehicle(vehicle.id)}
                 >
-                  <Text style={styles.vehicleIcon}>{vehicle.icon}</Text>
+                  <Ionicons 
+                    name={vehicle.icon as any} 
+                    size={28} 
+                    color={selectedVehicle === vehicle.id ? '#4682B4' : '#666'} 
+                  />
                   <Text style={[
                     styles.vehicleName,
                     selectedVehicle === vehicle.id && styles.selectedVehicleName

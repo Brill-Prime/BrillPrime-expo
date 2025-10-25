@@ -131,7 +131,10 @@ export default function MerchantDashboard() {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.greeting}>Welcome, Merchant! 🏪</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.greeting}>Welcome, Merchant! </Text>
+            <Ionicons name="storefront" size={24} color="white" />
+          </View>
           <Text style={styles.email}>{userEmail}</Text>
         </View>
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
