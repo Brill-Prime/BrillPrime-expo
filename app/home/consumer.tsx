@@ -290,13 +290,20 @@ function ConsumerHomeContent() {
     []
   );
 
-  const loadNearbyMerchants = async (latitude: number, longitude: number) => {
+  const loadNearbyMerchants = async (latitude: number, longitude: number, retryCount = 0) => {
+    const MAX_RETRIES = 2;
+    
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
         showError("Network Error", "No internet connection. Please check your network and try again.");
         await loadAllMerchants(); // Fallback to cached/all merchants
         return;
+      }
+
+      // Show loading message on first attempt
+      if (retryCount === 0) {
+        showInfo("Loading", "Connecting to server...");
       }
 
       // Get authentication token
@@ -356,9 +363,17 @@ function ConsumerHomeContent() {
         fullError: error
       });
 
-      // Check error type and handle appropriately
+      // Check error type and handle appropriately with retry
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        showError("Network Error", "Unable to connect to servers. Please check your internet connection.");
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+          showInfo("Retrying", "Backend server may be waking up. Please wait...");
+          // Wait 3 seconds before retrying (Render cold start can take 50+ seconds)
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return loadNearbyMerchants(latitude, longitude, retryCount + 1);
+        } else {
+          showError("Connection Failed", "Unable to connect to backend server after multiple attempts. The server may be down or waking up (Render free tier can take up to 60 seconds). Using cached data.");
+        }
       } else if (error instanceof Error && error.message.includes('API Error')) {
         showError("Server Error", "Unable to load nearby merchants. Using cached data.");
       } else {
@@ -370,12 +385,15 @@ function ConsumerHomeContent() {
     }
   };
 
-  const loadAllMerchants = async () => {
+  const loadAllMerchants = async (retryCount = 0) => {
+    const MAX_RETRIES = 2;
+    
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
         showError("Network Error", "No internet connection. Using cached merchant data.");
-        // Could load from local cache here
+        // Load fallback data
+        loadFallbackMerchants();
         return;
       }
 
@@ -442,8 +460,32 @@ function ConsumerHomeContent() {
         fullError: error
       });
 
-      // Fallback to cached/default data with enhanced fields
-      const fallbackStores: StoreLocation[] = [
+      // Retry on network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying loadAllMerchants... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return loadAllMerchants(retryCount + 1);
+        }
+      }
+
+      // Load fallback data after all retries exhausted
+      loadFallbackMerchants();
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        showError(
+          "Backend Unavailable", 
+          "Cannot reach the backend server. It may be waking up (Render free tier takes 50-60 seconds on first load). Using cached data."
+        );
+      } else {
+        showError("Loading Error", "Failed to load merchants. Using cached data.");
+      }
+    }
+  };
+
+  const loadFallbackMerchants = () => {
+    // Fallback to cached/default data with enhanced fields
+    const fallbackStores: StoreLocation[] = [
         {
           id: '1',
           title: "NASCO FOODS",
@@ -500,16 +542,6 @@ function ConsumerHomeContent() {
       }
 
       setStoreLocations(fallbackStores);
-
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        showError(
-          "Network Error", 
-          "Unable to connect to servers. The backend may be waking up (this can take up to 60 seconds on Render's free tier). Using cached data."
-        );
-      } else {
-        showError("Loading Error", "Failed to load merchants. Using cached data.");
-      }
-    }
   };
 
   const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
@@ -1137,6 +1169,9 @@ function ConsumerHomeContent() {
           <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
             <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+            <Ionicons name="refresh" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
             <Ionicons name="menu" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
@@ -1368,6 +1403,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: theme.colors.white,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.small,
+  },
+  refreshButton: {
     width: 40,
     height: 40,
     backgroundColor: theme.colors.white,
