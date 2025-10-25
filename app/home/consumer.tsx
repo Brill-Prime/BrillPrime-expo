@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
@@ -931,7 +931,7 @@ function ConsumerHomeContent() {
       // Try to get address with retry logic
       try {
         const addressText = await locationService.reverseGeocode(latitude, longitude);
-        
+
         if (addressText) {
           setUserAddress(addressText);
           await AsyncStorage.setItem("userAddress", addressText);
@@ -1207,35 +1207,80 @@ function ConsumerHomeContent() {
           </View>
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar Menu */}
         {isSidebarOpen && (
           <>
-            <TouchableOpacity style={styles.backdrop} onPress={closeSidebar} />
-            <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+            <TouchableOpacity style={styles.backdrop} onPress={closeSidebar} activeOpacity={1} />
+            <Animated.View
+              style={[
+                styles.sidebar,
+                {
+                  transform: [{ translateX: slideAnim }],
+                },
+              ]}
+            >
               <View style={styles.sidebarHeader}>
-                <View style={styles.userAvatar}>
-                  <Ionicons name="person" size={40} color={theme.colors.primary} />
-                </View>
-                <Text style={styles.userName}>{userName}</Text>
-                <TouchableOpacity style={styles.closeMenuButton} onPress={closeSidebar}>
-                  <Ionicons name="close" size={24} color={theme.colors.text} />
+                <TouchableOpacity style={styles.closeButton} onPress={closeSidebar}>
+                  <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
+                <View style={styles.profileSection}>
+                  <View style={styles.avatarContainer}>
+                    <Ionicons name="person-circle" size={60} color="#4682B4" />
+                  </View>
+                  <Text style={styles.userName}>{userName}</Text>
+                  <Text style={styles.userEmail}>{userEmail}</Text>
+                </View>
               </View>
-              <View style={styles.menuItems}>
-                {menuItems.map((item, index) => (
+
+              <ScrollView
+                style={styles.sidebarScrollView}
+                contentContainerStyle={styles.sidebarScrollContent}
+                showsVerticalScrollIndicator={false}
+                bounces={true}
+                scrollEventThrottle={16}
+              >
+                <View style={styles.menuList}>
+                  {[
+                    { label: "Profile", icon: "person-outline" },
+                    { label: "Favorites", icon: "heart-outline" },
+                    { label: "Orders", icon: "receipt-outline" },
+                    { label: "Notifications", icon: "notifications-outline" },
+                    { label: "Settings", icon: "settings-outline" },
+                    { label: "Support", icon: "help-circle-outline" },
+                  ].map((item) => (
+                    <TouchableOpacity
+                      key={item.label}
+                      style={styles.menuItem}
+                      onPress={() => handleMenuItemPress(item.label)}
+                    >
+                      <Ionicons name={item.icon as any} size={22} color="#666" />
+                      <Text style={styles.menuItemText}>{item.label}</Text>
+                      <Ionicons name="chevron-forward" size={20} color="#666" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.sidebarFooter}>
                   <TouchableOpacity
-                    key={index}
-                    style={styles.menuItem}
-                    onPress={() => handleMenuItemPress(item)}
+                    style={styles.switchRoleButton}
+                    onPress={() => handleMenuItemPress("Switch to Driver")}
                   >
-                    <Text style={styles.menuItemText}>{item}</Text>
+                    <Ionicons name="car-sport-outline" size={20} color="#4682B4" />
+                    <Text style={styles.switchRoleText}>Switch to Driver</Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
-                <Text style={styles.signOutText}>Sign Out</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.switchRoleButton}
+                    onPress={() => handleMenuItemPress("Switch to Merchant")}
+                  >
+                    <Ionicons name="storefront-outline" size={20} color="#4682B4" />
+                    <Text style={styles.switchRoleText}>Switch to Merchant</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                    <Ionicons name="log-out-outline" size={20} color="#e74c3c" />
+                    <Text style={styles.signOutText}>Sign Out</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </Animated.View>
           </>
         )}
@@ -1453,42 +1498,39 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.medium,
   },
   sidebar: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: Math.min(350, width * 0.9),
-    height: '100%',
-    backgroundColor: theme.colors.white,
-    zIndex: 1000,
-    ...theme.shadows.large,
-  },
-  backdrop: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 999,
+    width: sidebarWidth,
+    height: "100%",
+    backgroundColor: "#fff",
+    zIndex: 1001,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  sidebarScrollView: {
+    flex: 1,
+  },
+  sidebarScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   sidebarHeader: {
-    paddingTop: 60,
+    paddingTop: 50,
     paddingBottom: 20,
-    paddingHorizontal: 20,
-    alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: "#f0f0f0",
+    backgroundColor: "#fff",
   },
-  userAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    backgroundColor: 'rgba(70, 130, 180, 0.1)',
+  profileSection: {
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  avatarContainer: {
+    marginBottom: 15,
   },
   userName: {
     color: theme.colors.text,
@@ -1497,44 +1539,52 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     fontFamily: theme.typography.semiBold,
   },
-  closeMenuButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  userEmail: {
+    color: theme.colors.textLight,
+    fontSize: 13,
+    fontFamily: theme.typography.regular,
   },
-  menuItems: {
-    flex: 1,
-    paddingTop: 20,
+  menuList: {
+    paddingVertical: 10,
   },
   menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    gap: 15,
   },
   menuItemText: {
+    flex: 1,
     color: theme.colors.text,
+    fontSize: 16,
+    fontFamily: theme.typography.medium,
+  },
+  sidebarFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  switchRoleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  switchRoleText: {
+    color: theme.colors.primary,
     fontSize: 16,
     fontFamily: theme.typography.medium,
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    paddingVertical: 12,
     gap: 10,
-  },
-  signOutIcon: {
-    marginRight: 5,
   },
   signOutText: {
     color: theme.colors.error,
