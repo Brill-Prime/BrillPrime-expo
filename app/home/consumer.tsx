@@ -343,7 +343,13 @@ function ConsumerHomeContent() {
         throw new Error(data.message || 'Failed to load merchants');
       }
     } catch (error) {
-      console.error('Error loading nearby merchants:', error);
+      console.error('Error loading nearby merchants:', {
+        errorName: error?.name,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+        errorType: typeof error,
+        fullError: error
+      });
 
       // Check error type and handle appropriately
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -418,7 +424,13 @@ function ConsumerHomeContent() {
         throw new Error(data.message || 'Failed to load merchants');
       }
     } catch (error) {
-      console.error('Error loading all merchants:', error);
+      console.error('Error loading all merchants:', {
+        errorName: error?.name,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+        errorType: typeof error,
+        fullError: error
+      });
 
       // Fallback to cached/default data with enhanced fields
       const fallbackStores: StoreLocation[] = [

@@ -69,11 +69,19 @@ class ApiClient {
         data,
       };
     } catch (error) {
-      console.error('API request failed:', error);
+      // Improved error logging
+      console.error('API request failed:', {
+        endpoint,
+        errorName: error?.name,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+        errorType: typeof error,
+        fullError: error
+      });
 
       let errorMessage = 'Unknown error occurred';
 
-      if (error.name === 'AbortError') {
+      if (error?.name === 'AbortError') {
         errorMessage = 'Request timeout - The server is taking too long to respond. It may be waking up from sleep (this can take up to 60 seconds on first load).';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
         errorMessage = 'Cannot connect to server. Please check your internet connection or try again in a moment.';
