@@ -299,20 +299,15 @@ function ConsumerHomeContent() {
         return;
       }
 
-      // Make API call to get nearby merchants
-      const response = await fetch(`https://api.brillprime.com/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add auth headers if needed
-        },
-      });
+      // Make API call to get nearby merchants using apiClient
+      const { apiClient } = await import('../../services/api');
+      const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`);
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to load nearby merchants');
       }
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success && data.data) {
         // Transform API response to StoreLocation format with enhanced data
@@ -373,20 +368,15 @@ function ConsumerHomeContent() {
         return;
       }
 
-      // Make API call to get all merchants
-      const response = await fetch('https://api.brillprime.com/api/merchants', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add auth headers if needed
-        },
-      });
+      // Make API call to get all merchants using apiClient
+      const { apiClient } = await import('../../services/api');
+      const response = await apiClient.get<any>('/api/merchants');
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to load merchants');
       }
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success && data.data) {
         // Transform API response to StoreLocation format with enhanced data

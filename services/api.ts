@@ -28,7 +28,7 @@ class ApiClient {
       const timeoutMs = 60000; // 60 seconds for cold start
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      console.log(`🌐 API Request: ${endpoint}`);
+      console.log(`🌐 API Request: ${this.baseURL}${endpoint}`);
       const startTime = Date.now();
 
       const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -42,15 +42,28 @@ class ApiClient {
 
       clearTimeout(timeoutId);
       const duration = Date.now() - startTime;
-      console.log(`✅ API Response: ${endpoint} (${duration}ms)`);
+      console.log(`✅ API Response: ${endpoint} [${response.status}] (${duration}ms)`);
 
       if (!response.ok) {
-        const errorText = await response.text();
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = response.statusText;
+        }
         console.error(`API Error [${response.status}] ${endpoint}:`, errorText);
         throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        const responseText = await response.text();
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error(`JSON Parse Error for ${endpoint}:`, parseError);
+        throw new Error('Invalid JSON response from server');
+      }
+
       return {
         success: true,
         data,
