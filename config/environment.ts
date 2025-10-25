@@ -51,8 +51,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-  // Always use the Render backend as it's currently working
-  return 'https://brill-backend-wjyl.onrender.com';
+  // Use the production backend deployed on Render
+  return 'https://api.brillprime.com';
 };
 
 export const ENV = {
