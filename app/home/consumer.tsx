@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
 import { debounce } from 'lodash';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAlert } from '../../components/AlertProvider';
 import ErrorBoundary from '../../components/ErrorBoundary';
-import MapContainer from '../../components/Map';
+import MapContainer, { Marker } from '../../components/Map';
 import MerchantDetailsModal from '../components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 
@@ -1078,68 +1079,71 @@ function ConsumerHomeContent() {
         >
           {/* Merchant Markers */}
           {storeLocations.map((merchant) => (
-            <MapContainer.Marker
+            <Marker
               key={merchant.id}
               coordinate={merchant.coords}
               onPress={() => handleMerchantPress(merchant)}
             >
               <View style={styles.merchantMarker}>
                 <View style={styles.merchantMarkerIcon}>
-                  {/* Add merchant icon here */}
+                  <Ionicons name="storefront" size={20} color={theme.colors.white} />
                 </View>
               </View>
-            </MapContainer.Marker>
+            </Marker>
           ))}
 
           {/* Driver Markers */}
           {nearbyDrivers.map((driver) => (
-            <MapContainer.Marker
+            <Marker
               key={driver.id}
               coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
             >
               <View style={styles.driverMarker}>
                 <View style={styles.driverMarkerIcon}>
-                  {/* Add driver icon here */}
+                  <Ionicons name="car" size={18} color={theme.colors.white} />
                 </View>
-                <View style={[styles.statusIndicator, { backgroundColor: driver.status === 'available' ? theme.colors.success : theme.colors.error }]}>
-                  {/* Status indicator */}
-                </View>
+                <View style={[styles.statusIndicator, { backgroundColor: driver.status === 'available' ? theme.colors.success : theme.colors.error }]} />
               </View>
-            </MapContainer.Marker>
+            </Marker>
           ))}
 
           {/* User Location Marker */}
           {isLocationSet && (
-            <MapContainer.Marker coordinate={region}>
+            <Marker coordinate={region}>
               <View style={styles.userMarker}>
                 <View style={styles.userMarkerDot} />
               </View>
-            </MapContainer.Marker>
+            </Marker>
           )}
         </MapContainer>
 
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            {/* Add back icon */}
+            <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
-            {/* Add menu icon */}
+            <Ionicons name="menu" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Search Container */}
         {isLocationSet && (
           <View style={styles.searchContainer}>
-            <TouchableOpacity style={styles.searchInputContainer} onPress={handleSearchNavigation}>
-              <View style={styles.searchIcon}>
-                {/* Add search icon */}
-              </View>
-              <Text style={styles.searchInput}>Search for merchants...</Text>
+            <View style={styles.searchInputContainer}>
+              <Ionicons name="search" size={20} color={theme.colors.textLight} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search for merchants..."
+                placeholderTextColor={theme.colors.textLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onFocus={handleSearchNavigation}
+              />
               <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
-                {/* Add filter icon */}
+                <Ionicons name="options" size={20} color={theme.colors.primary} />
               </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -1148,9 +1152,7 @@ function ConsumerHomeContent() {
           <View style={styles.bottomCard}>
             <View style={styles.locationIconContainer}>
               <View style={styles.locationIconInner}>
-                <View style={styles.globeIcon}>
-                  {/* Add globe/location icon */}
-                </View>
+                <Ionicons name="location" size={40} color={theme.colors.primary} />
               </View>
             </View>
             <Text style={styles.whereAreYouText}>Where are you?</Text>
@@ -1231,11 +1233,11 @@ function ConsumerHomeContent() {
             <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
               <View style={styles.sidebarHeader}>
                 <View style={styles.userAvatar}>
-                  {/* Add user avatar */}
+                  <Ionicons name="person" size={40} color={theme.colors.primary} />
                 </View>
                 <Text style={styles.userName}>{userName}</Text>
                 <TouchableOpacity style={styles.closeMenuButton} onPress={closeSidebar}>
-                  {/* Add close icon */}
+                  <Ionicons name="close" size={24} color={theme.colors.text} />
                 </TouchableOpacity>
               </View>
               <View style={styles.menuItems}>
@@ -1250,7 +1252,7 @@ function ConsumerHomeContent() {
                 ))}
               </View>
               <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                {/* Add sign out icon */}
+                <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
                 <Text style={styles.signOutText}>Sign Out</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -1466,7 +1468,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: Math.min(350, width * 0.9),
     height: '100%',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.white,
     zIndex: 1000,
     ...theme.shadows.large,
   },
@@ -1476,7 +1478,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: theme.colors.overlay,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 999,
   },
   sidebarHeader: {
@@ -1485,7 +1487,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   userAvatar: {
     width: 80,
@@ -1493,10 +1495,13 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     marginBottom: 15,
     borderWidth: 2,
-    borderColor: theme.colors.white,
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(70, 130, 180, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userName: {
-    color: theme.colors.white,
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 5,
@@ -1509,7 +1514,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1521,10 +1526,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   menuItemText: {
-    color: theme.colors.white,
+    color: theme.colors.text,
     fontSize: 16,
     fontFamily: theme.typography.medium,
   },
@@ -1535,14 +1540,14 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
     gap: 10,
   },
   signOutIcon: {
     marginRight: 5,
   },
   signOutText: {
-    color: theme.colors.white,
+    color: theme.colors.error,
     fontSize: 16,
     fontFamily: theme.typography.medium,
   },
