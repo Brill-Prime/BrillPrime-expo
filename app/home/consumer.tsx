@@ -484,64 +484,12 @@ function ConsumerHomeContent() {
   };
 
   const loadFallbackMerchants = () => {
-    // Fallback to cached/default data with enhanced fields
-    const fallbackStores: StoreLocation[] = [
-        {
-          id: '1',
-          title: "NASCO FOODS",
-          address: "Yakubu Gowon Way, Jos",
-          coords: { lat: 9.868215, lng: 8.870632 },
-          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.868215, 8.870632) : undefined,
-          rating: 4.2,
-          isOpen: true,
-          category: 'Supermarket',
-          phone: '+234 803 123 4567',
-          description: 'Your one-stop shop for groceries and household items'
-        },
-        {
-          id: '2',
-          title: "Airforce Masjid",
-          address: "Abattoir Rd, Jos",
-          coords: { lat: 9.882716, lng: 8.886276 },
-          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.882716, 8.886276) : undefined,
-          rating: 4.8,
-          isOpen: true,
-          category: 'Religious',
-          phone: '+234 803 987 6543',
-          description: 'Community mosque serving the local area'
-        },
-        {
-          id: '3',
-          title: "BrillPrime Market",
-          address: "Wuse 2, Abuja",
-          coords: { lat: 9.0765, lng: 7.3986 },
-          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.0765, 7.3986) : undefined,
-          rating: 4.5,
-          isOpen: false,
-          category: 'Market',
-          phone: '+234 803 555 1234',
-          description: 'Fresh produce and local goods marketplace'
-        },
-        {
-          id: '4',
-          title: "Prime Fuel Station",
-          address: "Garki, Abuja",
-          coords: { lat: 9.0415, lng: 7.4883 },
-          distance: isLocationSet ? locationService.calculateDistance(region.latitude, region.longitude, 9.0415, 7.4883) : undefined,
-          rating: 3.9,
-          isOpen: true,
-          category: 'Fuel Station',
-          phone: '+234 803 777 8888',
-          description: 'Quality fuel and automotive services'
-        }
-      ];
-
-      // Sort fallback data by distance if location is set
-      if (isLocationSet) {
-        fallbackStores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-      }
-
-      setStoreLocations(fallbackStores);
+    // Show informative message instead of fake data
+    showInfo(
+      "No Merchants Yet", 
+      "There are no registered merchants in the system yet. Merchants can register through the app to appear here."
+    );
+    setStoreLocations([]);
   };
 
   const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
