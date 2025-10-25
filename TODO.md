@@ -1,31 +1,53 @@
-# Profile Management Implementation Plan
+# Consumer Home Screen Implementation - Critical Path Testing
 
-## 1. Profile Completion Flow
-- [x] Create `app/profile/completion.tsx` - Profile completion wizard with progress tracking
-- [x] Create `app/profile/consumer-edit.tsx` - Consumer-specific profile editing
-- [ ] Add completion progress indicators to `app/profile/index.tsx`
-- [ ] Update navigation to include completion flow
+## Completed Tasks
+- [x] Implement complete UI with MapContainer, markers, header, search, location setup, delivery tracking, sidebar, modals
+- [x] Add all necessary components and styling
+- [x] Create missing components: LocationSetupCard, Header, SearchBar, Sidebar, MerchantDetailsModal
+- [x] Fix MapContainer import to use react-native-maps
+- [x] Start Expo development server
 
-## 2. Social Media Integration
-- [x] Create `app/profile/social-media.tsx` - Social media connect/disconnect screen
-- [ ] Update `app/auth/signin.tsx` - Add social login options
-- [ ] Update `app/auth/signup.tsx` - Add social signup options
-- [ ] Implement social media profile linking logic
+## Critical Path Testing Tasks
 
-## 3. Verification Badge System
-- [ ] Create `app/profile/verification.tsx` - Verification badge management
-- [ ] Add verification status indicators to profile screens
-- [ ] Implement document upload for verification
-- [ ] Update profile index to show verification status
+### 1. App Launch and Basic Rendering
+- [x] Start Expo development server
+- [ ] Launch app in browser/simulator (Browser tool encountered protocol errors; manual testing recommended)
+- [ ] Verify app loads without errors
+- [ ] Check that map renders with blue styling
 
-## 4. Notification Preferences
-- [ ] Create `app/profile/notification-settings.tsx` - Detailed notification preferences
-- [ ] Add push, email, SMS notification toggles
-- [ ] Integrate with existing notification service
-- [ ] Update profile navigation to include notification settings
+### 2. Location Setup Flow
+- [ ] Test location permission request
+- [ ] Verify automatic location setting works
+- [ ] Check "Set Later" button functionality
+- [ ] Confirm location setup card disappears after setting location
 
-## 5. Testing and Integration
-- [ ] Test all new screens for responsive design
-- [ ] Verify color scheme consistency (#4682B4 primary, #f5f5f5 backgrounds, etc.)
-- [ ] Test navigation flow between screens
-- [ ] Add completion flow to onboarding process
+### 3. Map and Markers
+- [ ] Verify merchant markers appear on map
+- [ ] Test merchant marker press opens details modal
+- [ ] Check driver markers display correctly
+- [ ] Verify user location marker shows when location is set
+
+### 4. Sidebar Navigation
+- [ ] Test sidebar opens/closes with menu button
+- [ ] Verify menu items are clickable
+- [ ] Test navigation to different screens (Dashboard, Profile, etc.)
+- [ ] Check sign out functionality
+
+### 5. Delivery Simulation
+- [ ] Test "Test Delivery" button appears when location set and merchants loaded
+- [ ] Verify delivery simulation starts with driver movement
+- [ ] Check delivery card shows with driver info
+- [ ] Confirm delivery completion notification
+
+### 6. Search and Merchant Details
+- [ ] Test search container appears when location is set
+- [ ] Verify search navigation works
+- [ ] Check merchant details modal opens and displays info
+- [ ] Test "Order Now" and "Get Directions" buttons
+
+## Next Steps After Critical Path
+- Proceed to thorough testing of all edge cases and interactions
+- Test error handling and loading states
+- Verify responsive design and animations
+- Resolve any remaining TypeScript errors (e.g., merchant route navigation)
+- Manual testing recommended due to browser tool issues

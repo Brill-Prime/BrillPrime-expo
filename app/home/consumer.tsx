@@ -1,33 +1,15 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Dimensions,
-  Image,
-  Animated,
-  StatusBar,
-  ScrollView,
-  Platform,
-  ActivityIndicator,
-  TextInput,
-  Modal,
-  RefreshControl,
-  Alert
-} from "react-native";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
-const MapViewDirections = Platform.OS === 'web' ? null : require('react-native-maps-directions').default;
-import { locationService } from '../../services/locationService';
-import { merchantService } from '../../services/merchantService';
 import * as Location from 'expo-location';
+import { debounce } from 'lodash';
 
 import { useAlert } from '../../components/AlertProvider';
-import { Ionicons } from '@expo/vector-icons';
-import { debounce } from 'lodash';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import MapContainer from '../../components/MapContainer';
+import MerchantDetailsModal from '../../components/MerchantDetailsModal';
+import { locationService } from '../../services/locationService';
 
 // Define missing types
 interface Merchant {
@@ -85,6 +67,8 @@ interface ActiveDelivery {
   status: 'picking_up' | 'delivering';
   driverLocation: { latitude: number; longitude: number };
 }
+
+import { Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -176,23 +160,25 @@ const theme = {
   },
 };
 
-export default function ConsumerHome() {
+function ConsumerHomeContent() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [isLocationSet, setIsLocationSet] = useState<boolean | null>(null);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [liveDrivers, setLiveDrivers] = useState<Driver[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItemString[]>([]);
-  // Show notification message
-  const showNotification = (message: string) => {
-    setNotificationMessage(message);
-    setTimeout(() => setNotificationMessage(null), 3000);
-  };
+  const [menuItems, setMenuItems] = useState<MenuItemString[]>([
+    "Dashboard",
+    "Profile",
+    "Notifications",
+    "Settings",
+    "Support",
+    "Switch to Merchant",
+    "Switch to Driver"
+  ]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("Consumer");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
@@ -215,7 +201,7 @@ export default function ConsumerHome() {
   const [filteredMerchants, setFilteredMerchants] = useState<Merchant[]>([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
-  const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedDistance, setSelectedDistance] = useState<string>('Any');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedRating, setSelectedRating] = useState<number>(0);
@@ -1074,401 +1060,241 @@ export default function ConsumerHome() {
   }, [selectedMerchant]);
 
   return (
-    <View style={styles.container}>
-      {/* Fallback UI for loading state */}
-      {isLocationSet === null && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      )}
+    <ErrorBoundary>
+      <View style={styles.container}>
+        {/* Map Container */}
+        <MapContainer
+          ref={mapRef}
+          style={styles.map}
+          region={region}
+          onRegionChange={handleRegionChange}
+          customMapStyle={blueMapStyle}
+          showsUserLocation={isLiveTrackingEnabled}
+          showsMyLocationButton={false}
+          zoomEnabled={true}
+          scrollEnabled={true}
+          rotateEnabled={false}
+          pitchEnabled={false}
+        >
+          {/* Merchant Markers */}
+          {storeLocations.map((merchant) => (
+            <MapContainer.Marker
+              key={merchant.id}
+              coordinate={merchant.coords}
+              onPress={() => handleMerchantPress(merchant)}
+            >
+              <View style={styles.merchantMarker}>
+                <View style={styles.merchantMarkerIcon}>
+                  {/* Add merchant icon here */}
+                </View>
+              </View>
+            </MapContainer.Marker>
+          ))}
 
-      {/* Location Setup Modal - Only show if location not set */}
-      {isLocationSet === false && (
-        <View style={styles.bottomCard}>
-          <View style={styles.locationIconContainer}>
-            <View style={styles.locationIconInner}>
-              <Image
-                source={require('../../assets/images/globe_img.png')}
-                style={styles.globeIcon}
-                resizeMode="cover"
-              />
+          {/* Driver Markers */}
+          {nearbyDrivers.map((driver) => (
+            <MapContainer.Marker
+              key={driver.id}
+              coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
+            >
+              <View style={styles.driverMarker}>
+                <View style={styles.driverMarkerIcon}>
+                  {/* Add driver icon here */}
+                </View>
+                <View style={[styles.statusIndicator, { backgroundColor: driver.status === 'available' ? theme.colors.success : theme.colors.error }]}>
+                  {/* Status indicator */}
+                </View>
+              </View>
+            </MapContainer.Marker>
+          ))}
+
+          {/* User Location Marker */}
+          {isLocationSet && (
+            <MapContainer.Marker coordinate={region}>
+              <View style={styles.userMarker}>
+                <View style={styles.userMarkerDot} />
+              </View>
+            </MapContainer.Marker>
+          )}
+        </MapContainer>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+            {/* Add back icon */}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
+            {/* Add menu icon */}
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Container */}
+        {isLocationSet && (
+          <View style={styles.searchContainer}>
+            <TouchableOpacity style={styles.searchInputContainer} onPress={handleSearchNavigation}>
+              <View style={styles.searchIcon}>
+                {/* Add search icon */}
+              </View>
+              <Text style={styles.searchInput}>Search for merchants...</Text>
+              <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
+                {/* Add filter icon */}
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Location Setup Card */}
+        {isLocationSet === false && (
+          <View style={styles.bottomCard}>
+            <View style={styles.locationIconContainer}>
+              <View style={styles.locationIconInner}>
+                <View style={styles.globeIcon}>
+                  {/* Add globe/location icon */}
+                </View>
+              </View>
+            </View>
+            <Text style={styles.whereAreYouText}>Where are you?</Text>
+            <Text style={styles.descriptionText}>
+              We need your location to show nearby merchants and provide accurate delivery services.
+            </Text>
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity
+                style={styles.setAutomaticallyButton}
+                onPress={handleSetLocationAutomatically}
+                disabled={isLoadingLocation}
+              >
+                {isLoadingLocation ? (
+                  <ActivityIndicator color={theme.colors.white} />
+                ) : (
+                  <Text style={styles.setAutomaticallyText}>Set Location Automatically</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.setLaterButton} onPress={handleSetLocationLater}>
+                <Text style={styles.setLaterText}>Set Later</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        )}
 
-          <Text style={styles.whereAreYouText}>Where are you?</Text>
-          <Text style={styles.descriptionText}>
-            Set your location so you can see merchants available around you
-          </Text>
-
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity
-              style={styles.setAutomaticallyButton}
-              onPress={handleSetLocationAutomatically}
-              activeOpacity={0.9}
-              disabled={isLoadingLocation}
-              accessibilityLabel="Set location automatically"
-              accessibilityRole="button"
-            >
-              {isLoadingLocation ? (
-                <ActivityIndicator size="small" color={theme.colors.white} />
-              ) : (
-                <Text style={styles.setAutomaticallyButtonText}>Set Automatically</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.setLaterButton}
-              onPress={handleSetLocationLater}
-              activeOpacity={0.9}
-              accessibilityLabel="Set location later"
-              accessibilityRole="button"
-            >
-              <Text style={styles.setLaterText}>Set Later</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Map View - Always show as background */}
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        customMapStyle={blueMapStyle}
-        region={region}
-        onRegionChangeComplete={handleRegionChange}
-      >
-      
-      {/* User marker - Only show when location is set */}
-      {isLocationSet === true && (
-        <>
-            {/* User's current location marker */}
-            <Marker
-              coordinate={{
-                latitude: region.latitude,
-                longitude: region.longitude,
-              }}
-              title="Your Location"
-              description={userAddress}
-            >
-              <View style={styles.userMarker}>
-                <Ionicons name="location-sharp" size={40} color={theme.colors.primary} />
+        {/* Active Delivery Card */}
+        {activeDelivery && showDriverCard && (
+          <View style={styles.floatingCard}>
+            <View style={styles.driverCardHeader}>
+              <View style={styles.driverAvatar}>
+                {/* Add driver avatar */}
               </View>
-            </Marker>
+              <View style={styles.driverInfo}>
+                <Text style={styles.driverName}>
+                  {nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.name || 'Driver'}
+                </Text>
+                <Text style={styles.driverStatus}>
+                  {activeDelivery.status === 'picking_up' ? 'Picking up your order' : 'Delivering to you'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.driverCardBody}>
+              <View style={styles.distanceRow}>
+                <Text style={styles.distanceText}>
+                  {activeDelivery.status === 'picking_up'
+                    ? `Distance to merchant: ${nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.distanceToMerchant?.toFixed(1)} km`
+                    : `Distance to you: ${nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.distanceToConsumer?.toFixed(1)} km`
+                  }
+                </Text>
+              </View>
+              <View style={styles.distanceRow}>
+                <Text style={styles.distanceText}>
+                  ETA: {nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.eta || 'Calculating...'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
-            {/* Merchant markers */}
-            {storeLocations && storeLocations.map((merchant) => (
-              <Marker
-                key={merchant.id || merchant.title}
-                coordinate={{
-                  latitude: merchant.coords.lat,
-                  longitude: merchant.coords.lng,
-                }}
-                title={merchant.title}
-                description={`${merchant.address}${merchant.distance ? ` • ${merchant.distance.toFixed(1)} km` : ''}`}
-                onPress={() => handleMerchantPress(merchant)}
-              >
-                <View style={styles.merchantMarker}>
-                  <Image
-                    source={require('../../assets/images/view_commodities_icon.png')}
-                    style={styles.merchantMarkerIcon}
-                  />
-                  {/* Status indicator */}
-                  <View style={[styles.statusIndicator, { backgroundColor: merchant.isOpen ? theme.colors.success : theme.colors.error }]}>
-                    <Ionicons
-                      name={merchant.isOpen ? "checkmark-circle" : "close-circle"}
-                      size={12}
-                      color={theme.colors.white}
-                    />
-                  </View>
+        {/* Test Delivery Button */}
+        {isLocationSet && storeLocations.length > 0 && (
+          <TouchableOpacity style={styles.testDeliveryButton} onPress={simulateDelivery}>
+            <Text style={styles.testDeliveryText}>Test Delivery</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Notification */}
+        {notificationMessage && (
+          <View style={styles.notification}>
+            <Text style={styles.notificationText}>{notificationMessage}</Text>
+          </View>
+        )}
+
+        {/* Sidebar */}
+        {isSidebarOpen && (
+          <>
+            <TouchableOpacity style={styles.backdrop} onPress={closeSidebar} />
+            <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+              <View style={styles.sidebarHeader}>
+                <View style={styles.userAvatar}>
+                  {/* Add user avatar */}
                 </View>
-              </Marker>
-            ))}
-            
-            {/* Driver markers for live tracking */}
-            {liveDrivers && liveDrivers.map((driver) => (
-              <Marker
-                key={driver.id}
-                coordinate={{
-                  latitude: driver.location.latitude,
-                  longitude: driver.location.longitude,
-                }}
-                title={`Driver ${driver.name}`}
-                description={`ETA: ${driver.eta} mins`}
-              >
-                <View style={styles.driverMarker}>
-                  <Image
-                    source={require('../../assets/images/order_fuel_icon.png')}
-                    style={styles.driverMarkerIcon}
-                  />
-                </View>
-              </Marker>
-            ))}
+                <Text style={styles.userName}>{userName}</Text>
+                <TouchableOpacity style={styles.closeMenuButton} onPress={closeSidebar}>
+                  {/* Add close icon */}
+                </TouchableOpacity>
+              </View>
+              <View style={styles.menuItems}>
+                {menuItems.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.menuItem}
+                    onPress={() => handleMenuItemPress(item)}
+                  >
+                    <Text style={styles.menuItemText}>{item}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                {/* Add sign out icon */}
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </>
         )}
-      </MapView>
 
-        {isLocationSet === true && (
-          <>
-            {/* Header with back and menu buttons */}
-            <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleGoBack}
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-            >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuButton}
-              onPress={toggleMenu}
-              accessibilityLabel="Open menu"
-              accessibilityRole="button"
-            >
-              <Ionicons name="menu" size={24} color={theme.colors.primary} />
-            </TouchableOpacity>
+        {/* Loading Overlay */}
+        {isMapLoading && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Loading Map</Text>
+              <Text style={styles.loadingSubtext}>Please wait while we load your location</Text>
+            </View>
           </View>
+        )}
 
-          {/* Search bar */}
-          <View style={styles.searchContainer}>
-            <TouchableOpacity
-                style={styles.searchInputContainer}
-                onPress={handleSearchNavigation}
-                activeOpacity={0.9}
-                accessibilityLabel="Search"
-                accessibilityRole="search"
-              >
-              <Ionicons
-                name="search"
-                size={20}
-                color={theme.colors.textLight}
-                style={styles.searchIcon}
-              />
-              <Text style={[styles.searchInput, { color: theme.colors.textLight }]}>
-                Search for merchants, products...
+        {/* Error Overlay */}
+        {mapError && (
+          <View style={styles.errorContainer}>
+            <View style={styles.errorContent}>
+              <Text style={styles.errorTitle}>Map Error</Text>
+              <Text style={styles.errorMessage}>
+                Unable to load the map. Please check your internet connection and try again.
               </Text>
-              <TouchableOpacity
-                style={styles.filterButton}
-                onPress={() => setShowFilters(true)}
-                accessibilityLabel="Filter"
-                accessibilityRole="button"
-              >
-                <Ionicons name="options" size={20} color={theme.colors.primary} />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </View>
-
-          {/* Sidebar Menu with Backdrop */}
-          {isSidebarOpen && (
-            <TouchableWithoutFeedback onPress={closeSidebar}>
-              <View style={styles.backdrop} />
-            </TouchableWithoutFeedback>
-          )}
-          
-          <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
-            <View style={styles.sidebarHeader}>
-              <Image
-                source={require('../../assets/images/account_circle.png')}
-                style={styles.userAvatar}
-              />
-              <Text style={styles.userName}>{userName || 'User'}</Text>
-              <TouchableOpacity
-                style={styles.closeMenuButton}
-                onPress={toggleMenu}
-                accessibilityLabel="Close menu"
-                accessibilityRole="button"
-              >
-                <Ionicons name="close" size={24} color={theme.colors.white} />
+              <TouchableOpacity style={styles.retryButton} onPress={() => setMapError(false)}>
+                <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView style={styles.menuItems}>
-              {menuItems.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.menuItem}
-                  onPress={() => handleMenuItemPress(item)}
-                  accessibilityLabel={item}
-                  accessibilityRole="menuitem"
-                >
-                  <Text style={styles.menuItemText}>{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              accessibilityLabel="Sign out"
-              accessibilityRole="button"
-            >
-              <Ionicons name="log-out-outline" size={20} color={theme.colors.white} style={styles.signOutIcon} />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </>
-      )}
-      
-      {!isLocationSet && (
-        <View style={styles.bottomCard}>
-          <View style={styles.locationIconContainer}>
-            <View style={styles.locationIconInner}>
-              <Image
-                source={require('../../assets/images/globe_img.png')}
-                style={styles.globeIcon}
-              />
-            </View>
           </View>
-          <Text style={styles.whereAreYouText}>Where are you?</Text>
-          <Text style={styles.descriptionText}>
-            Set your location so you can see merchants available around you
-          </Text>
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity
-              style={styles.setAutomaticallyButton}
-              onPress={handleSetLocationAutomatically}
-              activeOpacity={0.9}
-              disabled={isLoadingLocation}
-            >
-              <Text style={styles.setAutomaticallyText}>Set Automatically</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.setLaterButton}
-              onPress={handleSetLocationLater}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.setLaterText}>Set Later</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+        )}
 
-      {/* Merchant Details Modal */}
-      <Modal
-        visible={showMerchantDetails}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleMerchantDetailsClose}
-      >
-        <TouchableWithoutFeedback onPress={handleMerchantDetailsClose}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.merchantDetailsModal}>
-                {selectedMerchant && (
-                  <>
-                    {/* Header */}
-                    <View style={styles.merchantDetailsHeader}>
-                      <View style={styles.merchantDetailsTitleRow}>
-                        <Text style={styles.merchantDetailsTitle}>{selectedMerchant.title}</Text>
-                        <TouchableOpacity onPress={handleMerchantDetailsClose} style={styles.closeButton}>
-                          <Ionicons name="close" size={24} color={theme.colors.text} />
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Status and Rating */}
-                      <View style={styles.merchantDetailsMeta}>
-                        <View style={styles.statusBadge}>
-                          <Ionicons
-                            name={selectedMerchant.isOpen ? "checkmark-circle" : "close-circle"}
-                            size={16}
-                            color={selectedMerchant.isOpen ? theme.colors.success : theme.colors.error}
-                          />
-                          <Text style={[styles.statusText, { color: selectedMerchant.isOpen ? theme.colors.success : theme.colors.error }]}>
-                            {selectedMerchant.isOpen ? "Open Now" : "Closed"}
-                          </Text>
-                        </View>
-
-                        {selectedMerchant.rating && selectedMerchant.rating > 0 && (
-                          <View style={styles.ratingContainer}>
-                            <Ionicons name="star" size={14} color="#FFD700" />
-                            <Text style={styles.ratingText}>{selectedMerchant.rating.toFixed(1)}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Content */}
-                    <ScrollView style={styles.merchantDetailsContent} showsVerticalScrollIndicator={false}>
-                      {/* Address and Distance */}
-                      <View style={styles.merchantDetailsSection}>
-                        <View style={styles.sectionHeader}>
-                          <Ionicons name="location" size={18} color={theme.colors.primary} />
-                          <Text style={styles.sectionTitle}>Location</Text>
-                        </View>
-                        <Text style={styles.merchantAddress}>{selectedMerchant.address}</Text>
-                        {selectedMerchant.distance && (
-                          <Text style={styles.merchantDistance}>
-                            {selectedMerchant.distance.toFixed(1)} km away • {calculateETA(region.latitude, region.longitude, selectedMerchant.coords.lat, selectedMerchant.coords.lng)} to arrive
-                          </Text>
-                        )}
-                      </View>
-
-                      {/* Category */}
-                      {selectedMerchant.category && (
-                        <View style={styles.merchantDetailsSection}>
-                          <View style={styles.sectionHeader}>
-                            <Ionicons name="pricetag" size={18} color={theme.colors.primary} />
-                            <Text style={styles.sectionTitle}>Category</Text>
-                          </View>
-                          <Text style={styles.merchantCategory}>{selectedMerchant.category}</Text>
-                        </View>
-                      )}
-
-                      {/* Phone */}
-                      {selectedMerchant.phone && (
-                        <View style={styles.merchantDetailsSection}>
-                          <View style={styles.sectionHeader}>
-                            <Ionicons name="call" size={18} color={theme.colors.primary} />
-                            <Text style={styles.sectionTitle}>Phone</Text>
-                          </View>
-                          <Text style={styles.merchantPhone}>{selectedMerchant.phone}</Text>
-                        </View>
-                      )}
-
-                      {/* Description */}
-                      {selectedMerchant.description && (
-                        <View style={styles.merchantDetailsSection}>
-                          <View style={styles.sectionHeader}>
-                            <Ionicons name="information-circle" size={18} color={theme.colors.primary} />
-                            <Text style={styles.sectionTitle}>About</Text>
-                          </View>
-                          <Text style={styles.merchantDescription}>{selectedMerchant.description}</Text>
-                        </View>
-                      )}
-                    </ScrollView>
-
-                    {/* Action Buttons */}
-                    <View style={styles.merchantDetailsActions}>
-                      <TouchableOpacity
-                        style={[styles.merchantActionButton, styles.directionsButton]}
-                        onPress={handleGetDirections}
-                        activeOpacity={0.9}
-                      >
-                        <Ionicons name="navigate" size={20} color={theme.colors.primary} />
-                        <Text style={styles.directionsButtonText}>Directions</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.merchantActionButton, styles.orderButton]}
-                        onPress={handleOrderNow}
-                        activeOpacity={0.9}
-                        disabled={!selectedMerchant.isOpen}
-                      >
-                        <Text style={styles.orderButtonText}>Order Now</Text>
-                        <Ionicons name="arrow-forward" size={20} color={theme.colors.white} />
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </View>
+        {/* Merchant Details Modal */}
+        {showMerchantDetails && selectedMerchant && (
+          <MerchantDetailsModal
+            visible={showMerchantDetails}
+            merchant={selectedMerchant}
+            onClose={handleMerchantDetailsClose}
+            onOrderNow={handleOrderNow}
+            onGetDirections={handleGetDirections}
+          />
+        )}
+      </View>
+    </ErrorBoundary>
   );
 }
 
