@@ -904,6 +904,8 @@ function ConsumerHomeContent() {
 
   // Request and set user's current location
   const handleSetLocationAutomatically = async () => {
+    // Set this immediately to prevent multiple prompts
+    setHasShownLocationPrompt(true);
     setIsLoadingLocation(true);
     const operationKey = 'setLocationAutomatically';
 
@@ -918,17 +920,21 @@ function ConsumerHomeContent() {
             [
               {
                 text: 'Try Again',
-                onPress: () => handleSetLocationAutomatically()
+                onPress: () => {
+                  // Reset the flag to allow another attempt
+                  setHasShownLocationPrompt(false);
+                  handleSetLocationAutomatically();
+                }
               },
               {
                 text: 'OK',
                 style: 'cancel',
                 onPress: () => {
-                  setHasShownLocationPrompt(true);
                   setIsLoadingLocation(false);
                 }
               }
-            ]
+            ],
+            { cancelable: false }
           );
           return;
         }
