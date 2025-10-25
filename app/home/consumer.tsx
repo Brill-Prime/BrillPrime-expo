@@ -490,7 +490,10 @@ function ConsumerHomeContent() {
       setStoreLocations(fallbackStores);
 
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        showError("Network Error", "Unable to connect to servers. Using cached data.");
+        showError(
+          "Network Error", 
+          "Unable to connect to servers. The backend may be waking up (this can take up to 60 seconds on Render's free tier). Using cached data."
+        );
       } else {
         showError("Loading Error", "Failed to load merchants. Using cached data.");
       }

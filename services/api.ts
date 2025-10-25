@@ -23,9 +23,13 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      // Add timeout to prevent hanging requests
+      // Increased timeout for Render cold starts (free tier can take 50+ seconds)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), ENV.apiTimeout);
+      const timeoutMs = 60000; // 60 seconds for cold start
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      console.log(`🌐 API Request: ${endpoint}`);
+      const startTime = Date.now();
 
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         headers: {
@@ -37,6 +41,8 @@ class ApiClient {
       });
 
       clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      console.log(`✅ API Response: ${endpoint} (${duration}ms)`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -55,9 +61,9 @@ class ApiClient {
       let errorMessage = 'Unknown error occurred';
 
       if (error.name === 'AbortError') {
-        errorMessage = 'Request timeout - please check your connection';
+        errorMessage = 'Request timeout - The server is taking too long to respond. It may be waking up from sleep (this can take up to 60 seconds on first load).';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        errorMessage = 'Failed to fetch - backend server may be down';
+        errorMessage = 'Cannot connect to server. Please check your internet connection or try again in a moment.';
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }

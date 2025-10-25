@@ -64,7 +64,7 @@ export const ENV = {
   isDevelopment,
   isProduction,
   apiBaseUrl: getApiBaseUrl(),
-  apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'), // Increased to 30s for real API
+  apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '60000'), // 60s for Render cold starts
   mapApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
   enableAnalytics: process.env.EXPO_PUBLIC_ENABLE_ANALYTICS === 'true',
