@@ -299,9 +299,14 @@ function ConsumerHomeContent() {
         return;
       }
 
+      // Get authentication token
+      const { authService } = await import('../../services/authService');
+      const token = await authService.getToken();
+
       // Make API call to get nearby merchants using apiClient
       const { apiClient } = await import('../../services/api');
-      const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`);
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, headers);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || 'Failed to load nearby merchants');
@@ -374,9 +379,14 @@ function ConsumerHomeContent() {
         return;
       }
 
+      // Get authentication token
+      const { authService } = await import('../../services/authService');
+      const token = await authService.getToken();
+
       // Make API call to get all merchants using apiClient
       const { apiClient } = await import('../../services/api');
-      const response = await apiClient.get<any>('/api/merchants');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.get<any>('/api/merchants', headers);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || 'Failed to load merchants');
