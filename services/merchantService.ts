@@ -25,9 +25,14 @@ export interface Commodity {
 export const getMerchants = async (): Promise<Merchant[]> => {
         try {
                 const token = await authService.getToken();
-                const response = await apiClient.get<Merchant[]>('/api/merchants', token ? {
+                if (!token) {
+                        console.warn('No authentication token available for fetching merchants');
+                        return [];
+                }
+                
+                const response = await apiClient.get<Merchant[]>('/api/merchants', {
                         Authorization: `Bearer ${token}`
-                } : {});
+                });
                 return response.success && response.data ? response.data : [];
         } catch (error) {
                 console.error('API Error:', error);
@@ -39,9 +44,14 @@ export const getMerchants = async (): Promise<Merchant[]> => {
 export const getMerchantById = async (id: string): Promise<Merchant | null> => {
         try {
                 const token = await authService.getToken();
-                const response = await apiClient.get<Merchant>(`/api/merchants/${id}`, token ? {
+                if (!token) {
+                        console.warn('No authentication token available for fetching merchant details');
+                        return null;
+                }
+                
+                const response = await apiClient.get<Merchant>(`/api/merchants/${id}`, {
                         Authorization: `Bearer ${token}`
-                } : {});
+                });
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -341,9 +351,38 @@ export const getCustomers = async (merchantId: string): Promise<{ success: boole
         }
 };
 
+// Fetch nearby merchants
+export const getNearbyMerchants = async (latitude: number, longitude: number, radius?: number): Promise<Merchant[]> => {
+        try {
+                const token = await authService.getToken();
+                if (!token) {
+                        console.warn('No authentication token available for fetching nearby merchants');
+                        return [];
+                }
+                
+                const queryParams = new URLSearchParams({
+                        lat: latitude.toString(),
+                        lng: longitude.toString(),
+                        ...(radius && { radius: radius.toString() })
+                });
+                
+                const response = await apiClient.get<Merchant[]>(
+                        `/api/merchants/nearby?${queryParams.toString()}`,
+                        {
+                                Authorization: `Bearer ${token}`
+                        }
+                );
+                return response.success && response.data ? response.data : [];
+        } catch (error) {
+                console.error('API Error fetching nearby merchants:', error);
+                return [];
+        }
+};
+
 export const merchantService = {
         getMerchants,
         getMerchantById,
+        getNearbyMerchants,
         createMerchant,
         updateMerchant,
         deleteMerchant,
