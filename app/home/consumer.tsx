@@ -7,8 +7,8 @@ import { debounce } from 'lodash';
 
 import { useAlert } from '../../components/AlertProvider';
 import ErrorBoundary from '../../components/ErrorBoundary';
-import MapContainer from '../../components/MapContainer';
-import MerchantDetailsModal from '../../components/MerchantDetailsModal';
+import MapContainer from '../../components/Map';
+import MerchantDetailsModal from '../components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 
 // Define missing types
@@ -2041,3 +2041,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.medium,
   },
 });
+export default ConsumerHomeContent;
