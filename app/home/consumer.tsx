@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
@@ -177,6 +177,7 @@ function ConsumerHomeContent() {
     "Switch to Driver"
   ]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [hasShownLocationPrompt, setHasShownLocationPrompt] = useState(false);
   const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("Consumer");
@@ -292,7 +293,7 @@ function ConsumerHomeContent() {
 
   const loadNearbyMerchants = async (latitude: number, longitude: number, retryCount = 0) => {
     const MAX_RETRIES = 2;
-    
+
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
@@ -387,7 +388,7 @@ function ConsumerHomeContent() {
 
   const loadAllMerchants = async (retryCount = 0) => {
     const MAX_RETRIES = 2;
-    
+
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
@@ -471,7 +472,7 @@ function ConsumerHomeContent() {
 
       // Load fallback data after all retries exhausted
       loadFallbackMerchants();
-      
+
       if (error instanceof TypeError && error.message.includes('fetch')) {
         showError(
           "Backend Unavailable", 
@@ -498,7 +499,7 @@ function ConsumerHomeContent() {
     const timeInMinutes = Math.round((distance / avgSpeed) * 60);
     return `${timeInMinutes} mins`;
   };
-  
+
 
 
   const fetchNearbyMerchants = useCallback(async () => {
@@ -749,8 +750,8 @@ function ConsumerHomeContent() {
         });
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
-        
-        // Load merchants near the saved location
+
+        // Load nearby merchants near the saved location
         await loadNearbyMerchants(location.latitude, location.longitude);
       } else {
         // Explicitly set to false if no saved location
@@ -772,7 +773,7 @@ function ConsumerHomeContent() {
     }).start();
     setIsSidebarOpen(!isSidebarOpen);
   }, [isSidebarOpen, slideAnim, sidebarWidth]);
-  
+
   // Close sidebar when clicking outside
   const closeSidebar = useCallback(() => {
     if (isSidebarOpen) {
@@ -897,10 +898,8 @@ function ConsumerHomeContent() {
   };
 
   const handleSetLocationLater = () => {
-    setIsLocationSet(true); // Ensure location is marked as set
-    setTimeout(() => {
-      router.push("/search"); // Navigate only after state is updated
-    }, 100); // Small delay to ensure state update completes
+    setIsLocationSet(true); // Hide the card
+    setHasShownLocationPrompt(true);
   };
 
   // Request and set user's current location
@@ -910,10 +909,28 @@ function ConsumerHomeContent() {
 
     const operation = async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
+        const hasPermission = await Location.requestForegroundPermissionsAsync();
 
-        if (status !== 'granted') {
-          throw new Error('Location permission denied');
+        if (hasPermission.status !== 'granted') {
+          Alert.alert(
+            'Permission Denied',
+            'Location permission is required. Please enable location services in your device settings.',
+            [
+              {
+                text: 'Try Again',
+                onPress: () => handleSetLocationAutomatically()
+              },
+              {
+                text: 'OK',
+                style: 'cancel',
+                onPress: () => {
+                  setHasShownLocationPrompt(true);
+                  setIsLoadingLocation(false);
+                }
+              }
+            ]
+          );
+          return;
         }
 
         const location = await Location.getCurrentPositionAsync({
@@ -977,6 +994,7 @@ function ConsumerHomeContent() {
         }
 
         setIsLocationSet(true);
+        setHasShownLocationPrompt(true);
       } catch (locationError) {
         console.error("Error setting location automatically:", locationError);
 
@@ -1002,7 +1020,7 @@ function ConsumerHomeContent() {
       setIsLoadingLocation(false);
     }
   };
-  
+
   const handleNavigationGuard = (route: string) => {
     if (!isLocationSet) {
       alert("Please set your location first");
@@ -1146,7 +1164,7 @@ function ConsumerHomeContent() {
         )}
 
         {/* Location Setup Card */}
-        {isLocationSet === false && (
+        {isLocationSet === false && !hasShownLocationPrompt && (
           <View style={styles.bottomCard}>
             <View style={styles.locationIconContainer}>
               <View style={styles.locationIconInner}>
