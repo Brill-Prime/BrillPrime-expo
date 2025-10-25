@@ -40,6 +40,19 @@ class LocationService {
     try {
       // For web platform, use browser geolocation API
       if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+        // First check if permissions API is available to pre-check permission status
+        if ('permissions' in navigator) {
+          try {
+            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+            if (permissionStatus.state === 'denied') {
+              throw new Error('Location permission was previously denied. Please enable location access in your browser settings (usually in the address bar or browser settings).');
+            }
+          } catch (permError) {
+            // Permissions API might not be fully supported, continue anyway
+            console.log('Permissions API check skipped:', permError);
+          }
+        }
+
         return new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -53,28 +66,35 @@ class LocationService {
             (error) => {
               // Provide detailed error messages based on error code
               let errorMessage = 'Unknown geolocation error';
+              let userAction = '';
+              
               switch (error.code) {
-                case error.PERMISSION_DENIED:
-                  errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+                case 1: // PERMISSION_DENIED
+                  errorMessage = 'Location permission denied';
+                  userAction = 'Please click the location icon in your browser address bar and allow location access, or check your browser settings.';
                   break;
-                case error.POSITION_UNAVAILABLE:
-                  errorMessage = 'Location information unavailable. Please check your device GPS settings.';
+                case 2: // POSITION_UNAVAILABLE
+                  errorMessage = 'Location information unavailable';
+                  userAction = 'Please check your device GPS settings and ensure location services are enabled.';
                   break;
-                case error.TIMEOUT:
-                  errorMessage = 'Location request timed out. Please try again.';
+                case 3: // TIMEOUT
+                  errorMessage = 'Location request timed out';
+                  userAction = 'Please try again. Make sure your GPS is enabled.';
                   break;
               }
+              
+              const fullMessage = `${errorMessage}. ${userAction}`;
               console.error('Web geolocation error:', {
                 code: error.code,
                 message: error.message,
-                detailedMessage: errorMessage
+                detailedMessage: fullMessage
               });
-              reject(new Error(errorMessage));
+              reject(new Error(fullMessage));
             },
             {
               enableHighAccuracy: true,
-              timeout: 20000, // Increased to 20 seconds
-              maximumAge: 5000 // Allow cached position up to 5 seconds old
+              timeout: 20000,
+              maximumAge: 5000
             }
           );
         });

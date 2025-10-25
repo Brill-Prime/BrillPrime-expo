@@ -564,9 +564,9 @@ function ConsumerHomeContent() {
       return () => unsubscribe();
     } catch (error) {
       console.error('Failed to initialize live tracking:', error);
-      if (isMountedRef.current) {
-        showError("Tracking Error", "Failed to start live tracking. Some features may be limited.");
-      }
+      // Don't show error for live tracking - it's a background feature
+      // User will be prompted when they try to set location manually
+      setIsLiveTrackingEnabled(false);
     }
   };
 
@@ -907,85 +907,80 @@ function ConsumerHomeContent() {
     // Set this immediately to prevent multiple prompts
     setHasShownLocationPrompt(true);
     setIsLoadingLocation(true);
-    const operationKey = 'setLocationAutomatically';
-
-    const operation = async () => {
-      try {
-        // Use locationService which handles both web and native platforms
-        const location = await locationService.getCurrentLocation();
-
-        if (!location) {
-          throw new Error('Unable to get location coordinates');
-        }
-
-        const { latitude, longitude } = location;
-        const deltas = calculateDelta(latitude);
-
-        // Update region with current location
-        const newRegion = {
-          latitude,
-          longitude,
-          ...deltas
-        };
-
-        setRegion(newRegion);
-
-        // Try to get address with retry logic
-        try {
-          const addressText = await locationService.reverseGeocode(latitude, longitude);
-          
-          if (addressText) {
-            setUserAddress(addressText);
-            await AsyncStorage.setItem("userAddress", addressText);
-          } else {
-            setUserAddress("Your Location");
-          }
-        } catch (addressError) {
-          console.error("Error getting address:", addressError);
-          setUserAddress("Your Location");
-          // Don't throw here - address is optional
-        }
-
-        // Save location to AsyncStorage
-        await AsyncStorage.setItem("userLocation", JSON.stringify({
-          latitude,
-          longitude
-        }));
-
-        // Load nearby merchants
-        await loadNearbyMerchants(latitude, longitude);
-
-        // Animate map to new location
-        if (mapRef.current) {
-          mapRef.current.animateToRegion(newRegion, 1000);
-        }
-
-        setIsLocationSet(true);
-        setHasShownLocationPrompt(true);
-      } catch (locationError) {
-        console.error("Error setting location automatically:", locationError);
-
-        if (locationError instanceof Error) {
-          // Show the specific error message from locationService
-          if (locationError.message.includes('permission') || locationError.message.includes('denied')) {
-            showError("Permission Denied", locationError.message);
-          } else if (locationError.message.includes('timeout') || locationError.message.includes('timed out')) {
-            showError("Location Timeout", locationError.message);
-          } else if (locationError.message.includes('unavailable')) {
-            showError("GPS Unavailable", locationError.message);
-          } else {
-            showError("Location Error", locationError.message || "Failed to get your location. Please try again.");
-          }
-        } else {
-          showError("Location Error", "An unexpected error occurred while getting your location. Please enable location access in your browser.");
-        }
-
-        throw locationError; // Re-throw to trigger retry
-      }
-    };
 
     try {
-      await handleRetryWithBackoff(operation, operationKey, 2); // Max 2 retries for location
+      // Use locationService which handles both web and native platforms
+      const location = await locationService.getCurrentLocation();
+
+      if (!location) {
+        throw new Error('Unable to get location coordinates. Please check your browser permissions.');
+      }
+
+      const { latitude, longitude } = location;
+      const deltas = calculateDelta(latitude);
+
+      // Update region with current location
+      const newRegion = {
+        latitude,
+        longitude,
+        ...deltas
+      };
+
+      setRegion(newRegion);
+
+      // Try to get address with retry logic
+      try {
+        const addressText = await locationService.reverseGeocode(latitude, longitude);
+        
+        if (addressText) {
+          setUserAddress(addressText);
+          await AsyncStorage.setItem("userAddress", addressText);
+        } else {
+          setUserAddress("Your Location");
+        }
+      } catch (addressError) {
+        console.error("Error getting address:", addressError);
+        setUserAddress("Your Location");
+        // Don't throw here - address is optional
+      }
+
+      // Save location to AsyncStorage
+      await AsyncStorage.setItem("userLocation", JSON.stringify({
+        latitude,
+        longitude
+      }));
+
+      // Load nearby merchants
+      await loadNearbyMerchants(latitude, longitude);
+
+      // Animate map to new location
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 1000);
+      }
+
+      setIsLocationSet(true);
+      showSuccess("Location Set", "Your location has been updated successfully!");
+    } catch (locationError) {
+      console.error("Error setting location automatically:", locationError);
+
+      // Don't retry on permission errors - it will just spam the user
+      if (locationError instanceof Error) {
+        // Show the specific error message from locationService
+        if (locationError.message.includes('permission') || locationError.message.includes('denied')) {
+          showError("Location Permission Required", locationError.message);
+          // Keep the location setup card visible so user can try again
+          setIsLocationSet(false);
+          setHasShownLocationPrompt(false);
+        } else if (locationError.message.includes('timeout') || locationError.message.includes('timed out')) {
+          showError("Location Timeout", locationError.message);
+        } else if (locationError.message.includes('unavailable')) {
+          showError("GPS Unavailable", locationError.message);
+        } else {
+          showError("Location Error", locationError.message || "Failed to get your location. Please try again.");
+        }
+      } else {
+        showError("Location Error", "An unexpected error occurred. Please enable location access in your browser settings.");
+      }
     } finally {
       setIsLoadingLocation(false);
     }
