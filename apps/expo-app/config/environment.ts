@@ -58,9 +58,7 @@ const getApiBaseUrl = () => {
 
   // In development, use local backend on port 3000
   if (isDevelopment) {
-    // Use Replit's dynamic URL for development
-    const replitUrl = process.env.REPLIT_DEV_DOMAIN;
-    return replitUrl ? `https://${replitUrl}:3000` : 'http://localhost:3000';
+    return 'http://localhost:3000';
   }
 
   // Use the production backend
@@ -69,10 +67,7 @@ const getApiBaseUrl = () => {
 
 // API Configuration
 export const API_CONFIG = {
-  // Use local backend for development in Replit, external API for production
-  baseURL: isWeb && __DEV__ 
-    ? 'https://e55c59d8-f6b7-4dff-bbf4-b65d4863da67-00-2whp80diqtflw.worf.replit.dev:3000'
-    : 'https://api.brillprime.com',
+  baseURL: isDevelopment ? 'http://localhost:3000' : 'https://api.brillprime.com',
   timeout: 30000,
 };
 

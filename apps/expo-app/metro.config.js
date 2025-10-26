@@ -2,11 +2,11 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Add support for Ionicons fonts
-config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2');
+// Add support for all font and image formats
+config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2', 'eot', 'svg', 'png', 'jpg', 'jpeg', 'gif');
 
 // Configure platform-specific extensions
-config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
+config.resolver.sourceExts = [...config.resolver.sourceExts.filter(ext => ext !== 'svg'), 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
 
 // Configure for Replit environment
 config.server = {

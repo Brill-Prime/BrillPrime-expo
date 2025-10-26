@@ -11,7 +11,7 @@ localPort = 5000
 externalPort = 5000
 
 [workflows]
-runButton = "Start Full Stack (Yarn)"
+runButton = "Start Full Stack"
 
 [[workflows.workflow]]
 name = "Start Full Stack"
