@@ -49,26 +49,15 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
 const isDevelopment = process.env.NODE_ENV === 'development' || (typeof __DEV__ !== 'undefined' && __DEV__);
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Determine API base URL based on environment
-const getApiBaseUrl = () => {
-  // Check for explicit API URL in environment
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-
-  // In development, use local backend on port 3000
-  if (isDevelopment) {
-    return 'http://localhost:3000';
-  }
-
-  // Use the production backend
-  return 'https://api.brillprime.com';
+// API Configuration - always use localhost:3000 in development (Replit)
+export const API_CONFIG = {
+  baseURL: isDevelopment ? 'http://localhost:3000' : (process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'),
+  timeout: 30000,
 };
 
-// API Configuration
-export const API_CONFIG = {
-  baseURL: isDevelopment ? 'http://localhost:3000' : 'https://api.brillprime.com',
-  timeout: 30000,
+// Determine API base URL based on environment
+const getApiBaseUrl = () => {
+  return API_CONFIG.baseURL;
 };
 
 export const ENV = {
