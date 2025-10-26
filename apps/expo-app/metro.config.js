@@ -3,61 +3,22 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Add development proxy for API calls
-if (process.env.NODE_ENV === 'development') {
-  config.server = {
-    ...config.server,
-    enhanceMiddleware: (middleware) => {
-      return (req, res, next) => {
-        if (req.url.startsWith('/api/')) {
-          // Proxy API requests to backend
-          const proxyUrl = `http://localhost:3000${req.url}`;
-          fetch(proxyUrl, {
-            method: req.method,
-            headers: req.headers,
-            body: req.method !== 'GET' ? req.body : undefined,
-          })
-            .then(response => response.json())
-            .then(data => res.json(data))
-            .catch(err => res.status(500).json({ error: err.message }));
-        } else {
-          next();
-        }
-      };
-    },
-  };
-}
-
-module.exports = config;
-
-const { getDefaultConfig } = require('expo/metro-config');
-
-const config = getDefaultConfig(__dirname);
-
 // Add support for all font and image formats
 config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2', 'eot', 'svg', 'png', 'jpg', 'jpeg', 'gif');
 
 // Configure platform-specific extensions
 config.resolver.sourceExts = [...config.resolver.sourceExts.filter(ext => ext !== 'svg'), 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
 
-// Configure for Replit environment
+// Configure for local development environment with API proxy
 config.server = {
   ...config.server,
-  enhanceMiddleware: (middleware) => {
-    return (req, res, next) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', '*');
-      
-      if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
-        return;
-      }
-      
-      return middleware(req, res, next);
-    };
-  },
+  proxy: {
+    '/api': {
+      target: 'http://localhost:3000',
+      changeOrigin: true,
+      logLevel: 'debug'
+    }
+  }
 };
 
 // Block react-native-maps from being bundled on web

@@ -10,10 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web --port 5000 --host lan",
     "test": "jest --watchAll",
-    "lint": "expo lint",
-    "dev": "concurrently \"npm run start-expo\" \"npm run start-proxy\"",
-    "start-expo": "expo start --web",
-    "start-proxy": "node proxy-server.js"
+    "lint": "expo lint"
   },
   "jest": {
     "preset": "jest-expo"

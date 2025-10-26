@@ -209,6 +209,7 @@ function ConsumerHomeContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedRating, setSelectedRating] = useState<number>(0);
   const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
+  const [lastErrorTime, setLastErrorTime] = useState<number>(0);
 
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
@@ -293,6 +294,15 @@ function ConsumerHomeContent() {
 
   const loadNearbyMerchants = async (latitude: number, longitude: number, retryCount = 0) => {
     const MAX_RETRIES = 2;
+    const ERROR_RATE_LIMIT_MS = 5000; // 5 seconds
+
+    // Check error rate limiting
+    const now = Date.now();
+    if (lastErrorTime > 0 && (now - lastErrorTime) < ERROR_RATE_LIMIT_MS) {
+      console.log('Skipping API call due to error rate limiting');
+      showError("Too Many Errors", "Please wait a moment before trying again.");
+      return;
+    }
 
     try {
       const isConnected = await checkNetworkConnectivity();
@@ -313,7 +323,10 @@ function ConsumerHomeContent() {
 
       // Make API call to get nearby merchants using apiClient
       const { apiClient } = await import('../../services/api');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, headers);
 
       if (!response.success || !response.data) {
@@ -355,7 +368,7 @@ function ConsumerHomeContent() {
       } else {
         throw new Error(data.message || 'Failed to load merchants');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading nearby merchants:', {
         errorName: error?.name,
         errorMessage: error?.message,
@@ -378,6 +391,7 @@ function ConsumerHomeContent() {
       } else if (error instanceof Error && error.message.includes('API Error')) {
         showError("Server Error", "Unable to load nearby merchants. Using cached data.");
       } else {
+        setLastErrorTime(Date.now());
         showError("Loading Error", "Failed to load nearby merchants. Using cached data.");
       }
 
