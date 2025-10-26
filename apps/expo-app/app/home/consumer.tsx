@@ -323,7 +323,7 @@ function ConsumerHomeContent() {
 
       // Make API call to get nearby merchants using apiClient
       const { apiClient } = await import('../../services/api');
-      const headers: Record<string, string> | undefined = token
+      const headers = token
         ? { Authorization: `Bearer ${token}` }
         : undefined;
       const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, headers);
