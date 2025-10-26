@@ -76,8 +76,22 @@ export default function ConsumerDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    // Fix: Cast the dynamic path to any to avoid TypeScript errors
-    router.push(`/feature/${feature.id}` as any);
+    // Map feature IDs to actual routes
+    const featureRoutes: Record<string, string> = {
+      'order-history': '/orders/consumer-orders',
+      'live-tracking': '/orders/order-tracking',
+      'favorites': '/favorites',
+      'wallet': '/transactions',
+      'support': '/support',
+      'settings': '/profile'
+    };
+
+    const route = featureRoutes[feature.id];
+    if (route) {
+      router.push(route);
+    } else {
+      Alert.alert("Feature", `${feature.title} is being implemented`);
+    }
   };
 
   const features = [
@@ -101,8 +115,8 @@ export default function ConsumerDashboard() {
           <Text style={styles.email}>{userEmail}</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={styles.cartButton} 
+          <TouchableOpacity
+            style={styles.cartButton}
             onPress={() => router.push('/cart')}
           >
             <Ionicons name="cart-outline" size={24} color="white" />
@@ -130,7 +144,7 @@ export default function ConsumerDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Image 
+                <Image
                   source={feature.icon}
                   style={styles.featureIconImage}
                   resizeMode="contain"

@@ -64,25 +64,21 @@ export default function DriverDashboard() {
   ];
 
   const handleFeaturePress = (feature: any) => {
-    switch (feature.id) {
-      case 'available-orders':
-      case 'my-deliveries':
-        router.push('/orders/driver-orders');
-        break;
-      case 'earnings':
-        router.push('/driver/earnings-details');
-        break;
-      case 'navigation':
-        router.push('/store-locator');
-        break;
-      case 'vehicle-info':
-        router.push('/driver/vehicle-management');
-        break;
-      case 'support':
-        router.push('/support');
-        break;
-      default:
-        router.push(feature.route || '/profile');
+    // Map feature IDs to actual routes
+    const featureRoutes: Record<string, string> = {
+      'available-orders': '/orders/driver-orders',
+      'my-deliveries': '/orders/driver-orders',
+      'earnings': '/driver/earnings-details',
+      'navigation': '/store-locator',
+      'vehicle-info': '/driver/vehicle-management',
+      'support': '/support'
+    };
+
+    const route = featureRoutes[feature.id];
+    if (route) {
+      router.push(route);
+    } else {
+      Alert.alert("Feature", `${feature.title} is being implemented`);
     }
   };
 

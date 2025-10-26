@@ -48,6 +48,7 @@ interface Order {
   deliveryTime?: string;
   driverName?: string;
   date?: string; // Added for receipt generation
+  createdAt?: string; // Added for receipt generation
 }
 
 export default function OrderDetails() {
@@ -118,7 +119,8 @@ export default function OrderDetails() {
         timeTaken: '15 mins',
         deliveryTime: '05:00pm',
         driverName: 'Mike',
-        date: 'January 15, 2024' // Added for receipt generation
+        date: 'January 15, 2024', // Added for receipt generation
+        createdAt: '2024-01-15T17:00:00' // Added for receipt generation
       };
       // Simulate a status change for demonstration purposes
       if (id === '1001') { // Example ID for an order that is out for delivery
@@ -136,24 +138,39 @@ export default function OrderDetails() {
     router.push(`/orders/report-issue?orderId=${order?.id}`);
   };
 
-  const handleShareReceipt = () => {
-    setShowReceiptModal(true);
+  const handleShareReceipt = async () => {
+    if (!order) return;
+
+    try {
+      const receiptText = `
+Order Receipt
+Order ID: ${order.id}
+Status: ${order.status}
+Total: ₦${order.totalAmount?.toLocaleString() || '0'}
+Date: ${new Date(order.createdAt).toLocaleDateString()}
+      `.trim();
+
+      // For web, copy to clipboard
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(receiptText);
+        showSuccess('Success', 'Receipt copied to clipboard');
+      } else {
+        showInfo('Receipt', receiptText);
+      }
+    } catch (error) {
+      showError('Error', 'Failed to share receipt');
+    }
   };
 
   const handleModifyOrder = () => {
-    if (order?.status === 'pending' || order?.status === 'confirmed') {
-      Alert.alert(
-        'Modify Order',
-        'What would you like to modify?',
-        [
-          { text: 'Cancel Order', onPress: handleCancelOrder, style: 'destructive' },
-          { text: 'Change Delivery Address', onPress: handleChangeAddress },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
-    } else {
-      Alert.alert('Cannot Modify', 'This order can no longer be modified');
+    if (!order) return;
+
+    if (order.status === 'delivered' || order.status === 'cancelled') {
+      showError('Cannot Modify', 'This order cannot be modified');
+      return;
     }
+
+    router.push(`/orders/change-address?orderId=${order.id}`);
   };
 
   const handleCancelOrder = async () => {
@@ -166,7 +183,7 @@ export default function OrderDetails() {
 
   const handleContactDriver = (type: 'message' | 'call') => {
     setShowDriverCommunication(false);
-    
+
     if (type === 'message') {
       // Navigate to chat with driver
       router.push(`/chat/driver-${order?.id}`);

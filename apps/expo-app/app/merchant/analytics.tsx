@@ -11,9 +11,11 @@ import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext pr
 
 function MerchantAnalytics() {
   const router = useRouter();
-  const { loadMerchantId } = useMerchant();
-  const { user } = useAuth(); // Get user info from AuthContext
-  const merchantId = user?.merchantId; // Get merchantId from user object
+  const { loadMerchantId, merchantId: contextMerchantId } = useMerchant();
+  const { user } = useAuth();
+  
+  // Priority: 1. Context merchantId, 2. User merchantId
+  const merchantId = contextMerchantId || user?.merchantId;
 
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [analyticsData, setAnalyticsData] = useState<any>(null);

@@ -54,27 +54,21 @@ export default function MerchantDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    switch (feature.id) {
-      case 'manage-commodities':
-        router.push('/merchant/commodities');
-        break;
-      case 'manage-orders':
-        router.push('/merchant/order-management');
-        break;
-      case 'analytics':
-        router.push('/merchant/analytics');
-        break;
-      case 'customer-communication':
-        router.push('/chat');
-        break;
-      case 'inventory':
-        router.push('/merchant/inventory');
-        break;
-      case 'store-settings':
-        router.push('/merchant/store-settings');
-        break;
-      default:
-        router.push(`/${feature.route}` || '/profile');
+    // Map feature IDs to actual routes
+    const featureRoutes: Record<string, string> = {
+      'manage-orders': '/merchant/order-management',
+      'inventory': '/merchant/inventory',
+      'analytics': '/merchant/analytics',
+      'commodities': '/merchant/commodities',
+      'customers': '/merchant/customer-communication',
+      'settings': '/merchant/store-settings'
+    };
+
+    const route = featureRoutes[feature.id];
+    if (route) {
+      router.push(route);
+    } else {
+      Alert.alert("Feature", `${feature.title} is being implemented`);
     }
   };
 

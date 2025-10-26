@@ -93,7 +93,7 @@ export default function MerchantDetailScreen() {
   useEffect(() => {
     if (!id) return;
     setMerchant(null);
-    
+
     // Import and use merchantService
     import('../../services/merchantService').then(({ merchantService }) => {
       merchantService.getMerchantById(id)
@@ -148,7 +148,7 @@ export default function MerchantDetailScreen() {
                 Alert.alert("Error", "Phone calling is not supported on this device");
                 }
               }).catch(() => {
-                Alert.alert("Error", "Unable to make phone call");
+                Alert.Alert.alert("Error", "Unable to make phone call");
               });
           }
         }
@@ -230,6 +230,12 @@ export default function MerchantDetailScreen() {
     }
 
     return stars;
+  };
+
+  // This function is intended to navigate to the reviews page directly.
+  const handleViewReviews = () => {
+    if (!merchant) return;
+    router.push(`/merchant/${merchant.id}/reviews`);
   };
 
   return (
@@ -399,7 +405,7 @@ export default function MerchantDetailScreen() {
           {merchant.reviews && merchant.reviews.length > 0 && (
             <TouchableOpacity
               style={styles.viewAllReviewsButton}
-              onPress={() => router.push(`/merchant/${merchantId}/reviews`)}
+              onPress={handleViewReviews}
             >
               <Text style={styles.viewAllReviewsText}>View All {merchant.reviewCount || merchant.reviews.length} Reviews</Text>
               <Ionicons name="chevron-forward" size={16} color="#4682B4" />

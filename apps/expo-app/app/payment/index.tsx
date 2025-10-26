@@ -99,6 +99,10 @@ export default function PaymentMethodScreen() {
     router.push('/payment/add-payment-method');
   };
 
+  const handleManageMethods = () => {
+    router.push('/payment/manage-methods');
+  };
+
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
 
   return (

@@ -53,11 +53,12 @@ const UNITS = [
 function MerchantCommoditiesScreen() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess } = useAlert();
-  const { loadMerchantId } = useMerchant();
-  const { user } = useAuth(); // Get user from AuthContext
-  const { params } = router.useSearchParams(); // Get route parameters
+  const { loadMerchantId, merchantId: contextMerchantId } = useMerchant();
+  const { user } = useAuth();
+  const { params } = router.useSearchParams();
 
-  const merchantId = user?.merchantId || params?.merchantId; // Get merchantId from user or params
+  // Priority: 1. Context merchantId, 2. User merchantId, 3. Route params
+  const merchantId = contextMerchantId || user?.merchantId || params?.merchantId;
 
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [commodities, setCommodities] = useState<Commodity[]>([]);

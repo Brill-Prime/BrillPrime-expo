@@ -104,9 +104,14 @@ class ApiClient {
       let errorMessage = 'Unknown error occurred';
 
       if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
-        errorMessage = 'Request timeout - The server is taking too long to respond. It may be waking up from sleep (this can take up to 60 seconds on first load).';
+        errorMessage = 'Request timeout - The server is taking too long to respond.';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        errorMessage = 'Cannot connect to server. Please check your internet connection or try again in a moment.';
+        // Check if backend is running on localhost
+        if (this.baseURL.includes('localhost')) {
+          errorMessage = 'Backend server is not running. Please start the backend server.';
+        } else {
+          errorMessage = 'Cannot connect to server. Please check your internet connection.';
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
