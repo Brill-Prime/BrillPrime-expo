@@ -1,5 +1,4 @@
 import { withRoleAccess } from '../../components/withRoleAccess';
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,670 +7,395 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  RefreshControl,
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../../config/theme';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface EarningsSummary {
-  totalEarnings: number;
-  todayEarnings: number;
-  weekEarnings: number;
-  monthEarnings: number;
-  completedDeliveries: number;
-  averagePerDelivery: number;
-  pendingPayout: number;
-  lastPayoutDate: string;
-  lastPayoutAmount: number;
-}
-
-interface EarningsBreakdown {
-  deliveryFees: number;
-  tips: number;
-  bonuses: number;
-  fuelReimbursement: number;
-  tollReimbursement: number;
-}
-
-interface Transaction {
-  id: string;
-  date: string;
-  type: 'delivery' | 'tip' | 'bonus' | 'payout' | 'reimbursement';
-  description: string;
-  amount: number;
-  status: 'completed' | 'pending' | 'processing';
-  orderId?: string;
+interface EarningsData {
+  today: number;
+  week: number;
+  month: number;
+  total: number;
+  trips: {
+    date: string;
+    amount: number;
+    orderId: string;
+    distance: string;
+    duration: string;
+  }[];
+  statistics: {
+    totalTrips: number;
+    avgEarningsPerTrip: number;
+    totalDistance: string;
+    totalHours: number;
+  };
 }
 
 function DriverEarningsDetails() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('week');
-  
-  const [summary, setSummary] = useState<EarningsSummary>({
-    totalEarnings: 45750.00,
-    todayEarnings: 3200.00,
-    weekEarnings: 18500.00,
-    monthEarnings: 45750.00,
-    completedDeliveries: 127,
-    averagePerDelivery: 360.24,
-    pendingPayout: 8300.00,
-    lastPayoutDate: '2025-01-20',
-    lastPayoutAmount: 15000.00,
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('week');
+  const [earnings, setEarnings] = useState<EarningsData>({
+    today: 1240,
+    week: 8750,
+    month: 32400,
+    total: 156800,
+    trips: [
+      { date: '2025-10-25', amount: 850, orderId: 'ORD-1234', distance: '12.5 km', duration: '45 min' },
+      { date: '2025-10-25', amount: 650, orderId: 'ORD-1235', distance: '8.2 km', duration: '30 min' },
+      { date: '2025-10-24', amount: 1200, orderId: 'ORD-1236', distance: '18.7 km', duration: '60 min' },
+      { date: '2025-10-24', amount: 420, orderId: 'ORD-1237', distance: '5.3 km', duration: '20 min' },
+      { date: '2025-10-23', amount: 980, orderId: 'ORD-1238', distance: '15.1 km', duration: '50 min' },
+    ],
+    statistics: {
+      totalTrips: 234,
+      avgEarningsPerTrip: 670,
+      totalDistance: '2,845 km',
+      totalHours: 186,
+    },
   });
-
-  const [breakdown, setBreakdown] = useState<EarningsBreakdown>({
-    deliveryFees: 35000.00,
-    tips: 5500.00,
-    bonuses: 3250.00,
-    fuelReimbursement: 1500.00,
-    tollReimbursement: 500.00,
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      date: '2025-01-28 14:30',
-      type: 'delivery',
-      description: 'Delivery #ORD-1001',
-      amount: 450.00,
-      status: 'completed',
-      orderId: 'ORD-1001',
-    },
-    {
-      id: '2',
-      date: '2025-01-28 12:15',
-      type: 'tip',
-      description: 'Customer tip - ORD-1000',
-      amount: 100.00,
-      status: 'completed',
-      orderId: 'ORD-1000',
-    },
-    {
-      id: '3',
-      date: '2025-01-27 18:45',
-      type: 'bonus',
-      description: 'Weekend delivery bonus',
-      amount: 500.00,
-      status: 'completed',
-    },
-    {
-      id: '4',
-      date: '2025-01-27 16:20',
-      type: 'delivery',
-      description: 'Delivery #ORD-0999',
-      amount: 380.00,
-      status: 'completed',
-      orderId: 'ORD-0999',
-    },
-    {
-      id: '5',
-      date: '2025-01-26 11:00',
-      type: 'reimbursement',
-      description: 'Fuel reimbursement',
-      amount: 250.00,
-      status: 'processing',
-    },
-  ]);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-
     loadEarningsData();
-
     return () => subscription?.remove();
   }, []);
 
   const loadEarningsData = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to fetch earnings data
+      // TODO: Fetch from API
       // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/earnings`, {
-      //   headers: { 'Authorization': `Bearer ${token}` }
+      //   headers: { Authorization: `Bearer ${token}` }
       // });
     } catch (error) {
-      console.error('Error loading earnings data:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadEarningsData();
-    setTimeout(() => setRefreshing(false), 1000);
-  };
-
-  const getCurrentPeriodEarnings = () => {
-    switch (selectedPeriod) {
-      case 'today':
-        return summary.todayEarnings;
-      case 'week':
-        return summary.weekEarnings;
-      case 'month':
-        return summary.monthEarnings;
-      case 'all':
-        return summary.totalEarnings;
-      default:
-        return summary.weekEarnings;
+      console.error('Error loading earnings:', error);
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₦${amount.toLocaleString()}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'delivery':
-        return 'car-outline';
-      case 'tip':
-        return 'heart-outline';
-      case 'bonus':
-        return 'gift-outline';
-      case 'payout':
-        return 'card-outline';
-      case 'reimbursement':
-        return 'repeat-outline';
-      default:
-        return 'cash-outline';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return '#10b981';
-      case 'pending':
-        return '#f59e0b';
-      case 'processing':
-        return '#3b82f6';
-      default:
-        return '#6b7280';
-    }
+  const getCurrentPeriodAmount = () => {
+    // This assumes that the keys in the earnings object match the selectedPeriod state
+    // and that the 'total' property is handled separately if needed.
+    // If 'total' is a valid period, add it to the union type for selectedPeriod.
+    if (selectedPeriod === 'today') return earnings.today;
+    if (selectedPeriod === 'week') return earnings.week;
+    if (selectedPeriod === 'month') return earnings.month;
+    return earnings.total; // Fallback or handle 'all' period if added
   };
 
   const styles = getResponsiveStyles(screenData);
 
   return (
-    <LinearGradient
-      colors={['rgb(11, 26, 81)', '#1e3a8a']}
-      style={styles.container}
-    >
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Earnings</Text>
+        <TouchableOpacity style={styles.filterButton}>
+          <Ionicons name="filter" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Period Selector */}
+        <View style={styles.periodSelector}>
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
+            style={[styles.periodButton, selectedPeriod === 'today' && styles.periodButtonActive]}
+            onPress={() => setSelectedPeriod('today')}
           >
-            <Ionicons name="arrow-back" size={24} color="white" />
+            <Text style={[styles.periodButtonText, selectedPeriod === 'today' && styles.periodButtonTextActive]}>
+              Today
+            </Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Earnings Details</Text>
           <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={onRefresh}
+            style={[styles.periodButton, selectedPeriod === 'week' && styles.periodButtonActive]}
+            onPress={() => setSelectedPeriod('week')}
           >
-            <Ionicons name="refresh" size={24} color="white" />
+            <Text style={[styles.periodButtonText, selectedPeriod === 'week' && styles.periodButtonTextActive]}>
+              This Week
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.periodButton, selectedPeriod === 'month' && styles.periodButtonActive]}
+            onPress={() => setSelectedPeriod('month')}
+          >
+            <Text style={[styles.periodButtonText, selectedPeriod === 'month' && styles.periodButtonTextActive]}>
+              This Month
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          {/* Earnings Summary Card */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Current Balance</Text>
-            <Text style={styles.summaryAmount}>
-              {formatCurrency(getCurrentPeriodEarnings())}
-            </Text>
-            
-            {/* Period Selector */}
-            <View style={styles.periodSelector}>
-              {(['today', 'week', 'month', 'all'] as const).map((period) => (
-                <TouchableOpacity
-                  key={period}
-                  style={[
-                    styles.periodButton,
-                    selectedPeriod === period && styles.periodButtonActive,
-                  ]}
-                  onPress={() => setSelectedPeriod(period)}
-                >
-                  <Text
-                    style={[
-                      styles.periodButtonText,
-                      selectedPeriod === period && styles.periodButtonTextActive,
-                    ]}
-                  >
-                    {period.charAt(0).toUpperCase() + period.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+        {/* Total Earnings Card */}
+        <Card style={styles.totalCard}>
+          <CardContent>
+            <Text style={styles.totalLabel}>Total Earnings</Text>
+            <Text style={styles.totalAmount}>{formatCurrency(getCurrentPeriodAmount())}</Text>
+            <View style={styles.growthContainer}>
+              <Ionicons name="trending-up" size={16} color={theme.colors.success} />
+              <Text style={styles.growthText}>+12.5% from last {selectedPeriod}</Text>
             </View>
-          </View>
+          </CardContent>
+        </Card>
 
-          {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-              <Text style={styles.statValue}>{summary.completedDeliveries}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
+        {/* Statistics Grid */}
+        <View style={styles.statsGrid}>
+          <Card style={styles.statCard}>
+            <CardContent>
+              <Ionicons name="car" size={24} color={theme.colors.primary} />
+              <Text style={styles.statValue}>{earnings.statistics.totalTrips}</Text>
+              <Text style={styles.statLabel}>Total Trips</Text>
+            </CardContent>
+          </Card>
 
-            <View style={styles.statCard}>
-              <Ionicons name="trending-up" size={24} color="#3b82f6" />
-              <Text style={styles.statValue}>{formatCurrency(summary.averagePerDelivery)}</Text>
-              <Text style={styles.statLabel}>Avg/Delivery</Text>
-            </View>
+          <Card style={styles.statCard}>
+            <CardContent>
+              <Ionicons name="cash" size={24} color={theme.colors.success} />
+              <Text style={styles.statValue}>{formatCurrency(earnings.statistics.avgEarningsPerTrip)}</Text>
+              <Text style={styles.statLabel}>Avg/Trip</Text>
+            </CardContent>
+          </Card>
 
-            <View style={styles.statCard}>
-              <Ionicons name="time" size={24} color="#f59e0b" />
-              <Text style={styles.statValue}>{formatCurrency(summary.pendingPayout)}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-          </View>
+          <Card style={styles.statCard}>
+            <CardContent>
+              <Ionicons name="navigate" size={24} color={theme.colors.info} />
+              <Text style={styles.statValue}>{earnings.statistics.totalDistance}</Text>
+              <Text style={styles.statLabel}>Distance</Text>
+            </CardContent>
+          </Card>
 
-          {/* Earnings Breakdown */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Earnings Breakdown</Text>
-            <View style={styles.breakdownCard}>
-              {[
-                { label: 'Delivery Fees', amount: breakdown.deliveryFees, icon: 'car-outline', color: '#4682B4' },
-                { label: 'Tips', amount: breakdown.tips, icon: 'heart-outline', color: '#ef4444' },
-                { label: 'Bonuses', amount: breakdown.bonuses, icon: 'gift-outline', color: '#8b5cf6' },
-                { label: 'Fuel Reimbursement', amount: breakdown.fuelReimbursement, icon: 'water-outline', color: '#f59e0b' },
-                { label: 'Toll Reimbursement', amount: breakdown.tollReimbursement, icon: 'card-outline', color: '#10b981' },
-              ].map((item, index) => (
-                <View key={index} style={styles.breakdownItem}>
-                  <View style={styles.breakdownLeft}>
-                    <View style={[styles.breakdownIcon, { backgroundColor: item.color + '20' }]}>
-                      <Ionicons name={item.icon as any} size={20} color={item.color} />
-                    </View>
-                    <Text style={styles.breakdownLabel}>{item.label}</Text>
-                  </View>
-                  <Text style={styles.breakdownAmount}>{formatCurrency(item.amount)}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          <Card style={styles.statCard}>
+            <CardContent>
+              <Ionicons name="time" size={24} color={theme.colors.warning} />
+              <Text style={styles.statValue}>{earnings.statistics.totalHours}h</Text>
+              <Text style={styles.statLabel}>Hours</Text>
+            </CardContent>
+          </Card>
+        </View>
 
-          {/* Last Payout Info */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Last Payout</Text>
-            <View style={styles.payoutCard}>
-              <View style={styles.payoutRow}>
-                <Text style={styles.payoutLabel}>Date</Text>
-                <Text style={styles.payoutValue}>
-                  {new Date(summary.lastPayoutDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </Text>
-              </View>
-              <View style={styles.payoutRow}>
-                <Text style={styles.payoutLabel}>Amount</Text>
-                <Text style={[styles.payoutValue, styles.payoutAmount]}>
-                  {formatCurrency(summary.lastPayoutAmount)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Transaction History */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            {transactions.map((transaction) => (
+        {/* Recent Trips */}
+        <Card style={styles.tripsCard}>
+          <CardHeader>
+            <CardTitle>Recent Trips</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {earnings.trips.map((trip, index) => (
               <TouchableOpacity
-                key={transaction.id}
-                style={styles.transactionCard}
-                onPress={() => {
-                  if (transaction.orderId) {
-                    router.push(`/orders/order-details?orderId=${transaction.orderId}`);
-                  }
-                }}
+                key={index}
+                style={styles.tripItem}
+                onPress={() => router.push(`/orders/order-details?orderId=${trip.orderId}`)}
               >
-                <View style={styles.transactionLeft}>
-                  <View style={styles.transactionIcon}>
-                    <Ionicons
-                      name={getTransactionIcon(transaction.type) as any}
-                      size={20}
-                      color="rgb(11, 26, 81)"
-                    />
+                <View style={styles.tripLeft}>
+                  <View style={styles.tripIconContainer}>
+                    <Ionicons name="checkmark-circle" size={24} color={theme.colors.success} />
                   </View>
-                  <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionDescription}>
-                      {transaction.description}
+                  <View style={styles.tripInfo}>
+                    <Text style={styles.tripOrderId}>{trip.orderId}</Text>
+                    <Text style={styles.tripDetails}>
+                      {trip.distance} • {trip.duration}
                     </Text>
-                    <Text style={styles.transactionDate}>
-                      {formatDate(transaction.date)}
-                    </Text>
+                    <Text style={styles.tripDate}>{trip.date}</Text>
                   </View>
                 </View>
-                <View style={styles.transactionRight}>
-                  <Text style={styles.transactionAmount}>
-                    +{formatCurrency(transaction.amount)}
-                  </Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(transaction.status) },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>
-                      {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                    </Text>
-                  </View>
-                </View>
+                <Text style={styles.tripAmount}>{formatCurrency(trip.amount)}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </CardContent>
+        </Card>
 
-          {/* Request Payout Button */}
-          <View style={styles.actionSection}>
-            <TouchableOpacity
-              style={styles.payoutButton}
-              onPress={() => {
-                router.push('/payment/index');
-              }}
-            >
-              <Ionicons name="wallet-outline" size={20} color="white" />
-              <Text style={styles.payoutButtonText}>Request Payout</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+        {/* Withdrawal Button */}
+        <TouchableOpacity style={styles.withdrawButton} onPress={() => router.push('/payment/add-bank-details')}>
+          <Ionicons name="wallet" size={20} color="#fff" />
+          <Text style={styles.withdrawButtonText}>Withdraw Earnings</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const getResponsiveStyles = (screenData: any) => {
-  const { width, height } = screenData;
+  const { width } = screenData;
   const isTablet = width >= 768;
-  const isSmallScreen = width < 350;
 
   return StyleSheet.create({
     container: {
       flex: 1,
-    },
-    safeArea: {
-      flex: 1,
+      backgroundColor: theme.colors.backgroundSecondary,
     },
     header: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      padding: Math.max(16, width * 0.05),
-      paddingTop: Math.max(50, height * 0.07),
+      justifyContent: 'space-between',
+      padding: theme.spacing.base,
+      backgroundColor: theme.colors.primary,
     },
     backButton: {
-      padding: Math.max(8, width * 0.02),
+      padding: theme.spacing.sm,
     },
     headerTitle: {
-      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
+      fontSize: theme.typography.fontSize.xl,
       fontWeight: 'bold',
-      color: 'white',
+      color: '#fff',
+      fontFamily: theme.typography.fontFamily.bold,
     },
-    refreshButton: {
-      padding: Math.max(8, width * 0.02),
+    filterButton: {
+      padding: theme.spacing.sm,
     },
     content: {
       flex: 1,
-      backgroundColor: 'white',
-      borderTopLeftRadius: 35,
-      borderTopRightRadius: 35,
-      paddingTop: Math.max(24, height * 0.03),
-    },
-    summaryCard: {
-      marginHorizontal: Math.max(16, width * 0.05),
-      marginBottom: 20,
-      padding: 24,
-      backgroundColor: 'rgb(11, 26, 81)',
-      borderRadius: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 6,
-    },
-    summaryLabel: {
-      fontSize: 14,
-      color: 'rgba(255, 255, 255, 0.8)',
-      marginBottom: 8,
-    },
-    summaryAmount: {
-      fontSize: isTablet ? 36 : isSmallScreen ? 28 : 32,
-      fontWeight: 'bold',
-      color: 'white',
-      marginBottom: 20,
+      padding: theme.spacing.base,
     },
     periodSelector: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.lg,
     },
     periodButton: {
       flex: 1,
-      paddingVertical: 8,
-      borderRadius: 8,
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      paddingVertical: theme.spacing.md,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.colors.white,
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     periodButtonActive: {
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
     },
     periodButtonText: {
-      fontSize: 12,
-      color: 'rgba(255, 255, 255, 0.8)',
-      fontWeight: '500',
+      fontSize: theme.typography.fontSize.sm,
+      color: theme.colors.text,
+      fontFamily: theme.typography.fontFamily.medium,
     },
     periodButtonTextActive: {
-      color: 'rgb(11, 26, 81)',
-      fontWeight: '600',
+      color: '#fff',
+      fontFamily: theme.typography.fontFamily.semiBold,
+    },
+    totalCard: {
+      marginBottom: theme.spacing.lg,
+      padding: theme.spacing.xl,
+      alignItems: 'center',
+    },
+    totalLabel: {
+      fontSize: theme.typography.fontSize.md,
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.fontFamily.regular,
+      marginBottom: theme.spacing.xs,
+    },
+    totalAmount: {
+      fontSize: isTablet ? 48 : 36,
+      fontWeight: 'bold',
+      color: theme.colors.primary,
+      fontFamily: theme.typography.fontFamily.bold,
+      marginBottom: theme.spacing.sm,
+    },
+    growthContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+    },
+    growthText: {
+      fontSize: theme.typography.fontSize.sm,
+      color: theme.colors.success,
+      fontFamily: theme.typography.fontFamily.medium,
     },
     statsGrid: {
       flexDirection: 'row',
-      paddingHorizontal: Math.max(16, width * 0.05),
-      marginBottom: 20,
-      gap: 12,
+      flexWrap: 'wrap',
+      gap: theme.spacing.md,
+      marginBottom: theme.spacing.lg,
     },
     statCard: {
-      flex: 1,
-      backgroundColor: 'white',
-      padding: 16,
-      borderRadius: 12,
+      width: isTablet ? '48%' : '100%', // Adjusted for better spacing on tablets and single column on smaller screens
+      padding: theme.spacing.base,
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
     },
     statValue: {
-      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontSize: theme.typography.fontSize.lg,
       fontWeight: 'bold',
-      color: '#111827',
-      marginTop: 8,
+      color: theme.colors.text,
+      fontFamily: theme.typography.fontFamily.bold,
+      marginTop: theme.spacing.sm,
     },
     statLabel: {
-      fontSize: isTablet ? 11 : 10,
-      color: '#6b7280',
-      marginTop: 4,
+      fontSize: theme.typography.fontSize.xs,
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.fontFamily.regular,
+      marginTop: theme.spacing.xs,
     },
-    section: {
-      paddingHorizontal: Math.max(16, width * 0.05),
-      marginBottom: 20,
+    tripsCard: {
+      marginBottom: theme.spacing.xl,
     },
-    sectionTitle: {
-      fontSize: isTablet ? 18 : isSmallScreen ? 15 : 16,
-      fontWeight: '600',
-      color: '#111827',
-      marginBottom: 12,
-    },
-    breakdownCard: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    breakdownItem: {
+    tripItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: theme.spacing.md,
       borderBottomWidth: 1,
-      borderBottomColor: '#f3f4f6',
+      borderBottomColor: theme.colors.border,
     },
-    breakdownLeft: {
+    tripLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       flex: 1,
     },
-    breakdownIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
+    tripIconContainer: {
+      marginRight: theme.spacing.md,
     },
-    breakdownLabel: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      color: '#374151',
+    tripInfo: {
       flex: 1,
     },
-    breakdownAmount: {
-      fontSize: isTablet ? 15 : isSmallScreen ? 13 : 14,
+    tripOrderId: {
+      fontSize: theme.typography.fontSize.md,
       fontWeight: '600',
-      color: '#111827',
+      color: theme.colors.text,
+      fontFamily: theme.typography.fontFamily.semiBold,
     },
-    payoutCard: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+    tripDetails: {
+      fontSize: theme.typography.fontSize.sm,
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.fontFamily.regular,
+      marginTop: theme.spacing.xs,
     },
-    payoutRow: {
+    tripDate: {
+      fontSize: theme.typography.fontSize.xs,
+      color: theme.colors.textLight,
+      fontFamily: theme.typography.fontFamily.regular,
+      marginTop: theme.spacing.xs,
+    },
+    tripAmount: {
+      fontSize: theme.typography.fontSize.lg,
+      fontWeight: 'bold',
+      color: theme.colors.success,
+      fontFamily: theme.typography.fontFamily.bold,
+    },
+    withdrawButton: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 10,
-    },
-    payoutLabel: {
-      fontSize: 14,
-      color: '#6b7280',
-    },
-    payoutValue: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#111827',
-    },
-    payoutAmount: {
-      color: '#10b981',
-      fontSize: 16,
-    },
-    transactionCard: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    transactionLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-    },
-    transactionIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: '#f3f4f6',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    transactionInfo: {
-      flex: 1,
-    },
-    transactionDescription: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      fontWeight: '500',
-      color: '#111827',
-      marginBottom: 4,
-    },
-    transactionDate: {
-      fontSize: isTablet ? 11 : 10,
-      color: '#6b7280',
-    },
-    transactionRight: {
-      alignItems: 'flex-end',
-    },
-    transactionAmount: {
-      fontSize: isTablet ? 15 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
-      color: '#10b981',
-      marginBottom: 4,
-    },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    statusText: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: 'white',
-    },
-    actionSection: {
-      paddingHorizontal: Math.max(16, width * 0.05),
-      paddingBottom: 32,
-    },
-    payoutButton: {
-      flexDirection: 'row',
-      backgroundColor: 'rgb(11, 26, 81)',
-      paddingVertical: 16,
-      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      backgroundColor: theme.colors.primary,
+      padding: theme.spacing.base,
+      borderRadius: theme.borderRadius.lg,
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.xl,
     },
-    payoutButtonText: {
-      color: 'white',
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
+    withdrawButtonText: {
+      fontSize: theme.typography.fontSize.md,
+      fontWeight: 'bold',
+      color: '#fff',
+      fontFamily: theme.typography.fontFamily.bold,
     },
   });
 };
