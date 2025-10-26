@@ -11,7 +11,7 @@ localPort = 5000
 externalPort = 5000
 
 [workflows]
-runButton = "Start Full Stack"
+runButton = "Start Full Stack (Yarn)"
 
 [[workflows.workflow]]
 name = "Start Full Stack"
@@ -25,3 +25,16 @@ args = "cd apps/backend && npm install && npm start"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd apps/expo-app && npm install && npm run web"
+
+[[workflows.workflow]]
+name = "Start Full Stack (Yarn)"
+author = 49014718
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/backend && yarn install && yarn start"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/expo-app && yarn install && yarn web"
