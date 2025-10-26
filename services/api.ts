@@ -14,8 +14,22 @@ class ApiClient {
   private baseURL: string;
 
   constructor() {
-    // Use the deployed backend on Render
-    const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com';
+    // Auto-detect environment and use appropriate backend
+    const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+    const isDevelopment = process.env.NODE_ENV === 'development' || __DEV__;
+    
+    // Use local backend if on Replit in development
+    let API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+    
+    if (!API_BASE_URL && isDevelopment && replitDomain) {
+      // In Replit, use localhost:3000 for local backend
+      // Both frontend and backend run in the same environment
+      API_BASE_URL = 'http://localhost:3000';
+    } else if (!API_BASE_URL) {
+      // Fallback to production backend
+      API_BASE_URL = 'https://api.brillprime.com';
+    }
+    
     this.baseURL = API_BASE_URL;
     console.log('API Base URL:', this.baseURL);
   }
@@ -72,18 +86,17 @@ class ApiClient {
       };
     } catch (error) {
       // Improved error logging
-      console.error('API request failed:', {
-        endpoint,
-        errorName: error?.name,
-        errorMessage: error?.message,
-        errorStack: error?.stack,
-        errorType: typeof error,
-        fullError: error
-      });
+      const errorInfo: any = { endpoint, errorType: typeof error };
+      if (error && typeof error === 'object') {
+        if ('name' in error) errorInfo.errorName = error.name;
+        if ('message' in error) errorInfo.errorMessage = error.message;
+        if ('stack' in error) errorInfo.errorStack = error.stack;
+      }
+      console.error('API request failed:', errorInfo);
 
       let errorMessage = 'Unknown error occurred';
 
-      if (error?.name === 'AbortError') {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
         errorMessage = 'Request timeout - The server is taking too long to respond. It may be waking up from sleep (this can take up to 60 seconds on first load).';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
         errorMessage = 'Cannot connect to server. Please check your internet connection or try again in a moment.';

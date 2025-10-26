@@ -609,7 +609,7 @@ export default function SearchScreen() {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Search</Text>
-          <Text style={styles.headerSubtitle}>Near {userLocation}</Text>
+          <Text style={styles.headerSubtitle}>Near {typeof userLocation === 'string' ? userLocation : 'Your Location'}</Text>
         </View>
         <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(!showFilters)}>
           <Ionicons name="options-outline" size={24} color="#333" />
@@ -892,14 +892,14 @@ export default function SearchScreen() {
       </View>
 
       {/* Map View or Tabs */}
-      {showMap && userLocation ? (
+      {showMap && userCoordinates ? (
         <View style={styles.mapContainer}>
           <MapView
             provider={PROVIDER_GOOGLE}
             style={styles.map}
             region={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
+              latitude: userCoordinates.latitude,
+              longitude: userCoordinates.longitude,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }}

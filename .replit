@@ -73,6 +73,10 @@ author = "agent"
 task = "workflow.run"
 args = "Expo Web Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend Server"
+
 [[workflows.workflow]]
 name = "Expo Web Server"
 author = "agent"
@@ -87,12 +91,20 @@ outputType = "webview"
 
 [[workflows.workflow]]
 name = "Backend Server"
-author = 48998815
+author = "agent"
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server/index.js"
+waitForPort = 3000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
 
 [[ports]]
 localPort = 5000
@@ -137,6 +149,10 @@ externalPort = 8000
 [[ports]]
 localPort = 39863
 externalPort = 8008
+
+[[ports]]
+localPort = 43473
+externalPort = 8080
 
 [[ports]]
 localPort = 46753

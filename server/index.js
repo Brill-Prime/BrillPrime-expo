@@ -63,6 +63,46 @@ app.get('/api/cart', (req, res) => {
   });
 });
 
+// Payment methods endpoints
+app.get('/api/payment-methods', (req, res) => {
+  res.json({
+    success: true,
+    data: []
+  });
+});
+
+app.post('/api/payment-methods', (req, res) => {
+  const paymentMethod = req.body;
+  res.json({
+    success: true,
+    data: {
+      id: Date.now().toString(),
+      ...paymentMethod,
+      createdAt: new Date().toISOString()
+    }
+  });
+});
+
+app.get('/api/merchants/nearby/live', (req, res) => {
+  const { lat, lng, radius } = req.query;
+  res.json({
+    success: true,
+    data: [
+      {
+        id: '1',
+        name: 'Live Nearby Shell Station',
+        address: '456 Oak Ave',
+        latitude: parseFloat(lat) + 0.01,
+        longitude: parseFloat(lng) + 0.01,
+        distance: 1.2,
+        rating: 4.3,
+        isOpen: true,
+        category: 'Gas Station'
+      }
+    ]
+  });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
