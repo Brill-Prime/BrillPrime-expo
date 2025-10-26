@@ -14,20 +14,17 @@ class ApiClient {
   private baseURL: string;
 
   constructor() {
-    // Auto-detect environment and use appropriate backend
+    // Force localhost:3000 for development (Replit environment)
+    // The backend server runs on port 3000, frontend on port 5000
     const isDevelopment = process.env.NODE_ENV === 'development' || (typeof __DEV__ !== 'undefined' && __DEV__);
     
-    // In Replit, always use localhost:3000 for development
-    // The backend is running in parallel on port 3000
-    if (isDevelopment) {
-      this.baseURL = 'http://localhost:3000';
-    } else {
-      this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com';
-    }
+    // Always use localhost:3000 in Replit development
+    this.baseURL = 'http://localhost:3000';
     
     console.log('🚀 API Client Initialized');
     console.log('  Environment:', isDevelopment ? 'Development' : 'Production');
     console.log('  Base URL:', this.baseURL);
+    console.log('  Note: Using local backend server on port 3000');
   }
 
   private async makeRequest<T>(
