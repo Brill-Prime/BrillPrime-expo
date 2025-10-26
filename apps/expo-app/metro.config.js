@@ -1,3 +1,35 @@
+
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Add development proxy for API calls
+if (process.env.NODE_ENV === 'development') {
+  config.server = {
+    ...config.server,
+    enhanceMiddleware: (middleware) => {
+      return (req, res, next) => {
+        if (req.url.startsWith('/api/')) {
+          // Proxy API requests to backend
+          const proxyUrl = `http://localhost:3000${req.url}`;
+          fetch(proxyUrl, {
+            method: req.method,
+            headers: req.headers,
+            body: req.method !== 'GET' ? req.body : undefined,
+          })
+            .then(response => response.json())
+            .then(data => res.json(data))
+            .catch(err => res.status(500).json({ error: err.message }));
+        } else {
+          next();
+        }
+      };
+    },
+  };
+}
+
+module.exports = config;
+
 const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);

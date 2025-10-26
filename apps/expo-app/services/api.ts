@@ -17,10 +17,10 @@ class ApiClient {
     // Force localhost:3000 for development (Replit environment)
     // The backend server runs on port 3000, frontend on port 5000
     const isDevelopment = process.env.NODE_ENV === 'development' || (typeof __DEV__ !== 'undefined' && __DEV__);
-    
+
     // Always use localhost:3000 in Replit development
     this.baseURL = 'http://localhost:3000';
-    
+
     console.log('🚀 API Client Initialized');
     console.log('  Environment:', isDevelopment ? 'Development' : 'Production');
     console.log('  Base URL:', this.baseURL);
