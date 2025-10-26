@@ -323,10 +323,9 @@ function ConsumerHomeContent() {
 
       // Make API call to get nearby merchants using apiClient
       const { apiClient } = await import('../../services/api');
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
+      const headers: Record<string, string> | undefined = token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined;
       const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, headers);
 
       if (!response.success || !response.data) {
@@ -489,7 +488,7 @@ function ConsumerHomeContent() {
 
       if (error instanceof TypeError && error.message.includes('fetch')) {
         showError(
-          "Backend Unavailable", 
+          "Backend Unavailable",
           "Cannot reach the backend server. It may be waking up (Render free tier takes 50-60 seconds on first load). Using cached data."
         );
       } else {
@@ -501,7 +500,7 @@ function ConsumerHomeContent() {
   const loadFallbackMerchants = () => {
     // Show informative message instead of fake data
     showInfo(
-      "No Merchants Yet", 
+      "No Merchants Yet",
       "There are no registered merchants in the system yet. Merchants can register through the app to appear here."
     );
     setStoreLocations([]);
@@ -642,13 +641,13 @@ function ConsumerHomeContent() {
         }
 
         // Update driver location
-        setNearbyDrivers(prev => prev.map(d => 
-          d.id === activeDelivery.driverId 
-            ? { 
-                ...d, 
-                latitude: newLat, 
+        setNearbyDrivers(prev => prev.map(d =>
+          d.id === activeDelivery.driverId
+            ? {
+                ...d,
+                latitude: newLat,
                 longitude: newLng,
-                distanceToMerchant: activeDelivery.status === 'picking_up' 
+                distanceToMerchant: activeDelivery.status === 'picking_up'
                   ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
                   : 0,
                 distanceToConsumer: locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude),
@@ -862,16 +861,19 @@ function ConsumerHomeContent() {
           throw new Error(`Invalid route: ${targetRoute}`);
         }
       } catch (error) {
-        console.error(`Navigation error to ${item}:`, error);
+        console.error("Error in handleMenuItemPress:", {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
 
-        if (error instanceof Error) {
-          if (error.message.includes('Invalid route')) {
-            showError("Navigation Error", "Invalid navigation destination.");
-          } else {
-            showError("Navigation Error", `Could not navigate to ${item}. Please try again.`);
-          }
+        if (error instanceof Error && error.message.includes('Invalid route')) {
+          showError("Navigation Error", "Invalid navigation destination.");
         } else {
-          showError("Navigation Error", "An unexpected error occurred during navigation.");
+          const errorMessage = error && typeof error === 'object' && 'message' in error
+            ? String(error.message)
+            : "An unexpected error occurred during navigation.";
+          showError("Navigation Error", errorMessage);
         }
       }
     }, 300);
