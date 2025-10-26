@@ -1,3 +1,4 @@
+modules = ["nodejs-20"]
 [agent]
 expertMode = true
 
@@ -8,3 +9,19 @@ externalPort = 80
 [[ports]]
 localPort = 5000
 externalPort = 5000
+
+[workflows]
+runButton = "Start Full Stack"
+
+[[workflows.workflow]]
+name = "Start Full Stack"
+author = 49014718
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/backend && npm install && npm start"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/expo-app && npm install && npm run web"

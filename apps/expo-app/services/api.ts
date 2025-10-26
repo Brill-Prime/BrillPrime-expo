@@ -16,22 +16,29 @@ class ApiClient {
   constructor() {
     // Auto-detect environment and use appropriate backend
     const replitDomain = process.env.REPLIT_DEV_DOMAIN;
-    const isDevelopment = process.env.NODE_ENV === 'development' || __DEV__;
+    const isDevelopment = process.env.NODE_ENV === 'development' || (typeof __DEV__ !== 'undefined' && __DEV__);
     
     // Use local backend if on Replit in development
     let API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
     
-    if (!API_BASE_URL && isDevelopment && replitDomain) {
-      // In Replit, use localhost:3000 for local backend
-      // Both frontend and backend run in the same environment
-      API_BASE_URL = 'http://localhost:3000';
-    } else if (!API_BASE_URL) {
-      // Fallback to production backend
-      API_BASE_URL = 'https://api.brillprime.com';
+    if (!API_BASE_URL) {
+      if (isDevelopment && replitDomain) {
+        // In Replit development, use local backend on port 3000
+        API_BASE_URL = 'http://localhost:3000';
+      } else if (isDevelopment) {
+        // Local development outside Replit
+        API_BASE_URL = 'http://localhost:3000';
+      } else {
+        // Production fallback
+        API_BASE_URL = 'https://api.brillprime.com';
+      }
     }
     
     this.baseURL = API_BASE_URL;
-    console.log('API Base URL:', this.baseURL);
+    console.log('🚀 API Client Initialized');
+    console.log('  Environment:', isDevelopment ? 'Development' : 'Production');
+    console.log('  Base URL:', this.baseURL);
+    console.log('  Replit Domain:', replitDomain || 'Not in Replit');
   }
 
   private async makeRequest<T>(
