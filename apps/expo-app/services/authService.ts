@@ -37,7 +37,7 @@ import {
 } from './types';
 import { roleManagementService } from './roleManagementService';
 import * as Haptics from 'expo-haptics';
-import { SecurityService } from './SecurityService';
+import { SecurityService } from './securityService';
 
 class AuthService {
   private readonly TOKEN_KEY = 'userToken';

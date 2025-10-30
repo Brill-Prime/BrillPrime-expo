@@ -3,7 +3,7 @@ modules = ["nodejs-20"]
 expertMode = true
 
 [workflows]
-runButton = "Start BrillPrime Fixed"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -13,6 +13,10 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Brill Prime Full Stack"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Expo Web"
 
 [[workflows.workflow]]
 name = "Brill Prime Full Stack"
@@ -80,6 +84,18 @@ args = "cd apps/backend && PORT=3000 npm start"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd apps/expo-app && npx expo start --web --port 5000 --host 0.0.0.0"
+
+[[workflows.workflow]]
+name = "Expo Web"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/expo-app && npx expo start --web --port 5000 --host lan"
+waitForPort = 5000
 
 [[ports]]
 localPort = 3000
