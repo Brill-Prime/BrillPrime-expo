@@ -69,11 +69,23 @@ Preferred communication style: Simple, everyday language.
 
 ## Backend & Firebase Configuration
 
+### Full-Stack Development Setup
+- **Backend Server**: Node.js/Express running on port 3000 (`apps/backend/`)
+- **Frontend Server**: Expo web running on port 5000 (`apps/expo-app/`)
+- **Workflow**: Both servers start together via "Brill Prime Full Stack" workflow
+- **API Connection**: Frontend configured to connect to `http://localhost:3000` in development
+- **Configuration Files**:
+  - Backend config: `apps/backend/.env` (PORT=3000)
+  - Frontend API client: `apps/expo-app/services/api.ts`
+  - OAuth service: `apps/expo-app/services/oauth.js`
+  - Environment config: `apps/expo-app/config/environment.js`
+
 ### API Backend
-- **Backend URL**: `https://api.brillprime.com`
+- **Development URL**: `http://localhost:3000` (local Node.js backend)
+- **Production URL**: `https://api.brillprime.com` (to be configured)
 - **Configuration**: Configured in `config/environment.ts` and `services/api.ts`
-- **API Timeout**: 30 seconds for reliable external API communication
-- **Authentication**: Token-based authentication with Firebase integration
+- **API Timeout**: 60 seconds for development, 30 seconds for production
+- **Authentication**: JWT token-based authentication with refresh token support
 
 ### Firebase Connection
 - **Status**: ✅ Connected using vault credentials
@@ -91,6 +103,23 @@ Preferred communication style: Simple, everyday language.
   - EXPO_PUBLIC_FIREBASE_APP_ID
 
 ## Recent Changes
+
+### October 30, 2025 - Full-Stack Backend Integration
+- **Backend Integration**: Connected Expo app to local Node.js backend server
+- **Dual Server Setup**: Backend (port 3000) + Expo web (port 5000) running concurrently
+- **Workflow Configuration**: Single "Brill Prime Full Stack" workflow runs both servers
+- **API Service Updates**:
+  - Signup screen now uses real backend API (`/api/auth/register`)
+  - Sign-in screen uses real backend API (`/api/auth/login`)
+  - JWT token storage with refresh token support
+  - User data persistence (ID, role, email) in AsyncStorage
+- **OAuth Service Created**: Complete OAuth integration layer for Google, Apple, Facebook
+- **Environment Configuration**: Centralized config for dev/production API URLs
+- **Dependencies Installed**:
+  - Backend: 1663 packages (Express, TypeScript, Drizzle ORM, etc.)
+  - Frontend: 1764 packages (Expo, React Native, etc.)
+- **Node.js Module**: nodejs-20 installed for workflow environment
+- **Database**: PostgreSQL (Supabase) configured for backend
 
 ### October 09, 2025 - Complete API Integration
 - **Firebase Integration**: Connected app to Firebase using secure vault credentials

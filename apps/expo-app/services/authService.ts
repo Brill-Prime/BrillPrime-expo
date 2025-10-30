@@ -36,6 +36,8 @@ import {
   ApiResponse
 } from './types';
 import { roleManagementService } from './roleManagementService';
+import * as Haptics from 'expo-haptics';
+import { SecurityService } from './SecurityService';
 
 class AuthService {
   private readonly TOKEN_KEY = 'userToken';
@@ -697,6 +699,8 @@ class AuthService {
         ['userEmail', authData.user.email], // Store email for offline use
         // We don't store firebaseUid here as it's implicitly handled by Firebase auth state
       ]);
+      // Store token in SecureStore for biometric authentication
+      await SecurityService.storeAuthToken(authData.token);
     } catch (error: any) {
       console.error('Error storing auth data:', error);
     }
@@ -730,8 +734,11 @@ class AuthService {
         'tempUserEmail',
         'tempUserRole',
         'isOfflineMode', // Also clear offline mode flag
-        'userEmail' // Clear stored email as well
+        'userEmail', // Clear stored email as well
+        'biometricEnabled' // Clear biometric enabled flag
       ]);
+      // Clear token from SecureStore as well
+      await SecurityService.clearAuthToken();
     } catch (error: any) {
       console.error('Error clearing auth data:', error);
     }
@@ -739,37 +746,47 @@ class AuthService {
 
   async getToken(): Promise<string | null> {
     try {
-      // Check if Firebase user is available and get fresh token
+      // First, try to get token from SecureStore for biometric authentication
+      const secureToken = await SecurityService.getAuthToken();
+      if (secureToken) {
+        // Optionally, validate this token with backend or check expiry if possible
+        // For now, assuming it's valid if present
+        this.authToken = secureToken;
+        return secureToken;
+      }
+
+      // Fallback to AsyncStorage if SecureStore is empty or not used
       if (this.currentUser) {
         try {
           // Check if token needs refresh
           const expiry = await AsyncStorage.getItem('tokenExpiry');
           const needsRefresh = !expiry || Date.now() > (parseInt(expiry) - 5 * 60 * 1000); // 5 min buffer
-          
+
           // Force refresh if token is expiring soon
           const freshToken = await this.currentUser.getIdToken(needsRefresh);
           this.authToken = freshToken;
-          
+
           // Update stored token and expiry
           if (needsRefresh) {
             await AsyncStorage.setItem(this.TOKEN_KEY, freshToken);
             const newExpiry = Date.now() + (55 * 60 * 1000); // 55 minutes
             await AsyncStorage.setItem('tokenExpiry', newExpiry.toString());
+            await SecurityService.storeAuthToken(freshToken); // Update in SecureStore too
             console.log('Token refreshed successfully');
           }
-          
+
           return freshToken;
         } catch (firebaseError) {
           console.warn('Firebase token refresh failed, using stored token');
         }
       }
-      
-      // Fallback to stored token
+
+      // Fallback to AsyncStorage stored token
       const storedToken = await AsyncStorage.getItem(this.TOKEN_KEY);
       if (storedToken && this.isValidTokenFormat(storedToken)) {
         return storedToken;
       }
-      
+
       return null;
     } catch (error: any) {
       console.error('Error getting token:', error);
@@ -826,6 +843,7 @@ class AuthService {
         // Token is still valid on server, just update expiry
         const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000);
         await AsyncStorage.setItem('tokenExpiry', tokenExpiry.toString());
+        await SecurityService.storeAuthToken(response.data.token); // Update SecureStore
         return true;
       } else {
         // Token is invalid or refresh failed, clear auth data
@@ -900,6 +918,44 @@ class AuthService {
         shouldRefresh: false,
         error: 'Authentication validation failed due to an error'
       };
+    }
+  }
+
+  // Biometric authentication methods
+  static async enableBiometricAuth(): Promise<boolean> {
+    try {
+      const isAvailable = await SecurityService.isBiometricAvailable();
+      if (!isAvailable) {
+        throw new Error('Biometric authentication is not available on this device');
+      }
+
+      const result = await SecurityService.secureBiometricLogin();
+      if (result) {
+        await AsyncStorage.setItem('biometricEnabled', 'true');
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error enabling biometric auth:', error);
+      return false;
+    }
+  }
+
+  static async loginWithBiometrics(): Promise<boolean> {
+    try {
+      const isBiometricEnabled = await AsyncStorage.getItem('biometricEnabled');
+      if (isBiometricEnabled !== 'true') {
+        return false;
+      }
+
+      const result = await SecurityService.secureBiometricLogin();
+      if (result) {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error with biometric login:', error);
+      return false;
     }
   }
 }

@@ -14,7 +14,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as locationService from '../services/locationService';
 
 // Types for drawing tools
-type DrawingMode = 'marker' | 'polygon' | 'circle' | 'rectangle' | null;
+type DrawingMode = 'point' | 'polygon' | 'circle' | 'rectangle' | null; // Changed 'marker' to 'point' and added 'rectangle' based on Mapbox Draw controls
 
 interface MapProps {
   style?: ViewStyle;
@@ -48,7 +48,6 @@ interface MapProps {
   enableLiveTracking?: boolean;
   trackingUserId?: string;
   onLiveLocationUpdate?: (location: any) => void;
-  // New props for search and drawing
   showSearch?: boolean;
   showDrawingTools?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
@@ -83,11 +82,6 @@ const MapWeb: React.FC<MapProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [drawingMode, setDrawingMode] = useState<DrawingMode>(null);
   const webViewRef = useRef<WebView>(null);
-  const [mapComponents, setMapComponents] = useState<{
-    Map: React.ComponentType<any>;
-    Marker: React.ComponentType<any>;
-  } | null>(null);
-  const mapRef = useRef<any>(null);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [liveLocations, setLiveLocations] = useState<any[]>([]);
 
@@ -100,100 +94,55 @@ const MapWeb: React.FC<MapProps> = ({
 
   // Convert latitudeDelta to zoom level
   const getZoomLevel = (latitudeDelta: number): number => {
+    // This calculation is an approximation and might not be precise for Mapbox.
+    // Mapbox uses zoom levels directly, so this function might be less relevant.
+    // However, keeping it for potential future use or compatibility.
     return Math.round(Math.log(360 / latitudeDelta) / Math.LN2);
   };
 
-  const center: [number, number] = [displayRegion.latitude, displayRegion.longitude];
+  // Mapbox uses [lng, lat] for coordinates
+  const center: [number, number] = [displayRegion.longitude, displayRegion.latitude]; 
   const zoom = getZoomLevel(displayRegion.latitudeDelta);
 
-  useEffect(() => {
-    // Dynamically import Leaflet components only in browser environment
-    if (typeof window !== 'undefined') {
-      Promise.all([
-        import('react-leaflet'),
-        import('leaflet'),
-        import('leaflet/dist/leaflet.css')
-      ])
-        .then(([reactLeaflet, L]) => {
-          // Fix default marker icon issue in Leaflet
-          delete (L.default.Icon.Default.prototype as any)._getIconUrl;
-          L.default.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          });
+  // Handle WebView messages
+  const handleWebViewMessage = useCallback((event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
 
-          setMapComponents({
-            MapContainer: reactLeaflet.MapContainer,
-            TileLayer: reactLeaflet.TileLayer,
-            Marker: reactLeaflet.Marker,
-            Popup: reactLeaflet.Popup,
-            useMap: reactLeaflet.useMap,
-            Circle: reactLeaflet.Circle,
-            L: L.default,
-          });
-          setIsLoading(false);
-        })
-        .catch((error) => {
-          console.error('Failed to load map components:', error);
-          setMapError(true);
-          setIsLoading(false);
-        });
-    }
-  }, []);
-
-  // Handle map click
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    if (onMapClick) {
-      onMapClick(lat, lng);
-    }
-    
-    if (drawingMode === 'marker' && webViewRef.current) {
-      webViewRef.current.injectJavaScript(`
-        const marker = L.marker([${lat}, ${lng}], {
-          draggable: true
-        }).addTo(map);
-        
-        marker.on('click', () => {
-          map.removeLayer(marker);
-        });
-        
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'drawingComplete',
-          data: {
-            type: 'Point',
-            coordinates: [${lng}, ${lat}]
+      switch (data.type) {
+        case 'mapClick':
+          // Mapbox GL JS event provides lngLat, which is [lng, lat]
+          if (onMapClick) onMapClick(data.lat, data.lng);
+          break;
+        case 'drawingComplete':
+          if (onDrawingComplete) onDrawingComplete(data.data);
+          break;
+        case 'regionChange':
+          // Mapbox moveend event provides new center and zoom.
+          // We calculate latitudeDelta based on zoom for consistency with props.
+          if (onRegionChangeComplete) {
+            const latitudeDelta = 360 / Math.pow(2, data.region.zoom);
+            onRegionChangeComplete({
+              latitude: data.region.latitude,
+              longitude: data.region.longitude,
+              latitudeDelta: latitudeDelta,
+              longitudeDelta: latitudeDelta
+            });
           }
-        }));
-      `);
+          break;
+      }
+    } catch (error) {
+      console.error('Error parsing WebView message:', error);
     }
-  }, [drawingMode, onMapClick]);
-
-  // Handle map move
-  const handleMapMove = useCallback((region: any) => {
-    if (onRegionChangeComplete) {
-      onRegionChangeComplete(region);
-    }
-  }, [onRegionChangeComplete]);
+  }, [onMapClick, onDrawingComplete, onRegionChangeComplete]);
 
   // Handle search
   const handleSearch = useCallback(() => {
     if (webViewRef.current && searchQuery.trim()) {
+      // Use Mapbox Geocoder's query method
       webViewRef.current.injectJavaScript(`
-        const searchControl = document.querySelector('.geosearch');
-        if (searchControl) {
-          const input = searchControl.querySelector('input[type="text"]');
-          const button = searchControl.querySelector('button');
-          
-          if (input && button) {
-            input.value = ${JSON.stringify(searchQuery)};
-            const event = new Event('input', { bubbles: true });
-            input.dispatchEvent(event);
-            
-            setTimeout(() => {
-              button.click();
-            }, 100);
-          }
+        if (window.geocoder) {
+          window.geocoder.query(${JSON.stringify(searchQuery)});
         }
         true;
       `);
@@ -203,16 +152,22 @@ const MapWeb: React.FC<MapProps> = ({
   // Handle drawing tools
   const handleDrawingTool = useCallback((tool: DrawingMode) => {
     setDrawingMode(tool);
-    
+
     if (webViewRef.current) {
       if (tool) {
+        // Mapbox Draw uses modes like 'draw_point', 'draw_polygon', etc.
         webViewRef.current.injectJavaScript(`
-          window.leafletMap.enableDrawing('${tool}');
+          if (window.mapboxDraw) {
+            window.mapboxDraw.changeMode('draw_${tool}');
+          }
           true;
         `);
       } else {
+        // 'simple_select' mode to disable drawing and allow selection
         webViewRef.current.injectJavaScript(`
-          window.leafletMap.disableDrawing();
+          if (window.mapboxDraw) {
+            window.mapboxDraw.changeMode('simple_select');
+          }
           true;
         `);
       }
@@ -222,376 +177,29 @@ const MapWeb: React.FC<MapProps> = ({
   // Clear drawings
   const clearDrawings = useCallback(() => {
     if (webViewRef.current) {
+      // Mapbox Draw has a deleteAll method
       webViewRef.current.injectJavaScript(`
-        window.leafletMap.clearDrawings();
+        if (window.mapboxDraw) {
+          window.mapboxDraw.deleteAll();
+        }
         true;
       `);
     }
   }, []);
 
-  // Handle marker press
-  const handleMarkerPress = useCallback((marker: any) => {
-    setSelectedMarker(marker);
-    if (onLocationSelect) {
-      onLocationSelect(marker);
-    }
-  }, [onLocationSelect]);
-
-  // Handle WebView messages
-  const handleWebViewMessage = useCallback((event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      
-      switch (data.type) {
-        case 'mapClick':
-          if (onMapClick) onMapClick(data.lat, data.lng);
-          break;
-        case 'drawingComplete':
-          if (onDrawingComplete) onDrawingComplete(data.data);
-          break;
-      }
-    } catch (error) {
-      console.error('Error parsing WebView message:', error);
-    }
-  }, [onMapClick, onDrawingComplete]);
-
-  // Initialize map with Leaflet
-  useEffect(() => {
-    const initMap = () => {
-      // Your existing map initialization code
-      if (webViewRef.current) {
-        // Add any additional initialization for search and drawing
-        webViewRef.current.injectJavaScript(`
-          // Initialize search control
-          const searchControl = new GeoSearch.GeoSearchControl({
-            provider: new GeoSearch.OpenStreetMapProvider(),
-            style: 'bar',
-            showMarker: true,
-            showPopup: false,
-            autoClose: true,
-            retainZoomLevel: false,
-            animateZoom: true,
-            keepResult: true,
-            searchLabel: 'Search location',
-          });
-          
-          // Add search control to map
-          map.addControl(searchControl);
-
-          // Initialize drawing control
-          const drawnItems = new L.FeatureGroup();
-          map.addLayer(drawnItems);
-
-          const drawControl = new L.Control.Draw({
-            position: 'topleft',
-            draw: {
-              polygon: true,
-              polyline: false,
-              rectangle: true,
-              circle: true,
-              marker: true,
-              circlemarker: false
-            },
-            edit: {
-              featureGroup: drawnItems,
-              remove: true
-            }
-          });
-          
-          map.addControl(drawControl);
-
-          // Handle drawing events
-          map.on(L.Draw.Event.CREATED, function (e) {
-            const type = e.layerType;
-            const layer = e.layer;
-            
-            // Add the drawn item to the map
-            drawnItems.addLayer(layer);
-            
-            // Send the GeoJSON back to React Native
-            const geoJson = layer.toGeoJSON();
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'drawingComplete',
-              data: geoJson
-            }));
-          });
-
-          // Handle map click
-          map.on('click', (e) => {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'mapClick',
-              lat: e.latlng.lat,
-              lng: e.latlng.lng
-            }));
-          });
-
-          // Expose functions to window for React Native to call
-          window.leafletMap = {
-            setView: (lat, lng, zoom) => map.setView([lat, lng], zoom),
-            enableDrawing: (type) => {
-              // Enable drawing mode
-              const drawControl = new L.Draw[type.charAt(0).toUpperCase() + type.slice(1)](map, {
-                shapeOptions: {
-                  color: '#0066ff',
-                  weight: 2,
-                  opacity: 1,
-                  fillColor: '#0066ff',
-                  fillOpacity: 0.2
-                }
-              });
-              drawControl.enable();
-            },
-            disableDrawing: () => {
-              // Disable drawing mode
-              if (map._drawToolbar) {
-                map._drawToolbar.disable();
-              }
-            },
-            clearDrawings: () => {
-              drawnItems.clearLayers();
-            }
-          };
-        `);
-      }
-    };
-
-    initMap();
-  }, []);
-
-  if (isLoading || !mapComponents) {
+  // Initial load state
+  if (isLoading) {
     return (
       <View style={[styles.container, style]}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0066FF" />
-            <Text style={styles.loadingText}>Loading map...</Text>
-          </View>
-        ) : (
-          <View style={styles.mapContainer}>
-            <WebView
-              ref={webViewRef}
-              source={{ 
-                html: `
-                  <!DOCTYPE html>
-                  <html>
-                  <head>
-                    <meta charset="utf-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <link 
-                      rel="stylesheet" 
-                      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                      crossorigin=""
-                    />
-                    <link 
-                      rel="stylesheet" 
-                      href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"
-                    />
-                    <style>
-                      html, body {
-                        height: 100%;
-                        margin: 0;
-                        padding: 0;
-                        overflow: hidden;
-                      }
-                      #map {
-                        height: 100vh;
-                        width: 100vw;
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        z-index: 0;
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                      }
-                      .geosearch {
-                        position: absolute !important;
-                        top: 20px !important;
-                        left: 20px !important;
-                        right: 20px !important;
-                        z-index: 1000 !important;
-                        max-width: 500px !important;
-                      }
-                      .leaflet-draw-toolbar {
-                        margin-top: 60px !important;
-                      }
-                    </style>
-                  </head>
-                  <body>
-                    <div id="map"></div>
-                    
-                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                      crossorigin="" />
-                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-                      crossorigin=""></script>
-                    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-                    <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.umd.js"></script>
-                    
-                    <script>
-                      // Initialize map
-                      const map = L.map('map').setView([${initialRegion?.latitude || 0}, ${initialRegion?.longitude || 0}], ${initialRegion?.zoom || 13});
-                      
-                      // Add tile layer (OpenStreetMap with CORS support)
-                      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                        subdomains: 'abcd',
-                        maxZoom: 20
-                      }).addTo(map);
-
-                      // Add user location marker if available
-                      ${userLocation ? `
-                      L.circleMarker([${userLocation.latitude}, ${userLocation.longitude}], {
-                        radius: 8,
-                        fillColor: "#0066ff",
-                        color: "#fff",
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                      }).addTo(map);
-                      ` : ''}
-
-                      // Add store markers if available
-                      ${storeLocations.length > 0 ? `
-                      const stores = ${JSON.stringify(storeLocations)};
-                      stores.forEach(store => {
-                        L.marker([store.latitude, store.longitude], {
-                          icon: L.divIcon({
-                            html: '<div style="background: #ff4444; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">S</div>',
-                            className: 'store-marker',
-                            iconSize: [30, 30],
-                            iconAnchor: [15, 30]
-                          })
-                        }).addTo(map);
-                      });
-                      ` : ''}
-
-                      // Handle map click
-                      map.on('click', (e) => {
-                        window.ReactNativeWebView.postMessage(JSON.stringify({
-                          type: 'mapClick',
-                          lat: e.latlng.lat,
-                          lng: e.latlng.lng
-                        }));
-                      });
-
-                      // Expose map to window
-                      window.map = map;
-                    </script>
-                  </body>
-                  </html>
-                `
-              }}
-              style={styles.webview}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              onMessage={handleWebViewMessage}
-              originWhitelist={['*']}
-              scrollEnabled={false}
-              onError={(syntheticEvent) => {
-                const { nativeEvent } = syntheticEvent;
-                console.warn('WebView error: ', nativeEvent);
-              }}
-              onLoadEnd={() => {
-                setIsLoading(false);
-              }}
-            />
-            
-            {/* Search Bar */}
-            {showSearch && (
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search location..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  onSubmitEditing={handleSearch}
-                  returnKeyType="search"
-                />
-                <TouchableOpacity 
-                  style={styles.searchButton} 
-                  onPress={handleSearch}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons name="search" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Drawing Tools */}
-            {showDrawingTools && (
-              <View style={styles.drawingTools}>
-                <TouchableOpacity
-                  style={[
-                    styles.toolButton,
-                    drawingMode === 'marker' && styles.activeToolButton
-                  ]}
-                  onPress={() => handleDrawingTool(drawingMode === 'marker' ? null : 'marker')}
-                >
-                  <MaterialIcons 
-                    name="location-on" 
-                    size={24} 
-                    color={drawingMode === 'marker' ? '#fff' : '#0066ff'} 
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.toolButton,
-                    drawingMode === 'polygon' && styles.activeToolButton
-                  ]}
-                  onPress={() => handleDrawingTool(drawingMode === 'polygon' ? null : 'polygon')}
-                >
-                  <MaterialIcons 
-                    name="polyline" 
-                    size={24} 
-                    color={drawingMode === 'polygon' ? '#fff' : '#0066ff'} 
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.toolButton,
-                    drawingMode === 'rectangle' && styles.activeToolButton
-                  ]}
-                  onPress={() => handleDrawingTool(drawingMode === 'rectangle' ? null : 'rectangle')}
-                >
-                  <MaterialIcons 
-                    name="crop-square" 
-                    size={24} 
-                    color={drawingMode === 'rectangle' ? '#fff' : '#0066ff'} 
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.toolButton,
-                    drawingMode === 'circle' && styles.activeToolButton
-                  ]}
-                  onPress={() => handleDrawingTool(drawingMode === 'circle' ? null : 'circle')}
-                >
-                  <MaterialIcons 
-                    name="panorama-fish-eye" 
-                    size={24} 
-                    color={drawingMode === 'circle' ? '#fff' : '#0066ff'} 
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.toolButton, styles.clearButton]}
-                  onPress={clearDrawings}
-                >
-                  <MaterialIcons name="clear" size={24} color="#ff4444" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066FF" />
+          <Text style={styles.loadingText}>Loading map...</Text>
+        </View>
       </View>
     );
   }
 
+  // Error state
   if (mapError) {
     return (
       <View style={[styles.container, style]}>
@@ -606,102 +214,292 @@ const MapWeb: React.FC<MapProps> = ({
     );
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, Circle, L } = mapComponents;
-
-  // Component to update map view when region changes
-  const MapUpdater = ({ region: mapRegion }: { region: any }) => {
-    const map = mapComponents.useMap();
-
-    React.useEffect(() => {
-      if (mapRegion && map) {
-        try {
-          map.setView([mapRegion.latitude, mapRegion.longitude], getZoomLevel(mapRegion.latitudeDelta));
-        } catch (error) {
-          console.error('Error updating map view:', error);
-        }
-      }
-    }, [mapRegion, map]);
-
-    return null;
-  };
-
   return (
     <View style={[styles.container, style]}>
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        style={{ width: '100%', height: '100%' }}
-        scrollWheelZoom={props.zoomEnabled !== false}
-        dragging={props.scrollEnabled !== false}
-        ref={mapRef}
-        onMoveEnd={handleMapMove}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      <View style={styles.mapContainer}>
+        <WebView
+          ref={webViewRef}
+          source={{ 
+            html: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                
+                <!-- Mapbox GL JS and plugins -->
+                <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
+                <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet" />
+                <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+                <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
+                <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+                <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" type="text/css">
+                
+                <style>
+                  html, body {
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  }
+                  #map {
+                    height: 100vh;
+                    width: 100vw;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    z-index: 0;
+                  }
+                  /* Adjust geocoder style to match React Native's positioning */
+                  .mapboxgl-ctrl-geocoder {
+                    position: absolute !important;
+                    top: 20px !important; /* Adjusted top position */
+                    left: 20px !important; /* Adjusted left position */
+                    right: 20px !important; /* Adjusted right position */
+                    z-index: 1000 !important;
+                    max-width: none !important; /* Allow it to take full width within constraints */
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                  }
+                  /* Adjust draw control style */
+                  .mapboxgl-ctrl-bottom-left {
+                    left: 60px !important; /* Position draw controls below geocoder */
+                  }
+                  .mapboxgl-ctrl-top-left {
+                    top: 80px !important; /* Ensure draw controls don't overlap geocoder */
+                  }
+                </style>
+              </head>
+              <body>
+                <div id="map"></div>
+
+                <script>
+                  // Set Mapbox access token from environment configuration
+                  mapboxgl.accessToken = '${process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || ''}'; 
+
+                  // Initialize map
+                  const map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v12', // Or choose another style
+                    center: [${center[0]}, ${center[1]}], // Mapbox uses [lng, lat]
+                    zoom: ${zoom}
+                  });
+
+                  // Add navigation controls (zoom in/out, rotation)
+                  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+                  // Add geocoder (search) control
+                  const geocoder = new MapboxGeocoder({
+                    accessToken: mapboxgl.accessToken,
+                    mapboxgl: mapboxgl,
+                    placeholder: 'Search location...',
+                    // Optional: limit results to a certain area
+                    proximity: {
+                      longitude: ${center[0]}, 
+                      latitude: ${center[1]}
+                    }
+                  });
+
+                  map.addControl(geocoder, 'top-left'); // Position search bar
+
+                  // Initialize Mapbox Draw controls
+                  const draw = new MapboxDraw({
+                    displayControlsDefault: false, // Hide default controls
+                    controls: {
+                      point: true, // Enable point (marker) drawing
+                      line_string: true, // Enable line drawing
+                      polygon: true, // Enable polygon drawing
+                      trash: true, // Enable delete control
+                      combine_features: false, // Disable combining features
+                      uncombine_features: false // Disable uncombining features
+                    },
+                    defaultMode: 'simple_select' // Start in select mode
+                  });
+
+                  map.addControl(draw, 'top-left'); // Position drawing controls
+
+                  // --- Event Listeners ---
+
+                  // Handle map clicks for pinpointing or adding markers
+                  map.on('click', (e) => {
+                    // e.lngLat is an object with lat and lng properties
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'mapClick',
+                      lat: e.lngLat.lat,
+                      lng: e.lngLat.lng
+                    }));
+                  });
+
+                  // Handle map movement end to update region state
+                  map.on('moveend', () => {
+                    const currentCenter = map.getCenter();
+                    const currentZoom = map.getZoom();
+                    // Calculate latitudeDelta based on zoom level for consistency
+                    const latitudeDelta = 360 / Math.pow(2, currentZoom); 
+
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'regionChange',
+                      region: {
+                        latitude: currentCenter.lat,
+                        longitude: currentCenter.lng,
+                        latitudeDelta: latitudeDelta, // Approximate delta
+                        longitudeDelta: latitudeDelta // Approximate delta
+                      }
+                    }));
+                  });
+
+                  // Handle drawing completion
+                  map.on('draw.create', (e) => {
+                    // e.features contains the drawn feature(s) in GeoJSON format
+                    // We're sending the first feature back. Adjust if multiple features are drawn simultaneously.
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'drawingComplete',
+                      data: e.features[0] 
+                    }));
+                  });
+
+                  // Handle feature deletion via the trash control
+                  map.on('draw.delete', () => {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'drawingsCleared' 
+                    }));
+                  });
+
+                  // --- Adding initial data ---
+
+                  // Add provided markers
+                  ${markers.map(marker => `
+                    new mapboxgl.Marker({ color: '#007bff' }) // Default marker color
+                      .setLngLat([${marker.coordinate.longitude}, ${marker.coordinate.latitude}]) // [lng, lat]
+                      .setPopup(new mapboxgl.Popup().setHTML('<h3>${marker.title || ''}</h3><p>${marker.description || ''}</p>'))
+                      .addTo(map);
+                  `).join('')}
+
+                  // Add store locations
+                  ${storeLocations.map(store => `
+                    const storeMarker = new mapboxgl.Marker({ color: '#ff4444' }) // Store marker color
+                      .setLngLat([${store.coords?.lng || store.longitude}, ${store.coords?.lat || store.latitude}]) // [lng, lat]
+                      .setPopup(new mapboxgl.Popup().setHTML('<h3>${store.title}</h3><p>${store.address || ''}</p>'))
+                      .addTo(map);
+                  `).join('')}
+
+                  // Add user location marker if available
+                  ${userLocation ? `
+                    new mapboxgl.Marker({ color: '#28a745' }) // User location marker color
+                      .setLngLat([${userLocation.longitude}, ${userLocation.latitude}]) // [lng, lat]
+                      .addTo(map);
+                  ` : ''}
+
+                  // Expose Mapbox objects to the window for React Native to interact with
+                  window.mapboxMap = map;
+                  window.mapboxDraw = draw;
+                  window.geocoder = geocoder;
+                </script>
+              </body>
+              </html>
+            `
+          }}
+          style={styles.webview}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          onMessage={handleWebViewMessage}
+          originWhitelist={['*']} // Allow all origins for WebView messages
+          scrollEnabled={false} // Disable WebView scrolling, map controls handle navigation
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView error: ', nativeEvent);
+            setMapError(true); // Set error state on WebView error
+          }}
+          onLoadEnd={() => {
+            setIsLoading(false); // Set loading to false once WebView finishes loading
+          }}
         />
 
-        <MapUpdater region={region} />
-
-        {/* User location marker */}
-        {showsUserLocation && (
-          <Circle
-            center={center}
-            radius={50}
-            pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.3 }}
-          />
+        {/* Search Bar Component */}
+        {showSearch && (
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search location..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch} // Trigger search on submit
+              returnKeyType="search"
+            />
+            <TouchableOpacity 
+              style={styles.searchButton} 
+              onPress={handleSearch} // Trigger search on button press
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="search" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         )}
 
-        {/* Regular markers */}
-        {markers.map((marker, index) => (
-          <Marker
-            key={`marker-${index}`}
-            position={[marker.coordinate.latitude, marker.coordinate.longitude]}
-            eventHandlers={{
-              click: () => handleMarkerPress(marker),
-            }}
-          >
-            {(marker.title || marker.description) && (
-              <Popup>
-                {marker.title && <strong>{marker.title}</strong>}
-                {marker.description && <p>{marker.description}</p>}
-              </Popup>
-            )}
-          </Marker>
-        ))}
+        {/* Drawing Tools Component */}
+        {showDrawingTools && (
+          <View style={styles.drawingTools}>
+            {/* Point/Marker Tool */}
+            <TouchableOpacity
+              style={[
+                styles.toolButton,
+                drawingMode === 'point' && styles.activeToolButton // Highlight if active
+              ]}
+              onPress={() => handleDrawingTool(drawingMode === 'point' ? null : 'point')} // Toggle drawing mode
+            >
+              <MaterialIcons 
+                name="location-on" 
+                size={24} 
+                color={drawingMode === 'point' ? '#fff' : '#0066ff'} // Color based on active state
+              />
+            </TouchableOpacity>
 
-        {/* Store locations */}
-        {mapComponents && stores.map((store, index) => (
-          <Marker
-            key={`store-${index}`}
-            position={[store.coords?.lat || store.latitude, store.coords?.lng || store.longitude]}
-            eventHandlers={{
-              click: () => handleMarkerPress(store),
-            }}
-          >
-            <Popup>
-              <strong>{store.title}</strong>
-              {store.address && <p>{store.address}</p>}
-            </Popup>
-          </Marker>
-        ))}
+            {/* Polygon Tool */}
+            <TouchableOpacity
+              style={[
+                styles.toolButton,
+                drawingMode === 'polygon' && styles.activeToolButton
+              ]}
+              onPress={() => handleDrawingTool(drawingMode === 'polygon' ? null : 'polygon')}
+            >
+              <MaterialIcons 
+                name="area-chart" // Using 'area-chart' for polygon visualization
+                size={24} 
+                color={drawingMode === 'polygon' ? '#fff' : '#0066ff'} 
+              />
+            </TouchableOpacity>
+            
+            {/* Line Tool (if needed, Mapbox Draw supports it) */}
+            {/* 
+            <TouchableOpacity
+              style={[
+                styles.toolButton,
+                drawingMode === 'line_string' && styles.activeToolButton
+              ]}
+              onPress={() => handleDrawingTool(drawingMode === 'line_string' ? null : 'line_string')}
+            >
+              <MaterialIcons 
+                name="timeline" 
+                size={24} 
+                color={drawingMode === 'line_string' ? '#fff' : '#0066ff'} 
+              />
+            </TouchableOpacity>
+            */}
 
-        {/* Live tracking markers */}
-        {liveLocations.map((location, index) => (
-          <Marker
-            key={`live-${index}`}
-            position={[location.latitude, location.longitude]}
-            icon={L.divIcon({
-              className: 'live-marker',
-              html: `<div style="background: #00ff00; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px;"></div>`,
-            })}
-          />
-        ))}
+            {/* Clear Drawings Button */}
+            <TouchableOpacity
+              style={[styles.toolButton, styles.clearButton]}
+              onPress={clearDrawings}
+            >
+              <MaterialIcons name="clear" size={24} color="#dc3545" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
-        {children}
-      </MapContainer>
-
-      {/* Selected marker info */}
+      {/* Selected Marker Info Panel */}
       {selectedMarker && (
         <View style={styles.markerInfo}>
           <Text style={styles.markerTitle}>{selectedMarker.title}</Text>
@@ -724,11 +522,13 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     position: 'relative',
+    overflow: 'hidden', // Ensure map content stays within bounds
   },
   webview: {
     flex: 1,
     width: '100%',
   },
+  // Search Bar Styles
   searchContainer: {
     position: 'absolute',
     top: 16,
@@ -752,6 +552,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderRadius: 6,
     marginRight: 8,
+    fontSize: 16,
   },
   searchButton: {
     backgroundColor: '#007bff',
@@ -760,6 +561,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Drawing Tools Styles
   drawingTools: {
     position: 'absolute',
     bottom: 24,
@@ -772,48 +574,52 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     padding: 8,
+    alignItems: 'center', // Align items vertically
   },
   toolButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    width: 48, // Slightly larger buttons
+    height: 48,
+    borderRadius: 24, // Circular buttons
+    backgroundColor: '#f0f8ff', // Light blue background
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 4,
+    marginVertical: 6, // More spacing between buttons
   },
   activeToolButton: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#007bff', // Active tool background
     borderWidth: 2,
-    borderColor: '#007bff',
+    borderColor: '#0056b3', // Darker border for active state
   },
   clearButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: '#f8d7da', // Light red for clear button
   },
+  // General Container Styles
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#e6f2ff', // Lighter background color
     borderRadius: 15,
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#cce0ff', // Lighter border color
   },
+  // Error View Styles
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#fff', // White background for error message
   },
   errorText: {
     fontSize: 16,
-    color: '#e74c3c',
+    color: '#dc3545', // Bootstrap danger color
     marginTop: 10,
     fontWeight: '600',
   },
   retryButton: {
     marginTop: 15,
-    backgroundColor: '#007bff',
+    backgroundColor: '#007bff', // Primary button color
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -822,18 +628,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
+  // Loading View Styles
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#fff', // White background for loading message
   },
   loadingText: {
     fontSize: 16,
-    color: '#4682B4',
+    color: '#6c757d', // Bootstrap secondary color
     marginTop: 10,
     fontWeight: '500',
   },
+  // Selected Marker Info Panel Styles
   markerInfo: {
     position: 'absolute',
     bottom: 20,
@@ -862,15 +671,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
+    padding: 5, // Add padding for easier tapping
   },
 });
 
-// Web-compatible Marker component (placeholder for compatibility)
-// Note: For web, markers are handled internally by MapWeb component
+// Web-compatible Marker component (placeholder, Mapbox markers are handled in WebView)
 export const Marker: React.FC<any> = () => null;
 
-// Provider constant for web
-export const PROVIDER_GOOGLE = 'leaflet';
+// Provider constant for Mapbox
+export const PROVIDER_MAPBOX = 'mapbox';
 
 export default MapWeb;
 export { MapWeb };

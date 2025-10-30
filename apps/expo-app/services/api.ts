@@ -15,16 +15,32 @@ class ApiClient {
 
   constructor() {
     // Configure for development (Replit environment)
-    // The backend server runs on port 5000, frontend on port 5000
-    const isDevelopment = process.env.NODE_ENV === 'development' || (typeof __DEV__ !== 'undefined' && __DEV__);
+    // Backend runs on port 3000, Expo web runs on port 5000
+    const isDevelopment = process.env.NODE_ENV === 'development';
 
-    // Use localhost:5000 in development to match backend port
-    this.baseURL = 'http://localhost:5000';
+    // Use current host with port 3000 for Replit environment
+    const getBaseURL = (): string => {
+      // Check if we have an explicit API base URL first
+      if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+        return process.env.EXPO_PUBLIC_API_BASE_URL;
+      }
+
+      if (typeof window !== 'undefined') {
+        // Browser environment - use current host with correct port
+        const currentHost = window.location.hostname;
+        // For Replit environment, backend is exposed on port 3001 (external port)
+        return `http://${currentHost}:3001`;
+      }
+      // Node environment (SSR/development) - use localhost
+      return 'http://localhost:3000';
+    };
+
+    this.baseURL = getBaseURL();
 
     console.log('🚀 API Client Initialized');
     console.log('  Environment:', isDevelopment ? 'Development' : 'Production');
     console.log('  Base URL:', this.baseURL);
-    console.log('  Note: Using local backend server on port 5000');
+    console.log('  Note: Backend server runs on port 3000, Expo web on port 5000');
   }
 
   private async makeRequest<T>(
