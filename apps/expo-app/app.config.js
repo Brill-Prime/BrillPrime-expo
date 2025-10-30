@@ -48,6 +48,15 @@ export default {
           deploymentTarget: "15.1"
         }
       }
+    ],
+    "expo-secure-store",
+    "expo-local-authentication",
+    "expo-updates",
+    [
+      "expo-barcode-scanner",
+      {
+        cameraPermission: "Allow BrillPrime to access camera for QR code scanning"
+      }
     ]
   ],
   experiments: {
