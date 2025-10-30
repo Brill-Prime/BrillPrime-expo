@@ -1,6 +1,100 @@
 node_modules
-.env
 *.log
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.supabase
+apps/expo-app/.env
+apps/expo-app/.env.local
+apps/expo-app/.env.supabase
+apps/backend/Brill-backend/.env
+apps/backend/Brill-backend/.env.local
+
+# Firebase configuration files with secrets
+google-services.json
+GoogleService-Info.plist
+apps/expo-app/android/app/google-services.json
+apps/expo-app/ios/GoogleService-Info.plist
+apps/backend/Brill-backend/attached_assets/google-services*.json
+
+# Build outputs
+dist/
+build/
+.expo/
+.expo-shared/
+web-build/
+apps/expo-app/dist/
+apps/expo-app/build/
+apps/backend/Brill-backend/dist/
+apps/backend/Brill-backend/build/
+
+# Cache and temporary files
+.cache/
+.local/
+*.tmp
+*.temp
+.turbo
+.next/
+.nuxt/
+.vuepress/dist
+
+# IDE and editor files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Testing and coverage
+coverage/
+.nyc_output/
+
+# TypeScript build info
+*.tsbuildinfo
+next-env.d.ts
+expo-env.d.ts
+
+# Package manager files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Mobile app specific
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+*.pem
+
+# Certificates and keys
+*.crt
+*.pem
+*.key
+*.cer
+attached_assets/prod-ca-2021*.crt
+attached_assets/*.pem
+attached_assets/*.key
+
+# Debug and verification logs
+debug.log
+.vercel
+
+# Attached assets that may contain sensitive data
+attached_assets/Pasted-*.txt
+apps/backend/Brill-backend/attached_assets/Pasted-*.txt
 
 # Keep backend files tracked
 !apps/backend/Brill-backend/**
