@@ -2,12 +2,18 @@
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 export class SecurityService {
   // Secure Storage Methods
   static async storeSecureData(key: string, value: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync(key, value);
+      if (Platform.OS === 'web') {
+        await AsyncStorage.setItem(key, value);
+      } else {
+        await SecureStore.setItemAsync(key, value);
+      }
     } catch (error) {
       console.error('Error storing secure data:', error);
       throw error;
@@ -16,7 +22,11 @@ export class SecurityService {
 
   static async getSecureData(key: string): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(key);
+      if (Platform.OS === 'web') {
+        return await AsyncStorage.getItem(key);
+      } else {
+        return await SecureStore.getItemAsync(key);
+      }
     } catch (error) {
       console.error('Error retrieving secure data:', error);
       return null;
@@ -25,7 +35,11 @@ export class SecurityService {
 
   static async deleteSecureData(key: string): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(key);
+      if (Platform.OS === 'web') {
+        await AsyncStorage.removeItem(key);
+      } else {
+        await SecureStore.deleteItemAsync(key);
+      }
     } catch (error) {
       console.error('Error deleting secure data:', error);
       throw error;
