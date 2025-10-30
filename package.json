@@ -2,7 +2,8 @@
   "name": "brillprime-monorepo",
   "private": true,
   "workspaces": [
-    "apps/expo-app"
+    "apps/expo-app",
+    "apps/backend/Brill-backend"
   ],
   "scripts": {
     "dev": "concurrently \"yarn workspace my-app web\" \"yarn workspace brill-backend dev\"",

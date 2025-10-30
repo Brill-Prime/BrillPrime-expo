@@ -3,7 +3,7 @@ modules = ["nodejs-20", "bash"]
 expertMode = true
 
 [workflows]
-runButton = "Project"
+runButton = "BrillPrime Integrated"
 
 [[workflows.workflow]]
 name = "Project"
@@ -122,6 +122,19 @@ args = "cd apps/backend && PORT=3000 npm start"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd apps/expo-app && npx expo start --web --port 5000 --host 0.0.0.0 --clear"
+
+[[workflows.workflow]]
+name = "BrillPrime Integrated"
+author = 49187130
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/backend/Brill-backend && npm install && PORT=3000 npm start"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/expo-app && npm install && npx expo start --web --port 5000 --host 0.0.0.0"
 
 [[ports]]
 localPort = 3000
