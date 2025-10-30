@@ -76,6 +76,13 @@ export default {
       {
         contactsPermission: "Allow BrillPrime to access contacts for merchant/driver integration"
       }
+    ],
+    [
+      "@rnmapbox/maps",
+      {
+        RNMapboxMapsDownloadToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN,
+        RNMapboxMapsVersion: "11.0.0"
+      }
     ]
   ],
   experiments: {

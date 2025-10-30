@@ -1,8 +1,10 @@
 // Notification Service
 // Handles push notifications and in-app notifications
 
-import { apiClient, ApiResponse } from './api';
+import { apiClient } from './api';
 import { authService } from './authService';
+import { supabase } from '../config/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface Notification {
   id: string;
@@ -27,6 +29,9 @@ export interface NotificationSettings {
 }
 
 class NotificationService {
+  private realtimeChannel: RealtimeChannel | null = null;
+  private notificationCallbacks: Array<(notification: Notification) => void> = [];
+
   // Get user notifications
   async getNotifications(filters?: {
     type?: string;
@@ -56,7 +61,7 @@ class NotificationService {
       if (filters.limit) queryParams.append('limit', filters.limit.toString());
       if (filters.offset) queryParams.append('offset', filters.offset.toString());
     }
-    
+
     // Add role filter
     queryParams.append('role', userRole);
 
@@ -138,12 +143,12 @@ class NotificationService {
   private async getDeviceId(): Promise<string> {
     const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
     let deviceId = await AsyncStorage.getItem('device_id');
-    
+
     if (!deviceId) {
       deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       await AsyncStorage.setItem('device_id', deviceId);
     }
-    
+
     return deviceId;
   }
 
@@ -158,7 +163,7 @@ class NotificationService {
 
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       const isRegistered = await AsyncStorage.getItem('fcm_registered');
-      
+
       if (isRegistered === 'true') {
         return true;
       }
@@ -246,6 +251,39 @@ class NotificationService {
     return apiClient.get(endpoint, {
       Authorization: `Bearer ${token}`,
     });
+  }
+
+  // Subscribe to realtime notifications for a user
+  subscribeToNotifications(userId: string, callback: (notification: Notification) => void): void {
+    this.notificationCallbacks.push(callback);
+
+    if (!this.realtimeChannel) {
+      this.realtimeChannel = supabase
+        .channel(`notifications:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const notification = payload.new as Notification;
+            this.notificationCallbacks.forEach(cb => cb(notification));
+          }
+        )
+        .subscribe();
+    }
+  }
+
+  // Unsubscribe from realtime notifications
+  unsubscribeFromNotifications(): void {
+    if (this.realtimeChannel) {
+      supabase.removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
+      this.notificationCallbacks = [];
+    }
   }
 }
 

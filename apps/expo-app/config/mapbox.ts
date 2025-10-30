@@ -36,7 +36,7 @@ export const MAPBOX_CONFIG = {
 
 // Helper function to validate Mapbox token
 export const isValidMapboxToken = (token: string): boolean => {
-  return token && token.startsWith('pk.') && token.length > 20;
+  return !!token && token.startsWith('pk.') && token.length > 20;
 };
 
 // Helper function to get map style URL

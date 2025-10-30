@@ -14,7 +14,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase configuration is incomplete. Please check your environment variables.');
 }
 
-// Initialize Supabase client
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize Supabase client with Realtime configuration
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
+
+// Enable realtime for the client
+console.log('✅ Supabase Realtime initialized');
 
 export { supabase };
