@@ -4959,8 +4959,6 @@ expo-calendar@~14.1.4:
   integrity sha512-4h23qUBqQNIvLsx2FfL6DcmxgZvhCbMqUN55UQIiBeHlCnyrcNu6Fo9c179aWsgh35nbD+mntt1AaEOplHTzeg==
 
 expo-cli@^6.3.12:
-  resolved "https://registry.npmjs.org/expo-cli/-/expo-cli-6.3.12.tgz"
-  integrity sha512-Tye0lHQ4WnWtvvH9xauAqahDzJgY20zawLLJ8qyI/21B1d35lC16kSpCLVX0uwH0MKYAfcmrkQwlwkyz4rJAVw==
 
 expo-constants@*, expo-constants@~17.1.6, expo-constants@~17.1.7:
   version "17.1.7"
@@ -7552,6 +7550,7 @@ murmurhash-js@^1.0.0:
     expo-haptics "~14.1.4"
     expo-image "~2.4.1"
     expo-image-picker "~16.1.4"
+    expo-keep-awake "~14.1.4"
     expo-linear-gradient "^14.1.5"
     expo-linking "~7.1.7"
     expo-local-authentication "~16.0.5"
