@@ -20,15 +20,19 @@ class ApiClient {
 
     // Use current host with port 3000 for Replit environment
     const getBaseURL = (): string => {
-      if (typeof window !== 'undefined') {
-        // Browser environment - use current host with port 3000
-        const currentHost = window.location.hostname;
-        const currentPort = window.location.port;
-        // Use port 3000 for backend API, regardless of current page port
-        return process.env.EXPO_PUBLIC_API_BASE_URL || `http://${currentHost}:3000`;
+      // Check if we have an explicit API base URL first
+      if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+        return process.env.EXPO_PUBLIC_API_BASE_URL;
       }
-      // Node environment (SSR/development) - use current host
-      return process.env.EXPO_PUBLIC_API_BASE_URL || `http://0.0.0.0:3000`;
+
+      if (typeof window !== 'undefined') {
+        // Browser environment - use current host with correct port
+        const currentHost = window.location.hostname;
+        // For Replit environment, backend is exposed on port 3001 (external port)
+        return `http://${currentHost}:3001`;
+      }
+      // Node environment (SSR/development) - use localhost
+      return 'http://localhost:3000';
     };
 
     this.baseURL = getBaseURL();
