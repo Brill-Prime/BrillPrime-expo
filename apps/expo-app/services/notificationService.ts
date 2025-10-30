@@ -1,9 +1,11 @@
 // Notification Service
 // Handles push notifications and in-app notifications
+// Uses Firebase for auth, Supabase for realtime delivery
 
 import { apiClient } from './api';
 import { authService } from './authService';
-import { supabase } from '../config/supabase';
+import { supabase, setSupabaseAuthToken } from '../config/supabase';
+import { auth } from '../config/firebase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface Notification {
@@ -26,6 +28,39 @@ export interface NotificationSettings {
   promotions: boolean;
   merchantUpdates?: boolean;
   systemNotifications?: boolean;
+}
+
+class NotificationService {
+  private notificationChannel: RealtimeChannel | null = null;
+  private isAuthenticated = false;
+
+  constructor() {
+    this.initializeAuth();
+  }
+
+  /**
+   * Initialize Firebase auth for notifications
+   */
+  private async initializeAuth(): Promise<void> {
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const token = await user.getIdToken();
+        await setSupabaseAuthToken(token);
+        this.isAuthenticated = true;
+        console.log('✅ Notification service authenticated');
+      } else {
+        this.isAuthenticated = false;
+        this.cleanup();
+      }
+    });
+  }
+
+  private cleanup(): void {
+    if (this.notificationChannel && supabase) {
+      supabase.removeChannel(this.notificationChannel);
+      this.notificationChannel = null;
+    }
+  }
 }
 
 class NotificationService {
