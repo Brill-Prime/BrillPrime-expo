@@ -2526,6 +2526,8 @@
   resolved "https://registry.npmjs.org/@types/estree/-/estree-1.0.8.tgz"
   integrity sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==
 
+"@types/express@^5.0.3":
+
 "@types/geojson-vt@^3.2.5":
   version "3.2.5"
   resolved "https://registry.npmjs.org/@types/geojson-vt/-/geojson-vt-3.2.5.tgz"
@@ -2622,7 +2624,7 @@
   resolved "https://registry.npmjs.org/@types/mapbox__point-geometry/-/mapbox__point-geometry-0.1.4.tgz"
   integrity sha512-mUWlSxAmYLfwnRBmgYV86tgYmMIICX4kza8YnE/eIlywGe2XoOxlpVnXWwir92xRLjwyarqwpu2EJKD2pk0IUA==
 
-"@types/node@*", "@types/node@^24.5.2", "@types/node@>=12.12.47", "@types/node@>=13.7.0":
+"@types/node@*", "@types/node@^24.5.2", "@types/node@^24.7.0", "@types/node@>=12.12.47", "@types/node@>=13.7.0":
   version "24.5.2"
   resolved "https://registry.npmjs.org/@types/node/-/node-24.5.2.tgz"
   integrity sha512-FYxk1I7wPv3K2XBaoyH2cTnocQEu8AOZ60hPbsyukMPLv5/5qr7V1i8PLHdl6Zf87I+xZXFvPCXYjiTFq+YSDQ==
@@ -2662,6 +2664,8 @@
   version "13.15.3"
   resolved "https://registry.npmjs.org/@types/validator/-/validator-13.15.3.tgz"
   integrity sha512-7bcUmDyS6PN3EuD9SlGGOxM77F8WLVsrwkxyWxKnxzmXoequ6c7741QBrANq6htVRGOITJ7z72mTP6Z4XyuG+Q==
+
+"@types/ws@^8.18.1":
 
 "@types/yargs-parser@*":
   version "21.0.3"
@@ -3312,7 +3316,7 @@ available-typed-arrays@^1.0.7:
   dependencies:
     possible-typed-array-names "^1.0.0"
 
-axios@^1.8.2:
+axios@^1.12.2, axios@^1.8.2:
   version "1.12.2"
   resolved "https://registry.npmjs.org/axios/-/axios-1.12.2.tgz"
   integrity sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==
@@ -3562,6 +3566,46 @@ braces@^3.0.3:
   integrity sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==
   dependencies:
     fill-range "^7.1.1"
+
+"brill-backend@file:/home/runner/workspace/apps/backend":
+  version "1.0.0"
+  resolved "file:apps/backend"
+  dependencies:
+    "@neondatabase/serverless" "^1.0.1"
+    "@types/express-session" "^1.18.2"
+    "@types/firebase" "^2.4.32"
+    "@types/jsonwebtoken" "^9.0.10"
+    "@types/pg" "^8.15.5"
+    "@types/ws" "^8.18.1"
+    axios "^1.12.2"
+    bcrypt "^6.0.0"
+    cors "^2.8.5"
+    crypto "^1.0.1"
+    dotenv "^17.2.3"
+    drizzle-kit "^0.31.4"
+    drizzle-orm "^0.44.6"
+    express "^5.1.0"
+    express-rate-limit "^8.1.0"
+    express-session "^1.18.2"
+    firebase "^12.3.0"
+    firebase-admin "^13.5.0"
+    firebase-functions "^6.4.0"
+    googleapis "^161.0.0"
+    helmet "^8.1.0"
+    jsonwebtoken "^9.0.2"
+    multer "^1.4.5-lts.1"
+    node "^24.7.0"
+    nodemailer "^7.0.9"
+    nodemon "^3.1.10"
+    passport "^0.7.0"
+    passport-facebook "^3.0.0"
+    pg "^8.16.3"
+    resend "^6.1.2"
+    ts-node "^10.9.2"
+    twilio "^5.10.2"
+    typescript "^5.9.2"
+    ws "^8.18.3"
+    zod "^4.1.12"
 
 browserslist@^4.24.0, browserslist@^4.25.3, browserslist@^4.26.3, "browserslist@>= 4.21.0":
   version "4.27.0"
@@ -4959,6 +5003,8 @@ expo-calendar@~14.1.4:
   integrity sha512-4h23qUBqQNIvLsx2FfL6DcmxgZvhCbMqUN55UQIiBeHlCnyrcNu6Fo9c179aWsgh35nbD+mntt1AaEOplHTzeg==
 
 expo-cli@^6.3.12:
+  resolved "https://registry.npmjs.org/expo-cli/-/expo-cli-6.3.12.tgz"
+  integrity sha512-Tye0lHQ4WnWtvvH9xauAqahDzJgY20zawLLJ8qyI/21B1d35lC16kSpCLVX0uwH0MKYAfcmrkQwlwkyz4rJAVw==
 
 expo-constants@*, expo-constants@~17.1.6, expo-constants@~17.1.7:
   version "17.1.7"
@@ -9724,7 +9770,7 @@ ts-interface-checker@^0.1.9:
   resolved "https://registry.npmjs.org/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz"
   integrity sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==
 
-ts-node@>=9.0.0:
+ts-node@^10.9.2, ts-node@>=9.0.0:
   version "10.9.2"
   resolved "https://registry.npmjs.org/ts-node/-/ts-node-10.9.2.tgz"
   integrity sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==
@@ -9839,7 +9885,7 @@ typed-array-length@^1.0.7:
     possible-typed-array-names "^1.0.0"
     reflect.getprototypeof "^1.0.6"
 
-typescript@>=2.7, typescript@>=4.8.4, "typescript@>=4.8.4 <6.0.0", typescript@~5.8.3:
+typescript@^5.9.2, typescript@>=2.7, typescript@>=4.8.4, "typescript@>=4.8.4 <6.0.0", typescript@~5.8.3:
   version "5.8.3"
   resolved "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz"
   integrity sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==
@@ -10327,7 +10373,7 @@ ws@^7.5.10:
   resolved "https://registry.npmjs.org/ws/-/ws-7.5.10.tgz"
   integrity sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==
 
-ws@^8.11.0, ws@^8.12.1:
+ws@^8.11.0, ws@^8.12.1, ws@^8.18.3:
   version "8.18.3"
   resolved "https://registry.npmjs.org/ws/-/ws-8.18.3.tgz"
   integrity sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==

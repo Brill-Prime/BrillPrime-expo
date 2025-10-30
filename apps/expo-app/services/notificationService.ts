@@ -1,8 +1,4 @@
 
-// Notification Service
-// Handles push notifications and in-app notifications
-// Uses Firebase for auth, Supabase for realtime delivery
-
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 import { supabase } from '../config/supabase';
