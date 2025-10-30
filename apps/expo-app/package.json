@@ -25,6 +25,7 @@
     "@react-navigation/native-stack": "^7.3.10",
     "@rnmapbox/maps": "^10.1.21",
     "@sendgrid/mail": "^8.1.5",
+    "@supabase/supabase-js": "^2.77.0",
     "@tanstack/react-query": "^5.90.2",
     "@types/leaflet": "^1.9.21",
     "@types/lodash": "^4.17.20",

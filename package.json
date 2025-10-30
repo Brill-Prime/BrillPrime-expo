@@ -2,15 +2,14 @@
   "name": "brillprime-monorepo",
   "private": true,
   "workspaces": [
-    "apps/expo-app",
-    "apps/backend"
+    "apps/expo-app"
   ],
   "scripts": {
     "dev": "concurrently \"yarn workspace my-app web\" \"yarn workspace brill-backend dev\"",
     "expo:start": "yarn workspace expo-app start",
     "expo:android": "yarn workspace expo-app android",
     "expo:ios": "yarn workspace expo-app ios",
-    "expo:web": "yarn workspace expo-app web",
+    "expo:web": "yarn workspace my-app web",
     "backend:dev": "yarn workspace backend dev",
     "backend:build": "yarn workspace backend build",
     "backend:start": "yarn workspace backend start",
@@ -22,8 +21,5 @@
   "devDependencies": {
     "concurrently": "^9.2.1"
   },
-  "packageManager": "yarn@1.22.22",
-  "dependencies": {
-    "expo-cli": "^6.3.12"
-  }
+  "packageManager": "yarn@1.22.22"
 }

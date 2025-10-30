@@ -1,9 +1,9 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "bash"]
 [agent]
 expertMode = true
 
 [workflows]
-runButton = "Start BrillPrime Clean"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -94,7 +94,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd apps/expo-app && npx expo start --web --port 5000 --host lan"
+args = "yarn expo:web"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -132,8 +132,8 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 8081
-externalPort = 8081
+localPort = 34847
+externalPort = 3000
 
 [nix]
 channel = "stable-25_05"
