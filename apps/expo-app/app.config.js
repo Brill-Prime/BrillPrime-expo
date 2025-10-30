@@ -51,13 +51,36 @@ export default {
     ],
     "expo-secure-store",
     "expo-local-authentication",
-    "expo-updates",
+    [
+      "expo-updates",
+      {
+        "requestHeaders": {
+          "expo-channel-name": "production"
+        }
+      }
+    ],
     [
       "expo-barcode-scanner",
       {
         cameraPermission: "Allow BrillPrime to access camera for QR code scanning"
       }
-    ]
+    ],
+    [
+      "expo-calendar",
+      {
+        calendarPermission: "Allow BrillPrime to access calendar for delivery scheduling"
+      }
+    ],
+    [
+      "expo-contacts",
+      {
+        contactsPermission: "Allow BrillPrime to access contacts for merchant/driver integration"
+      }
+    ],
+    "expo-crypto",
+    "expo-keep-awake",
+    "expo-app-loading",
+    "expo-haptics"
   ],
   experiments: {
     typedRoutes: true,

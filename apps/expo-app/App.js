@@ -1,3 +1,14 @@
 import { ExpoRoot } from 'expo-router';
+import { FeatureManager } from './services/featureManager';
+import { useEffect } from 'react';
 
-export default ExpoRoot;
+function App() {
+  useEffect(() => {
+    // Initialize all BrillPrime features
+    FeatureManager.initialize();
+  }, []);
+
+  return ExpoRoot({});
+}
+
+export default App;
