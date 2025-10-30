@@ -1,9 +1,10 @@
 
 import React from 'react';
 import MapboxGL from '@rnmapbox/maps';
+import { MAPBOX_CONFIG } from '../config/mapbox';
 
-// Configure Mapbox access token - you'll need to set this
-MapboxGL.setAccessToken('pk.YOUR_MAPBOX_TOKEN'); // Replace with your actual token
+// Configure Mapbox access token from environment
+MapboxGL.setAccessToken(MAPBOX_CONFIG.ACCESS_TOKEN);
 
 // Export Mapbox components with react-native-maps compatible names
 export const Marker = MapboxGL.PointAnnotation;

@@ -2,7 +2,7 @@
 // Mapbox Configuration
 export const MAPBOX_CONFIG = {
   // You'll need to replace this with your actual Mapbox access token
-  ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.YOUR_MAPBOX_TOKEN',
+  ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '',
   
   // Default map styles
   STYLES: {

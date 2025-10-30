@@ -275,9 +275,8 @@ const MapWeb: React.FC<MapProps> = ({
                 <div id="map"></div>
 
                 <script>
-                  // Set Mapbox access token - IMPORTANT: Replace with your actual token
-                  // It's recommended to load this from a secure configuration or environment variable
-                  mapboxgl.accessToken = 'pk.YOUR_MAPBOX_TOKEN'; 
+                  // Set Mapbox access token from environment configuration
+                  mapboxgl.accessToken = '${process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || ''}'; 
 
                   // Initialize map
                   const map = new mapboxgl.Map({
