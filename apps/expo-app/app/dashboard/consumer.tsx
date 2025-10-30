@@ -11,6 +11,7 @@ export default function ConsumerDashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [activeOrders, setActiveOrders] = useState([]); // Assuming you'll fetch active orders
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -23,16 +24,17 @@ export default function ConsumerDashboard() {
   useEffect(() => {
     loadUserData();
     loadCartCount();
+    loadActiveOrders(); // Load active orders when the component mounts
 
     // Refresh cart count when screen is focused
-    // Fix: Remove router.addListener as it doesn't exist on Router type
     const unsubscribe = () => {
-      // Replace with a different approach if needed
       loadCartCount();
+      loadActiveOrders(); // Refresh active orders as well
     };
 
     // Initial load
     loadCartCount();
+    loadActiveOrders();
 
     return () => {
       // Clean up if needed
@@ -52,6 +54,24 @@ export default function ConsumerDashboard() {
       console.error("Error loading user data:", error);
     }
   };
+
+  const loadActiveOrders = async () => {
+    // This is a placeholder. Replace with actual API call to fetch active orders.
+    // Example:
+    // const orders = await fetch('/api/orders/active').then(res => res.json());
+    // setActiveOrders(orders);
+    try {
+      // Mocking some active orders for demonstration
+      const mockOrders = [
+        { id: 'ORD12345', status: 'Processing', date: '2023-10-27' },
+        { id: 'ORD67890', status: 'Shipped', date: '2023-10-26' },
+      ];
+      setActiveOrders(mockOrders);
+    } catch (error) {
+      console.error("Error loading active orders:", error);
+    }
+  };
+
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -75,22 +95,31 @@ export default function ConsumerDashboard() {
     );
   };
 
-  const handleFeaturePress = (feature: any) => {
-    // Map feature IDs to actual routes
-    const featureRoutes: Record<string, string> = {
-      'order-history': '/orders/consumer-orders',
-      'live-tracking': '/orders/order-tracking',
-      'favorites': '/favorites',
-      'wallet': '/transactions',
-      'support': '/support',
-      'settings': '/profile'
-    };
-
-    const route = featureRoutes[feature.id];
-    if (route) {
-      router.push(route);
-    } else {
-      Alert.alert("Feature", `${feature.title} is being implemented`);
+  const handleFeaturePress = (featureTitle: string) => {
+    switch (featureTitle) {
+      case 'Order Fuel':
+        router.push('/order/fuel');
+        break;
+      case 'Toll Payment':
+        router.push('/toll');
+        break;
+      case 'My Orders':
+        router.push('/orders/consumer-orders');
+        break;
+      case 'Browse Products':
+        router.push('/commodity/commodities');
+        break;
+      case 'Messages':
+        router.push('/messages');
+        break;
+      case 'Favorites':
+        router.push('/favorites');
+        break;
+      case 'Support':
+        router.push('/support');
+        break;
+      default:
+        Alert.alert('Feature', `${featureTitle} is under development.`);
     }
   };
 
@@ -101,6 +130,27 @@ export default function ConsumerDashboard() {
     { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'), route: "/favorites" },
     { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'), route: "/support" }
   ];
+
+  const stats = [
+    { label: "Orders", value: "12", color: "#0B1A51" },
+    { label: "Total Spent", value: "₹2,450", color: "#0B1A51" },
+    { label: "Favorites", value: "8", color: "#0B1A51" },
+  ];
+
+  const quickActions = [
+    { title: "My Orders", subtitle: "View order history", icon: "receipt-outline", action: () => router.push('/orders/consumer-orders') },
+    { title: "Track Order", subtitle: "See your active delivery", icon: "car-sport-outline", action: () => {
+      if (activeOrders.length > 0) {
+        router.push({
+          pathname: '/orders/order-tracking',
+          params: { orderId: activeOrders[0].id }
+        });
+      } else {
+        Alert.alert('No Active Orders', 'You don’t have any active orders to track.');
+      }
+    }},
+  ];
+
 
   const styles = getResponsiveStyles(screenData);
 
@@ -140,7 +190,7 @@ export default function ConsumerDashboard() {
             <TouchableOpacity
               key={index}
               style={styles.featureCard}
-              onPress={() => handleFeaturePress(feature)}
+              onPress={() => handleFeaturePress(feature.title)}
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
@@ -160,7 +210,7 @@ export default function ConsumerDashboard() {
         <View style={styles.servicesContainer}>
           <TouchableOpacity
             style={[styles.serviceCard]}
-            onPress={() => router.push('/order/fuel')}
+            onPress={() => handleFeaturePress('Order Fuel')}
           >
             <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
               <Image
@@ -175,7 +225,7 @@ export default function ConsumerDashboard() {
 
           <TouchableOpacity
             style={styles.serviceCard}
-            onPress={() => router.push('/toll')}
+            onPress={() => handleFeaturePress('Toll Payment')}
           >
             <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
               <Image
@@ -192,40 +242,29 @@ export default function ConsumerDashboard() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Your Stats</Text>
           <View style={styles.statsRow}>
-            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>12</Text>
-              <Text style={styles.statLabel}>Orders</Text>
-            </View>
-            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>₹2,450</Text>
-              <Text style={styles.statLabel}>Total Spent</Text>
-            </View>
-            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>8</Text>
-              <Text style={styles.statLabel}>Favorites</Text>
-            </View>
+            {stats.map((stat, index) => (
+              <View key={index} style={[styles.statCard, {backgroundColor: stat.color}]}>
+                <Text style={styles.statNumber}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsRow}>
+            {quickActions.map((action, index) => (
               <TouchableOpacity
+                key={index}
                 style={styles.quickActionCard}
-                onPress={async () => {
-                  // Check if there's a recent order to track
-                  const lastOrderId = await AsyncStorage.getItem('lastOrderId');
-                  if (lastOrderId) {
-                    router.push(`/orders/order-tracking?orderId=${lastOrderId}`);
-                  } else {
-                    router.push('/orders/consumer-orders');
-                  }
-                }}
+                onPress={action.action}
               >
-                <Ionicons name="receipt-outline" size={32} color="#4682B4" />
-                <Text style={styles.quickActionTitle}>My Orders</Text>
-                <Text style={styles.quickActionSubtitle}>View order history</Text>
+                <Ionicons name={action.icon as any} size={32} color="#4682B4" />
+                <Text style={styles.quickActionTitle}>{action.title}</Text>
+                <Text style={styles.quickActionSubtitle}>{action.subtitle}</Text>
               </TouchableOpacity>
+            ))}
           </View>
         </View>
 

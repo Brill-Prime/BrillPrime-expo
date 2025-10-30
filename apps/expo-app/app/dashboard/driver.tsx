@@ -10,9 +10,13 @@ export default function DriverDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
   const [isOnline, setIsOnline] = useState(false);
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [todayStats, setTodayStats] = useState({ deliveries: 0, earnings: 0, rating: 0 });
 
   useEffect(() => {
     loadUserData();
+    fetchDriverData();
   }, []);
 
   const loadUserData = async () => {
@@ -22,6 +26,19 @@ export default function DriverDashboard() {
     } catch (error) {
       console.error("Error loading user data:", error);
     }
+  };
+
+  const fetchDriverData = async () => {
+    // Placeholder for fetching real data
+    // In a real app, this would involve API calls
+    setAvailableOrders([
+      { id: 'order123', customer: 'John Doe', distance: '2.5 km', status: 'Pending' },
+      { id: 'order124', customer: 'Jane Smith', distance: '1.8 km', status: 'Pending' },
+    ]);
+    setActiveOrders([
+      { id: 'order456', customer: 'Alice Brown', distance: '3.1 km', status: 'In Transit' },
+    ]);
+    setTodayStats({ deliveries: 8, earnings: 1240, rating: 4.8 });
   };
 
   const toggleOnlineStatus = () => {
@@ -54,33 +71,53 @@ export default function DriverDashboard() {
     );
   };
 
+  const handleFeaturePress = (feature: string) => {
+    switch (feature) {
+      case 'Available Jobs':
+        router.push('/orders/driver-orders');
+        break;
+      case 'My Deliveries':
+        if (activeOrders.length > 0) {
+          router.push({
+            pathname: '/orders/order-tracking',
+            params: { orderId: activeOrders[0].id }
+          });
+        } else {
+          Alert.alert('No Active Orders', 'You don\'t have any active deliveries.');
+        }
+        break;
+      case 'Earnings':
+        router.push('/driver/earnings-details');
+        break;
+      case 'Route Planner':
+        if (activeOrders.length > 0) {
+          router.push({
+            pathname: '/orders/order-tracking',
+            params: { orderId: activeOrders[0].id }
+          });
+        } else {
+          Alert.alert('No Active Orders', 'You don\'t have any active deliveries to plan a route for.');
+        }
+        break;
+      case 'Vehicle Info':
+        router.push('/driver/vehicle-management');
+        break;
+      case 'Help & Support':
+        router.push('/support');
+        break;
+      default:
+        Alert.alert('Feature', `Opening ${feature}...`);
+    }
+  };
+
   const features = [
     { id: 'available-orders', title: "Available Jobs", description: "Find deliveries", icon: "location" as const, color: "#4682B4", route: "/orders/driver-orders" },
     { id: 'my-deliveries', title: "My Deliveries", description: "Current orders", icon: "cube" as const, color: "#f093fb", route: "/orders/driver-orders" },
-    { id: 'earnings', title: "Earnings", description: "Track your income", icon: "cash" as const, color: "#4facfe", route: "/transactions" },
+    { id: 'earnings', title: "Earnings", description: "Track your income", icon: "cash" as const, color: "#4facfe", route: "/driver/earnings-details" },
     { id: 'navigation', title: "Route Planner", description: "Optimize your routes", icon: "map" as const, color: "#ff7e5f", route: "/store-locator" },
     { id: 'vehicle-info', title: "Vehicle Info", description: "Manage your vehicle", icon: "car" as const, color: "#a8e6cf", route: "/profile/vehicle" },
     { id: 'support', title: "Help & Support", description: "Get assistance", icon: "headset" as const, color: "#ffd93d", route: "/support" }
   ];
-
-  const handleFeaturePress = (feature: any) => {
-    // Map feature IDs to actual routes
-    const featureRoutes: Record<string, string> = {
-      'available-orders': '/orders/driver-orders',
-      'my-deliveries': '/orders/driver-orders',
-      'earnings': '/driver/earnings-details',
-      'navigation': '/store-locator',
-      'vehicle-info': '/driver/vehicle-management',
-      'support': '/support'
-    };
-
-    const route = featureRoutes[feature.id];
-    if (route) {
-      router.push(route);
-    } else {
-      Alert.alert("Feature", `${feature.title} is being implemented`);
-    }
-  };
 
   return (
     <LinearGradient
@@ -129,7 +166,7 @@ export default function DriverDashboard() {
             <TouchableOpacity
               key={index}
               style={styles.featureCard}
-              onPress={() => handleFeaturePress(feature)}
+              onPress={() => handleFeaturePress(feature.title)}
             >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
                 <Ionicons name={feature.icon} size={32} color="white" />
@@ -144,16 +181,16 @@ export default function DriverDashboard() {
           <Text style={styles.sectionTitle}>Today's Summary</Text>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>8</Text>
+              <Text style={styles.statNumber}>{todayStats.deliveries}</Text>
               <Text style={styles.statLabel}>Deliveries</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>₹1,240</Text>
+              <Text style={styles.statNumber}>₹{todayStats.earnings.toLocaleString()}</Text>
               <Text style={styles.statLabel}>Earnings</Text>
             </View>
             <View style={styles.statCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.statNumber}>4.8 </Text>
+                <Text style={styles.statNumber}>{todayStats.rating.toFixed(1)} </Text>
                 <Ionicons name="star" size={20} color="#FFD700" />
               </View>
               <Text style={styles.statLabel}>Rating</Text>
@@ -162,18 +199,24 @@ export default function DriverDashboard() {
 
           <View style={styles.recentDeliveries}>
             <Text style={styles.sectionSubTitle}>Recent Deliveries</Text>
-            <View style={styles.deliveryItem}>
-              <Text style={styles.deliveryText}>Order #5678 - 2.5 km</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.deliveryStatusText}>Delivered</Text>
+            {activeOrders.length > 0 ? activeOrders.map((order, index) => (
+              <View key={index} style={styles.deliveryItem}>
+                <Text style={styles.deliveryText}>Order #{order.id} - {order.distance}</Text>
+                <View style={[styles.statusBadge, order.status === 'In Transit' ? styles.inTransitBadge : null]}>
+                  <Text style={styles.deliveryStatusText}>{order.status}</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.deliveryItem}>
-              <Text style={styles.deliveryText}>Order #5677 - 1.8 km</Text>
-              <View style={[styles.statusBadge, styles.inTransitBadge]}>
-                <Text style={styles.deliveryStatusText}>In Transit</Text>
+            )) : (
+              <Text style={{ textAlign: 'center', color: '#7f8c8d' }}>No active deliveries.</Text>
+            )}
+             {availableOrders.length > 0 && (
+              <View style={styles.deliveryItem}>
+                <Text style={styles.deliveryText}>New Order Available: #{availableOrders[0].id}</Text>
+                <View style={[styles.statusBadge, {backgroundColor: '#ffd93d'}]}>
+                  <Text style={styles.deliveryStatusText}>New</Text>
+                </View>
               </View>
-            </View>
+            )}
           </View>
         </View>
       </ScrollView>

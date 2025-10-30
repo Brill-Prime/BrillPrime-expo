@@ -9,7 +9,8 @@ import {
   Dimensions,
   Modal,
   Platform,
-  Clipboard
+  Clipboard,
+  Share // Import Share for native sharing
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,7 +49,8 @@ interface Order {
   deliveryTime?: string;
   driverName?: string;
   date?: string; // Added for receipt generation
-  createdAt?: string; // Added for receipt generation
+  createdAt: string; // Added for receipt generation
+  orderNumber: string; // Added for receipt generation
 }
 
 export default function OrderDetails() {
@@ -103,6 +105,7 @@ export default function OrderDetails() {
       // Mock data - replace with actual API call
       const mockOrder: Order = {
         id: id as string,
+        orderNumber: 'ORD123456789', // Added for receipt generation
         merchantName: 'Lagos Fuel Station',
         merchantContact: '+234 803 123 4567',
         items: [{ name: 'Petrol', quantity: 1, price: 30000 }],
@@ -120,7 +123,7 @@ export default function OrderDetails() {
         deliveryTime: '05:00pm',
         driverName: 'Mike',
         date: 'January 15, 2024', // Added for receipt generation
-        createdAt: '2024-01-15T17:00:00' // Added for receipt generation
+        createdAt: '2024-01-15T17:00:00', // Added for receipt generation
       };
       // Simulate a status change for demonstration purposes
       if (id === '1001') { // Example ID for an order that is out for delivery
@@ -138,47 +141,101 @@ export default function OrderDetails() {
     router.push(`/orders/report-issue?orderId=${order?.id}`);
   };
 
+  // Share receipt handler
   const handleShareReceipt = async () => {
-    if (!order) return;
-
     try {
+      if (!order) return;
+
       const receiptText = `
-Order Receipt
-Order ID: ${order.id}
-Status: ${order.status}
-Total: ₦${order.totalAmount?.toLocaleString() || '0'}
+BrillPrime Order Receipt
+------------------------
+Order #${order.orderNumber}
 Date: ${new Date(order.createdAt).toLocaleDateString()}
+
+Items:
+${order.items?.map(item => `- ${item.name} x${item.quantity}: ₦${item.price.toLocaleString()}`).join('\n')}
+
+Subtotal: ₦${order.subtotal.toLocaleString()}
+Delivery Fee: ₦${order.deliveryFee.toLocaleString()}
+Total: ₦${order.totalAmount.toLocaleString()}
+
+Status: ${order.status}
+Payment: ${order.paymentMethod}
+
+Thank you for using BrillPrime!
       `.trim();
 
-      // For web, copy to clipboard
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(receiptText);
-        showSuccess('Success', 'Receipt copied to clipboard');
+      if (Platform.OS === 'web') {
+        // Web sharing
+        if (navigator.share) {
+          await navigator.share({
+            title: `Order #${order.orderNumber}`,
+            text: receiptText
+          });
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(receiptText);
+          Alert.alert('Success', 'Receipt copied to clipboard!');
+        }
       } else {
-        showInfo('Receipt', receiptText);
+        // Native sharing
+        await Share.share({
+          message: receiptText,
+          title: `Order #${order.orderNumber}`
+        });
       }
     } catch (error) {
-      showError('Error', 'Failed to share receipt');
+      console.error('Error sharing receipt:', error);
+      Alert.alert('Error', 'Failed to share receipt. Please try again.');
     }
   };
 
+  // Modify order handler
   const handleModifyOrder = () => {
     if (!order) return;
 
-    if (order.status === 'delivered' || order.status === 'cancelled') {
-      showError('Cannot Modify', 'This order cannot be modified');
+    // Check if order can be modified (only PENDING orders)
+    if (order.status !== 'pending') {
+      Alert.alert(
+        'Cannot Modify',
+        'Only pending orders can be modified. Please contact support for assistance.'
+      );
       return;
     }
 
-    router.push(`/orders/change-address?orderId=${order.id}`);
-  };
-
-  const handleCancelOrder = async () => {
-    router.push(`/orders/cancel-order?orderId=${order?.id}&orderTotal=${order?.totalAmount}`);
+    Alert.alert(
+      'Modify Order',
+      'What would you like to change?',
+      [
+        {
+          text: 'Change Delivery Address',
+          onPress: () => router.push({
+            pathname: '/orders/change-address',
+            params: { orderId: order.id }
+          })
+        },
+        {
+          text: 'Cancel Order',
+          onPress: () => router.push({
+            pathname: '/orders/cancel-order',
+            params: { orderId: order.id }
+          }),
+          style: 'destructive'
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        }
+      ]
+    );
   };
 
   const handleChangeAddress = () => {
     router.push(`/orders/change-address?orderId=${order?.id}`);
+  };
+
+  const handleCancelOrder = async () => {
+    router.push(`/orders/cancel-order?orderId=${order?.id}&orderTotal=${order?.totalAmount}`);
   };
 
   const handleContactDriver = (type: 'message' | 'call') => {

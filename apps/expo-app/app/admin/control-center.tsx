@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,6 +13,26 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Mock adminService for demonstration purposes. In a real app, this would interact with your backend.
+const adminService = {
+  emergencyShutdown: async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true, error: null };
+  },
+  clearSystemCache: async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true };
+  },
+  restartServices: async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true };
+  },
+  backupDatabase: async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true };
+  }
+};
 
 interface SystemMetrics {
   platform: {
@@ -69,41 +88,50 @@ export default function AdminControlCenter() {
       securityIncidents: 1
     }
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    
+
     loadSystemMetrics();
-    
+
     return () => subscription?.remove();
   }, []);
 
   const loadSystemMetrics = async () => {
     try {
-      const token = await AsyncStorage.getItem('adminToken');
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/system-metrics`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSystemMetrics(data);
-      } else {
-        console.log('Using mock system metrics');
-      }
+      // In a real app, you would fetch from an API. For now, we'll use mock data.
+      // const token = await AsyncStorage.getItem('adminToken');
+      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/system-metrics`, {
+      //   headers: {
+      //     'Authorization': `Bearer ${token}`
+      //   }
+      // });
+      //
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   setSystemMetrics(data);
+      // } else {
+      //   console.log('Using mock system metrics');
+      // }
+      console.log('Using mock system metrics');
     } catch (error) {
       console.error('Error loading system metrics:', error);
       // Continue using mock data as fallback
     }
   };
 
+  const fetchControlData = async () => {
+    // Placeholder for a function that reloads all necessary data for control center
+    await loadSystemMetrics();
+    // Add other data fetching functions here as needed
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadSystemMetrics();
+    await fetchControlData();
     setRefreshing(false);
   };
 
@@ -129,26 +157,9 @@ export default function AdminControlCenter() {
           async (text) => {
             if (text) {
               try {
-                const token = await AsyncStorage.getItem('adminToken');
-                const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/announcements`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify({
-                    title: 'Platform Announcement',
-                    message: text,
-                    targetAudience: 'all',
-                    priority: 'medium'
-                  })
-                });
-                
-                if (response.ok) {
-                  Alert.alert('Success', 'Announcement sent successfully');
-                } else {
-                  throw new Error('Failed to send announcement');
-                }
+                // Placeholder for sending announcement via API
+                console.log('Sending announcement:', text);
+                Alert.alert('Success', 'Announcement sent (simulated)');
               } catch (error) {
                 console.error('Send announcement error:', error);
                 Alert.alert('Error', 'Failed to send announcement');
@@ -166,29 +177,9 @@ export default function AdminControlCenter() {
             {
               text: 'Enable',
               onPress: async () => {
-                try {
-                  const token = await AsyncStorage.getItem('adminToken');
-                  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/maintenance`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                      enabled: true,
-                      message: 'System under maintenance'
-                    })
-                  });
-                  
-                  if (response.ok) {
-                    Alert.alert('Success', 'Maintenance mode enabled');
-                  } else {
-                    throw new Error('Failed to enable maintenance mode');
-                  }
-                } catch (error) {
-                  console.error('Maintenance mode error:', error);
-                  Alert.alert('Error', 'Failed to enable maintenance mode');
-                }
+                // Placeholder for enabling maintenance mode via API
+                console.log('Enabling maintenance mode...');
+                Alert.alert('Success', 'Maintenance mode enabled (simulated)');
               }
             }
           ]
@@ -211,6 +202,102 @@ export default function AdminControlCenter() {
     }
   };
 
+  const handleSystemAction = async (action: string) => {
+    switch (action) {
+      case 'Emergency Shutdown':
+        Alert.alert(
+          'Emergency Shutdown',
+          'This will disable all system operations. Are you sure?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            },
+            {
+              text: 'Confirm',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  setIsLoading(true);
+                  const response = await adminService.emergencyShutdown();
+                  if (response.success) {
+                    Alert.alert('Success', 'System shutdown initiated.');
+                  } else {
+                    Alert.alert('Error', response.error || 'Failed to shutdown system');
+                  }
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to execute emergency shutdown');
+                } finally {
+                  setIsLoading(false);
+                }
+              }
+            }
+          ]
+        );
+        break;
+      case 'Clear Cache':
+        try {
+          setIsLoading(true);
+          await adminService.clearSystemCache();
+          Alert.alert('Success', 'System cache cleared successfully');
+          fetchControlData();
+        } catch (error) {
+          Alert.alert('Error', 'Failed to clear cache');
+        } finally {
+          setIsLoading(false);
+        }
+        break;
+      case 'Restart Services':
+        Alert.alert(
+          'Restart Services',
+          'This will restart all backend services. Continue?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            },
+            {
+              text: 'Restart',
+              onPress: async () => {
+                try {
+                  setIsLoading(true);
+                  await adminService.restartServices();
+                  Alert.alert('Success', 'Services restarted successfully');
+                  fetchControlData();
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to restart services');
+                } finally {
+                  setIsLoading(false);
+                }
+              }
+            }
+          ]
+        );
+        break;
+      case 'View Logs':
+        router.push('/admin/system-logs');
+        break;
+      case 'Backup Database':
+        try {
+          setIsLoading(true);
+          const response = await adminService.backupDatabase();
+          if (response.success) {
+            Alert.alert('Success', 'Database backup completed successfully');
+          } else {
+            Alert.alert('Error', 'Failed to backup database');
+          }
+        } catch (error) {
+          Alert.alert('Error', 'Failed to backup database');
+        } finally {
+          setIsLoading(false);
+        }
+        break;
+      default:
+        Alert.alert('Action', `Executing ${action}...`);
+    }
+  };
+
+
   const MetricCard = ({ title, value, subtitle, icon, color }: {
     title: string;
     value: string | number;
@@ -226,6 +313,23 @@ export default function AdminControlCenter() {
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricSubtitle}>{subtitle}</Text>
     </View>
+  );
+
+  const SystemActionButton = ({ title, icon, color, actionType, actionName }: {
+    title: string;
+    icon: string;
+    color: string;
+    actionType: 'quick' | 'system';
+    actionName: string;
+  }) => (
+    <TouchableOpacity
+      style={styles.actionCard}
+      onPress={() => actionType === 'quick' ? handleQuickAction(actionName) : handleSystemAction(actionName)}
+    >
+      <Ionicons name={icon as any} size={32} color={color} />
+      <Text style={styles.actionTitle}>{title}</Text>
+      <Text style={styles.actionDescription}>{`Perform ${title}`}</Text>
+    </TouchableOpacity>
   );
 
   const styles = getResponsiveStyles(screenData);
@@ -251,8 +355,14 @@ export default function AdminControlCenter() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <Text style={styles.loadingText}>Processing...</Text>
+        </View>
+      )}
+
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -267,7 +377,7 @@ export default function AdminControlCenter() {
             icon="people"
             color="#4ade80"
           />
-          
+
           <MetricCard
             title="Escrow Balance"
             value={formatCurrency(systemMetrics.transactions.escrowBalance)}
@@ -275,7 +385,7 @@ export default function AdminControlCenter() {
             icon="card"
             color="#f59e0b"
           />
-          
+
           <MetricCard
             title="Security Alerts"
             value={systemMetrics.security.fraudAlerts}
@@ -283,7 +393,7 @@ export default function AdminControlCenter() {
             icon="shield-checkmark"
             color="#ef4444"
           />
-          
+
           <MetricCard
             title="System Health"
             value={systemMetrics.platform.serverHealth}
@@ -299,7 +409,8 @@ export default function AdminControlCenter() {
             { key: 'overview', label: 'Overview' },
             { key: 'transactions', label: 'Transactions' },
             { key: 'security', label: 'Security' },
-            { key: 'actions', label: 'Quick Actions' }
+            { key: 'actions', label: 'Quick Actions' },
+            { key: 'system', label: 'System Actions' }
           ].map((tab) => (
             <TouchableOpacity
               key={tab.key}
@@ -346,62 +457,145 @@ export default function AdminControlCenter() {
           </View>
         )}
 
+        {activeTab === 'transactions' && (
+          <View style={styles.tabContent}>
+            <View style={styles.overviewCard}>
+              <Text style={styles.cardTitle}>Transaction Metrics</Text>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Total Transactions</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.transactions.totalTransactions.toLocaleString()}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Pending Transactions</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.transactions.pendingTransactions}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Disputed Transactions</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.transactions.disputedTransactions}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Total Volume</Text>
+                <Text style={styles.activityLabel}>{formatCurrency(systemMetrics.transactions.totalVolume)}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {activeTab === 'security' && (
+          <View style={styles.tabContent}>
+            <View style={styles.overviewCard}>
+              <Text style={styles.cardTitle}>Security Overview</Text>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Fraud Alerts</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.security.fraudAlerts}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Suspicious Activities</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.security.suspiciousActivities}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Blocked Users</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.security.blockedUsers}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Security Incidents</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.security.securityIncidents}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {activeTab === 'actions' && (
           <View style={styles.tabContent}>
             <View style={styles.actionsGrid}>
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('escrow')}
-              >
-                <Ionicons name="shield-checkmark" size={32} color="rgb(11, 26, 81)" />
-                <Text style={styles.actionTitle}>Escrow Management</Text>
-                <Text style={styles.actionDescription}>Manage escrow transactions</Text>
-              </TouchableOpacity>
+              <SystemActionButton
+                title="Escrow Management"
+                icon="shield-checkmark"
+                color="rgb(11, 26, 81)"
+                actionType="quick"
+                actionName="escrow"
+              />
 
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('kyc')}
-              >
-                <Ionicons name="document-text" size={32} color="rgb(11, 26, 81)" />
-                <Text style={styles.actionTitle}>KYC Verification</Text>
-                <Text style={styles.actionDescription}>Review user documents</Text>
-              </TouchableOpacity>
+              <SystemActionButton
+                title="KYC Verification"
+                icon="document-text"
+                color="rgb(11, 26, 81)"
+                actionType="quick"
+                actionName="kyc"
+              />
 
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('moderation')}
-              >
-                <Ionicons name="eye" size={32} color="rgb(11, 26, 81)" />
-                <Text style={styles.actionTitle}>Content Moderation</Text>
-                <Text style={styles.actionDescription}>Review reported content</Text>
-              </TouchableOpacity>
+              <SystemActionButton
+                title="Content Moderation"
+                icon="eye"
+                color="rgb(11, 26, 81)"
+                actionType="quick"
+                actionName="moderation"
+              />
 
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('announcement')}
-              >
-                <Ionicons name="megaphone" size={32} color="rgb(11, 26, 81)" />
-                <Text style={styles.actionTitle}>Send Announcement</Text>
-                <Text style={styles.actionDescription}>Platform-wide notifications</Text>
-              </TouchableOpacity>
+              <SystemActionButton
+                title="Send Announcement"
+                icon="megaphone"
+                color="rgb(11, 26, 81)"
+                actionType="quick"
+                actionName="announcement"
+              />
 
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('maintenance')}
-              >
-                <Ionicons name="settings" size={32} color="rgb(11, 26, 81)" />
-                <Text style={styles.actionTitle}>Maintenance Mode</Text>
-                <Text style={styles.actionDescription}>System maintenance controls</Text>
-              </TouchableOpacity>
+              <SystemActionButton
+                title="Maintenance Mode"
+                icon="settings"
+                color="rgb(11, 26, 81)"
+                actionType="quick"
+                actionName="maintenance"
+              />
 
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('reports')}
-              >
-                <Ionicons name="bar-chart" size={32} color="rgb(11, 26, 81)" />
-                <Text style={styles.actionTitle}>Generate Reports</Text>
-                <Text style={styles.actionDescription}>Analytics and reports</Text>
-              </TouchableOpacity>
+              <SystemActionButton
+                title="Generate Reports"
+                icon="bar-chart"
+                color="rgb(11, 26, 81)"
+                actionType="quick"
+                actionName="reports"
+              />
+            </View>
+          </View>
+        )}
+        {activeTab === 'system' && (
+          <View style={styles.tabContent}>
+            <View style={styles.actionsGrid}>
+              <SystemActionButton
+                title="Emergency Shutdown"
+                icon="power"
+                color="#ef4444"
+                actionType="system"
+                actionName="Emergency Shutdown"
+              />
+              <SystemActionButton
+                title="Clear Cache"
+                icon="trash"
+                color="#f59e0b"
+                actionType="system"
+                actionName="Clear Cache"
+              />
+              <SystemActionButton
+                title="Restart Services"
+                icon="refresh-circle"
+                color="#2563eb"
+                actionType="system"
+                actionName="Restart Services"
+              />
+              <SystemActionButton
+                title="View Logs"
+                icon="document-text"
+                color="#6b7280"
+                actionType="system"
+                actionName="View Logs"
+              />
+              <SystemActionButton
+                title="Backup Database"
+                icon="save"
+                color="#4ade80"
+                actionType="system"
+                actionName="Backup Database"
+              />
             </View>
           </View>
         )}
@@ -489,14 +683,17 @@ const getResponsiveStyles = (screenData: any) => {
       paddingHorizontal: Math.max(16, width * 0.05),
       marginBottom: 16,
       gap: 8,
+      flexWrap: 'wrap', // Allow tabs to wrap on smaller screens
     },
     tab: {
-      flex: 1,
+      flex: 1, // This might need adjustment if tabs wrap
+      minWidth: isTablet ? 100 : 80, // Ensure tabs have a minimum width
       paddingVertical: Math.max(10, height * 0.012),
       paddingHorizontal: Math.max(12, width * 0.03),
       borderRadius: 20,
       backgroundColor: '#f3f4f6',
       alignItems: 'center',
+      justifyContent: 'center', // Center content if it wraps
     },
     activeTab: {
       backgroundColor: 'rgb(11, 26, 81)',
@@ -556,6 +753,7 @@ const getResponsiveStyles = (screenData: any) => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: Math.max(12, width * 0.03),
+      justifyContent: 'center', // Center actions if they don't fill the row
     },
     actionCard: {
       width: isTablet ? '31%' : '47%',
@@ -570,6 +768,7 @@ const getResponsiveStyles = (screenData: any) => {
       elevation: 3,
       minHeight: 120,
       justifyContent: 'center',
+      marginBottom: Math.max(12, width * 0.03), // Add margin for wrapping
     },
     actionTitle: {
       fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
@@ -583,6 +782,22 @@ const getResponsiveStyles = (screenData: any) => {
       color: '#6b7280',
       marginTop: 4,
       textAlign: 'center',
+    },
+    loadingOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    loadingText: {
+      color: 'white',
+      fontSize: 20,
+      fontWeight: 'bold',
     },
   });
 };

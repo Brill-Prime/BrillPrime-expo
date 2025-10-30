@@ -54,27 +54,37 @@ export default function MerchantDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    // Map feature IDs to actual routes
-    const featureRoutes: Record<string, string> = {
-      'manage-orders': '/merchant/order-management',
-      'inventory': '/merchant/inventory',
-      'analytics': '/merchant/analytics',
-      'commodities': '/merchant/commodities',
-      'customers': '/merchant/customer-communication',
-      'settings': '/merchant/store-settings'
-    };
-
-    const route = featureRoutes[feature.id];
-    if (route) {
-      router.push(route);
-    } else {
-      Alert.alert("Feature", `${feature.title} is being implemented`);
+    switch (feature.id) { // Use feature.id for consistent matching
+      case 'manage-commodities':
+        router.push('/merchant/commodities');
+        break;
+      case 'add-commodity':
+        router.push('/merchant/add-commodity');
+        break;
+      case 'manage-orders':
+        router.push('/merchant/order-management');
+        break;
+      case 'inventory':
+        router.push('/merchant/inventory');
+        break;
+      case 'analytics':
+        router.push('/merchant/analytics');
+        break;
+      case 'customers':
+        router.push('/merchant/customer-communication');
+        break;
+      case 'store-settings':
+        router.push('/profile/edit');
+        break;
+      default:
+        Alert.alert("Feature", `${feature.title} is not yet implemented.`);
     }
   };
 
+
   const features = [
     {
-      id: "manage-commodities",
+      id: "add-commodity",
       title: "Add Products",
       description: "List new items",
       icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'),

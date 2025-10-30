@@ -166,10 +166,49 @@ export default function PaymentMethodScreen() {
           )}
 
           {/* Add Payment Method */}
-          <TouchableOpacity style={styles.addPayment} onPress={handleAddPaymentMethod}>
-            <Ionicons name="add" size={24} color="#666" />
-            <Text style={styles.addPaymentText}>Add Payment Method...</Text>
-          </TouchableOpacity>
+          <ScrollView style={styles.methodsList}>
+            <TouchableOpacity 
+              style={styles.methodOption}
+              onPress={() => router.push('/payment/add-payment-method')}
+            >
+              <Ionicons name="card-outline" size={24} color="#007AFF" />
+              <View style={styles.methodInfo}>
+                <Text style={styles.methodTitle}>Add Card</Text>
+                <Text style={styles.methodDescription}>Debit or Credit Card</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.methodOption}
+              onPress={() => router.push('/payment/add-bank-details')}
+            >
+              <Ionicons name="business-outline" size={24} color="#007AFF" />
+              <View style={styles.methodInfo}>
+                <Text style={styles.methodTitle}>Add Bank Account</Text>
+                <Text style={styles.methodDescription}>For direct transfers</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.methodOption}
+              onPress={() => {
+                Alert.alert(
+                  'Mobile Money',
+                  'Mobile money integration coming soon!',
+                  [{ text: 'OK' }]
+                );
+              }}
+            >
+              <Ionicons name="phone-portrait-outline" size={24} color="#007AFF" />
+              <View style={styles.methodInfo}>
+                <Text style={styles.methodTitle}>Mobile Money</Text>
+                <Text style={styles.methodDescription}>Coming Soon</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -257,5 +296,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 8,
+  },
+  methodsList: {
+    flex: 1,
+  },
+  methodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  methodInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  methodTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  methodDescription: {
+    fontSize: 14,
+    color: '#666',
   },
 });
