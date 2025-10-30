@@ -76,11 +76,7 @@ export default {
       {
         contactsPermission: "Allow BrillPrime to access contacts for merchant/driver integration"
       }
-    ],
-    "expo-crypto",
-    "expo-keep-awake",
-    "expo-app-loading",
-    "expo-haptics"
+    ]
   ],
   experiments: {
     typedRoutes: true,
