@@ -64,7 +64,7 @@
     "react-native": "^0.79.6",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "^1.11.0",
-    "react-native-maps": "^1.20.1",
+    "@rnmapbox/maps": "^10.1.21",
     "react-native-maps-directions": "^1.9.0",
     "react-native-otp-verify": "^1.1.8",
     "react-native-paystack-webview": "^5.0.2",
@@ -75,7 +75,8 @@
     "react-native-view-shot": "^4.0.3",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "mapbox-gl": "^3.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
