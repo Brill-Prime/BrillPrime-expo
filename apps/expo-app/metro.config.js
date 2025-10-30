@@ -10,15 +10,10 @@ config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2', 'eot', 'svg', 'png
 config.resolver.sourceExts = [...config.resolver.sourceExts.filter(ext => ext !== 'svg'), 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
 
 // Configure for local development environment with API proxy
+// Note: server.proxy is not a valid option in Metro config
+// We'll need to set up the proxy in a different way if needed
 config.server = {
-  ...config.server,
-  proxy: {
-    '/api': {
-      target: 'http://localhost:3000',
-      changeOrigin: true,
-      logLevel: 'debug'
-    }
-  }
+  ...config.server
 };
 
 // Block react-native-maps from being bundled on web

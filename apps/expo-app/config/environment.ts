@@ -36,7 +36,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
   // Environment-specific overrides
   if (isDevelopment) {
     // Use localhost for native development
-    config.apiBaseUrl = config.apiBaseUrl || 'http://localhost:3000';
+    config.apiBaseUrl = config.apiBaseUrl || 'http://localhost:5000';
   } else {
     // Production - use your deployed backend URL
     config.apiBaseUrl = config.apiBaseUrl || 'https://api.brillprime.com';
@@ -50,7 +50,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // API Configuration - use Metro proxy in development, direct connection in production
 export const API_CONFIG = {
-  baseURL: isDevelopment ? '' : (process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'),
+  baseURL: isDevelopment ? 'http://localhost:5000' : (process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'),
   timeout: 30000,
 };
 

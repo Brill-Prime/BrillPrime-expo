@@ -22,5 +22,8 @@
   "devDependencies": {
     "concurrently": "^9.2.1"
   },
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "yarn@1.22.22",
+  "dependencies": {
+    "expo-cli": "^6.3.12"
+  }
 }
