@@ -19,7 +19,18 @@ class ApiClient {
     const isDevelopment = process.env.NODE_ENV === 'development';
 
     // Use localhost:3000 in development to connect to backend server
-    this.baseURL = 'http://localhost:3000';
+    // Updated for Replit environment: use 0.0.0.0:3000 for backend and current host:3000 for web
+    const getBaseURL = (): string => {
+      if (typeof window !== 'undefined') {
+        // Browser environment - use current host with port 3000
+        const currentHost = window.location.hostname;
+        return process.env.EXPO_PUBLIC_API_BASE_URL || `http://${currentHost}:3000`;
+      }
+      // Node environment (SSR/development)
+      return process.env.EXPO_PUBLIC_API_BASE_URL || 'http://0.0.0.0:3000';
+    };
+
+    this.baseURL = getBaseURL();
 
     console.log('🚀 API Client Initialized');
     console.log('  Environment:', isDevelopment ? 'Development' : 'Production');

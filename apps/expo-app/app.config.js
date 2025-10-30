@@ -102,8 +102,8 @@ export default {
     firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:655201684400:web:ec3ac485a4f98a82fb2475",
     firebaseDatabaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://brillprimefirebase-default-rtdb.firebaseio.com",
     firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
-    // API configuration - use localhost for development
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || (process.env.NODE_ENV === 'development' ? "http://localhost:5000" : "https://api.brillprime.com"),
+    // API configuration - use 0.0.0.0 for Replit development
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || (process.env.NODE_ENV === 'development' ? "http://0.0.0.0:3000" : "https://api.brillprime.com"),
     apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "30000", 10)
   }
 };
