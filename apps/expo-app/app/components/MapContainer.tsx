@@ -1,7 +1,7 @@
 import React, { useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Dimensions } from 'react-native';
-import MapView, { PROVIDER_MAPBOX, Marker } from '../components/Map';
+import MapView, { PROVIDER_MAPBOX, Marker } from '../../components/Map';
 import { MapErrorBoundary } from './MapErrorBoundary';
 
 const { width, height } = Dimensions.get('window');
