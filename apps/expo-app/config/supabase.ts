@@ -66,4 +66,4 @@ if (supabase) {
   console.warn('⚠️ Supabase client not initialized');
 }
 
-export { supabase }e };
+export { supabase };
