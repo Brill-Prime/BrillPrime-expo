@@ -58,7 +58,15 @@ args = "cd apps/expo-app && npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash -c '(cd apps/backend && PORT=3000 npm start) & (cd apps/expo-app && npx expo start --web --port 5000 --host 0.0.0.0)'"
+args = "bash -c 'cd apps/backend && PORT=3000 npm start &'"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 5"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/expo-app && npx expo start --web --port 5000 --host 0.0.0.0"
 
 [[ports]]
 localPort = 3000

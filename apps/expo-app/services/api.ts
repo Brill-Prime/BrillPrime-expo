@@ -18,16 +18,17 @@ class ApiClient {
     // Backend runs on port 3000, Expo web runs on port 5000
     const isDevelopment = process.env.NODE_ENV === 'development';
 
-    // Use localhost:3000 in development to connect to backend server
-    // Updated for Replit environment: use 0.0.0.0:3000 for backend and current host:3000 for web
+    // Use current host with port 3000 for Replit environment
     const getBaseURL = (): string => {
       if (typeof window !== 'undefined') {
         // Browser environment - use current host with port 3000
         const currentHost = window.location.hostname;
+        const currentPort = window.location.port;
+        // Use port 3000 for backend API, regardless of current page port
         return process.env.EXPO_PUBLIC_API_BASE_URL || `http://${currentHost}:3000`;
       }
-      // Node environment (SSR/development)
-      return process.env.EXPO_PUBLIC_API_BASE_URL || 'http://0.0.0.0:3000';
+      // Node environment (SSR/development) - use current host
+      return process.env.EXPO_PUBLIC_API_BASE_URL || `http://0.0.0.0:3000`;
     };
 
     this.baseURL = getBaseURL();
