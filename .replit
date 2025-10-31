@@ -18,5 +18,9 @@ task = "shell.exec"
 args = "cd apps/expo-app && yarn web"
 
 [[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
 localPort = 8081
 externalPort = 80
