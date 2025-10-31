@@ -4,3 +4,15 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
+
+[workflows]
+runButton = "Start Expo App"
+
+[[workflows.workflow]]
+name = "Start Expo App"
+author = 49242550
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/expo-app && yarn web"
