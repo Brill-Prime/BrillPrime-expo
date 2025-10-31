@@ -87,35 +87,35 @@ export default function MerchantDashboard() {
       id: "add-commodity",
       title: "Add Products",
       description: "List new items",
-      icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'),
+      icon: require('../../../docs/assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'),
       route: "/merchant/add-commodity"
     },
     {
       id: "manage-commodities",
       title: "Manage Inventory",
       description: "Track your stock",
-      icon: require('../../attached_assets/stock_images/3d_package_box_icon_1d5ed216.jpg'),
+      icon: require('../../../docs/assets/stock_images/3d_package_box_icon_1d5ed216.jpg'),
       route: "/merchant/commodities"
     },
     {
       id: "manage-orders",
       title: "Orders",
       description: "View customer orders",
-      icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'),
+      icon: require('../../../docs/assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'),
       route: "/orders/consumer-orders"
     },
     {
       id: "analytics",
       title: "Analytics",
       description: "Sales insights",
-      icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'),
+      icon: require('../../../docs/assets/stock_images/3d_headphones_icon_s_281856ca.jpg'),
       route: "/merchant/analytics"
     },
     {
       id: "store-settings",
       title: "Store Settings",
       description: "Manage your store",
-      icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'),
+      icon: require('../../../docs/assets/stock_images/3d_heart_icon_favori_200752cd.jpg'),
       route: "/profile/edit"
     }
   ];
@@ -176,7 +176,7 @@ export default function MerchantDashboard() {
             style={styles.serviceCard}
             onPress={() => router.push('/merchant/add-commodity')}
           >
-            <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
+            <View style={[styles.serviceIconContainer, { backgroundColor: "#4682B4" }]}>
               <Ionicons name="add-circle-outline" size={30} color="white" />
             </View>
             <Text style={styles.serviceTitle}>Add New Product</Text>
@@ -187,7 +187,7 @@ export default function MerchantDashboard() {
             style={styles.serviceCard}
             onPress={() => router.push('/orders/consumer-orders')}
           >
-            <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
+            <View style={[styles.serviceIconContainer, { backgroundColor: "#4682B4" }]}>
               <Ionicons name="receipt-outline" size={30} color="white" />
             </View>
             <Text style={styles.serviceTitle}>View Orders</Text>
@@ -234,15 +234,15 @@ export default function MerchantDashboard() {
         <Text style={styles.sectionTitle}>Business Overview</Text>
         <View style={styles.statsContainer}>
           <View style={styles.statsRow}>
-            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
+            <View style={[styles.statCard, { backgroundColor: "#0B1A51" }]}>
               <Text style={styles.statNumber}>45</Text>
               <Text style={styles.statLabel}>Products</Text>
             </View>
-            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
+            <View style={[styles.statCard, { backgroundColor: "#0B1A51" }]}>
               <Text style={styles.statNumber}>₦18,750</Text>
               <Text style={styles.statLabel}>Revenue</Text>
             </View>
-            <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
+            <View style={[styles.statCard, { backgroundColor: "#0B1A51" }]}>
               <Text style={styles.statNumber}>23</Text>
               <Text style={styles.statLabel}>Orders</Text>
             </View>

@@ -1,4 +1,5 @@
 
+/// <reference types="node" />
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -13,8 +14,8 @@ export const useSessionTimeout = () => {
   const router = useRouter();
   const { showConfirmDialog } = useAlert();
   const lastActivityRef = useRef(Date.now());
-  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
-  const warningIdRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimers = useCallback(() => {
     lastActivityRef.current = Date.now();

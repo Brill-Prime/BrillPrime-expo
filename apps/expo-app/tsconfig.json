@@ -6,8 +6,8 @@
     "allowSyntheticDefaultImports": true,
     "jsx": "react-native",
     "lib": [
-      "esnext",
-      "dom"
+      "dom",
+      "esnext"
     ],
     "moduleResolution": "bundler",
     "module": "esnext",
@@ -17,27 +17,17 @@
     "allowJs": true,
     "types": [
       "node",
-      "@types/react",
+      "react",
       "@expo/vector-icons",
       "@react-native-async-storage/async-storage",
-      "@types/react-native",
-      "@types/expo-router",
-      "@types/firebase",
-      "@types/react-native-svg",
-      "@types/react-native-webview",
-      "@types/react-native-safe-area-context",
-      "@types/react-native-screens",
-      "@types/react-native-web",
-      "@types/socket.io-client",
-      "@types/lodash",
-      "@types/leaflet",
-      "@types/google.maps",
-      "@types/mapbox-gl",
-      "@types/cors",
-      "@types/express",
-      "@types/http-proxy-middleware",
-      "@types/dotenv",
-      "@types/concurrently"
+      "react-native",
+      "@firebase/auth-types",
+      "react-native-web",
+      "socket.io-client",
+      "lodash",
+      "leaflet",
+      "google.maps",
+      "mapbox-gl"
     ],
     "paths": {
       "@/*": [

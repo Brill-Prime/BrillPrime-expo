@@ -1,6 +1,8 @@
 import { supabase, setSupabaseAuthToken } from '../config/supabase';
-import { auth } from '../config/firebase';
+import { getAuth } from '@firebase/auth';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+
+const auth = getAuth();
 
 interface OrderUpdate {
   orderId: string;
@@ -49,7 +51,7 @@ class RealtimeService {
     }
 
     // Listen to Firebase auth changes and sync token
-    auth.onAuthStateChanged(async (user: any) => {
+    auth.onAuthStateChanged(async (user: import('@firebase/auth').User | null) => {
       if (user) {
         const token = await user.getIdToken();
         await setSupabaseAuthToken(token);

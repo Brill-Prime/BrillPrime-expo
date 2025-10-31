@@ -84,17 +84,17 @@ lerna-debug.log*
 *.pem
 *.key
 *.cer
-attached_assets/prod-ca-2021*.crt
-attached_assets/*.pem
-attached_assets/*.key
+docs/assets/prod-ca-2021*.crt
+docs/assets/*.pem
+docs/assets/*.key
 
 # Debug and verification logs
 debug.log
 .vercel
 
 # Attached assets that may contain sensitive data
-attached_assets/Pasted-*.txt
-apps/backend/Brill-backend/attached_assets/Pasted-*.txt
+docs/assets/Pasted-*.txt
+apps/backend/attached_assets/Pasted-*.txt
 
 # Keep backend files tracked
 !apps/backend/Brill-backend/**

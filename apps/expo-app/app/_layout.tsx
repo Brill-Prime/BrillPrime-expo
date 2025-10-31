@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Stack } from "expo-router";
+// Workaround: some projects have incompatible React type versions between packages
+// which leads to the TS error "'Stack' cannot be used as a JSX component".
+// Casting to `any` for the Stack component locally avoids the type mismatch
+// while keeping runtime behavior intact.
+const StackComponent: any = Stack;
 import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator, Platform } from "react-native";
@@ -98,15 +103,13 @@ export default function RootLayout() {
               <AlertProvider>
                 <View style={styles.container}>
                   <OfflineBanner />
-                  <Stack
+                  <StackComponent
                     screenOptions={{
                       headerShown: false,
                       contentStyle: { backgroundColor: '#fff' },
                       animation: 'fade',
                     }}
-                  >
-                    <Stack.Screen name="index" />
-                  </Stack>
+                  />
                 </View>
               </AlertProvider>
             </MerchantProvider>
