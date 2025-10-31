@@ -69,23 +69,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Backend & Firebase Configuration
 
-### Full-Stack Development Setup
-- **Backend Server**: Node.js/Express running on port 3000 (`apps/backend/`)
+### Frontend-Only Development Setup
 - **Frontend Server**: Expo web running on port 5000 (`apps/expo-app/`)
-- **Workflow**: Both servers start together via "Brill Prime Full Stack" workflow
-- **API Connection**: Frontend configured to connect to `http://localhost:3000` in development
+- **Backend Services**: Firebase (Auth, Firestore, Storage)
+- **API Connection**: External API at `https://api.brillprime.com` or Firebase services
 - **Configuration Files**:
-  - Backend config: `apps/backend/.env` (PORT=3000)
-  - Frontend API client: `apps/expo-app/services/api.ts`
+  - Firebase config: `apps/expo-app/config/firebase.ts`
+  - API client: `apps/expo-app/services/api.ts`
   - OAuth service: `apps/expo-app/services/oauth.js`
-  - Environment config: `apps/expo-app/config/environment.js`
+  - Environment config: `apps/expo-app/config/environment.ts`
 
 ### API Backend
-- **Development URL**: `http://localhost:3000` (local Node.js backend)
-- **Production URL**: `https://api.brillprime.com` (to be configured)
+- **API URL**: `https://api.brillprime.com` (external backend API)
 - **Configuration**: Configured in `config/environment.ts` and `services/api.ts`
-- **API Timeout**: 60 seconds for development, 30 seconds for production
+- **API Timeout**: 30 seconds
 - **Authentication**: JWT token-based authentication with refresh token support
+- **Firebase Services**: Authentication, Firestore database, Cloud Storage
 
 ### Firebase Connection
 - **Status**: ✅ Connected using vault credentials

@@ -2,6 +2,7 @@
 // This file provides the core API client and configuration
 
 import { ENV } from '../config/environment';
+import Constants from 'expo-constants';
 
 interface ApiResponse<T = any> {
   success: boolean;

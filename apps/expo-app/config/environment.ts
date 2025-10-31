@@ -22,7 +22,8 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
 
   // Base configuration
   const config: EnvironmentConfig = {
-    apiBaseUrl: process.env.API_BASE_URL || '',
+    // API configuration - use external API or Firebase
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.brillprime.com",
     environment: environment as any,
     enableLogging: isDevelopment,
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',

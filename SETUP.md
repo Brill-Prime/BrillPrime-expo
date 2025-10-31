@@ -1,135 +1,156 @@
-# BrillPrime Native Development Setup
 
-## Architecture
+# BrillPrime Setup Guide
 
-This is a monorepo containing:
-- **Frontend**: `apps/expo-app` (Expo/React Native) - Port 5000
-- **Backend**: `apps/backend` (Express API) - Port 3000
+This guide will help you set up the BrillPrime Expo mobile application.
 
 ## Prerequisites
 
-Before starting development, ensure you have:
-- Node.js 20.x or later
+- Node.js >= 20.0.0
 - Yarn package manager
-- PostgreSQL database (local or cloud)
-- Environment variables configured (see below)
+- Expo CLI
+- Firebase account (for backend services)
 
-## Environment Setup
+## Installation Steps
 
-### 1. Clone and Install Dependencies
+### 1. Clone and Install
+
 ```bash
-git clone <repository-url>
-cd brillprime-expo
-yarn install:all
+# Navigate to the expo app directory
+cd apps/expo-app
+
+# Install dependencies
+yarn install
 ```
 
-### 2. Configure Environment Variables
+### 2. Environment Configuration
 
-Create `.env` files in the root directory and `apps/backend/` directory:
+Copy the example environment file:
 
-**Root `.env`** (for Expo app):
 ```bash
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
-EXPO_PUBLIC_API_TIMEOUT=30000
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
-EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+cp .env.example .env
+```
+
+Configure the following environment variables in `.env`:
+
+```env
+# Firebase Configuration
+EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
 EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
+EXPO_PUBLIC_FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
 EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+
+# API Configuration (if using external backend)
+EXPO_PUBLIC_API_BASE_URL=https://api.brillprime.com
+EXPO_PUBLIC_API_TIMEOUT=30000
 ```
 
-**Backend `.env`** (in `apps/backend/`):
-```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/brillprime
-JWT_SECRET=your_jwt_secret
-SESSION_SECRET=your_session_secret
-PORT=3000
-```
+### 3. Firebase Setup
 
-### 3. Database Setup
+1. Create a Firebase project at https://console.firebase.google.com
+2. Enable the following services:
+   - Authentication (Email/Password, Google, Apple, Facebook)
+   - Cloud Firestore
+   - Cloud Storage
+3. Add your Firebase credentials to `.env`
+4. Configure authorized domains in Firebase Console
 
-Set up PostgreSQL database and run migrations:
-```bash
-cd apps/backend
-yarn db:push
-```
+## Running the Application
 
-## Development Workflow
+### Web Development
 
-### Starting the Application
-
-**Full Stack Development:**
-```bash
-yarn dev
-```
-This starts both backend (port 3000) and frontend (port 5000) simultaneously.
-
-**Individual Services:**
-
-**Backend:**
-```bash
-cd apps/backend
-yarn dev
-```
-
-**Frontend:**
 ```bash
 cd apps/expo-app
 yarn web
 ```
 
-**Mobile Development:**
+The app will be available at `http://localhost:5000`
+
+### Mobile Development
+
+**Android:**
 ```bash
-cd apps/expo-app
-yarn android  # Android emulator
-yarn ios      # iOS simulator
+yarn android
 ```
 
-## API Configuration
+**iOS:**
+```bash
+yarn ios
+```
 
-The frontend automatically detects the environment:
-- **Development**: Uses `http://localhost:3000`
-- **Production**: Uses `https://api.brillprime.com`
+### Development Server
+
+```bash
+yarn start
+```
+
+This opens the Expo Dev Tools where you can:
+- Run on iOS simulator
+- Run on Android emulator
+- Run on physical device via Expo Go app
+- Open in web browser
 
 ## Port Configuration
 
-- Port 3000: Backend API server
-- Port 5000: Frontend Expo web app
-
-## Health Checks
-
-- Backend: `http://localhost:3000/health`
-- Frontend: `http://localhost:5000`
+- Port 5000: Expo web development server
 
 ## Troubleshooting
-
-### API Connection Errors
-
-If you see "Failed to fetch" errors:
-1. Ensure backend is running on port 3000
-2. Check console for API Base URL (should be `http://localhost:3000` in development)
-3. Verify environment variables are set correctly
-
-### Port Conflicts
-
-If port 3000 or 5000 is already in use:
-1. Stop the existing process
-2. Check what's using the port: `lsof -i :3000` or `netstat -ano | findstr :3000`
-3. Change ports in configuration if needed
-
-### Database Issues
-
-If database connection fails:
-1. Ensure PostgreSQL is running
-2. Check DATABASE_URL in backend .env
-3. Run migrations: `yarn db:push`
 
 ### Expo Issues
 
 If Expo fails to start:
-1. Clear cache: `expo start -c`
-2. Reinstall dependencies: `yarn install`
-3. Check Expo CLI version: `expo --version`
+```bash
+# Clear cache
+npx expo start --clear
+
+# Reinstall dependencies
+rm -rf node_modules
+yarn install
+
+# Check Expo CLI version
+npx expo --version
+```
+
+### Firebase Connection Issues
+
+1. Verify all Firebase credentials in `.env`
+2. Check Firebase Console for service status
+3. Ensure authorized domains are configured
+4. Review Firebase Console logs for errors
+
+### Build Issues
+
+```bash
+# Clear Metro bundler cache
+npx expo start --clear
+
+# Reset project (careful - this modifies files)
+yarn reset-project
+```
+
+## Available Scripts
+
+- `yarn web` - Start web development server on port 5000
+- `yarn android` - Start Android development
+- `yarn ios` - Start iOS development
+- `yarn start` - Start Expo development server
+- `yarn build` - Build for web production
+- `yarn test` - Run tests
+- `yarn lint` - Run ESLint
+
+## Next Steps
+
+1. Configure Firebase services
+2. Set up authentication providers
+3. Review app configuration in `app.config.js`
+4. Explore the codebase in `apps/expo-app/`
+
+## Support
+
+For issues and questions:
+- Check `apps/expo-app/docs/` for detailed documentation
+- Review troubleshooting guides
+- Consult Expo documentation: https://docs.expo.dev
