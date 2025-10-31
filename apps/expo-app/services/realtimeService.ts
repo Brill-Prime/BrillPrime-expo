@@ -1,4 +1,3 @@
-
 import { supabase, setSupabaseAuthToken } from '../config/supabase';
 import { auth } from '../config/firebase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -22,6 +21,15 @@ interface DriverLocationUpdate {
   timestamp: string;
 }
 
+interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+}
+
 class RealtimeService {
   private channels: Map<string, RealtimeChannel> = new Map();
   private isInitialized = false;
@@ -41,7 +49,7 @@ class RealtimeService {
     }
 
     // Listen to Firebase auth changes and sync token
-    auth.onAuthStateChanged(async (user) => {
+    auth.onAuthStateChanged(async (user: any) => {
       if (user) {
         const token = await user.getIdToken();
         await setSupabaseAuthToken(token);
@@ -55,31 +63,19 @@ class RealtimeService {
     });
   }
 
-interface ChatMessage {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
-}
-
-class RealtimeService {
-  private channels: Map<string, RealtimeChannel> = new Map();
-
   // Subscribe to order status updates
   subscribeToOrderUpdates(
     orderId: string,
     callback: (update: OrderUpdate) => void
   ): () => void {
     const channelName = `order:${orderId}`;
-    
+
     if (this.channels.has(channelName)) {
       console.log('Already subscribed to order:', orderId);
       return () => this.unsubscribe(channelName);
     }
 
-    const channel = supabase
+    const channel = supabase!
       .channel(channelName)
       .on(
         'postgres_changes',
@@ -106,12 +102,12 @@ class RealtimeService {
     callback: (location: DriverLocationUpdate) => void
   ): () => void {
     const channelName = `driver_location:${driverId}`;
-    
+
     if (this.channels.has(channelName)) {
       return () => this.unsubscribe(channelName);
     }
 
-    const channel = supabase
+    const channel = supabase!
       .channel(channelName)
       .on(
         'postgres_changes',
@@ -138,12 +134,12 @@ class RealtimeService {
     callback: (message: ChatMessage) => void
   ): () => void {
     const channelName = `chat:${conversationId}`;
-    
+
     if (this.channels.has(channelName)) {
       return () => this.unsubscribe(channelName);
     }
 
-    const channel = supabase
+    const channel = supabase!
       .channel(channelName)
       .on(
         'postgres_changes',
@@ -170,12 +166,12 @@ class RealtimeService {
     callback: (update: any) => void
   ): () => void {
     const channelName = `inventory:${merchantId}`;
-    
+
     if (this.channels.has(channelName)) {
       return () => this.unsubscribe(channelName);
     }
 
-    const channel = supabase
+    const channel = supabase!
       .channel(channelName)
       .on(
         'postgres_changes',
@@ -199,11 +195,11 @@ class RealtimeService {
   // Broadcast driver location (for drivers to share their location)
   async broadcastDriverLocation(location: DriverLocationUpdate): Promise<void> {
     const channelName = `driver_location:${location.driverId}`;
-    
+
     let channel = this.channels.get(channelName);
-    
+
     if (!channel) {
-      channel = supabase.channel(channelName).subscribe();
+      channel = supabase!.channel(channelName).subscribe();
       this.channels.set(channelName, channel);
     }
 
@@ -252,7 +248,7 @@ class RealtimeService {
   unsubscribeAll(): void {
     if (supabase) {
       this.channels.forEach((channel) => {
-        supabase.removeChannel(channel);
+        supabase!.removeChannel(channel);
       });
     }
     this.channels.clear();

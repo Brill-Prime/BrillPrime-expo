@@ -13,12 +13,12 @@ export const useSessionTimeout = () => {
   const router = useRouter();
   const { showConfirmDialog } = useAlert();
   const lastActivityRef = useRef(Date.now());
-  const timeoutIdRef = useRef<NodeJS.Timeout>();
-  const warningIdRef = useRef<NodeJS.Timeout>();
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const warningIdRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetTimers = useCallback(() => {
     lastActivityRef.current = Date.now();
-    
+
     if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
     if (warningIdRef.current) clearTimeout(warningIdRef.current);
 
@@ -26,7 +26,7 @@ export const useSessionTimeout = () => {
     warningIdRef.current = setTimeout(async () => {
       const biometricEnabled = await biometricService.isBiometricEnabled();
       const biometricAvailable = await biometricService.isBiometricAvailable();
-      
+
       if (biometricEnabled && biometricAvailable) {
         const authenticated = await biometricService.authenticate('Verify to continue your session');
         if (authenticated) {
@@ -72,7 +72,7 @@ export const useSessionTimeout = () => {
 
   useEffect(() => {
     resetTimers();
-    
+
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {

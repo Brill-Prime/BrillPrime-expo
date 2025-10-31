@@ -13,16 +13,18 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import { CreateOrderRequest, Order } from '../../services/types';
 
 interface CartItem {
   id: string;
+  commodityId: string;
   commodityName: string;
   merchantName: string;
   price: number;
   quantity: number;
   unit: string;
-  category?: string; // Added for potential use in order creation
-  merchantId?: string; // Added for potential use in order creation
+  category?: string;
+  merchantId?: string;
 }
 
 interface Address {
@@ -47,7 +49,7 @@ export default function CheckoutScreen() {
   useEffect(() => {
     loadCheckoutData();
 
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+    const subscription = Dimensions.addEventListener('change', ({ window }: { window: any }) => {
       setScreenDimensions(window);
     });
 
@@ -100,39 +102,43 @@ export default function CheckoutScreen() {
     try {
       const { orderService } = await import('../../services/orderService');
       const { locationService } = await import('../../services/locationService');
-      
+
       // Get user location for driver assignment
       const userLocation = await AsyncStorage.getItem("userLocation");
       const coordinates = userLocation ? JSON.parse(userLocation) : null;
-      
+
       // Create orders for each cart item
-      const createdOrders = [];
-      
+      const createdOrders: Order[] = [];
+
       for (const item of cartItems) {
         const itemTotal = item.price * item.quantity;
-        
+
+        // Create order data matching the expected API structure
         const orderData = {
-          merchantId: item.merchantId || '',
-          commodityId: item.commodityId || item.id,
-          quantity: item.quantity,
-          deliveryAddress: selectedAddress.address,
-          deliveryType: 'yourself' as const,
-          paymentMethod: paymentMethod === 'card' ? 'card' : 
-                        paymentMethod === 'bank' ? 'bank_transfer' : 'cash',
-          notes: deliveryNotes,
-          coordinates: coordinates ? {
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude
-          } : undefined
+          items: [{
+            productId: parseInt(item.commodityId || item.id, 10),
+            quantity: item.quantity,
+            price: item.price
+          }],
+          // These IDs need to be obtained from your app's state or API
+          deliveryAddressId: 1, // Replace with actual delivery address ID
+          paymentMethodId: 1,   // Replace with actual payment method ID
+          notes: deliveryNotes
         };
 
-        // Call backend to create order and assign driver
+        // Store payment method in async storage for future reference
+        await AsyncStorage.setItem('lastUsedPaymentMethod',
+          paymentMethod === 'card' ? 'card' :
+            paymentMethod === 'bank' ? 'bank_transfer' : 'cash'
+        );
+
+        // Call backend to create order
         const response = await orderService.createOrder(orderData);
-        
+
         if (response.success && response.data) {
           // Backend will automatically find nearest driver
           createdOrders.push(response.data);
-          
+
           // Save to local storage for offline access
           const existingOrders = await AsyncStorage.getItem('userOrders');
           const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
@@ -158,8 +164,8 @@ export default function CheckoutScreen() {
 
       // Clear cart
       await AsyncStorage.multiRemove([
-        'cartItems', 
-        'checkoutItems', 
+        'cartItems',
+        'checkoutItems',
         'commoditiesCart'
       ]);
 
@@ -186,134 +192,134 @@ export default function CheckoutScreen() {
       <View style={styles.container}>
         {/* Header */}
         <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Delivery Address */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Delivery Address</Text>
-          <TouchableOpacity style={styles.addressCard}>
-            <Ionicons name="location-outline" size={24} color="#2f75c2" />
-            <View style={styles.addressInfo}>
-              <Text style={styles.addressLabel}>
-                {selectedAddress?.label || 'Select Address'}
-              </Text>
-              <Text style={styles.addressText}>
-                {selectedAddress?.address || 'No address selected'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Checkout</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        {/* Order Items */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Order Items ({cartItems.length})</Text>
-          {cartItems.map((item, index) => (
-            <View key={item.id} style={styles.orderItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.commodityName}</Text>
-                <Text style={styles.merchantName}>{item.merchantName}</Text>
-                <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Delivery Address */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Delivery Address</Text>
+            <TouchableOpacity style={styles.addressCard}>
+              <Ionicons name="location-outline" size={24} color="#2f75c2" />
+              <View style={styles.addressInfo}>
+                <Text style={styles.addressLabel}>
+                  {selectedAddress?.label || 'Select Address'}
+                </Text>
+                <Text style={styles.addressText}>
+                  {selectedAddress?.address || 'No address selected'}
+                </Text>
               </View>
-              <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString('en-NG')}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Order Items */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Order Items ({cartItems.length})</Text>
+            {cartItems.map((item, index) => (
+              <View key={item.id} style={styles.orderItem}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.commodityName}</Text>
+                  <Text style={styles.merchantName}>{item.merchantName}</Text>
+                  <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+                </View>
+                <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString('en-NG')}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Payment Method */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMethod === 'card' && styles.selectedPayment]}
+              onPress={() => setPaymentMethod('card')}
+            >
+              <Ionicons name="card-outline" size={24} color="#2f75c2" />
+              <Text style={styles.paymentText}>Credit/Debit Card</Text>
+              {paymentMethod === 'card' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMethod === 'bank' && styles.selectedPayment]}
+              onPress={() => setPaymentMethod('bank')}
+            >
+              <Ionicons name="business-outline" size={24} color="#2f75c2" />
+              <Text style={styles.paymentText}>Bank Transfer</Text>
+              {paymentMethod === 'bank' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMethod === 'cash' && styles.selectedPayment]}
+              onPress={() => setPaymentMethod('cash')}
+            >
+              <Ionicons name="cash-outline" size={24} color="#2f75c2" />
+              <Text style={styles.paymentText}>Cash on Delivery</Text>
+              {paymentMethod === 'cash' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            </TouchableOpacity>
+          </View>
+
+          {/* Delivery Notes */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Delivery Notes (Optional)</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Add any special instructions for delivery..."
+              value={deliveryNotes}
+              onChangeText={setDeliveryNotes}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Order Summary */}
+          <View style={[styles.summaryCard, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.summaryTitle}>Order Summary</Text>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal</Text>
+              <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString('en-NG')}</Text>
             </View>
-          ))}
-        </View>
 
-        {/* Payment Method */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Delivery Fee</Text>
+              <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString('en-NG')}</Text>
+            </View>
 
-          <TouchableOpacity 
-            style={[styles.paymentOption, paymentMethod === 'card' && styles.selectedPayment]}
-            onPress={() => setPaymentMethod('card')}
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Service Fee</Text>
+              <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString('en-NG')}</Text>
+            </View>
+
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>₦{getTotal().toLocaleString('en-NG')}</Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Place Order Button */}
+        <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
+          <TouchableOpacity
+            style={[styles.placeOrderButton, loading && styles.disabledButton]}
+            onPress={handlePlaceOrder}
+            disabled={loading}
           >
-            <Ionicons name="card-outline" size={24} color="#2f75c2" />
-            <Text style={styles.paymentText}>Credit/Debit Card</Text>
-            {paymentMethod === 'card' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.paymentOption, paymentMethod === 'bank' && styles.selectedPayment]}
-            onPress={() => setPaymentMethod('bank')}
-          >
-            <Ionicons name="business-outline" size={24} color="#2f75c2" />
-            <Text style={styles.paymentText}>Bank Transfer</Text>
-            {paymentMethod === 'bank' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.paymentOption, paymentMethod === 'cash' && styles.selectedPayment]}
-            onPress={() => setPaymentMethod('cash')}
-          >
-            <Ionicons name="cash-outline" size={24} color="#2f75c2" />
-            <Text style={styles.paymentText}>Cash on Delivery</Text>
-            {paymentMethod === 'cash' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            {loading ? (
+              <Text style={styles.placeOrderText}>Processing...</Text>
+            ) : (
+              <>
+                <Text style={styles.placeOrderText}>Place Order</Text>
+                <Text style={styles.orderTotal}>₦{getTotal().toLocaleString('en-NG')}</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-
-        {/* Delivery Notes */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Delivery Notes (Optional)</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder="Add any special instructions for delivery..."
-            value={deliveryNotes}
-            onChangeText={setDeliveryNotes}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        {/* Order Summary */}
-        <View style={[styles.summaryCard, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.summaryTitle}>Order Summary</Text>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString('en-NG')}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString('en-NG')}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service Fee</Text>
-            <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString('en-NG')}</Text>
-          </View>
-
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₦{getTotal().toLocaleString('en-NG')}</Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Place Order Button */}
-      <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity 
-          style={[styles.placeOrderButton, loading && styles.disabledButton]}
-          onPress={handlePlaceOrder}
-          disabled={loading}
-        >
-          {loading ? (
-            <Text style={styles.placeOrderText}>Processing...</Text>
-          ) : (
-            <>
-              <Text style={styles.placeOrderText}>Place Order</Text>
-              <Text style={styles.orderTotal}>₦{getTotal().toLocaleString('en-NG')}</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
       </View>
     </ErrorBoundary>
   );

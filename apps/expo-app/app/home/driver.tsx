@@ -72,7 +72,8 @@ export default function DriverHome() {
   // State management
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
-  const [activeTab, setActiveTab] = useState("Available");
+  type TabType = 'Available' | 'On delivery' | 'Off duty';
+  const [activeTab, setActiveTab] = useState<TabType>("Available");
   const [driverData, setDriverData] = useState(defaultDriverData);
   const [stats, setStats] = useState(defaultStats);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -275,7 +276,7 @@ export default function DriverHome() {
     );
   }, [showConfirmDialog, showSuccess, showError, router]);
 
-  const handleTabPress = useCallback((tab) => {
+  const handleTabPress = useCallback((tab: TabType) => {
     setActiveTab(tab);
     showInfo("Status Update", `Switched to ${tab} mode`);
   }, [showInfo]);
@@ -331,7 +332,7 @@ export default function DriverHome() {
                 styles.tab,
                 activeTab === tab && styles.activeTab,
               ]}
-              onPress={() => handleTabPress(tab)}
+              onPress={() => handleTabPress(tab as TabType)}
             >
               <Text
                 style={[
