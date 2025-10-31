@@ -277,7 +277,7 @@ Thank you for using BrillPrime!
       case 'pending': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
       case 'preparing': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
       case 'confirmed': return { bg: 'transparent', text: '#3498db', border: '#3498db' };
-      case 'out_for_delivery': return { bg: '#28a745', text: '#fff', border: '#28a745'};
+      case 'out_for_delivery': return { bg: '#28a745', text: '#fff', border: '#28a745' };
       default: return { bg: 'transparent', text: '#95a5a6', border: '#95a5a6' };
     }
   };
@@ -295,6 +295,8 @@ Thank you for using BrillPrime!
   };
 
   const getOrderSteps = () => {
+    if (!order) return [];
+
     const steps = [
       { status: 'pending', title: 'Order Placed', time: formatDate(order.orderDate), completed: false, current: false },
       { status: 'confirmed', title: 'Order Confirmed', time: 'Pending...', completed: false, current: false },
@@ -320,9 +322,9 @@ Thank you for using BrillPrime!
       ...step,
       completed: index < currentIndex,
       current: index === currentIndex,
-      time: index === 0 ? formatDate(order.orderDate) : 
-            index === currentIndex ? 'In Progress...' :
-            index < currentIndex ? 'Completed' : 'Pending...'
+      time: index === 0 ? formatDate(order.orderDate) :
+        index === currentIndex ? 'In Progress...' :
+          index < currentIndex ? 'Completed' : 'Pending...'
     }));
   };
 
@@ -351,8 +353,8 @@ Thank you for using BrillPrime!
 
     const day = date.getDate();
     const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-                  day === 2 || day === 22 ? 'nd' :
-                  day === 3 || day === 23 ? 'rd' : 'th';
+      day === 2 || day === 22 ? 'nd' :
+        day === 3 || day === 23 ? 'rd' : 'th';
 
     return date.toLocaleDateString('en-US', options).replace(/\d+/, `${day}${suffix}`);
   };
@@ -381,14 +383,14 @@ Thank you for using BrillPrime!
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Detail Section */}
         <View style={[styles.orderDetail, { paddingHorizontal: responsivePadding }]}>
-          <View style={[styles.itemIcon, { 
-            width: isSmallScreen ? 60 : 80, 
-            height: isSmallScreen ? 60 : 80 
+          <View style={[styles.itemIcon, {
+            width: isSmallScreen ? 60 : 80,
+            height: isSmallScreen ? 60 : 80
           }]}>
-            <Ionicons 
-              name={getItemIcon(order.itemType)} 
-              size={isSmallScreen ? 40 : 48} 
-              color="#4682B4" 
+            <Ionicons
+              name={getItemIcon(order.itemType)}
+              size={isSmallScreen ? 40 : 48}
+              color="#4682B4"
             />
           </View>
           <Text style={[styles.orderTitle, { fontSize: responsiveFontSize.orderTitle }]}>
@@ -436,9 +438,9 @@ Thank you for using BrillPrime!
         </View>
 
         {/* Purchase Summary */}
-        <View style={[styles.summary, { 
+        <View style={[styles.summary, {
           marginHorizontal: responsivePadding,
-          padding: isSmallScreen ? 15 : 20 
+          padding: isSmallScreen ? 15 : 20
         }]}>
           <Text style={[styles.summaryTitle, { fontSize: isSmallScreen ? 16 : 18 }]}>
             Purchase Summary
@@ -467,7 +469,7 @@ Thank you for using BrillPrime!
         </View>
 
         {/* Contact Merchant */}
-        <View style={[styles.contactDriver, { 
+        <View style={[styles.contactDriver, {
           marginHorizontal: responsivePadding,
           padding: isSmallScreen ? 10 : 12,
           marginBottom: 15
@@ -476,8 +478,8 @@ Thank you for using BrillPrime!
             <Text style={[styles.contactText, { fontSize: responsiveFontSize.small }]}>
               Contact merchant
             </Text>
-            <View style={[styles.driverAvatar, { 
-              width: isSmallScreen ? 25 : 30, 
+            <View style={[styles.driverAvatar, {
+              width: isSmallScreen ? 25 : 30,
               height: isSmallScreen ? 25 : 30,
               borderRadius: isSmallScreen ? 12.5 : 15,
               backgroundColor: '#667eea'
@@ -501,18 +503,18 @@ Thank you for using BrillPrime!
         </View>
 
         {/* Contact Driver */}
-        <View style={[styles.contactDriver, { 
+        <View style={[styles.contactDriver, {
           marginHorizontal: responsivePadding,
-          padding: isSmallScreen ? 10 : 12 
+          padding: isSmallScreen ? 10 : 12
         }]}>
           <View style={styles.driverInfo}>
             <Text style={[styles.contactText, { fontSize: responsiveFontSize.small }]}>
               Contact driver
             </Text>
-            <View style={[styles.driverAvatar, { 
-              width: isSmallScreen ? 25 : 30, 
+            <View style={[styles.driverAvatar, {
+              width: isSmallScreen ? 25 : 30,
               height: isSmallScreen ? 25 : 30,
-              borderRadius: isSmallScreen ? 12.5 : 15 
+              borderRadius: isSmallScreen ? 12.5 : 15
             }]}>
               <Text style={[styles.driverAvatarText, { fontSize: responsiveFontSize.small }]}>
                 {order.driverName?.charAt(0) || 'M'}
@@ -546,10 +548,10 @@ Thank you for using BrillPrime!
                     step.completed && styles.completedIcon,
                     step.current && styles.currentIcon
                   ]}>
-                    <Ionicons 
-                      name={step.completed ? "checkmark" : step.current ? "time" : "ellipse-outline"} 
-                      size={16} 
-                      color={step.completed ? "#fff" : step.current ? "#2f75c2" : "#ccc"} 
+                    <Ionicons
+                      name={step.completed ? "checkmark" : step.current ? "time" : "ellipse-outline"}
+                      size={16}
+                      color={step.completed ? "#fff" : step.current ? "#2f75c2" : "#ccc"}
                     />
                   </View>
                   {index < getOrderSteps().length - 1 && (
@@ -580,7 +582,7 @@ Thank you for using BrillPrime!
         </View>
 
         {/* Action Buttons */}
-        <View style={[styles.actions, { 
+        <View style={[styles.actions, {
           paddingHorizontal: responsivePadding,
           flexDirection: 'column',
           gap: 15
@@ -588,15 +590,15 @@ Thank you for using BrillPrime!
           {/* Primary Actions Row */}
           {(order.status === 'pending' || order.status === 'confirmed') && (
             <View style={styles.primaryActions}>
-              <TouchableOpacity 
-                style={[styles.modifyButton, { flex: 1, marginRight: 10 }]} 
+              <TouchableOpacity
+                style={[styles.modifyButton, { flex: 1, marginRight: 10 }]}
                 onPress={handleModifyOrder}
               >
                 <Ionicons name="create-outline" size={18} color="#2f75c2" />
                 <Text style={styles.modifyButtonText}>Modify Order</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.cancelButton, { flex: 1 }]} 
+              <TouchableOpacity
+                style={[styles.cancelButton, { flex: 1 }]}
                 onPress={handleCancelOrder}
               >
                 <Ionicons name="close-circle-outline" size={18} color="#e74c3c" />
@@ -610,18 +612,18 @@ Thank you for using BrillPrime!
             flexDirection: isSmallScreen ? 'column' : 'row',
             gap: isSmallScreen ? 15 : 20
           }]}>
-            <TouchableOpacity style={[styles.reportButton, { 
+            <TouchableOpacity style={[styles.reportButton, {
               flex: isSmallScreen ? 0 : 1,
-              paddingVertical: isSmallScreen ? 10 : 12 
+              paddingVertical: isSmallScreen ? 10 : 12
             }]} onPress={handleReportIssue}>
               <Ionicons name="alert-circle-outline" size={18} color="#e74c3c" />
               <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16, marginLeft: 8 }]}>
                 Report Issue
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.shareButton, { 
+            <TouchableOpacity style={[styles.shareButton, {
               flex: isSmallScreen ? 0 : 1,
-              paddingVertical: isSmallScreen ? 10 : 12 
+              paddingVertical: isSmallScreen ? 10 : 12
             }]} onPress={handleShareReceipt}>
               <Ionicons name="share-outline" size={18} color="white" />
               <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16, marginLeft: 8 }]}>
@@ -631,7 +633,7 @@ Thank you for using BrillPrime!
           </View>
 
           {order.status === 'out_for_delivery' && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.trackButton]}
               onPress={() => setShowLiveTracking(true)}
             >
@@ -641,7 +643,7 @@ Thank you for using BrillPrime!
           )}
 
           {(order.status !== 'delivered' && order.status !== 'cancelled') && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => setShowDriverCommunication(true)}
             >
@@ -746,6 +748,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
   },
   loadingContainer: {
     flex: 1,

@@ -83,7 +83,8 @@ export default {
         RNMapboxMapsDownloadToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN,
         RNMapboxMapsVersion: "11.0.0"
       }
-    ]
+    ],
+    "expo-location"
   ],
   experiments: {
     typedRoutes: true,

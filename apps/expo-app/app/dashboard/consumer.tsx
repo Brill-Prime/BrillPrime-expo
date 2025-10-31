@@ -11,7 +11,7 @@ export default function ConsumerDashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [cartItemCount, setCartItemCount] = useState(0);
-  const [activeOrders, setActiveOrders] = useState([]); // Assuming you'll fetch active orders
+  const [activeOrders, setActiveOrders] = useState<{ id: string; status: string; date: string }[]>([]); // Assuming you'll fetch active orders
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -124,11 +124,11 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'), route: "/commodity/commodities" },
-    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon_1d5ed216.jpg'), route: "/orders/consumer-orders" },
-    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'), route: "/messages" },
-    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'), route: "/favorites" },
-    { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'), route: "/support" }
+    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: require('../../../docs/assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'), route: "/commodity/commodities" },
+    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: require('../../../docs/assets/stock_images/3d_package_box_icon_1d5ed216.jpg'), route: "/orders/consumer-orders" },
+    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: require('../../../docs/assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'), route: "/messages" },
+    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../../docs/assets/stock_images/3d_heart_icon_favori_200752cd.jpg'), route: "/favorites" },
+    { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../../docs/assets/stock_images/3d_headphones_icon_s_281856ca.jpg'), route: "/support" }
   ];
 
   const stats = [
@@ -139,16 +139,16 @@ export default function ConsumerDashboard() {
 
   const quickActions = [
     { title: "My Orders", subtitle: "View order history", icon: "receipt-outline", action: () => router.push('/orders/consumer-orders') },
-    { title: "Track Order", subtitle: "See your active delivery", icon: "car-sport-outline", action: () => {
-      if (activeOrders.length > 0) {
-        router.push({
-          pathname: '/orders/order-tracking',
-          params: { orderId: activeOrders[0].id }
-        });
-      } else {
-        Alert.alert('No Active Orders', 'You don’t have any active orders to track.');
+    {
+      title: "Track Order", subtitle: "See your active delivery", icon: "car-sport-outline", action: () => {
+        if (activeOrders.length > 0) {
+          // Use query string route to satisfy router.push string signature
+          router.push(`/orders/order-tracking?orderId=${activeOrders[0].id}`);
+        } else {
+          Alert.alert('No Active Orders', 'You don’t have any active orders to track.');
+        }
       }
-    }},
+    },
   ];
 
 
@@ -212,7 +212,7 @@ export default function ConsumerDashboard() {
             style={[styles.serviceCard]}
             onPress={() => handleFeaturePress('Order Fuel')}
           >
-            <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
+            <View style={[styles.serviceIconContainer, { backgroundColor: "#4682B4" }]}>
               <Image
                 source={require('../../assets/images/consumer_order_fuel_icon.png')}
                 style={styles.serviceIcon}
@@ -227,7 +227,7 @@ export default function ConsumerDashboard() {
             style={styles.serviceCard}
             onPress={() => handleFeaturePress('Toll Payment')}
           >
-            <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
+            <View style={[styles.serviceIconContainer, { backgroundColor: "#4682B4" }]}>
               <Image
                 source={require('../../assets/images/purchase_toll_gate_white.png')}
                 style={styles.serviceIcon}
@@ -243,7 +243,7 @@ export default function ConsumerDashboard() {
           <Text style={styles.sectionTitle}>Your Stats</Text>
           <View style={styles.statsRow}>
             {stats.map((stat, index) => (
-              <View key={index} style={[styles.statCard, {backgroundColor: stat.color}]}>
+              <View key={index} style={[styles.statCard, { backgroundColor: stat.color }]}>
                 <Text style={styles.statNumber}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
               </View>

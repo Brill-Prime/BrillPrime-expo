@@ -1,4 +1,13 @@
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base"
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-native",
+    "types": [
+      "@types/geojson-vt",
+      "@types/mapbox__point-geometry",
+      "@types/pbf",
+      "@types/supercluster"
+    ]
+  }
 }

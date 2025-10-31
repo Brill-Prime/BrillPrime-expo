@@ -4,20 +4,50 @@
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "jsx": "react-jsx",
+    "jsx": "react-native",
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "target": "esnext",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
     "types": [
-      "node"
+      "node",
+      "react",
+      "@expo/vector-icons",
+      "@react-native-async-storage/async-storage",
+      "react-native",
+      "@firebase/auth-types",
+      "react-native-web",
+      "socket.io-client",
+      "lodash",
+      "leaflet",
+      "google.maps",
+      "mapbox-gl"
     ],
     "paths": {
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "baseUrl": ".",
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

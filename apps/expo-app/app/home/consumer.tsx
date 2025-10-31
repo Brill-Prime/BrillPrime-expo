@@ -367,12 +367,13 @@ function ConsumerHomeContent() {
       } else {
         throw new Error(data.message || 'Failed to load merchants');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Error loading nearby merchants:', {
-        errorName: error?.name,
-        errorMessage: error?.message,
-        errorStack: error?.stack,
-        errorType: typeof error,
+        errorName: errorObj.name,
+        errorMessage: errorObj.message,
+        errorStack: errorObj.stack,
+        errorType: error instanceof Error ? 'Error' : typeof error,
         fullError: error
       });
 
@@ -417,7 +418,7 @@ function ConsumerHomeContent() {
 
       // Make API call to get all merchants using apiClient
       const { apiClient } = await import('../../services/api');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
       const response = await apiClient.get<any>('/api/merchants', headers);
 
       if (!response.success || !response.data) {
@@ -465,12 +466,13 @@ function ConsumerHomeContent() {
       } else {
         throw new Error(data.message || 'Failed to load merchants');
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Error loading all merchants:', {
-        errorName: error?.name,
-        errorMessage: error?.message,
-        errorStack: error?.stack,
-        errorType: typeof error,
+        errorName: errorObj.name,
+        errorMessage: errorObj.message,
+        errorStack: errorObj.stack,
+        errorType: error instanceof Error ? 'Error' : typeof error,
         fullError: error
       });
 
@@ -976,23 +978,23 @@ function ConsumerHomeContent() {
 
       setIsLocationSet(true);
       showSuccess("Location Set", "Your location has been updated successfully!");
-    } catch (locationError) {
-      console.error("Error setting location automatically:", locationError);
+    } catch (error) {
+      console.error("Error setting location automatically:", error);
 
       // Don't retry on permission errors - it will just spam the user
-      if (locationError instanceof Error) {
+      if (error instanceof Error) {
         // Show the specific error message from locationService
-        if (locationError.message.includes('permission') || locationError.message.includes('denied')) {
-          showError("Location Permission Required", locationError.message);
+        if (error.message.includes('permission') || error.message.includes('denied')) {
+          showError("Location Permission Required", error.message);
           // Keep the location setup card visible so user can try again
           setIsLocationSet(false);
           setHasShownLocationPrompt(false);
-        } else if (locationError.message.includes('timeout') || locationError.message.includes('timed out')) {
-          showError("Location Timeout", locationError.message);
-        } else if (locationError.message.includes('unavailable')) {
-          showError("GPS Unavailable", locationError.message);
+        } else if (error.message.includes('timeout') || error.message.includes('timed out')) {
+          showError("Location Timeout", error.message);
+        } else if (error.message.includes('unavailable')) {
+          showError("GPS Unavailable", error.message);
         } else {
-          showError("Location Error", locationError.message || "Failed to get your location. Please try again.");
+          showError("Location Error", error.message || "Failed to get your location. Please try again.");
         }
       } else {
         showError("Location Error", "An unexpected error occurred. Please enable location access in your browser settings.");
@@ -1347,6 +1349,15 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     backgroundColor: theme.colors.background,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 5,
   },
   map: {
     width: '100%',

@@ -1,4 +1,5 @@
 
+/// <reference types="node" />
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -13,12 +14,12 @@ export const useSessionTimeout = () => {
   const router = useRouter();
   const { showConfirmDialog } = useAlert();
   const lastActivityRef = useRef(Date.now());
-  const timeoutIdRef = useRef<NodeJS.Timeout>();
-  const warningIdRef = useRef<NodeJS.Timeout>();
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimers = useCallback(() => {
     lastActivityRef.current = Date.now();
-    
+
     if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
     if (warningIdRef.current) clearTimeout(warningIdRef.current);
 
@@ -26,7 +27,7 @@ export const useSessionTimeout = () => {
     warningIdRef.current = setTimeout(async () => {
       const biometricEnabled = await biometricService.isBiometricEnabled();
       const biometricAvailable = await biometricService.isBiometricAvailable();
-      
+
       if (biometricEnabled && biometricAvailable) {
         const authenticated = await biometricService.authenticate('Verify to continue your session');
         if (authenticated) {
@@ -72,7 +73,7 @@ export const useSessionTimeout = () => {
 
   useEffect(() => {
     resetTimers();
-    
+
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
