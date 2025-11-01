@@ -81,6 +81,8 @@ export default function MerchantHome() {
       console.error("Error loading user data:", error);
       setUserEmail("merchant@brillprime.com");
       setUserName("Merchant");
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 

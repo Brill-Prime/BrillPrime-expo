@@ -190,7 +190,6 @@ export default function DriverHome() {
   }, []);
 
   const initializeData = useCallback(async () => {
-    setIsLoading(true);
     try {
       await Promise.all([loadUserData(), loadDriverStats(), checkAuth()]);
     } catch (error) {
