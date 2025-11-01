@@ -15,7 +15,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd expo-app && yarn web"
+args = "cd apps && yarn web"
 
 [[ports]]
 localPort = 5000
