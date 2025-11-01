@@ -73,7 +73,7 @@ The app uses Firebase for backend services:
 - **Database**: Cloud Firestore
 - **Storage**: Cloud Storage
 
-API endpoints are configured in `apps/expo-app/config/environment.ts`
+API endpoints are configured in `expo-app/config/environment.ts`
 
 ## Development
 
@@ -87,7 +87,7 @@ Deploy to Replit using the Deployments tool or configure production environment 
 
 ## Documentation
 
-See `apps/expo-app/docs/` for detailed documentation:
+See `expo-app/docs/` for detailed documentation:
 - Setup guides
 - API integration
 - Feature documentation

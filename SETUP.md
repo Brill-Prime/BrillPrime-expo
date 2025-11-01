@@ -16,7 +16,7 @@ This guide will help you set up the BrillPrime Expo mobile application.
 
 ```bash
 # Navigate to the expo app directory
-cd apps/expo-app
+cd expo-app
 
 # Install dependencies
 yarn install
@@ -63,7 +63,7 @@ EXPO_PUBLIC_API_TIMEOUT=30000
 ### Web Development
 
 ```bash
-cd apps/expo-app
+cd expo-app
 yarn web
 ```
 
