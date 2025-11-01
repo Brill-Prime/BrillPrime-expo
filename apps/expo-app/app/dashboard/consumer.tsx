@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
@@ -124,11 +124,11 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: require('../../../docs/assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'), route: "/commodity/commodities" },
-    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: require('../../../docs/assets/stock_images/3d_package_box_icon_1d5ed216.jpg'), route: "/orders/consumer-orders" },
-    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: require('../../../docs/assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'), route: "/messages" },
-    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../../docs/assets/stock_images/3d_heart_icon_favori_200752cd.jpg'), route: "/favorites" },
-    { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../../docs/assets/stock_images/3d_headphones_icon_s_281856ca.jpg'), route: "/support" }
+    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: 'cart-outline', route: "/commodity/commodities" },
+    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: 'receipt-outline', route: "/orders/consumer-orders" },
+    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: 'chatbubbles-outline', route: "/messages" },
+    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: 'heart-outline', route: "/favorites" },
+    { id: 'support', title: "Support", description: "Get help anytime", icon: 'headset-outline', route: "/support" }
   ];
 
   const stats = [
@@ -194,11 +194,7 @@ export default function ConsumerDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Image
-                  source={feature.icon}
-                  style={styles.featureIconImage}
-                  resizeMode="contain"
-                />
+                <Ionicons name={feature.icon as any} size={28} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>

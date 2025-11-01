@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
@@ -87,35 +87,35 @@ export default function MerchantDashboard() {
       id: "add-commodity",
       title: "Add Products",
       description: "List new items",
-      icon: require('../../../docs/assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'),
+      icon: 'add-circle-outline',
       route: "/merchant/add-commodity"
     },
     {
       id: "manage-commodities",
       title: "Manage Inventory",
       description: "Track your stock",
-      icon: require('../../../docs/assets/stock_images/3d_package_box_icon_1d5ed216.jpg'),
+      icon: 'cube-outline',
       route: "/merchant/commodities"
     },
     {
       id: "manage-orders",
       title: "Orders",
       description: "View customer orders",
-      icon: require('../../../docs/assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'),
+      icon: 'receipt-outline',
       route: "/orders/consumer-orders"
     },
     {
       id: "analytics",
       title: "Analytics",
       description: "Sales insights",
-      icon: require('../../../docs/assets/stock_images/3d_headphones_icon_s_281856ca.jpg'),
+      icon: 'stats-chart-outline',
       route: "/merchant/analytics"
     },
     {
       id: "store-settings",
       title: "Store Settings",
       description: "Manage your store",
-      icon: require('../../../docs/assets/stock_images/3d_heart_icon_favori_200752cd.jpg'),
+      icon: 'settings-outline',
       route: "/profile/edit"
     }
   ];
@@ -158,11 +158,7 @@ export default function MerchantDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Image
-                  source={feature.icon}
-                  style={styles.featureIconImage}
-                  resizeMode="contain"
-                />
+                <Ionicons name={feature.icon as any} size={28} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
