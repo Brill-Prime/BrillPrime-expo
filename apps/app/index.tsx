@@ -50,7 +50,8 @@ export default function SplashScreenComponent() {
       if (!isMounted) return;
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        // Display splash screen for 5-6 seconds
+        await new Promise(resolve => setTimeout(resolve, 5500));
 
         const onboardingStatus = await AsyncStorage.getItem('hasSeenOnboarding');
         console.log('hasSeenOnboarding:', onboardingStatus);

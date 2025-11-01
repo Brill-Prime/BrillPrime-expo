@@ -87,11 +87,7 @@ export default function RootLayout() {
   }, []);
 
   if (!fontsLoaded) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
+    return null; // Return null while fonts load, splash screen will show instead
   }
 
   return (
