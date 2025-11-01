@@ -34,7 +34,7 @@
     "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "expo": "~53.0.23",
+    "expo": "^54.0.21",
     "expo-barcode-scanner": "^13.0.1",
     "expo-blur": "~14.1.5",
     "expo-build-properties": "^0.14.8",

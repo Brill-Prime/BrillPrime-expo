@@ -1,7 +1,11 @@
 
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
+
+// Enable expo-router
+config.resolver.resolverMainFields = ['expo-router-entry', 'browser', 'main'];
 
 // Add support for all font and image formats
 config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2', 'eot', 'svg', 'png', 'jpg', 'jpeg', 'gif');

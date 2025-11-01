@@ -2,14 +2,14 @@
   "name": "brillprime-monorepo",
   "private": true,
   "workspaces": [
-    "expo-app"
+    "apps"
   ],
   "scripts": {
-    "dev": "cd expo-app && yarn web",
-    "expo:start": "cd expo-app && yarn start",
-    "expo:android": "cd expo-app && yarn android",
-    "expo:ios": "cd expo-app && yarn ios",
-    "expo:web": "cd expo-app && yarn web",
+    "dev": "cd apps && yarn web",
+    "expo:start": "cd apps && yarn start",
+    "expo:android": "cd apps && yarn android",
+    "expo:ios": "cd apps && yarn ios",
+    "expo:web": "cd apps && yarn web",
     "start": "yarn dev",
     "build": "cd expo-app && yarn build",
     "clean": "cd expo-app && yarn clean",
