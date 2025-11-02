@@ -600,12 +600,199 @@ export default function SearchScreen() {
     }
   }, [addToHistory]);
 
+  const applyFilters = () => {
+    setShowFilters(false);
+    filterResults(); // Re-apply filters to the current view
+  };
+
+  const performSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      filterResults(); // Apply filters and update displayed results
+      addToHistory(query);
+      analyticsService.trackEvent('search', { query: query });
+    } else {
+      // If query is empty, reset to initial state or show relevant message
+      if (activeTab === "merchants") {
+        setFilteredMerchants(allMerchants);
+      } else {
+        setFilteredCommodities(allCommodities);
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <Modal
+        visible={showFilters}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.filterModal}>
+            <View style={styles.filterHeader}>
+              <Text style={styles.filterTitle}>Filters</Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)}>
+                <Ionicons name="close" size={24} color="#0B1A51" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.filterContent}>
+              <Text style={styles.filterSection}>Price Range</Text>
+              <View style={styles.priceInputs}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Min"
+                  keyboardType="numeric"
+                  value={filters.priceRange.toString()}
+                  onChangeText={(text) =>
+                    setFilters({
+                      ...filters,
+                      priceRange: parseInt(text) || 0,
+                    })
+                  }
+                />
+                <Text style={styles.priceSeparator}>-</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Max"
+                  keyboardType="numeric"
+                  value={filters.priceRange.toString()}
+                  onChangeText={(text) =>
+                    setFilters({
+                      ...filters,
+                      priceRange: parseInt(text) || 100000,
+                    })
+                  }
+                />
+              </View>
+
+              <Text style={styles.filterSection}>Minimum Rating</Text>
+              <View style={styles.ratingOptions}>
+                {[0, 3, 4, 4.5].map((rating) => (
+                  <TouchableOpacity
+                    key={rating}
+                    style={[
+                      styles.ratingOption,
+                      filters.minRating === rating && styles.ratingOptionActive,
+                    ]}
+                    onPress={() => setFilters({ ...filters, minRating: rating })}
+                  >
+                    <Ionicons
+                      name="star"
+                      size={16}
+                      color={filters.minRating === rating ? '#FFFFFF' : '#F59E0B'}
+                    />
+                    <Text
+                      style={[
+                        styles.ratingText,
+                        filters.minRating === rating && styles.ratingTextActive,
+                      ]}
+                    >
+                      {rating === 0 ? 'Any' : `${rating}+`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.filterSection}>Delivery Time</Text>
+              <View style={styles.deliveryOptions}>
+                {[
+                  { value: 'any', label: 'Any Time' },
+                  { value: '30', label: 'Under 30 min' },
+                  { value: '60', label: 'Under 1 hour' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.deliveryOption,
+                      filters.deliveryTime === option.value && styles.deliveryOptionActive,
+                    ]}
+                    onPress={() => setFilters({ ...filters, deliveryTime: option.value })}
+                  >
+                    <Text
+                      style={[
+                        styles.deliveryText,
+                        filters.deliveryTime === option.value && styles.deliveryTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.filterSection}>Distance: {filters.maxDistance}km</Text>
+              <View style={styles.distanceSlider}>
+                {[5, 10, 20, 50].map((dist) => (
+                  <TouchableOpacity
+                    key={dist}
+                    style={[
+                      styles.distanceOption,
+                      filters.maxDistance === dist && styles.distanceOptionActive,
+                    ]}
+                    onPress={() => setFilters({ ...filters, maxDistance: dist })}
+                  >
+                    <Text
+                      style={[
+                        styles.distanceText,
+                        filters.maxDistance === dist && styles.distanceTextActive,
+                      ]}
+                    >
+                      {dist}km
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {activeTab === 'merchants' && (
+                <View>
+                  <Text style={styles.filterSection}>Features</Text>
+                  <View style={styles.featureOptions}>
+                    {['Delivery', 'Takeaway', 'Dine-in', 'Parking', 'WiFi'].map(feature => (
+                      <TouchableOpacity
+                        key={feature}
+                        style={[
+                          styles.featureOption,
+                          filters.hasFeatures.includes(feature) && styles.featureOptionActive
+                        ]}
+                        onPress={() => {
+                          const newFeatures = filters.hasFeatures.includes(feature)
+                            ? filters.hasFeatures.filter(f => f !== feature)
+                            : [...filters.hasFeatures, feature];
+                          setFilters({ ...filters, hasFeatures: newFeatures });
+                        }}
+                      >
+                        <Text style={[
+                          styles.featureText,
+                          filters.hasFeatures.includes(feature) && styles.featureTextActive
+                        ]}>
+                          {feature}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+            </ScrollView>
+
+            <View style={styles.filterFooter}>
+              <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
+                <Text style={styles.resetButtonText}>Reset</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.applyButton} onPress={applyFilters}>
+                <Text style={styles.applyButtonText}>Apply Filters</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#333" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#0B1A51" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Search</Text>
@@ -632,18 +819,15 @@ export default function SearchScreen() {
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
-              if (text.length > 0) {
-                handleSearch(text); // Call handleSearch on text change for live search
-              } else {
-                setResults([]); // Clear results if search query is empty
+              if (text.length === 0) { // Clear results if search query is empty
+                setResults([]);
+                filterResults(); // Reset filtered lists to show all items
               }
             }}
             onFocus={() => {}} // Keep onFocus handler empty to avoid interfering with history display logic
             returnKeyType="search"
             onSubmitEditing={() => {
-              if (searchQuery.trim()) {
-                filterResults();
-              }
+              performSearch(searchQuery);
             }}
           />
           {searchQuery.length > 0 ? (
@@ -716,7 +900,7 @@ export default function SearchScreen() {
                 style={styles.historyItem}
                 onPress={() => {
                   setSearchQuery(item);
-                  handleSearch(item); // Trigger search with the history item
+                  performSearch(item); // Trigger search with the history item
                 }}
               >
                 <Ionicons name="time-outline" size={20} color="#666" />
@@ -846,20 +1030,6 @@ export default function SearchScreen() {
               </View>
             </View>
 
-            {activeTab === 'merchants' && (
-              <View style={styles.filterRow}>
-                <View style={styles.toggleContainer}>
-                  <Text style={styles.filterLabel}>Only show open locations</Text>
-                  <TouchableOpacity
-                    style={[styles.toggle, filters.onlyOpen && styles.activeToggle]}
-                    onPress={() => setFilters({ ...filters, onlyOpen: !filters.onlyOpen })}
-                  >
-                    <View style={[styles.toggleDot, filters.onlyOpen && styles.activeToggleDot]} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>Sort By</Text>
               <View style={styles.sortButtons}>
@@ -887,6 +1057,20 @@ export default function SearchScreen() {
                 ))}
               </View>
             </View>
+
+            {activeTab === 'merchants' && (
+              <View style={styles.filterRow}>
+                <View style={styles.toggleContainer}>
+                  <Text style={styles.filterLabel}>Only show open locations</Text>
+                  <TouchableOpacity
+                    style={[styles.toggle, filters.onlyOpen && styles.activeToggle]}
+                    onPress={() => setFilters({ ...filters, onlyOpen: !filters.onlyOpen })}
+                  >
+                    <View style={[styles.toggleDot, filters.onlyOpen && styles.activeToggleDot]} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -1532,5 +1716,183 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#374151',
+  },
+  // Styles for the filter modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterModal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  filterTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0B1A51',
+  },
+  filterContent: {
+    padding: 20,
+  },
+  filterSection: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0B1A51',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+  priceInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  priceInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  priceSeparator: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  ratingOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ratingOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 4,
+  },
+  ratingOptionActive: {
+    backgroundColor: '#4682B4',
+    borderColor: '#4682B4',
+  },
+  ratingText: {
+    fontSize: 14,
+    color: '#0B1A51',
+  },
+  ratingTextActive: {
+    color: '#FFFFFF',
+  },
+  deliveryOptions: {
+    gap: 8,
+  },
+  deliveryOption: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  deliveryOptionActive: {
+    backgroundColor: '#4682B4',
+    borderColor: '#4682B4',
+  },
+  deliveryText: {
+    fontSize: 14,
+    color: '#0B1A51',
+  },
+  deliveryTextActive: {
+    color: '#FFFFFF',
+  },
+  distanceSlider: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  distanceOption: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  distanceOptionActive: {
+    backgroundColor: '#4682B4',
+    borderColor: '#4682B4',
+  },
+  distanceText: {
+    fontSize: 14,
+    color: '#0B1A51',
+  },
+  distanceTextActive: {
+    color: '#FFFFFF',
+  },
+  filterFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  resetButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4682B4',
+  },
+  applyButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#4682B4',
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  featureOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  featureOption: {
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  featureOptionActive: {
+    backgroundColor: '#4682B4',
+    borderColor: '#4682B4',
+  },
+  featureText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  featureTextActive: {
+    color: 'white',
+    fontWeight: '600',
   },
 });

@@ -256,6 +256,36 @@ export default function ConsumerDashboard() {
           </View>
         </View>
 
+        {/* Navigation Menu Items - Added Loyalty and Referral */}
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/transactions')}
+          >
+            <Ionicons name="receipt-outline" size={24} color="#4682B4" />
+            <Text style={styles.menuItemText}>Transaction History</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/loyalty')}
+          >
+            <Ionicons name="star-outline" size={24} color="#4682B4" />
+            <Text style={styles.menuItemText}>Loyalty Program</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/referral')}
+          >
+            <Ionicons name="people-outline" size={24} color="#4682B4" />
+            <Text style={styles.menuItemText}>Refer & Earn</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </LinearGradient>
   );
@@ -481,6 +511,26 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 12 : isSmallScreen ? 9 : 10,
       color: "#7f8c8d",
       marginTop: 2,
+    },
+    menuContainer: {
+      marginTop: Math.max(16, height * 0.025),
+      backgroundColor: "white",
+      borderRadius: 25,
+      paddingVertical: 10,
+    },
+    menuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: Math.max(12, height * 0.015),
+      paddingHorizontal: Math.max(16, width * 0.04),
+      borderBottomWidth: 1,
+      borderBottomColor: "#eee",
+    },
+    menuItemText: {
+      flex: 1,
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 15,
+      color: "#2c3e50",
+      marginLeft: Math.max(12, width * 0.03),
     },
   });
 };

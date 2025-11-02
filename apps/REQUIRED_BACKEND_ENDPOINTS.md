@@ -617,7 +617,7 @@ Response:
 
 ### Submit Dispute
 ```
-POST /api/disputes
+POST /api/disputes/submit
 Authorization: Bearer {token}
 Content-Type: multipart/form-data
 
@@ -732,6 +732,126 @@ Response:
   }
 }
 ```
+
+## Referral System Endpoints
+
+### Get Referral Stats
+**GET** `/api/referrals/stats`
+
+**Headers:**
+- Authorization: Bearer {token}
+
+**Response:**
+```json
+{
+  "referralCode": "BRILLABC123",
+  "totalReferrals": 12,
+  "successfulReferrals": 8,
+  "pendingReferrals": 4,
+  "totalEarnings": 8000,
+  "rewardPerReferral": 1000,
+  "referralHistory": [
+    {
+      "id": "ref_123",
+      "name": "John Doe",
+      "status": "completed",
+      "reward": 1000,
+      "date": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Apply Referral Code
+**POST** `/api/referrals/apply`
+
+**Body:**
+```json
+{
+  "referralCode": "BRILLABC123"
+}
+```
+
+## Scheduled Delivery Endpoints
+
+### Get Available Time Slots
+**GET** `/api/delivery/available-slots?date=2024-01-20`
+
+**Response:**
+```json
+{
+  "date": "2024-01-20",
+  "slots": [
+    {
+      "id": "8-10",
+      "label": "8:00 AM - 10:00 AM",
+      "available": true
+    }
+  ]
+}
+```
+
+### Schedule Delivery
+**POST** `/api/delivery/schedule`
+
+**Body:**
+```json
+{
+  "orderId": "order_123",
+  "scheduledDate": "2024-01-20",
+  "timeSlot": "8-10",
+  "instructions": "Leave at front door"
+}
+```
+
+## Loyalty Program Endpoints
+
+### Get Loyalty Data
+**GET** `/api/loyalty/profile`
+
+**Response:**
+```json
+{
+  "currentPoints": 2450,
+  "tier": "silver",
+  "nextTier": "gold",
+  "pointsToNextTier": 550,
+  "lifetimePoints": 8920,
+  "tierBenefits": []
+}
+```
+
+### Get Available Rewards
+**GET** `/api/loyalty/rewards`
+
+**Response:**
+```json
+{
+  "rewards": [
+    {
+      "id": "reward_123",
+      "title": "₦500 Discount",
+      "description": "Get ₦500 off your next order",
+      "pointsCost": 500,
+      "icon": "pricetag",
+      "category": "discount"
+    }
+  ]
+}
+```
+
+### Redeem Reward
+**POST** `/api/loyalty/redeem`
+
+**Body:**
+```json
+{
+  "rewardId": "reward_123"
+}
+```
+
+### Get Points History
+**GET** `/api/loyalty/history?page=1&limit=20`
 
 ## Notes
 
