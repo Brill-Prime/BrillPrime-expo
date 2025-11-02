@@ -571,6 +571,168 @@ Register a new user account (syncs Firebase user to backend).
 }
 ```
 
+## 18. Driver Performance Analytics
+
+### Get Driver Performance Metrics
+```
+GET /api/drivers/analytics?period={week|month|year}
+Authorization: Bearer {token}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "totalDeliveries": 156,
+    "acceptanceRate": 94.5,
+    "completionRate": 98.2,
+    "averageRating": 4.8,
+    "totalEarnings": 45600,
+    "onTimeDeliveryRate": 96.3,
+    "peakHours": [
+      {
+        "hour": "12:00 PM",
+        "deliveries": 23,
+        "earnings": 6900
+      }
+    ],
+    "weeklyStats": [
+      {
+        "day": "Mon",
+        "deliveries": 22,
+        "earnings": 6600
+      }
+    ],
+    "customerFeedback": {
+      "positive": 142,
+      "neutral": 10,
+      "negative": 4
+    },
+    "routeEfficiency": 89.5,
+    "responseTime": 3.2
+  }
+}
+```
+
+## 19. Dispute Resolution
+
+### Submit Dispute
+```
+POST /api/disputes
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+
+Request:
+{
+  "orderId": "ORD123",
+  "reason": "wrong_item" | "damaged_item" | "missing_item" | "late_delivery" | "no_delivery" | "quality_issue" | "overcharge" | "other",
+  "description": "Detailed description of the issue",
+  "evidence": [File] // Array of images/documents
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "disputeId": "DSP123",
+    "orderId": "ORD123",
+    "status": "pending",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "estimatedResolutionTime": "2024-01-17T10:30:00Z"
+  }
+}
+```
+
+### Get Dispute Details
+```
+GET /api/disputes/:disputeId
+Authorization: Bearer {token}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "DSP123",
+    "orderId": "ORD123",
+    "reason": "wrong_item",
+    "description": "Received different product than ordered",
+    "status": "under_review",
+    "evidence": [
+      {
+        "url": "https://storage.brillprime.com/disputes/img1.jpg",
+        "type": "image"
+      }
+    ],
+    "timeline": [
+      {
+        "status": "submitted",
+        "timestamp": "2024-01-15T10:30:00Z",
+        "note": "Dispute submitted"
+      },
+      {
+        "status": "under_review",
+        "timestamp": "2024-01-15T12:00:00Z",
+        "note": "Under review by support team"
+      }
+    ],
+    "resolution": null,
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Get User Disputes
+```
+GET /api/disputes?status={status}&page=1&limit=10
+Authorization: Bearer {token}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "disputes": [
+      {
+        "id": "DSP123",
+        "orderId": "ORD123",
+        "reason": "wrong_item",
+        "status": "resolved",
+        "createdAt": "2024-01-15T10:30:00Z",
+        "resolvedAt": "2024-01-16T14:00:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 5,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+### Update Dispute (Admin)
+```
+PUT /api/admin/disputes/:disputeId
+Authorization: Bearer {token}
+
+Request:
+{
+  "status": "resolved" | "rejected" | "escalated",
+  "resolution": "Refund issued",
+  "adminNotes": "Customer verified. Refund processed."
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "DSP123",
+    "status": "resolved",
+    "resolution": "Refund issued",
+    "resolvedAt": "2024-01-16T14:00:00Z"
+  }
+}
+```
+
 ## Notes
 
 1. All endpoints require authentication via Bearer token except public endpoints
