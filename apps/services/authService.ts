@@ -66,7 +66,7 @@ class AuthService {
     try {
       console.log('Starting signup process for:', data.email);
 
-      // Create user in Firebase
+      // Create user in Firebase (but they won't be able to sign in until email is verified)
       const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
       const firebaseUser = firebaseUserCredential.user;
       console.log('Firebase user created:', firebaseUser.uid);
@@ -74,12 +74,6 @@ class AuthService {
       // Update Firebase profile with display name
       const displayName = `${data.firstName} ${data.lastName}`.trim();
       await updateProfile(firebaseUser, { displayName });
-
-      // Send email verification
-      await sendEmailVerification(firebaseUser, {
-        url: window.location.origin + '/auth/signin',
-        handleCodeInApp: false,
-      });
 
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
@@ -91,9 +85,28 @@ class AuthService {
         firstName: data.firstName,
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
+        firebaseUid: firebaseUser.uid,
       }));
 
-      // Create auth response immediately with Firebase data
+      // Request backend to send 6-digit OTP code via email
+      const otpResponse = await apiClient.post<{ message: string }>(
+        API_ENDPOINTS.AUTH.SEND_OTP,
+        {
+          email: data.email,
+          firebaseUid: firebaseUser.uid,
+          name: displayName,
+        },
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      );
+
+      if (!otpResponse.success) {
+        console.warn('OTP send failed (non-critical):', otpResponse.error);
+        // Continue anyway - we'll still allow them to verify later
+      }
+
+      // Create auth response with unverified status
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -102,17 +115,14 @@ class AuthService {
           name: displayName,
           role: data.role,
           phone: data.phoneNumber || '',
-          isVerified: firebaseUser.emailVerified,
+          isVerified: false, // User needs to verify OTP first
           profileImageUrl: firebaseUser.photoURL || undefined,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       };
 
-      await this.storeAuthData(authData);
-
-      // Initialize role status for the user
-      await roleManagementService.initializeRoleStatus(data.role);
+      // Don't store auth data yet - wait for OTP verification
 
       // Sync with backend asynchronously (non-blocking)
       apiClient.post<AuthResponse>(
@@ -121,6 +131,9 @@ class AuthService {
           firebaseUid: firebaseUser.uid,
           role: data.role,
           phoneNumber: data.phoneNumber,
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
         },
         {
           Authorization: `Bearer ${firebaseToken}`,
@@ -599,95 +612,99 @@ class AuthService {
     }
   }
 
-  // Verify OTP - Check if email is verified
+  // Verify OTP - Validate 6-digit code
   async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
     try {
-      // Reload the current user to get latest email verification status
-      if (this.currentUser) {
-        await this.currentUser.reload();
-        
-        if (this.currentUser.emailVerified) {
-          // Email is verified, get fresh token and user data
-          const firebaseToken = await this.currentUser.getIdToken(true);
-          const pendingUserData = await AsyncStorage.getItem('pendingUserData');
-          
-          if (pendingUserData) {
-            const userData = JSON.parse(pendingUserData);
-            
-            const authData: AuthResponse = {
-              token: firebaseToken,
-              user: {
-                id: this.currentUser.uid,
-                email: this.currentUser.email || '',
-                name: this.currentUser.displayName || '',
-                role: userData.role,
-                phone: userData.phoneNumber || '',
-                isVerified: true,
-                profileImageUrl: this.currentUser.photoURL || undefined,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            };
+      const pendingUserData = await AsyncStorage.getItem('pendingUserData');
+      
+      if (!pendingUserData) {
+        return { success: false, error: 'Session expired. Please sign up again.' };
+      }
 
-            await this.storeAuthData(authData);
-            await AsyncStorage.removeItem('pendingUserData');
+      const userData = JSON.parse(pendingUserData);
 
-            // Sync with backend
-            apiClient.post<AuthResponse>(
-              API_ENDPOINTS.AUTH.REGISTER,
-              {
-                firebaseUid: this.currentUser.uid,
-                role: userData.role,
-                phoneNumber: userData.phoneNumber,
-              },
-              {
-                Authorization: `Bearer ${firebaseToken}`,
-              }
-            ).catch(err => console.log('Backend sync error (non-critical):', err));
-
-            return { success: true, data: authData };
-          }
+      // Verify OTP with backend
+      const verifyResponse = await apiClient.post<AuthResponse>(
+        API_ENDPOINTS.AUTH.VERIFY_OTP,
+        {
+          email: userData.email,
+          otp: data.otp,
+          firebaseUid: userData.firebaseUid,
         }
-        
+      );
+
+      if (!verifyResponse.success || !verifyResponse.data) {
         return { 
           success: false, 
-          error: 'Email not verified yet. Please check your email and click the verification link.' 
+          error: verifyResponse.error || 'Invalid or expired OTP code' 
         };
       }
-      
-      return { success: false, error: 'No authenticated user found' };
+
+      // OTP verified successfully - now mark user as verified in our system
+      const authData: AuthResponse = {
+        token: verifyResponse.data.token,
+        user: {
+          ...verifyResponse.data.user,
+          role: userData.role,
+          isVerified: true,
+        },
+      };
+
+      await this.storeAuthData(authData);
+      await AsyncStorage.removeItem('pendingUserData');
+
+      // Initialize role status for the user
+      await roleManagementService.initializeRoleStatus(userData.role);
+
+      return { success: true, data: authData };
     } catch (error: any) {
-      console.error('Verification check error:', error);
+      console.error('OTP verification error:', error);
       return { 
         success: false, 
-        error: error.message || 'Failed to verify email. Please try again.' 
+        error: error.message || 'Failed to verify OTP. Please try again.' 
       };
     }
   }
 
-  // Resend OTP - Resend Firebase verification email
+  // Resend OTP - Request new 6-digit code
   async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
     try {
-      if (this.currentUser && this.currentUser.email === email) {
-        await sendEmailVerification(this.currentUser, {
-          url: window.location.origin + '/auth/signin',
-          handleCodeInApp: false,
-        });
-        
+      const pendingUserData = await AsyncStorage.getItem('pendingUserData');
+      
+      if (!pendingUserData) {
+        return { 
+          success: false, 
+          error: 'Session expired. Please sign up again.' 
+        };
+      }
+
+      const userData = JSON.parse(pendingUserData);
+
+      // Request backend to send new OTP
+      const response = await apiClient.post<{ message: string }>(
+        API_ENDPOINTS.AUTH.SEND_OTP,
+        {
+          email: userData.email,
+          firebaseUid: userData.firebaseUid,
+          name: `${userData.firstName} ${userData.lastName}`,
+        }
+      );
+
+      if (response.success) {
         return { 
           success: true, 
-          data: { message: 'Verification email sent successfully' } 
+          data: { message: 'New verification code sent successfully' } 
         };
       }
       
       return { 
         success: false, 
-        error: 'User not found or email mismatch' 
+        error: response.error || 'Failed to send verification code' 
       };
     } catch (error: any) {
-      console.error('Resend verification email error:', error);
+      console.error('Resend OTP error:', error);
       
-      if (error.code === 'auth/too-many-requests') {
+      if (error.message?.includes('too many')) {
         return { 
           success: false, 
           error: 'Too many requests. Please wait a few minutes before trying again.' 
@@ -696,20 +713,23 @@ class AuthService {
       
       return { 
         success: false, 
-        error: error.message || 'Failed to resend verification email' 
+        error: error.message || 'Failed to resend verification code' 
       };
     }
   }
 
-  // Request password reset
+  // Request password reset - Send reset link via email
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
     try {
-      // Use Firebase's built-in password reset
-      await sendPasswordResetEmail(auth as Auth, data.email);
+      // Use Firebase's built-in password reset link
+      await sendPasswordResetEmail(auth as Auth, data.email, {
+        url: window.location.origin + '/auth/signin',
+        handleCodeInApp: false,
+      });
 
       return {
         success: true,
-        data: { message: 'Password reset email sent successfully. Please check your inbox.' },
+        data: { message: 'Password reset link sent successfully. Please check your email.' },
       };
     } catch (error: any) {
       console.error('Password reset error:', error);
@@ -718,9 +738,13 @@ class AuthService {
         return { success: false, error: 'No account found with this email address.' };
       }
 
+      if (error.code === 'auth/too-many-requests') {
+        return { success: false, error: 'Too many requests. Please try again later.' };
+      }
+
       return {
         success: false,
-        error: error.message || 'Failed to send password reset email',
+        error: error.message || 'Failed to send password reset link',
       };
     }
   }

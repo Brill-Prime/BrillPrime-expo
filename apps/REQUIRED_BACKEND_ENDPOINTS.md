@@ -472,39 +472,104 @@ Data: {
 
 ## 10. Authentication Endpoints
 
-### 1. Register User
-- **Endpoint**: `POST /api/auth/register`
-- **Description**: Sync Firebase user with backend database
-- **Headers**: `Authorization: Bearer <firebase-token>`
-- **Request Body**:
-  ```json
-  {
-    "firebaseUid": "string",
-    "role": "consumer | merchant | driver",
-    "phoneNumber": "string"
+### POST /auth/send-otp
+Send a 6-digit OTP code to user's email during registration.
+
+**Request Body:**
+```json
+{
+  "email": "string",
+  "firebaseUid": "string",
+  "name": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "OTP sent successfully"
   }
-  ```
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "user": {
-        "id": "string",
-        "email": "string",
-        "name": "string",
-        "role": "string",
-        "phone": "string",
-        "isVerified": false
-      }
+}
+```
+
+**Implementation Notes:**
+- Generate a random 6-digit code
+- Store code with expiry time (5 minutes recommended)
+- Send email with subject "Verify Your BrillPrime Account"
+- Email should contain only the 6-digit code clearly displayed
+- Rate limit: Max 3 OTP requests per email per 15 minutes
+
+### POST /auth/verify-otp
+Verify the OTP code entered by user.
+
+**Request Body:**
+```json
+{
+  "email": "string",
+  "otp": "string",
+  "firebaseUid": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "string",
+    "user": {
+      "id": "string",
+      "email": "string",
+      "name": "string",
+      "role": "string",
+      "phone": "string",
+      "isVerified": true
     }
   }
-  ```
-- **Notes**: 
-  - Email verification is handled by Firebase
-  - This endpoint just syncs the user data to your backend
-  - Called after Firebase user creation
-  
+}
+```
+
+**Implementation Notes:**
+- Validate OTP code matches and hasn't expired
+- Mark user as verified in database
+- Return JWT token for authenticated session
+- Clear OTP from storage after successful verification
+- Max 5 attempts per OTP code
+
+### POST /auth/register
+Register a new user account (syncs Firebase user to backend).
+
+**Request Body:**
+```json
+{
+  "firebaseUid": "string",
+  "role": "consumer" | "merchant" | "driver",
+  "phoneNumber": "string",
+  "email": "string",
+  "firstName": "string",
+  "lastName": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "string",
+    "user": {
+      "id": "string",
+      "email": "string",
+      "name": "string",
+      "role": "string",
+      "phone": "string",
+      "isVerified": boolean
+    }
+  }
+}
+```
 
 ## Notes
 

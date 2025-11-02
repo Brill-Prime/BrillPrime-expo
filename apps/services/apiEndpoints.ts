@@ -1,4 +1,3 @@
-
 // API Endpoints Configuration
 // Maps all backend API endpoints with type safety
 
@@ -19,8 +18,8 @@ export const API_ENDPOINTS = {
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
     VERIFY_EMAIL: '/api/auth/verify-email',
+    SEND_OTP: '/api/auth/send-otp',
     VERIFY_OTP: '/api/auth/verify-otp',
-    RESEND_OTP: '/api/auth/resend-otp',
   },
 
   // Password Reset

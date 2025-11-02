@@ -54,6 +54,11 @@ export default function OTPVerification() {
   };
 
   const handleVerifyOTP = async () => {
+    if (!isCodeComplete()) {
+      Alert.alert("Error", "Please enter the complete 5-digit code");
+      return;
+    }
+
     setIsVerifying(true);
 
     try {
@@ -67,11 +72,12 @@ export default function OTPVerification() {
       }
 
       const userData = JSON.parse(tempEmail);
+      const otpCode = otp.join('');
 
-      // Check if email is verified
+      // Verify OTP with backend
       const response = await authService.verifyOTP({
         email: userData.email,
-        otp: "verification-check" // Not used, but required by type
+        otp: otpCode
       });
 
       if (response.success && response.data) {
@@ -91,11 +97,13 @@ export default function OTPVerification() {
           router.replace(`/dashboard/${response.data.user.role}`);
         }
       } else {
-        Alert.alert("Email Not Verified", response.error || "Please check your email and click the verification link before continuing.");
+        Alert.alert("Verification Failed", response.error || "Invalid or expired code. Please try again.");
+        setOtp(["", "", "", "", ""]); // Clear the OTP inputs
+        inputRefs.current[0]?.focus();
       }
     } catch (error) {
-      console.error("Email Verification Check Error:", error);
-      Alert.alert("Error", "Verification check failed. Please try again.");
+      console.error("OTP Verification Error:", error);
+      Alert.alert("Error", "Verification failed. Please try again.");
     } finally {
       setIsVerifying(false);
     }
@@ -140,23 +148,42 @@ export default function OTPVerification() {
         <Text style={styles.title}>Verify it's you</Text>
       </View>
 
+      {/* OTP Input */}
+      <View style={styles.otpContainer}>
+        {otp.map((digit, index) => (
+          <TextInput
+            key={index}
+            ref={(ref) => {
+              if (ref) inputRefs.current[index] = ref;
+            }}
+            style={[styles.otpInput, digit !== "" && styles.otpInputFilled]}
+            value={digit}
+            onChangeText={(value) => handleOTPChange(value, index)}
+            onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent, index)}
+            keyboardType="number-pad"
+            maxLength={1}
+            selectTextOnFocus
+          />
+        ))}
+      </View>
+
       {/* Email Info */}
       <View style={styles.emailInfo}>
-        <Text style={styles.emailText}>A verification link has been sent to</Text>
+        <Text style={styles.emailText}>A 5-digit verification code has been sent to</Text>
         <Text style={styles.emailAddress}>{userEmail || "your email"}</Text>
         <Text style={styles.instructionText}>
-          Please check your email and click the verification link to continue.
+          Please enter the code below to verify your account.
         </Text>
       </View>
 
       {/* Submit Button */}
       <TouchableOpacity
-        style={styles.submitButton}
+        style={[styles.submitButton, !isCodeComplete() && styles.submitButtonDisabled]}
         onPress={handleVerifyOTP}
-        disabled={isVerifying}
+        disabled={isVerifying || !isCodeComplete()}
       >
-        <Text style={styles.submitButtonText}>
-          {isVerifying ? "Checking..." : "I've Verified My Email"}
+        <Text style={[styles.submitButtonText, !isCodeComplete() && styles.submitButtonTextDisabled]}>
+          {isVerifying ? "Verifying..." : "Verify Code"}
         </Text>
       </TouchableOpacity>
 

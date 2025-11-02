@@ -417,8 +417,8 @@ export default function SignUp() {
       <AlertModal
         visible={showOtpModal}
         type="success"
-        title="OTP Sent!"
-        message={`A verification code has been sent to ${formData.email}. Please check your email and enter the code to verify your account.`}
+        title="Verification Code Sent!"
+        message={`A 5-digit verification code has been sent to ${formData.email}. Please check your email and enter the code on the next screen.`}
         onClose={() => {
           setShowOtpModal(false);
           router.push("/auth/otp-verification");
