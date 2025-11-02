@@ -1,10 +1,12 @@
 
-const { getDefaultConfig } = require('expo/metro-config');
+const { getDefaultConfig } = require('@expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Enable expo-router
+// Enable expo-router and proper module resolution
 config.resolver.resolverMainFields = ['expo-router-entry', 'browser', 'main'];
+config.resolver.nodeModulesPaths = [__dirname + '/node_modules'];
+config.watchFolders = [__dirname + '/node_modules'];
 
 // Add support for all font and image formats
 config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2', 'eot', 'svg', 'png', 'jpg', 'jpeg', 'gif');

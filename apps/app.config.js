@@ -5,13 +5,13 @@ import 'dotenv/config';
 export default {
   expo: {
     name: "BrillPrime",
-    slug: "brillprime",
+    slug: "brillprime-monorepo",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     scheme: "brillprime",
-    owner: "brill-prime",
+    owner: "brillprime",
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
@@ -21,7 +21,9 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.brillprime.app",
-      googleServicesFile: "./ios/GoogleService-Info.plist"
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false
+      }
     },
     android: {
       adaptiveIcon: {
@@ -97,7 +99,7 @@ export default {
         origin: false
       },
       eas: {
-        projectId: "your-project-id"
+        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "09953d4e-9d37-4353-b91d-1df3e0acc789"
       },
       // Firebase configuration with proper environment variable access
       firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBAe9x-nOCzn8VA1oAP23y2Sv2sIiVyP0s",
