@@ -54,19 +54,11 @@ export default function OTPVerification() {
   };
 
   const handleVerifyOTP = async () => {
-    const otpString = otp.join("");
-
-    if (otpString.length !== 5) {
-      Alert.alert("Error", "Please enter all 5 digits of the verification code.");
-      return;
-    }
-
     setIsVerifying(true);
 
     try {
       const { authService } = await import('../../services/authService');
-      const tempEmail = await AsyncStorage.getItem("pendingUserData"); // Assuming pendingUserData stores email and other details
-      const tempRole = await AsyncStorage.getItem("selectedRole");
+      const tempEmail = await AsyncStorage.getItem("pendingUserData");
 
       if (!tempEmail) {
         Alert.alert("Error", "Session expired. Please sign up again.");
@@ -74,11 +66,12 @@ export default function OTPVerification() {
         return;
       }
 
-      const userData = JSON.parse(tempEmail); // Parse the stored pending user data
+      const userData = JSON.parse(tempEmail);
 
+      // Check if email is verified
       const response = await authService.verifyOTP({
-        email: userData.email, // Use email from parsed data
-        otp: otpString
+        email: userData.email,
+        otp: "verification-check" // Not used, but required by type
       });
 
       if (response.success && response.data) {
@@ -98,11 +91,11 @@ export default function OTPVerification() {
           router.replace(`/dashboard/${response.data.user.role}`);
         }
       } else {
-        Alert.alert("Error", response.error || "Invalid verification code");
+        Alert.alert("Email Not Verified", response.error || "Please check your email and click the verification link before continuing.");
       }
     } catch (error) {
-      console.error("OTP Verification Error:", error);
-      Alert.alert("Error", "Verification failed. Please try again.");
+      console.error("Email Verification Check Error:", error);
+      Alert.alert("Error", "Verification check failed. Please try again.");
     } finally {
       setIsVerifying(false);
     }
@@ -147,49 +140,23 @@ export default function OTPVerification() {
         <Text style={styles.title}>Verify it's you</Text>
       </View>
 
-      {/* OTP Input Fields */}
-      <View style={styles.otpContainer}>
-        {otp.map((digit, index) => (
-          <TextInput
-            key={index}
-            ref={(ref) => {
-              if (ref) inputRefs.current[index] = ref;
-            }}
-            style={[
-              styles.otpInput,
-              digit ? styles.otpInputFilled : null
-            ]}
-            value={digit}
-            onChangeText={(value) => handleOTPChange(value, index)}
-            onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent, index)}
-            keyboardType="numeric"
-            maxLength={1}
-            selectTextOnFocus
-            editable={!isVerifying} // Disable input while verifying
-          />
-        ))}
-      </View>
-
       {/* Email Info */}
       <View style={styles.emailInfo}>
-        <Text style={styles.emailText}>A verification code has been sent to</Text>
+        <Text style={styles.emailText}>A verification link has been sent to</Text>
         <Text style={styles.emailAddress}>{userEmail || "your email"}</Text>
+        <Text style={styles.instructionText}>
+          Please check your email and click the verification link to continue.
+        </Text>
       </View>
 
       {/* Submit Button */}
       <TouchableOpacity
-        style={[
-          styles.submitButton,
-          !isCodeComplete() && styles.submitButtonDisabled
-        ]}
+        style={styles.submitButton}
         onPress={handleVerifyOTP}
-        disabled={!isCodeComplete() || isVerifying} // Disable if code not complete or verifying
+        disabled={isVerifying}
       >
-        <Text style={[
-          styles.submitButtonText,
-          (!isCodeComplete() || isVerifying) && styles.submitButtonTextDisabled
-        ]}>
-          {isVerifying ? "Verifying..." : "Submit"}
+        <Text style={styles.submitButtonText}>
+          {isVerifying ? "Checking..." : "I've Verified My Email"}
         </Text>
       </TouchableOpacity>
 
@@ -265,9 +232,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   emailAddress: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     color: "rgb(11, 26, 81)",
+    marginBottom: 12,
+  },
+  instructionText: {
+    fontSize: 12,
+    fontWeight: "300",
+    color: "rgb(19, 19, 19)",
+    textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: 20,
   },
   submitButton: {
     backgroundColor: "rgb(70, 130, 180)",

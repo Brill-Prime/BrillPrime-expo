@@ -75,8 +75,23 @@ class AuthService {
       const displayName = `${data.firstName} ${data.lastName}`.trim();
       await updateProfile(firebaseUser, { displayName });
 
+      // Send email verification
+      await sendEmailVerification(firebaseUser, {
+        url: window.location.origin + '/auth/signin',
+        handleCodeInApp: false,
+      });
+
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
+
+      // Store pending user data for OTP verification screen
+      await AsyncStorage.setItem('pendingUserData', JSON.stringify({
+        email: firebaseUser.email,
+        role: data.role,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneNumber: data.phoneNumber,
+      }));
 
       // Create auth response immediately with Firebase data
       const authData: AuthResponse = {
@@ -584,21 +599,106 @@ class AuthService {
     }
   }
 
-  // Verify OTP
+  // Verify OTP - Check if email is verified
   async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
+    try {
+      // Reload the current user to get latest email verification status
+      if (this.currentUser) {
+        await this.currentUser.reload();
+        
+        if (this.currentUser.emailVerified) {
+          // Email is verified, get fresh token and user data
+          const firebaseToken = await this.currentUser.getIdToken(true);
+          const pendingUserData = await AsyncStorage.getItem('pendingUserData');
+          
+          if (pendingUserData) {
+            const userData = JSON.parse(pendingUserData);
+            
+            const authData: AuthResponse = {
+              token: firebaseToken,
+              user: {
+                id: this.currentUser.uid,
+                email: this.currentUser.email || '',
+                name: this.currentUser.displayName || '',
+                role: userData.role,
+                phone: userData.phoneNumber || '',
+                isVerified: true,
+                profileImageUrl: this.currentUser.photoURL || undefined,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            };
 
-    if (response.success && response.data) {
-      // Store user data locally
-      await this.storeAuthData(response.data);
+            await this.storeAuthData(authData);
+            await AsyncStorage.removeItem('pendingUserData');
+
+            // Sync with backend
+            apiClient.post<AuthResponse>(
+              API_ENDPOINTS.AUTH.REGISTER,
+              {
+                firebaseUid: this.currentUser.uid,
+                role: userData.role,
+                phoneNumber: userData.phoneNumber,
+              },
+              {
+                Authorization: `Bearer ${firebaseToken}`,
+              }
+            ).catch(err => console.log('Backend sync error (non-critical):', err));
+
+            return { success: true, data: authData };
+          }
+        }
+        
+        return { 
+          success: false, 
+          error: 'Email not verified yet. Please check your email and click the verification link.' 
+        };
+      }
+      
+      return { success: false, error: 'No authenticated user found' };
+    } catch (error: any) {
+      console.error('Verification check error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to verify email. Please try again.' 
+      };
     }
-
-    return response;
   }
 
-  // Resend OTP
+  // Resend OTP - Resend Firebase verification email
   async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.RESEND_OTP, { email });
+    try {
+      if (this.currentUser && this.currentUser.email === email) {
+        await sendEmailVerification(this.currentUser, {
+          url: window.location.origin + '/auth/signin',
+          handleCodeInApp: false,
+        });
+        
+        return { 
+          success: true, 
+          data: { message: 'Verification email sent successfully' } 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: 'User not found or email mismatch' 
+      };
+    } catch (error: any) {
+      console.error('Resend verification email error:', error);
+      
+      if (error.code === 'auth/too-many-requests') {
+        return { 
+          success: false, 
+          error: 'Too many requests. Please wait a few minutes before trying again.' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: error.message || 'Failed to resend verification email' 
+      };
+    }
   }
 
   // Request password reset

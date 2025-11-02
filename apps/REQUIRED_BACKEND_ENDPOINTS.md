@@ -1,4 +1,3 @@
-
 # Required Backend Endpoints for Feature Implementation
 
 This document lists all backend endpoints that need to be implemented to support the front-end features.
@@ -470,6 +469,42 @@ Data: {
   "timestamp": "2024-01-15T14:30:00Z"
 }
 ```
+
+## 10. Authentication Endpoints
+
+### 1. Register User
+- **Endpoint**: `POST /api/auth/register`
+- **Description**: Sync Firebase user with backend database
+- **Headers**: `Authorization: Bearer <firebase-token>`
+- **Request Body**:
+  ```json
+  {
+    "firebaseUid": "string",
+    "role": "consumer | merchant | driver",
+    "phoneNumber": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "user": {
+        "id": "string",
+        "email": "string",
+        "name": "string",
+        "role": "string",
+        "phone": "string",
+        "isVerified": false
+      }
+    }
+  }
+  ```
+- **Notes**: 
+  - Email verification is handled by Firebase
+  - This endpoint just syncs the user data to your backend
+  - Called after Firebase user creation
+  
 
 ## Notes
 
