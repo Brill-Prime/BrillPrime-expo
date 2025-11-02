@@ -19,6 +19,7 @@ export interface ErrorReport {
 
 class ErrorService {
   private errors: AppError[] = [];
+  private readonly MAX_ERRORS = 100; // Prevent memory leaks
 
   logError(error: Error, context?: any, severity: AppError['severity'] = 'medium'): void {
     const appError: AppError = {
@@ -30,6 +31,11 @@ class ErrorService {
     };
 
     this.errors.push(appError);
+    
+    // Auto-cleanup old errors
+    if (this.errors.length > this.MAX_ERRORS) {
+      this.errors = this.errors.slice(-this.MAX_ERRORS);
+    }
     
     // Only log unique errors to reduce console spam
     const isDuplicate = this.errors.slice(-5).some(e => 
