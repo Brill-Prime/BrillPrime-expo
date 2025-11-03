@@ -11,7 +11,11 @@
     "web": "NODE_OPTIONS='--max-old-space-size=2048' EXPO_USE_STATIC=1 EXPO_MAX_WORKERS=1 EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0 expo start --web --port 5000 --host lan --max-workers 1",
     "web-dev": "NODE_OPTIONS='--max-old-space-size=2048' EXPO_MAX_WORKERS=1 expo start --web --port 5000 --host lan --max-workers 1 --no-dev --minify",
     "test": "jest --watchAll",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:supabase": "jest services/__tests__/supabaseService.test.ts",
+    "test:supabase:manual": "ts-node scripts/test-supabase-connection.ts",
+    "test:auth": "jest services/__tests__/authService.test.ts",
+    "test:cart": "jest services/__tests__/cartService.test.ts"
   },
   "jest": {
     "preset": "jest-expo"
