@@ -955,7 +955,12 @@ class AuthService {
             const newExpiry = Date.now() + (55 * 60 * 1000); // 55 minutes
             await AsyncStorage.setItem('tokenExpiry', newExpiry.toString());
             await SecurityService.storeAuthToken(freshToken); // Update in SecureStore too
-            console.log('Token refreshed successfully');
+            
+            // Sync refreshed token with Supabase
+            const { setSupabaseAuthToken } = await import('../config/supabase');
+            await setSupabaseAuthToken(freshToken);
+            
+            console.log('Token refreshed successfully and synced with Supabase');
           }
 
           return freshToken;

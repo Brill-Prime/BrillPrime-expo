@@ -1,6 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
-import { authService } from './authService';
 
 // Get Supabase configuration from environment variables
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -138,6 +137,8 @@ export class SupabaseService {
 
   // User-specific operations
   async getCurrentUserId(): Promise<string | null> {
+    // Lazy import to avoid circular dependency
+    const { authService } = await import('./authService');
     const token = await authService.getToken();
     if (!token) return null;
 

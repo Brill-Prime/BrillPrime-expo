@@ -38,10 +38,23 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 
 // Function to sync Firebase token with Supabase for RLS policies
 export const setSupabaseAuthToken = async (firebaseToken: string | null) => {
-  if (!supabase) return;
+  if (!supabase) {
+    console.warn('⚠️ Supabase not available, skipping token sync');
+    return;
+  }
   
   try {
     if (firebaseToken) {
+      // Decode token to get expiry
+      const tokenParts = firebaseToken.split('.');
+      if (tokenParts.length !== 3) {
+        console.error('❌ Invalid Firebase token format');
+        return;
+      }
+
+      const payload = JSON.parse(atob(tokenParts[1]));
+      const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + 3600000; // 1 hour default
+
       // Set the auth token for both REST API and Realtime
       await supabase.auth.setSession({
         access_token: firebaseToken,
@@ -55,6 +68,7 @@ export const setSupabaseAuthToken = async (firebaseToken: string | null) => {
     } else {
       // Clear session when logging out
       await supabase.auth.signOut();
+      supabase.realtime.setAuth(null);
       console.log('✅ Supabase session cleared');
     }
   } catch (error) {

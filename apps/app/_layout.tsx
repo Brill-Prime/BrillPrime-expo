@@ -18,6 +18,7 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
+import { sessionService } from '../services/sessionService';
 
 // Import Leaflet CSS for web
 if (Platform.OS === 'web') {
@@ -58,6 +59,9 @@ export default function RootLayout() {
 
         // Initialize analytics
         await analyticsService.initialize();
+
+        // Initialize session service for Firebase-Supabase sync
+        sessionService.initialize();
 
         // Load fonts
         console.log('Loading fonts...');
