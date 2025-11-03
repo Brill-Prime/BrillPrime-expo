@@ -25,6 +25,7 @@ import { authService } from '../../services/authService';
 import apiClient from '../../services/api';
 import { useSearchHistory } from '../../hooks/useSearchHistory';
 import { analyticsService } from '../../services/analyticsService';
+import { supabaseService } from '../../services/supabaseService';
 
 // Define SearchResult interface if not already defined elsewhere
 interface SearchResult {
@@ -87,6 +88,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResult[]>([]); // State for search results
   const [isSearching, setIsSearching] = useState(false); // State to indicate if a search is in progress
   const { searchHistory, addToHistory, clearHistory, removeFromHistory } = useSearchHistory(); // Initialize search history
+  const [realtimeSubscriptions, setRealtimeSubscriptions] = useState<Array<() => void>>([]); // Realtime subscription cleanup functions
 
   // Enhanced filter states
   const [filters, setFilters] = useState({
@@ -109,6 +111,12 @@ export default function SearchScreen() {
     loadUserData();
     loadFavorites();
     loadUserLocation(); // Load user location on component mount
+    setupRealtimeSubscriptions(); // Setup realtime data subscriptions
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      realtimeSubscriptions.forEach(unsub => unsub());
+    };
   }, []);
 
   useEffect(() => {
@@ -499,17 +507,72 @@ export default function SearchScreen() {
     </TouchableOpacity>
   );
 
+  // Setup Supabase realtime subscriptions
+  const setupRealtimeSubscriptions = () => {
+    if (!supabaseService) {
+      console.warn('Supabase not available for realtime subscriptions');
+      return;
+    }
+
+    // Subscribe to merchants table changes
+    const merchantsChannel = supabaseService.subscribeToTable(
+      'merchants',
+      {},
+      (payload) => {
+        console.log('Realtime merchant update:', payload);
+        // Reload merchants when data changes
+        loadMerchants();
+      },
+      '*'
+    );
+
+    // Subscribe to commodities table changes
+    const commoditiesChannel = supabaseService.subscribeToTable(
+      'commodities',
+      {},
+      (payload) => {
+        console.log('Realtime commodity update:', payload);
+        // Reload commodities when data changes
+        loadCommodities();
+      },
+      '*'
+    );
+
+    // Store cleanup functions
+    setRealtimeSubscriptions([
+      () => merchantsChannel && supabaseService.client.removeChannel(merchantsChannel),
+      () => commoditiesChannel && supabaseService.client.removeChannel(commoditiesChannel)
+    ]);
+
+    console.log('✅ Realtime subscriptions setup for search');
+  };
+
   const loadMerchants = async () => {
     try {
       setLoading(true);
-      // Call real API endpoint for merchants
-      const response = await merchantService.getMerchants();
-      if (response.success && response.data) {
-        setAllMerchants(response.data);
-        setFilteredMerchants(response.data);
+      
+      // Fetch directly from Supabase for realtime data
+      if (supabaseService) {
+        const { data, error } = await supabaseService.find('merchants', {});
+        if (error) {
+          console.error('Supabase Error fetching merchants:', error);
+          setAllMerchants([]);
+          setFilteredMerchants([]);
+        } else {
+          console.log('✅ Loaded merchants from Supabase:', data?.length || 0);
+          setAllMerchants(data || []);
+          setFilteredMerchants(data || []);
+        }
       } else {
-        setAllMerchants([]);
-        setFilteredMerchants([]);
+        // Fallback to API service
+        const response = await merchantService.getMerchants();
+        if (response.success && response.data) {
+          setAllMerchants(response.data);
+          setFilteredMerchants(response.data);
+        } else {
+          setAllMerchants([]);
+          setFilteredMerchants([]);
+        }
       }
     } catch (error) {
       console.error('Error loading merchants:', error);
@@ -523,14 +586,29 @@ export default function SearchScreen() {
   const loadCommodities = async () => {
     try {
       setLoading(true);
-      // Call real API endpoint for commodities/products
-      const response = await merchantService.getCommodities();
-      if (response.success && response.data) {
-        setAllCommodities(response.data);
-        setFilteredCommodities(response.data);
+      
+      // Fetch directly from Supabase for realtime data
+      if (supabaseService) {
+        const { data, error } = await supabaseService.find('commodities', {});
+        if (error) {
+          console.error('Supabase Error fetching commodities:', error);
+          setAllCommodities([]);
+          setFilteredCommodities([]);
+        } else {
+          console.log('✅ Loaded commodities from Supabase:', data?.length || 0);
+          setAllCommodities(data || []);
+          setFilteredCommodities(data || []);
+        }
       } else {
-        setAllCommodities([]);
-        setFilteredCommodities([]);
+        // Fallback to API service
+        const response = await merchantService.getCommodities();
+        if (response.success && response.data) {
+          setAllCommodities(response.data);
+          setFilteredCommodities(response.data);
+        } else {
+          setAllCommodities([]);
+          setFilteredCommodities([]);
+        }
       }
     } catch (error) {
       console.error('Error loading commodities:', error);
