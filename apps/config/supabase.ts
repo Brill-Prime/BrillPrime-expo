@@ -38,12 +38,25 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 
 // Function to sync Firebase token with Supabase for RLS policies
 export const setSupabaseAuthToken = async (firebaseToken: string | null) => {
-  if (!supabase || !firebaseToken) return;
+  if (!supabase) return;
   
   try {
-    // Set the Firebase JWT as a custom header for Supabase RLS
-    supabase.realtime.setAuth(firebaseToken);
-    console.log('✅ Firebase token synced with Supabase');
+    if (firebaseToken) {
+      // Set the auth token for both REST API and Realtime
+      await supabase.auth.setSession({
+        access_token: firebaseToken,
+        refresh_token: firebaseToken,
+      });
+      
+      // Also set for realtime subscriptions
+      supabase.realtime.setAuth(firebaseToken);
+      
+      console.log('✅ Firebase token synced with Supabase for RLS');
+    } else {
+      // Clear session when logging out
+      await supabase.auth.signOut();
+      console.log('✅ Supabase session cleared');
+    }
   } catch (error) {
     console.error('❌ Error syncing Firebase token with Supabase:', error);
   }

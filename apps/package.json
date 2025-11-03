@@ -14,6 +14,7 @@
     "lint": "expo lint",
     "test:supabase": "jest services/__tests__/supabaseService.test.ts",
     "test:supabase:manual": "ts-node scripts/test-supabase-connection.ts",
+    "test:security": "jest services/__tests__/securityPolicies.test.ts",
     "test:auth": "jest services/__tests__/authService.test.ts",
     "test:cart": "jest services/__tests__/cartService.test.ts"
   },
