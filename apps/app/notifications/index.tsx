@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,53 +28,8 @@ interface Notification {
 export default function Notifications() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Order Delivered',
-      message: 'Your order #12345 has been successfully delivered to your location.',
-      type: 'order',
-      timestamp: '2 hours ago',
-      read: false,
-      action: '/orders/consumer-orders'
-    },
-    {
-      id: '2',
-      title: 'Payment Successful',
-      message: 'Your payment of ₦2,500 for order #12344 was processed successfully.',
-      type: 'payment',
-      timestamp: '5 hours ago',
-      read: false,
-      action: '/transactions'
-    },
-    {
-      id: '3',
-      title: 'New Merchant Near You',
-      message: 'Fresh Market just joined Brill Prime in your area. Check out their products!',
-      type: 'promotion',
-      timestamp: '1 day ago',
-      read: true,
-      action: '/commodity/commodities'
-    },
-    {
-      id: '4',
-      title: 'Order Confirmed',
-      message: 'Your order #12343 has been confirmed and is being prepared.',
-      type: 'order',
-      timestamp: '2 days ago',
-      read: true,
-      action: '/orders/consumer-orders'
-    },
-    {
-      id: '5',
-      title: 'App Update Available',
-      message: 'A new version of Brill Prime is available with exciting new features.',
-      type: 'system',
-      timestamp: '3 days ago',
-      read: true
-    }
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -93,14 +49,34 @@ export default function Notifications() {
       const userRole = await AsyncStorage.getItem('userRole');
       
       const response = await notificationService.getNotifications({
-        role: userRole || 'consumer'
+        role: userRole || 'consumer',
+        limit: 50,
       });
       
       if (response.success && response.data) {
-        const formattedNotifications = response.data.map(notif => ({
-          ...notif,
-          timestamp: notif.timestamp || notif.createdAt || 'Just now'
-        }));
+        const formattedNotifications = response.data.map(notif => {
+          // Calculate relative time
+          const createdDate = new Date(notif.createdAt);
+          const now = new Date();
+          const diffMs = now.getTime() - createdDate.getTime();
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+          
+          let timestamp = 'Just now';
+          if (diffMins < 60) {
+            timestamp = diffMins <= 1 ? 'Just now' : `${diffMins} minutes ago`;
+          } else if (diffHours < 24) {
+            timestamp = diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+          } else {
+            timestamp = diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+          }
+          
+          return {
+            ...notif,
+            timestamp,
+          };
+        });
         setNotifications(formattedNotifications);
       }
     } catch (error) {
@@ -241,6 +217,18 @@ export default function Notifications() {
   const unreadCount = notifications.filter(n => !n.read).length;
   const styles = getResponsiveStyles(screenData);
 
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={['#0B1A51', '#1e3a8a']}
+        style={[styles.container, styles.centerContent]}
+      >
+        <ActivityIndicator size="large" color="white" />
+        <Text style={styles.loadingText}>Loading notifications...</Text>
+      </LinearGradient>
+    );
+  }
+
   return (
     <LinearGradient
       colors={['#0B1A51', '#1e3a8a']}
@@ -365,6 +353,16 @@ const getResponsiveStyles = (screenData: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
+    },
+    centerContent: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: 'white',
+      fontWeight: '500',
     },
     header: {
       flexDirection: "row",

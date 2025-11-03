@@ -8,9 +8,12 @@ import {
   ScrollView,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { paymentService } from '../../services/paymentService';
+import { formatNaira } from '../../utils/currency';
 
 interface Transaction {
   id: string;
@@ -26,72 +29,85 @@ export default function TransactionHistory() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'purchase' | 'refund' | 'payment' | 'reward'>('all');
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      type: 'purchase',
-      amount: 150.00,
-      description: 'Electronics Purchase - Order #12345',
-      date: '2024-01-15',
-      status: 'completed',
-      orderId: '12345'
-    },
-    {
-      id: '2',
-      type: 'payment',
-      amount: 25.00,
-      description: 'Payment Processing Fee',
-      date: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: '3',
-      type: 'refund',
-      amount: 75.00,
-      description: 'Refund for Order #12340',
-      date: '2024-01-10',
-      status: 'completed',
-      orderId: '12340'
-    },
-    {
-      id: '4',
-      type: 'purchase',
-      amount: 320.50,
-      description: 'Grocery Purchase - Order #12338',
-      date: '2024-01-08',
-      status: 'completed',
-      orderId: '12338'
-    },
-    {
-      id: '5',
-      type: 'reward',
-      amount: 10.00,
-      description: 'Cashback Reward',
-      date: '2024-01-05',
-      status: 'completed'
-    },
-    {
-      id: '6',
-      type: 'purchase',
-      amount: 89.99,
-      description: 'Fashion Purchase - Order #12335',
-      date: '2024-01-03',
-      status: 'pending',
-      orderId: '12335'
-    }
-  ]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [totalRefunds, setTotalRefunds] = useState(0);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
+    
+    loadTransactions();
+    
     return () => subscription?.remove();
   }, []);
 
-  const onRefresh = () => {
+  const loadTransactions = async () => {
+    try {
+      setLoading(true);
+      const response = await paymentService.getTransactionHistory({
+        limit: 100,
+      });
+
+      if (response.success && response.data) {
+        const formattedTransactions = response.data.transactions.map(txn => ({
+          id: txn.id,
+          type: mapTransactionType(txn.type),
+          amount: txn.amount,
+          description: txn.description || getTransactionDescription(txn),
+          date: new Date(txn.createdAt).toLocaleDateString(),
+          status: txn.status as 'completed' | 'pending' | 'failed',
+          orderId: txn.orderId,
+        }));
+
+        setTransactions(formattedTransactions);
+        calculateTotals(formattedTransactions);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mapTransactionType = (type: string): 'purchase' | 'refund' | 'payment' | 'reward' => {
+    const typeMap: Record<string, 'purchase' | 'refund' | 'payment' | 'reward'> = {
+      'order': 'purchase',
+      'refund': 'refund',
+      'payment': 'payment',
+      'cashback': 'reward',
+      'reward': 'reward',
+    };
+    return typeMap[type] || 'payment';
+  };
+
+  const getTransactionDescription = (txn: any): string => {
+    if (txn.orderId) {
+      return `${txn.type === 'refund' ? 'Refund for' : 'Purchase -'} Order #${txn.orderId}`;
+    }
+    return txn.type.charAt(0).toUpperCase() + txn.type.slice(1);
+  };
+
+  const calculateTotals = (txns: Transaction[]) => {
+    const spent = txns
+      .filter(t => (t.type === 'purchase' || t.type === 'payment') && t.status === 'completed')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const refunds = txns
+      .filter(t => (t.type === 'refund' || t.type === 'reward') && t.status === 'completed')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    setTotalSpent(spent);
+    setTotalRefunds(refunds);
+  };
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    await loadTransactions();
+    setRefreshing(false);
   };
 
   const getFilteredTransactions = () => {
@@ -132,7 +148,7 @@ export default function TransactionHistory() {
 
   const formatAmount = (amount: number, type: string) => {
     const sign = (type === 'refund' || type === 'reward') ? '+' : '-';
-    return `${sign}₹${amount.toFixed(2)}`;
+    return `${sign}${formatNaira(amount)}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -149,12 +165,6 @@ export default function TransactionHistory() {
   };
 
   const filteredTransactions = getFilteredTransactions();
-  const totalSpent = transactions
-    .filter(t => (t.type === 'purchase' || t.type === 'payment') && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalRefunds = transactions
-    .filter(t => (t.type === 'refund' || t.type === 'reward') && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
 
   const filters = [
     { key: 'all', label: 'All' },
@@ -165,6 +175,15 @@ export default function TransactionHistory() {
   ];
 
   const styles = getResponsiveStyles(screenData);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#667eea" />
+        <Text style={styles.loadingText}>Loading transactions...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -180,11 +199,13 @@ export default function TransactionHistory() {
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryAmount}>₹{totalSpent.toFixed(2)}</Text>
+          <Text style={styles.summaryAmount}>{formatNaira(totalSpent)}</Text>
           <Text style={styles.summaryLabel}>Total Spent</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryAmount, { color: '#4ade80' }]}>₹{totalRefunds.toFixed(2)}</Text>
+          <Text style={[styles.summaryAmount, { color: '#4ade80' }]}>
+            {formatNaira(totalRefunds)}
+          </Text>
           <Text style={styles.summaryLabel}>Total Refunds</Text>
         </View>
       </View>
@@ -296,6 +317,15 @@ const getResponsiveStyles = (screenData: any) => {
     container: {
       flex: 1,
       backgroundColor: '#f8f9fa',
+    },
+    centerContent: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: '#666',
     },
     header: {
       flexDirection: 'row',
