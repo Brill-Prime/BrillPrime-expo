@@ -105,6 +105,7 @@ export default function MapWeb({ location, markers = [], onLocationSelect, style
         // Fallback to Leaflet with OpenStreetMap
         console.log('Using Leaflet with OpenStreetMap as map provider');
         setUseLeaflet(true);
+        setError(null); // Clear error since we have a working fallback
         
         const L = await import('leaflet');
         await import('leaflet/dist/leaflet.css');
@@ -187,7 +188,9 @@ export default function MapWeb({ location, markers = [], onLocationSelect, style
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <Text style={styles.errorHint}>
-            Make sure you have a valid Mapbox token in your .env file or check your internet connection.
+            {!process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN.length < 20
+              ? 'No Mapbox token found. Add EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN to your .env file. Using fallback map.'
+              : 'Using OpenStreetMap as fallback. For better performance, ensure you have a valid Mapbox token.'}
           </Text>
         </View>
       )}

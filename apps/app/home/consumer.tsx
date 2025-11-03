@@ -1,4 +1,3 @@
-
 import { getErrorMessage } from '../../utils/errorUtils';
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -213,11 +212,14 @@ function ConsumerHomeContent() {
   const [selectedRating, setSelectedRating] = useState<number>(0);
   const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
   const [lastErrorTime, setLastErrorTime] = useState<number>(0);
+  const [isFetchingMerchants, setIsFetchingMerchants] = useState(false); // State to track merchant fetching
+  const [hasShownNoMerchantsAlert, setHasShownNoMerchantsAlert] = useState(false); // State to prevent repeated alerts
 
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null); // Store user's location
 
   // Error handling utilities
   const checkNetworkConnectivity = async (): Promise<boolean> => {
@@ -523,22 +525,47 @@ function ConsumerHomeContent() {
   const fetchNearbyMerchants = useCallback(async () => {
     const operationKey = 'fetchNearbyMerchants';
     const operation = async () => {
+      // Check if already fetching to prevent duplicate calls
+      if (isFetchingMerchants) return;
+      setIsFetchingMerchants(true);
+
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
         throw new Error('Network unavailable');
       }
 
-      const location = await locationService.getCurrentLocation();
-      if (!location) {
-        throw new Error('Unable to get current location');
+      // Use the stored userLocation if available, otherwise get current location
+      let currentLocation = userLocation;
+      if (!currentLocation) {
+        currentLocation = await locationService.getCurrentLocation();
+        if (!currentLocation) {
+          throw new Error('Unable to get current location');
+        }
+        setUserLocation(currentLocation); // Store the obtained location
       }
 
-      // Load merchants near the location
-      await loadNearbyMerchants(location.latitude, location.longitude);
+      // Load nearby merchants based on the location
+      await loadNearbyMerchants(currentLocation.latitude, currentLocation.longitude);
     };
 
-    await handleRetryWithBackoff(operation, operationKey);
-  }, [showError]);
+    try {
+      await operation();
+    } catch (error) {
+      console.error('Error in fetchNearbyMerchants:', error);
+      // Specific error handling for the main fetch function
+      if (error instanceof Error && error.message === 'Network unavailable') {
+        showError("Network Error", "No internet connection. Please check your network and try again.");
+        await loadAllMerchants(); // Fallback to loading all merchants
+      } else if (error instanceof Error && error.message === 'Unable to get current location') {
+        showError("Location Error", "Could not determine your current location. Please ensure location services are enabled and permissions are granted.");
+      } else {
+        showError("Operation Failed", "An error occurred while fetching nearby merchants.");
+      }
+    } finally {
+      setIsFetchingMerchants(false);
+    }
+  }, [showError, isFetchingMerchants, userLocation, checkNetworkConnectivity, locationService, loadNearbyMerchants, loadAllMerchants]);
+
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -574,8 +601,13 @@ function ConsumerHomeContent() {
             ...deltas,
           });
 
-          // Load nearby merchants based on the new location
-          loadNearbyMerchants(location.latitude, location.longitude);
+          // Update userLocation state
+          setUserLocation({ latitude: location.latitude, longitude: location.longitude });
+
+          // Load nearby merchants based on the new location, only if not already fetching
+          if (!isFetchingMerchants) {
+            fetchNearbyMerchants();
+          }
         }
       });
 
@@ -766,6 +798,7 @@ function ConsumerHomeContent() {
           longitude: location.longitude,
           ...deltas,
         });
+        setUserLocation(location); // Set userLocation
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
 
@@ -946,6 +979,7 @@ function ConsumerHomeContent() {
       };
 
       setRegion(newRegion);
+      setUserLocation({ latitude, longitude }); // Set userLocation
 
       // Try to get address with retry logic
       try {
