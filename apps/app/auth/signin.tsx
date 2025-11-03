@@ -357,18 +357,21 @@ export default function SignIn() {
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
+              disabled={loading}
             >
               <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Apple")}
+              disabled={loading}
             >
               <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Facebook")}
+              disabled={loading}
             >
               <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
             </TouchableOpacity>
