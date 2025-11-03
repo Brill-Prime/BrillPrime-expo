@@ -1,5 +1,5 @@
 
-import React, { Component, ReactNode } from 'react';
+import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { errorService } from '../services/errorService';
@@ -24,7 +24,7 @@ export class FormErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     errorService.logError(error, { errorInfo, component: 'FormErrorBoundary' }, 'medium');
   }
 
