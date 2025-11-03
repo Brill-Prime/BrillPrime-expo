@@ -126,8 +126,40 @@ class AuthService {
       // Don't store auth data yet - wait for OTP verification
 
       // Sync with backend and Supabase asynchronously (non-blocking)
-      Promise.all([
-        // Sync with backend API
+      if (supabaseService) {
+        Promise.all([
+          // Sync with backend API
+          apiClient.post<AuthResponse>(
+            API_ENDPOINTS.AUTH.REGISTER,
+            {
+              firebaseUid: firebaseUser.uid,
+              role: data.role,
+              phoneNumber: data.phoneNumber,
+              email: data.email,
+              firstName: data.firstName,
+              lastName: data.lastName,
+            },
+            {
+              Authorization: `Bearer ${firebaseToken}`,
+            }
+          ),
+          // Sync with Supabase
+          supabaseService.syncFirebaseUser({
+            firebaseUid: firebaseUser.uid,
+            email: data.email,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            phone: data.phoneNumber,
+            role: data.role as 'consumer' | 'merchant' | 'driver'
+          })
+        ]).then(([backendResponse, supabaseResponse]) => {
+          console.log('✅ Backend sync completed:', backendResponse.success ? 'Success' : backendResponse.error);
+          console.log('✅ Supabase sync completed:', supabaseResponse.error ? supabaseResponse.error : 'Success');
+        }).catch(err => {
+          console.log('⚠️ Sync error (non-critical):', err.message || err);
+        });
+      } else {
+        // Only backend sync if Supabase is not available
         apiClient.post<AuthResponse>(
           API_ENDPOINTS.AUTH.REGISTER,
           {
@@ -141,22 +173,12 @@ class AuthService {
           {
             Authorization: `Bearer ${firebaseToken}`,
           }
-        ),
-        // Sync with Supabase
-        supabaseService?.syncFirebaseUser({
-          firebaseUid: firebaseUser.uid,
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phoneNumber,
-          role: data.role as 'consumer' | 'merchant' | 'driver'
-        })
-      ]).then(([backendResponse, supabaseResponse]) => {
-        console.log('Backend sync completed:', backendResponse);
-        console.log('Supabase sync completed:', supabaseResponse);
-      }).catch(err => {
-        console.log('Sync error (non-critical):', err);
-      });
+        ).then(response => {
+          console.log('✅ Backend sync completed:', response.success ? 'Success' : response.error);
+        }).catch(err => {
+          console.log('⚠️ Backend sync error (non-critical):', err.message || err);
+        });
+      }
 
       return {
         success: true,
@@ -629,15 +651,19 @@ class AuthService {
   // Verify OTP - Validate 6-digit code
   async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
     try {
+      console.log('🔍 Starting OTP verification...');
       const pendingUserData = await AsyncStorage.getItem('pendingUserData');
       
       if (!pendingUserData) {
+        console.error('❌ No pending user data found');
         return { success: false, error: 'Session expired. Please sign up again.' };
       }
 
       const userData = JSON.parse(pendingUserData);
+      console.log('✓ Pending user data found for:', userData.email);
 
       // Verify OTP with backend
+      console.log('📡 Sending OTP verification request to backend...');
       const verifyResponse = await apiClient.post<AuthResponse>(
         API_ENDPOINTS.AUTH.VERIFY_OTP,
         {
@@ -648,11 +674,14 @@ class AuthService {
       );
 
       if (!verifyResponse.success || !verifyResponse.data) {
+        console.error('❌ OTP verification failed:', verifyResponse.error);
         return { 
           success: false, 
           error: verifyResponse.error || 'Invalid or expired OTP code' 
         };
       }
+
+      console.log('✅ OTP verified successfully');
 
       // OTP verified successfully - now mark user as verified in our system
       const authData: AuthResponse = {
@@ -664,15 +693,31 @@ class AuthService {
         },
       };
 
+      console.log('💾 Storing auth data...');
       await this.storeAuthData(authData);
       await AsyncStorage.removeItem('pendingUserData');
 
       // Initialize role status for the user
+      console.log('🎭 Initializing role status...');
       await roleManagementService.initializeRoleStatus(userData.role);
 
+      // Sync with Supabase if available
+      if (supabaseService) {
+        console.log('🔄 Syncing verified user with Supabase...');
+        supabaseService.syncFirebaseUser({
+          firebaseUid: userData.firebaseUid,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          phone: userData.phoneNumber,
+          role: userData.role
+        }).catch(err => console.log('⚠️ Supabase sync error (non-critical):', err));
+      }
+
+      console.log('✅ OTP verification complete');
       return { success: true, data: authData };
     } catch (error: any) {
-      console.error('OTP verification error:', error);
+      console.error('❌ OTP verification error:', error);
       return { 
         success: false, 
         error: error.message || 'Failed to verify OTP. Please try again.' 
