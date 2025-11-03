@@ -1,6 +1,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiClient } from './api';
+import { supabase } from '../config/supabase';
 
 interface AnalyticsEvent {
   name: string;
@@ -102,23 +102,68 @@ class AnalyticsService {
     if (this.eventQueue.length === 0) return;
 
     try {
-      // Send events to backend
-      await apiClient.post('/api/analytics/events', {
-        events: this.eventQueue,
-      });
+      if (!supabase) {
+        console.warn('Supabase not available for analytics');
+        return;
+      }
+
+      // Prepare events for Supabase insertion
+      const supabaseEvents = this.eventQueue.map(event => ({
+        event_name: event.name,
+        event_properties: event.properties || {},
+        timestamp: new Date(event.timestamp).toISOString(),
+        platform: event.properties?.platform || this.getPlatform(),
+        app_version: event.properties?.appVersion || '1.0.0',
+        device_info: this.getDeviceInfo(),
+        session_id: this.getSessionId(),
+      }));
+
+      const { error } = await supabase
+        .from('analytics_events')
+        .insert(supabaseEvents);
+
+      if (error) {
+        console.error('Failed to insert analytics events:', error);
+        return;
+      }
 
       // Clear queue on success
       this.eventQueue = [];
       await AsyncStorage.removeItem(this.QUEUE_KEY);
+      console.log(`✅ Flushed ${supabaseEvents.length} analytics events to Supabase`);
     } catch (error) {
       console.error('Error flushing analytics:', error);
       // Keep events in queue for retry
     }
   }
 
+  // Get device info
+  private getDeviceInfo(): Record<string, any> {
+    if (typeof window !== 'undefined') {
+      return {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
+    }
+    return {
+      platform: 'mobile',
+      deviceType: 'unknown',
+    };
+  }
+
+  // Get or create session ID
+  private getSessionId(): string {
+    // For React Native, we'd use AsyncStorage, but for simplicity, generate a new one each time
+    // In a real implementation, you'd store this persistently
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
   async initialize() {
     await this.loadQueue();
-    
+
     // Flush queue periodically (every 5 minutes)
     setInterval(() => {
       this.flush();

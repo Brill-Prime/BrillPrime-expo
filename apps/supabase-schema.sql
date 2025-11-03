@@ -323,6 +323,20 @@ CREATE TABLE push_tokens (
   UNIQUE(user_id, token)
 );
 
+-- Analytics events table
+CREATE TABLE analytics_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  event_name TEXT NOT NULL,
+  event_properties JSONB,
+  platform TEXT CHECK (platform IN ('web', 'mobile')),
+  app_version TEXT,
+  device_info JSONB,
+  session_id TEXT,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Admin settings/preferences
 CREATE TABLE admin_settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

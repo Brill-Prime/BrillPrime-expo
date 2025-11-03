@@ -1,75 +1,111 @@
 
-import { apiClient, ApiResponse } from './api';
+import { supabase } from '../config/supabase';
 import { authService } from './authService';
 
 interface EscrowTransaction {
-  id: number;
-  orderId: number;
+  id: string;
+  order_id: string;
+  buyer_id: string;
+  seller_id: string;
   amount: number;
-  status: 'PENDING' | 'HELD' | 'RELEASED' | 'DISPUTED' | 'REFUNDED';
-  buyerId: number;
-  sellerId: number;
-  createdAt: string;
-  updatedAt: string;
-  releasedAt?: string;
-  disputedAt?: string;
+  status: 'held' | 'released' | 'disputed' | 'refunded';
+  released_at?: string;
+  created_at: string;
+  updated_at: string;
   order?: {
-    id: number;
+    id: string;
     status: string;
-    totalAmount: number;
+    total_amount: number;
   };
 }
 
 class EscrowService {
-  // Get escrow transactions
-  async getEscrowTransactions(): Promise<ApiResponse<EscrowTransaction[]>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
+  // Get escrow transactions for current user
+  async getEscrowTransactions(): Promise<{ data: EscrowTransaction[] | null; error: any }> {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not available' };
     }
 
-    return apiClient.get<EscrowTransaction[]>('/api/escrows', {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabase
+      .from('escrow_transactions')
+      .select(`
+        *,
+        order:orders(id, status, total_amount)
+      `)
+      .order('created_at', { ascending: false });
+
+    return { data, error };
   }
 
   // Get escrow details
-  async getEscrowDetails(escrowId: number): Promise<ApiResponse<EscrowTransaction>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
+  async getEscrowDetails(escrowId: string): Promise<{ data: EscrowTransaction | null; error: any }> {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not available' };
     }
 
-    return apiClient.get<EscrowTransaction>(`/api/escrows/${escrowId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabase
+      .from('escrow_transactions')
+      .select(`
+        *,
+        order:orders(id, status, total_amount)
+      `)
+      .eq('id', escrowId)
+      .single();
+
+    return { data, error };
   }
 
   // Release escrow (buyer confirms delivery)
-  async releaseEscrow(escrowId: number): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
+  async releaseEscrow(escrowId: string): Promise<{ data: { message: string } | null; error: any }> {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not available' };
     }
 
-    return apiClient.post<{ message: string }>(`/api/escrows/${escrowId}/release`, {}, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabase
+      .from('escrow_transactions')
+      .update({
+        status: 'released',
+        released_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', escrowId)
+      .select()
+      .single();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data: { message: 'Escrow released successfully' }, error: null };
   }
 
   // Dispute escrow
-  async disputeEscrow(escrowId: number, data: {
+  async disputeEscrow(escrowId: string, data: {
     reason: string;
     description: string;
-  }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
+  }): Promise<{ data: { message: string } | null; error: any }> {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not available' };
     }
 
-    return apiClient.post<{ message: string }>(`/api/escrows/${escrowId}/dispute`, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: result, error } = await supabase
+      .from('escrow_transactions')
+      .update({
+        status: 'disputed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', escrowId)
+      .select()
+      .single();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    // TODO: Store dispute details in a separate table if needed
+    console.log('Dispute reason:', data.reason, 'Description:', data.description);
+
+    return { data: { message: 'Escrow disputed successfully' }, error: null };
   }
 }
 

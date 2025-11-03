@@ -1,46 +1,53 @@
-# Supabase Integration TODO
+# Service Migration to Supabase - TODO List
 
-## Phase 1: Database Setup & Schema Migration ✅ COMPLETED
-- [x] Create Supabase database schema (migrate from Drizzle)
-- [x] Set up Row Level Security (RLS) policies
-- [x] Create user sync function (Firebase -> Supabase)
-- [x] Test database connection and basic queries
+## realtimeService Expansion
 
-## Phase 2: Authentication & User Management ✅ COMPLETED
-- [x] Update authService to sync users to Supabase
-- [x] Create user profiles table and sync
-- [x] Update role management to use Supabase
-- [x] Test user registration and login flow
+- [x] Add realtime subscription for escrow transactions
+- [x] Add realtime subscription for notifications
+- [x] Add realtime subscription for reviews/ratings
+- [x] Add realtime subscription for user status updates
+- [x] Add realtime subscription for payment status updates
+- [x] Add realtime subscription for toll payments
+- [x] Add realtime subscription for KYC status updates
 
-## Phase 3: Core Services Migration ✅ IN PROGRESS
-- [x] Update cartService to use Supabase
-- [x] Update orderService to use Supabase (imports updated)
-- [x] Update merchantService to use Supabase (imports updated)
-- [x] Update productService to use Supabase (imports updated)
-- [x] Update paymentService to use Supabase (imports updated)
+## escrowService Migration
 
-## Phase 4: Additional Services Migration ✅ IN PROGRESS
-- [x] Update notificationService to use Supabase
-- [x] Update locationService to use Supabase (imports updated)
-- [x] Update kycService to use Supabase (imports updated)
-- [x] Update profileService to use Supabase (imports updated)
-- [x] Update favoritesService to use Supabase (imports updated)
+- [x] Replace getEscrowTransactions() with Supabase query
+- [x] Replace getEscrowDetails() with Supabase query
+- [x] Replace releaseEscrow() with Supabase update
+- [x] Replace disputeEscrow() with Supabase update
+- [x] Update interfaces to match Supabase schema
 
-## Phase 5: Realtime & Advanced Features
-- [ ] Expand realtimeService for all data types
-- [ ] Update escrowService to use Supabase
-- [ ] Update adminService to use Supabase
-- [ ] Update analyticsService to use Supabase
+## adminService Migration
 
-## Phase 6: Cleanup & Testing
-- [ ] Remove old backend API dependencies
-- [ ] Update environment configurations
-- [ ] Test all features end-to-end
-- [ ] Performance optimization and monitoring
-- [ ] Update documentation
+- [ ] Replace getSystemMetrics() with Supabase queries
+- [ ] Replace getAnalytics() with Supabase queries
+- [ ] Replace getUsers() with Supabase query
+- [ ] Replace user management methods (block, suspend, etc.) with Supabase updates
+- [ ] Replace KYC management methods with Supabase queries/updates
+- [ ] Replace escrow management methods with Supabase queries/updates
+- [ ] Replace content moderation methods with Supabase queries/updates
+- [ ] Replace announcement methods with Supabase operations
+- [ ] Replace maintenance mode methods with Supabase updates
+- [ ] Replace export methods with Supabase queries
 
-## Phase 7: Deployment & Monitoring
-- [ ] Deploy Supabase functions if needed
-- [ ] Set up monitoring and alerts
-- [ ] Update CI/CD pipelines
-- [ ] Final testing in production environment
+## analyticsService Migration
+
+- [x] Create analytics_events table in Supabase schema
+- [x] Replace flush() method to store events in Supabase
+- [x] Update event tracking to use Supabase storage
+
+## Schema Updates
+
+- [x] Add analytics_events table to supabase-schema.sql
+- [ ] Update RLS policies for admin access
+- [ ] Add necessary indexes for performance
+
+## Testing & Validation
+
+- [ ] Test realtime subscriptions for all data types
+- [ ] Test escrow operations with Supabase
+- [ ] Test admin operations with Supabase
+- [ ] Test analytics event storage
+- [ ] Verify RLS policies work correctly
+- [ ] Update dependent components if needed
