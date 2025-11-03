@@ -250,8 +250,8 @@ class RealtimeService {
 
   // Subscribe to escrow transaction updates
   subscribeToEscrowUpdates(
-    callback: (update: EscrowTransactionUpdate) => void,
-    userId?: string
+    userId: string | undefined,
+    callback: (update: EscrowTransactionUpdate) => void
   ): () => void {
     const channelName = userId ? `escrow_user:${userId}` : 'escrow_all';
 

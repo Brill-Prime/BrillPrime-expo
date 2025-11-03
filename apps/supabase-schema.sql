@@ -501,3 +501,40 @@ CREATE TRIGGER order_status_change_trigger
   AFTER UPDATE OF status ON orders
   FOR EACH ROW
   EXECUTE FUNCTION notify_order_status_change();
+
+-- Analytics Events table
+CREATE TABLE analytics_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_name TEXT NOT NULL,
+  event_properties JSONB DEFAULT '{}',
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  session_id TEXT,
+  platform TEXT,
+  app_version TEXT,
+  device_info JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for analytics performance
+CREATE INDEX idx_analytics_events_timestamp ON analytics_events(timestamp);
+CREATE INDEX idx_analytics_events_event_name ON analytics_events(event_name);
+CREATE INDEX idx_analytics_events_user_id ON analytics_events(user_id);
+CREATE INDEX idx_analytics_events_session_id ON analytics_events(session_id);
+
+-- RLS policies for analytics_events
+ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+
+-- Users can only see their own analytics events
+CREATE POLICY "Users can view own analytics events" ON analytics_events
+  FOR SELECT USING (auth.uid()::text = user_id::text);
+
+-- Admins can view all analytics events
+CREATE POLICY "Admins can view all analytics events" ON analytics_events
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
+    )
+  );
