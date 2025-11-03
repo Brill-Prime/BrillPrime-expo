@@ -142,13 +142,13 @@ export default function SignIn() {
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
         ]);
 
-        // Route based on user role from API
+        // Route based on user role from API to role-specific home screens
         if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer" as any);
+          router.replace("/(consumer)/(tabs)/home" as any);
         } else if (response.data.user.role === "merchant") {
-          router.replace("/home/merchant" as any);
+          router.replace("/(merchant)/(tabs)/home" as any);
         } else if (response.data.user.role === "driver") {
-          router.replace("/home/driver" as any);
+          router.replace("/(driver)/(tabs)/home" as any);
         }
       } else {
         // Handle specific error cases
@@ -246,13 +246,13 @@ export default function SignIn() {
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
-        // Route based on user role from API
+        // Route based on user role from API to role-specific home screens
         if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer" as any);
+          router.replace("/(consumer)/(tabs)/home" as any);
         } else if (response.data.user.role === "merchant") {
-          router.replace("/home/merchant" as any);
+          router.replace("/(merchant)/(tabs)/home" as any);
         } else if (response.data.user.role === "driver") {
-          router.replace("/home/driver" as any);
+          router.replace("/(driver)/(tabs)/home" as any);
         }
       } else if (response?.error && response.error !== 'Sign-in cancelled') {
         console.error(`${provider} sign-in failed:`, response.error);

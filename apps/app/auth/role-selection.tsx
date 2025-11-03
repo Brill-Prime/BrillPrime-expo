@@ -59,19 +59,19 @@ export default function RoleSelection() {
           const authCheck = await authService.isAuthenticatedWithValidation();
           
           if (authCheck.isAuthenticated) {
-            // User is already authenticated, navigate to appropriate home screen
+            // User is already authenticated, navigate to role-specific home screen
             switch (role) {
               case 'consumer':
-                router.replace("/home/consumer" as any);
+                router.replace("/(consumer)/(tabs)/home" as any);
                 break;
               case 'merchant':
-                router.replace("/home/merchant" as any);
+                router.replace("/(merchant)/(tabs)/home" as any);
                 break;
               case 'driver':
-                router.replace("/home/driver" as any);
+                router.replace("/(driver)/(tabs)/home" as any);
                 break;
               default:
-                router.replace("/home/consumer" as any);
+                router.replace("/(consumer)/(tabs)/home" as any);
             }
             return;
           }

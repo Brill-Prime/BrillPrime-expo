@@ -439,6 +439,16 @@ class AuthService {
 
       if (response.success && response.data) {
         await this.storeAuthData(response.data);
+
+        // Route based on user role to role-specific home screens
+        if (response.data.user.role === "consumer") {
+          router.replace("/(consumer)/(tabs)/home");
+        } else if (response.data.user.role === "merchant") {
+          router.replace("/(merchant)/(tabs)/home");
+        } else if (response.data.user.role === "driver") {
+          router.replace("/(driver)/(tabs)/home");
+        }
+
         return response;
       }
 
@@ -955,11 +965,11 @@ class AuthService {
             const newExpiry = Date.now() + (55 * 60 * 1000); // 55 minutes
             await AsyncStorage.setItem('tokenExpiry', newExpiry.toString());
             await SecurityService.storeAuthToken(freshToken); // Update in SecureStore too
-            
+
             // Sync refreshed token with Supabase
             const { setSupabaseAuthToken } = await import('../config/supabase');
             await setSupabaseAuthToken(freshToken);
-            
+
             console.log('Token refreshed successfully and synced with Supabase');
           }
 

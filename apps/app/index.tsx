@@ -81,11 +81,11 @@ export default function SplashScreenComponent() {
         const role = await AsyncStorage.getItem('userRole');
 
         if (role === 'consumer' && isMounted) {
-          router.replace('/home/consumer');
+          router.replace('/(consumer)/(tabs)/home');
         } else if (role === 'merchant' && isMounted) {
-          router.replace('/home/merchant');
+          router.replace('/(merchant)/(tabs)/home');
         } else if (role === 'driver' && isMounted) {
-          router.replace('/home/driver');
+          router.replace('/(driver)/(tabs)/home');
         } else if (isMounted) {
           router.replace('/auth/role-selection');
         }

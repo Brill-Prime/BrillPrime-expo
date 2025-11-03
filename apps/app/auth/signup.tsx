@@ -220,13 +220,13 @@ export default function SignUp() {
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
-        // Route based on user role from API
+        // Route based on user role from API to role-specific home screens
         if (response.data.user.role === "consumer") {
-          router.replace("/(consumer)/(tabs)/home");
+          router.replace("/(consumer)/(tabs)/home" as any);
         } else if (response.data.user.role === "merchant") {
-          router.replace("/(merchant)/(tabs)/home");
+          router.replace("/(merchant)/(tabs)/home" as any);
         } else if (response.data.user.role === "driver") {
-          router.replace("/(driver)/(tabs)/home");
+          router.replace("/(driver)/(tabs)/home" as any);
         }
       } else {
         const errorMessage = response?.error || `${provider} sign-up failed`;
