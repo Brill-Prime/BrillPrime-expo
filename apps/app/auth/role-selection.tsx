@@ -33,10 +33,10 @@ export default function RoleSelection() {
       
       if (storedEmail) {
         // User has registered before → Sign in
-        router.push("/(auth)/signin" as any);
+        router.push("/auth/signin" as any);
       } else {
         // New user → Sign up
-        router.push("/(auth)/signup" as any);
+        router.push("/auth/signup" as any);
       }
     } catch (error) {
       console.error("Error in proceedToAuth:", error);
@@ -62,16 +62,16 @@ export default function RoleSelection() {
             // User is already authenticated, navigate to appropriate home screen
             switch (role) {
               case 'consumer':
-                router.replace("/(consumer)/(tabs)/home");
+                router.replace("/home/consumer" as any);
                 break;
               case 'merchant':
-                router.replace("/(merchant)/(tabs)/home");
+                router.replace("/home/merchant" as any);
                 break;
               case 'driver':
-                router.replace("/(driver)/(tabs)/home");
+                router.replace("/home/driver" as any);
                 break;
               default:
-                router.replace("/(consumer)/(tabs)/home");
+                router.replace("/home/consumer" as any);
             }
             return;
           }

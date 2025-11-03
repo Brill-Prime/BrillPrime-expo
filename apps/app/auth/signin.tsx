@@ -144,11 +144,11 @@ export default function SignIn() {
 
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
-          router.replace("/(consumer)/(tabs)/home");
+          router.replace("/home/consumer" as any);
         } else if (response.data.user.role === "merchant") {
-          router.replace("/(merchant)/(tabs)/home");
+          router.replace("/home/merchant" as any);
         } else if (response.data.user.role === "driver") {
-          router.replace("/(driver)/(tabs)/home");
+          router.replace("/home/driver" as any);
         }
       } else {
         // Handle specific error cases
@@ -248,11 +248,11 @@ export default function SignIn() {
 
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
-          router.replace("/(consumer)/(tabs)/home");
+          router.replace("/home/consumer" as any);
         } else if (response.data.user.role === "merchant") {
-          router.replace("/(merchant)/(tabs)/home");
+          router.replace("/home/merchant" as any);
         } else if (response.data.user.role === "driver") {
-          router.replace("/(driver)/(tabs)/home");
+          router.replace("/home/driver" as any);
         }
       } else if (response?.error && response.error !== 'Sign-in cancelled') {
         console.error(`${provider} sign-in failed:`, response.error);
