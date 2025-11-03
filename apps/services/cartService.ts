@@ -70,6 +70,9 @@ class CartService {
       const currentUser = auth.currentUser;
       if (!currentUser) return;
 
+      // Import sync service
+      const { firebaseSupabaseSync } = await import('./firebaseSupabaseSync');
+
       // Clean up existing channel
       if (this.realtimeChannel) {
         this.realtimeChannel.unsubscribe();

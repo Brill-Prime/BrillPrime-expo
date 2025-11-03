@@ -6,6 +6,7 @@ import { authService } from './authService';
 import { supabaseService } from './supabaseService';
 import { auth } from '../config/firebase';
 import { Order, CreateOrderRequest } from './types';
+import { firebaseSupabaseSync } from './firebaseSupabaseSync';
 
 class OrderService {
   // Validate order data
@@ -86,6 +87,28 @@ class OrderService {
       return { success: false, error: error.message };
     }
 
+    // Sync to Supabase if successful
+    if (data) {
+      const firebaseUser = auth.currentUser;
+      if (firebaseUser) {
+        firebaseSupabaseSync.syncOrder({
+          id: data.id,
+          userId: firebaseUser.uid,
+          merchantId: orderData.items[0]?.productId.toString() || '', // Assuming the first item's product ID can represent merchantId for sync purposes, adjust as needed
+          items: data.items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total: data.total_amount, // Assuming total_amount is available on the created order
+          status: data.status,
+          deliveryAddress: orderData.deliveryAddress, // Assuming deliveryAddress is part of orderData
+          createdAt: data.created_at
+        }).catch(err => console.error('Failed to sync order to Supabase:', err));
+      }
+    }
+
+
     return { success: true, data: data as Order };
   }
 
@@ -163,6 +186,23 @@ class OrderService {
       return { success: false, error: error.message };
     }
 
+    // Sync to Supabase if successful
+    if (data) {
+      const firebaseUser = auth.currentUser;
+      if (firebaseUser) {
+        firebaseSupabaseSync.syncOrder({
+          id: data.id,
+          userId: firebaseUser.uid,
+          merchantId: data.merchantId, // Assuming merchantId is available in the updated data
+          items: data.items, // Assuming items are available in the updated data
+          total: data.total_amount, // Assuming total_amount is available in the updated data
+          status: data.status,
+          deliveryAddress: data.deliveryAddress, // Assuming deliveryAddress is available in the updated data
+          createdAt: data.created_at // Assuming created_at is available in the updated data
+        }).catch(err => console.error('Failed to sync order to Supabase:', err));
+      }
+    }
+
     return { success: true, data: data as Order };
   }
 
@@ -183,6 +223,23 @@ class OrderService {
 
     if (error) {
       return { success: false, error: error.message };
+    }
+
+    // Sync to Supabase if successful
+    if (data) {
+      const firebaseUser = auth.currentUser;
+      if (firebaseUser) {
+        firebaseSupabaseSync.syncOrder({
+          id: data.id,
+          userId: firebaseUser.uid,
+          merchantId: data.merchantId, // Assuming merchantId is available in the updated data
+          items: data.items, // Assuming items are available in the updated data
+          total: data.total_amount, // Assuming total_amount is available in the updated data
+          status: data.status,
+          deliveryAddress: data.deliveryAddress, // Assuming deliveryAddress is available in the updated data
+          createdAt: data.created_at // Assuming created_at is available in the updated data
+        }).catch(err => console.error('Failed to sync order to Supabase:', err));
+      }
     }
 
     return { success: true, data: data as Order };

@@ -421,6 +421,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Add Firebase sync columns if they don't exist
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS firebase_order_id TEXT UNIQUE;
+ALTER TABLE commodities ADD COLUMN IF NOT EXISTS firebase_product_id TEXT UNIQUE;
+ALTER TABLE merchants ADD COLUMN IF NOT EXISTS firebase_uid TEXT;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS firebase_uid TEXT;
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_orders_firebase_id ON orders(firebase_order_id);
+CREATE INDEX IF NOT EXISTS idx_commodities_firebase_id ON commodities(firebase_product_id);
+CREATE INDEX IF NOT EXISTS idx_merchants_firebase_uid ON merchants(firebase_uid);
+CREATE INDEX IF NOT EXISTS idx_drivers_firebase_uid ON drivers(firebase_uid);
+
 -- Function to sync Firebase user to Supabase
 CREATE OR REPLACE FUNCTION sync_firebase_user(
   p_firebase_uid text,
@@ -448,3 +460,30 @@ BEGIN
   RETURN user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to sync order status changes back to Firebase
+CREATE OR REPLACE FUNCTION notify_order_status_change()
+RETURNS trigger AS $$
+BEGIN
+  -- Broadcast order status change for Firebase to pick up
+  PERFORM pg_notify(
+    'order_status_changed',
+    json_build_object(
+      'order_id', NEW.id,
+      'firebase_order_id', NEW.firebase_order_id,
+      'status', NEW.status,
+      'user_id', NEW.user_id,
+      'updated_at', NEW.updated_at
+    )::text
+  );
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for order status changes
+DROP TRIGGER IF EXISTS order_status_change_trigger ON orders;
+CREATE TRIGGER order_status_change_trigger
+  AFTER UPDATE OF status ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_order_status_change();

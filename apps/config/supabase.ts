@@ -62,6 +62,13 @@ if (supabase) {
   });
   
   console.log('✅ Supabase Realtime initialized (Firebase Auth)');
+
+  // Initialize Firebase-Supabase sync service
+  import('../services/firebaseSupabaseSync').then(({ firebaseSupabaseSync }) => {
+    firebaseSupabaseSync.initialize().catch(err => 
+      console.error('Failed to initialize sync service:', err)
+    );
+  });
 } else {
   console.warn('⚠️ Supabase client not initialized');
 }

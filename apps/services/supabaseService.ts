@@ -167,7 +167,253 @@ export class SupabaseService {
       p_phone: userData.phone
     });
 
+    if (!error && userData.role) {
+      // Sync role-specific profile
+      await this.syncUserRole(userData.firebaseUid, userData.role);
+    }
+
     return { data, error };
+  }
+
+  // Sync user role to Supabase
+  async syncUserRole(firebaseUid: string, role: 'consumer' | 'merchant' | 'driver'): Promise<void> {
+    try {
+      const { data: user } = await this.client
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', firebaseUid)
+        .single();
+
+      if (!user) return;
+
+      // Update or create role-specific profile
+      if (role === 'merchant') {
+        await this.client
+          .from('merchants')
+          .upsert({
+            user_id: user.id,
+            firebase_uid: firebaseUid,
+            updated_at: new Date().toISOString()
+          });
+      } else if (role === 'driver') {
+        await this.client
+          .from('drivers')
+          .upsert({
+            user_id: user.id,
+            firebase_uid: firebaseUid,
+            updated_at: new Date().toISOString()
+          });
+      }
+    } catch (error) {
+      console.error('Error syncing user role:', error);
+    }
+  }
+
+  // Sync order from Firebase to Supabase
+  async syncOrder(orderData: {
+    id: string;
+    userId: string;
+    merchantId: string;
+    items: any[];
+    total: number;
+    status: string;
+    deliveryAddress?: any;
+    createdAt: string;
+  }): Promise<{ data: any | null; error: any }> {
+    try {
+      // Get Supabase user IDs
+      const { data: user } = await this.client
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', orderData.userId)
+        .single();
+
+      const { data: merchant } = await this.client
+        .from('merchants')
+        .select('id')
+        .eq('firebase_uid', orderData.merchantId)
+        .single();
+
+      if (!user || !merchant) {
+        return { data: null, error: 'User or merchant not found in Supabase' };
+      }
+
+      // Sync order
+      const { data, error } = await this.client
+        .from('orders')
+        .upsert({
+          firebase_order_id: orderData.id,
+          user_id: user.id,
+          merchant_id: merchant.id,
+          total: orderData.total,
+          status: orderData.status,
+          delivery_address: orderData.deliveryAddress,
+          created_at: orderData.createdAt,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      // Sync order items
+      if (data && orderData.items?.length > 0) {
+        await this.syncOrderItems(data.id, orderData.items);
+      }
+
+      return { data, error };
+    } catch (error: any) {
+      return { data: null, error };
+    }
+  }
+
+  // Sync order items
+  private async syncOrderItems(orderId: string, items: any[]): Promise<void> {
+    try {
+      const orderItems = items.map(item => ({
+        order_id: orderId,
+        product_id: item.productId,
+        quantity: item.quantity,
+        unit_price: item.price,
+        subtotal: item.quantity * item.price
+      }));
+
+      await this.client
+        .from('order_items')
+        .upsert(orderItems);
+    } catch (error) {
+      console.error('Error syncing order items:', error);
+    }
+  }
+
+  // Sync product/commodity
+  async syncProduct(productData: {
+    id: string;
+    merchantId: string;
+    name: string;
+    description?: string;
+    price: number;
+    category?: string;
+    stock?: number;
+    imageUrl?: string;
+  }): Promise<{ data: any | null; error: any }> {
+    try {
+      const { data: merchant } = await this.client
+        .from('merchants')
+        .select('id')
+        .eq('firebase_uid', productData.merchantId)
+        .single();
+
+      if (!merchant) {
+        return { data: null, error: 'Merchant not found in Supabase' };
+      }
+
+      const { data, error } = await this.client
+        .from('commodities')
+        .upsert({
+          firebase_product_id: productData.id,
+          merchant_id: merchant.id,
+          name: productData.name,
+          description: productData.description,
+          price: productData.price,
+          category: productData.category,
+          stock: productData.stock,
+          image_url: productData.imageUrl,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      return { data, error };
+    } catch (error: any) {
+      return { data: null, error };
+    }
+  }
+
+  // Sync cart to Supabase
+  async syncCart(userId: string, cartItems: any[]): Promise<{ data: any | null; error: any }> {
+    try {
+      const { data: user } = await this.client
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', userId)
+        .single();
+
+      if (!user) {
+        return { data: null, error: 'User not found in Supabase' };
+      }
+
+      // Clear existing cart items
+      await this.client
+        .from('cart_items')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Insert new cart items
+      if (cartItems.length > 0) {
+        const supabaseCartItems = cartItems.map(item => ({
+          user_id: user.id,
+          commodity_id: item.productId,
+          merchant_id: item.merchantId,
+          quantity: item.quantity,
+          unit_price: item.price
+        }));
+
+        const { data, error } = await this.client
+          .from('cart_items')
+          .insert(supabaseCartItems)
+          .select();
+
+        return { data, error };
+      }
+
+      return { data: [], error: null };
+    } catch (error: any) {
+      return { data: null, error };
+    }
+  }
+
+  // Batch sync - sync multiple entities at once
+  async batchSync(syncData: {
+    users?: any[];
+    orders?: any[];
+    products?: any[];
+  }): Promise<{ success: boolean; errors: any[] }> {
+    const errors: any[] = [];
+
+    try {
+      // Sync users
+      if (syncData.users && syncData.users.length > 0) {
+        for (const user of syncData.users) {
+          const result = await this.syncFirebaseUser(user);
+          if (result.error) {
+            errors.push({ type: 'user', id: user.firebaseUid, error: result.error });
+          }
+        }
+      }
+
+      // Sync products
+      if (syncData.products && syncData.products.length > 0) {
+        for (const product of syncData.products) {
+          const result = await this.syncProduct(product);
+          if (result.error) {
+            errors.push({ type: 'product', id: product.id, error: result.error });
+          }
+        }
+      }
+
+      // Sync orders
+      if (syncData.orders && syncData.orders.length > 0) {
+        for (const order of syncData.orders) {
+          const result = await this.syncOrder(order);
+          if (result.error) {
+            errors.push({ type: 'order', id: order.id, error: result.error });
+          }
+        }
+      }
+
+      return { success: errors.length === 0, errors };
+    } catch (error: any) {
+      return { success: false, errors: [{ type: 'batch', error }] };
+    }
   }
 
   // Realtime subscriptions
