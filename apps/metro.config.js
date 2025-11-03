@@ -1,5 +1,6 @@
 
 const { getDefaultConfig } = require('@expo/metro-config');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
@@ -45,6 +46,7 @@ config.server = {
 };
 
 // Block react-native-maps from being bundled on web
+// And configure path aliases for @ imports
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web' && moduleName === 'react-native-maps') {
     return {
@@ -56,6 +58,13 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: 'empty',
     };
   }
+  
+  // Handle @ path alias
+  if (moduleName.startsWith('@/')) {
+    const modulePath = moduleName.replace('@/', '');
+    return context.resolveRequest(context, path.join(__dirname, modulePath), platform);
+  }
+  
   return context.resolveRequest(context, moduleName, platform);
 };
 

@@ -72,8 +72,8 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.544.0",
     "mapbox-gl": "^3.0.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-error-boundary": "^6.0.0",
     "react-leaflet": "^5.0.0",
     "react-native": "^0.79.6",
@@ -102,7 +102,7 @@
     "@types/google.maps": "^3.58.1",
     "@types/http-proxy-middleware": "^1.0.0",
     "@types/mapbox-gl": "^3.4.1",
-    "@types/react": "~19.0.10",
+    "@types/react": "~19.1.10",
     "@types/react-native": "^0.73.0",
     "@types/react-native-web": "^0.19.2",
     "@types/socket.io-client": "^3.0.0",
@@ -111,7 +111,7 @@
     "jest": "^29.2.1",
     "jest-expo": "~53.0.5",
     "serve": "^14.2.5",
-    "typescript": "~5.8.3"
+    "typescript": "~5.9.2"
   },
   "private": true
 }
