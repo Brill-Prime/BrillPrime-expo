@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { errorService } from '../../../services/errorService';
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,7 @@ export class MapErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('MapErrorBoundary caught an error:', error, errorInfo);
+    errorService.logError(error, { errorInfo, component: 'MapErrorBoundary' }, 'high');
   }
 
   handleRetry = () => {

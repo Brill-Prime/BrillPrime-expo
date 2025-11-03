@@ -2,6 +2,7 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { errorService } from '../services/errorService';
 
 interface Props {
   children: ReactNode;
@@ -24,7 +25,7 @@ export class FormErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('Form Error:', error, errorInfo);
+    errorService.logError(error, { errorInfo, component: 'FormErrorBoundary' }, 'medium');
   }
 
   handleReset = () => {

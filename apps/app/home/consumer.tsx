@@ -1,3 +1,6 @@
+
+import { getErrorMessage } from '../../utils/errorUtils';
+
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
@@ -869,14 +872,12 @@ function ConsumerHomeContent() {
           stack: error instanceof Error ? error.stack : undefined,
         });
 
-        if (error instanceof Error && error.message.includes('Invalid route')) {
-          showError("Navigation Error", "Invalid navigation destination.");
-        } else {
-          const errorMessage = error && typeof error === 'object' && 'message' in error
-            ? String(error.message)
-            : "An unexpected error occurred during navigation.";
-          showError("Navigation Error", errorMessage);
-        }
+        const errorMessage = getErrorMessage(error);
+      if (errorMessage.includes('Invalid route')) {
+        showError("Navigation Error", "Invalid navigation destination.");
+      } else {
+        showError("Navigation Error", errorMessage || "An unexpected error occurred during navigation.");
+      }
       }
     }, 300);
   }, [router, toggleMenu, showInfo, isLocationSet, showError]);
@@ -899,7 +900,7 @@ function ConsumerHomeContent() {
           // Navigate to login screen
           await router.replace("/");
         } catch (error) {
-          console.error("Error signing out:", error);
+          console.error("Error signing out:", error);rror);
 
           if (error instanceof Error) {
             if (error.message.includes('AsyncStorage')) {
