@@ -2,9 +2,17 @@
 import React from 'react';
 import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_CONFIG } from '../config/mapbox';
+import { View, Text, StyleSheet } from 'react-native';
 
 // Configure Mapbox access token from environment
-MapboxGL.setAccessToken(MAPBOX_CONFIG.ACCESS_TOKEN);
+const MAPBOX_TOKEN = MAPBOX_CONFIG.ACCESS_TOKEN;
+
+if (!MAPBOX_TOKEN || MAPBOX_TOKEN.length < 20) {
+  console.error('⚠️ Mapbox token is missing or invalid. Please add EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN to your .env file');
+  console.error('Get a token at: https://account.mapbox.com/access-tokens/');
+} else {
+  MapboxGL.setAccessToken(MAPBOX_TOKEN);
+}
 
 // Export Mapbox components with react-native-maps compatible names
 export const Marker = MapboxGL.PointAnnotation;
