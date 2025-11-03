@@ -5,13 +5,20 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { cartService } from "../../services/cartService";
+import { orderService } from "../../services/orderService";
+import { favoritesService } from "../../services/favoritesService";
+import { formatNaira } from "../../utils/currency";
 
 export default function ConsumerDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [cartItemCount, setCartItemCount] = useState(0);
-  const [activeOrders, setActiveOrders] = useState<{ id: string; status: string; date: string }[]>([]); // Assuming you'll fetch active orders
+  const [activeOrders, setActiveOrders] = useState<{ id: string; status: string; date: string }[]>([]);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -24,17 +31,20 @@ export default function ConsumerDashboard() {
   useEffect(() => {
     loadUserData();
     loadCartCount();
-    loadActiveOrders(); // Load active orders when the component mounts
+    loadActiveOrders();
+    loadUserStats();
 
-    // Refresh cart count when screen is focused
+    // Refresh data when screen is focused
     const unsubscribe = () => {
       loadCartCount();
-      loadActiveOrders(); // Refresh active orders as well
+      loadActiveOrders();
+      loadUserStats();
     };
 
     // Initial load
     loadCartCount();
     loadActiveOrders();
+    loadUserStats();
 
     return () => {
       // Clean up if needed
@@ -56,19 +66,44 @@ export default function ConsumerDashboard() {
   };
 
   const loadActiveOrders = async () => {
-    // This is a placeholder. Replace with actual API call to fetch active orders.
-    // Example:
-    // const orders = await fetch('/api/orders/active').then(res => res.json());
-    // setActiveOrders(orders);
     try {
-      // Mocking some active orders for demonstration
-      const mockOrders = [
-        { id: 'ORD12345', status: 'Processing', date: '2023-10-27' },
-        { id: 'ORD67890', status: 'Shipped', date: '2023-10-26' },
-      ];
-      setActiveOrders(mockOrders);
+      const response = await orderService.getUserOrders({
+        status: 'pending',
+        limit: 10,
+      });
+      
+      if (response.success && response.data) {
+        const orders = response.data.orders.map(order => ({
+          id: order.id,
+          status: order.status,
+          date: new Date(order.createdAt).toLocaleDateString(),
+        }));
+        setActiveOrders(orders);
+      }
     } catch (error) {
       console.error("Error loading active orders:", error);
+    }
+  };
+
+  const loadUserStats = async () => {
+    setIsLoadingStats(true);
+    try {
+      // Load order summary
+      const orderSummaryResponse = await orderService.getOrderSummary();
+      if (orderSummaryResponse.success && orderSummaryResponse.data) {
+        setTotalOrders(orderSummaryResponse.data.totalOrders);
+        setTotalSpent(orderSummaryResponse.data.totalSpent);
+      }
+
+      // Load favorites count
+      const favoritesResponse = await favoritesService.getFavorites();
+      if (favoritesResponse.success && favoritesResponse.data) {
+        setFavoritesCount(favoritesResponse.data.length);
+      }
+    } catch (error) {
+      console.error("Error loading user stats:", error);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -132,9 +167,9 @@ export default function ConsumerDashboard() {
   ];
 
   const stats = [
-    { label: "Orders", value: "12", color: "#0B1A51" },
-    { label: "Total Spent", value: "₹2,450", color: "#0B1A51" },
-    { label: "Favorites", value: "8", color: "#0B1A51" },
+    { label: "Orders", value: isLoadingStats ? "..." : totalOrders.toString(), color: "#0B1A51" },
+    { label: "Total Spent", value: isLoadingStats ? "..." : formatNaira(totalSpent), color: "#0B1A51" },
+    { label: "Favorites", value: isLoadingStats ? "..." : favoritesCount.toString(), color: "#0B1A51" },
   ];
 
   const quickActions = [
