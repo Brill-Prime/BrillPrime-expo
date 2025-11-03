@@ -248,31 +248,43 @@ class ProfileService {
 
   // Privacy Settings
   async getPrivacySettings(): Promise<ApiResponse<PrivacySettings>> {
-    const user = await authService.getCurrentUser();
-    if (!user) {
-      return { success: false, error: 'Authentication required' };
-    }
+    try {
+      const response = await authService.getCurrentUser();
+      if (!response.success || !response.data) {
+        return { success: false, error: 'Authentication required' };
+      }
 
-    const { data, error } = await supabaseService.getPrivacySettings(user.id);
-    if (error) {
-      return { success: false, error: error.message };
-    }
+      const { data, error } = await supabaseService.getPrivacySettings(response.data.id);
+      if (error) {
+        return { success: false, error: error.message };
+      }
 
-    return { success: true, data: data as PrivacySettings };
+      return { success: true, data: data as PrivacySettings };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to get privacy settings' };
+    }
   }
 
-  async updatePrivacySettings(data: Partial<PrivacySettings>): Promise<ApiResponse<PrivacySettings>> {
-    const user = await authService.getCurrentUser();
-    if (!user) {
-      return { success: false, error: 'Authentication required' };
-    }
+  async updatePrivacySettings(settingsData: Partial<PrivacySettings> | any): Promise<ApiResponse<PrivacySettings>> {
+    try {
+      const response = await authService.getCurrentUser();
+      if (!response.success || !response.data) {
+        return { success: false, error: 'Authentication required' };
+      }
 
-    const { data: updatedSettings, error } = await supabaseService.updatePrivacySettings(user.id, data);
-    if (error) {
-      return { success: false, error: error.message };
-    }
+      const { data: updatedSettings, error } = await supabaseService.updatePrivacySettings(
+        response.data.id, 
+        settingsData
+      );
+      
+      if (error) {
+        return { success: false, error: error.message };
+      }
 
-    return { success: true, data: updatedSettings as PrivacySettings };
+      return { success: true, data: updatedSettings as PrivacySettings };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to update privacy settings' };
+    }
   }
 }
 

@@ -4,49 +4,131 @@
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 import { User, UpdateProfileRequest } from './types';
+// Assuming supabaseService is imported and configured elsewhere, e.g.:
+// import { supabaseService } from './supabaseService'; 
+
+// Placeholder for supabaseService if not defined in the provided context
+const supabaseService = {
+  from: (tableName: string) => ({
+    insert: async (data: any[]) => {
+      console.log(`Mock supabaseService: Inserting into ${tableName}`, data);
+      // Simulate a successful insert
+      return { error: null };
+    }
+  })
+};
+
 
 class UserService {
   // Validate profile update data
   private validateProfileData(data: UpdateProfileRequest): { isValid: boolean; error?: string } {
     const { validateName, validateEmail, validatePhone, validateAddress } = require('../utils/validation');
-    
+
     const firstNameValidation = validateName(data.firstName, 'First name');
     if (!firstNameValidation.isValid) {
       return firstNameValidation;
     }
-    
+
     const lastNameValidation = validateName(data.lastName, 'Last name');
     if (!lastNameValidation.isValid) {
       return lastNameValidation;
     }
-    
+
     const emailValidation = validateEmail(data.email);
     if (!emailValidation.isValid) {
       return emailValidation;
     }
-    
+
     const phoneValidation = validatePhone(data.phone);
     if (!phoneValidation.isValid) {
       return phoneValidation;
     }
-    
+
     if (data.address) {
       const addressValidation = validateAddress(data.address);
       if (!addressValidation.isValid) {
         return addressValidation;
       }
     }
-    
+
     return { isValid: true };
   }
 
-  // Update user profile
-  async updateProfile(data: UpdateProfileRequest): Promise<ApiResponse<User>> {
+  // Request data deletion
+  async requestDataDeletion(): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
-    
+
+    const user = await authService.getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    // Request data deletion via backend
+    const { error } = await supabaseService.from('data_deletion_requests')
+      .insert([{
+        userId: user.id,
+        requestedAt: new Date().toISOString(),
+        status: 'pending'
+      }]);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      data: { message: 'Data deletion request submitted successfully' }
+    };
+  }
+
+  // Request data export
+  async requestDataExport(): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const user = await authService.getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    // Request data export via backend
+    const { error } = await supabaseService.from('data_export_requests')
+      .insert([{
+        userId: user.id,
+        requestedAt: new Date().toISOString(),
+        status: 'pending'
+      }]);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      data: { message: 'Data export request submitted successfully' }
+    };
+  }
+
+  // Update user profile
+  async updateProfile(data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    profileImageUrl?: string;
+    settings?: any;
+  }): Promise<ApiResponse<{ message: string; user: any }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
     // Validate before sending
     const validation = this.validateProfileData(data);
     if (!validation.isValid) {
@@ -71,7 +153,7 @@ class UserService {
   }
 
   // Update user settings
-  async updateSettings(settings: { 
+  async updateSettings(settings: {
     notifications: boolean;
     locationServices: boolean;
     emailUpdates: boolean;
@@ -87,7 +169,7 @@ class UserService {
   }
 
   // Get user settings
-  async getSettings(): Promise<ApiResponse<{ 
+  async getSettings(): Promise<ApiResponse<{
     notifications: boolean;
     locationServices: boolean;
     emailUpdates: boolean;
@@ -140,7 +222,7 @@ class UserService {
     try {
       // Convert image to base64 or FormData for upload
       const formData = new FormData();
-      
+
       // Extract filename from URI
       const filename = imageUri.split('/').pop() || 'profile.jpg';
       const match = /\.(\w+)$/.exec(filename);

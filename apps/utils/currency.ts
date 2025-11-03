@@ -1,4 +1,3 @@
-
 /**
  * Currency utility functions for Nigerian Naira (₦)
  */
@@ -56,26 +55,6 @@ export const NAIRA_SYMBOL = '₦';
  * Currency code for Nigeria
  */
 export const CURRENCY_CODE = 'NGN';
-/**
- * Format a number as Nigerian Naira currency
- * @param amount - The amount to format
- * @param includeDecimals - Whether to include decimal places (default: true)
- * @returns Formatted currency string
- */
-export function formatNaira(amount: number, includeDecimals: boolean = true): string {
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    return '₦0.00';
-  }
-
-  const formatter = new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: includeDecimals ? 2 : 0,
-    maximumFractionDigits: includeDecimals ? 2 : 0,
-  });
-
-  return formatter.format(amount).replace('NGN', '₦');
-}
 
 /**
  * Parse a Naira currency string to a number

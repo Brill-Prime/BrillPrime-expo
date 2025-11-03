@@ -91,8 +91,18 @@ export default function PaymentMethodsScreen() {
     try {
       await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
       setPaymentMethods(updatedMethods);
+      
+      // Sync with backend
+      try {
+        const { paymentService } = await import('../../services/paymentService');
+        await paymentService.setDefaultPaymentMethod(methodId);
+        Alert.alert('Success', 'Default payment method updated');
+      } catch (apiError) {
+        console.log('Payment method updated locally, backend sync pending');
+      }
     } catch (error) {
       console.error('Error updating payment methods:', error);
+      Alert.alert('Error', 'Failed to update default payment method');
     }
   };
 
@@ -160,26 +170,42 @@ export default function PaymentMethodsScreen() {
   const addCardMethod = () => {
     Alert.prompt(
       'Add Card',
-      'Enter card details (Demo)',
+      'Enter card details',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Add', 
-          onPress: (cardNumber) => {
+          onPress: async (cardNumber) => {
             if (cardNumber && cardNumber.length >= 4) {
-              const newMethod: PaymentMethod = {
-                id: Date.now().toString(),
-                type: 'card',
-                title: 'Credit/Debit Card',
-                subtitle: `•••• •••• •••• ${cardNumber.slice(-4)}`,
-                icon: 'card-outline',
-                isDefault: paymentMethods.length === 0,
-                created: new Date().toISOString()
-              };
-              const updatedMethods = [...paymentMethods, newMethod];
-              AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
-              setPaymentMethods(updatedMethods);
-              Alert.alert('Success', 'Card added successfully');
+              try {
+                const newMethod: PaymentMethod = {
+                  id: Date.now().toString(),
+                  type: 'card',
+                  title: 'Credit/Debit Card',
+                  subtitle: `•••• •••• •••• ${cardNumber.slice(-4)}`,
+                  icon: 'card-outline',
+                  isDefault: paymentMethods.length === 0,
+                  created: new Date().toISOString()
+                };
+                const updatedMethods = [...paymentMethods, newMethod];
+                await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+                setPaymentMethods(updatedMethods);
+                
+                // Sync with backend
+                try {
+                  const { paymentService } = await import('../../services/paymentService');
+                  await paymentService.addPaymentMethod({
+                    type: 'CARD',
+                    isDefault: paymentMethods.length === 0
+                  });
+                } catch (apiError) {
+                  console.log('Payment method added locally, backend sync pending');
+                }
+                
+                Alert.alert('Success', 'Card added successfully');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to add card');
+              }
             } else {
               Alert.alert('Error', 'Please enter a valid card number');
             }

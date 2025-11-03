@@ -99,8 +99,22 @@ export default function ProfileScreen() {
 
     try {
       await AsyncStorage.setItem('userSettings', JSON.stringify(newSettings));
+      
+      // Sync settings with backend
+      try {
+        const { userService } = await import('../../services/userService');
+        await userService.updateProfile({
+          settings: newSettings
+        });
+      } catch (apiError) {
+        console.log('Settings synced locally, backend update pending');
+      }
+      
+      // Show feedback to user
+      Alert.alert('Settings Updated', `${key.replace(/([A-Z])/g, ' $1').trim()} ${value ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error saving settings:', error);
+      Alert.alert('Error', 'Failed to save settings. Please try again.');
     }
   };
 
@@ -137,12 +151,25 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const handleNavigateToItem = (route: string) => {
+  const handleNavigateToItem = async (route: string) => {
     try {
-      router.push(route as any);
+      // Check if route exists before navigating
+      if (route === '/profile/consumer-edit' || route === '/profile/edit') {
+        // Determine which edit screen based on user role
+        const role = await AsyncStorage.getItem('userRole');
+        if (role === 'consumer') {
+          router.push('/profile/consumer-edit');
+        } else if (role === 'merchant') {
+          router.push('/profile/edit');
+        } else {
+          router.push('/profile/consumer-edit'); // Default
+        }
+      } else {
+        router.push(route as any);
+      }
     } catch (error) {
       console.error(`Navigation error to ${route}:`, error);
-      Alert.alert('Navigation Error', `Could not navigate to ${route}. This feature may not be implemented yet.`);
+      Alert.alert('Navigation Error', `Could not navigate to ${route}. Please try again.`);
     }
   };
 

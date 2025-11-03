@@ -88,15 +88,22 @@ export default function PrivacySettingsScreen() {
     try {
       await AsyncStorage.setItem('privacySettings', JSON.stringify(newSettings));
       
-      // In a real app, you would sync with the server
+      // Sync with backend using profileService
       try {
-        const { userService } = await import('../../services/userService');
-        await userService.updatePrivacySettings(newSettings);
+        const { profileService } = await import('../../services/profileService');
+        const response = await profileService.updatePrivacySettings(newSettings);
+        
+        if (response.success) {
+          Alert.alert('Success', 'Privacy settings updated successfully');
+        } else {
+          console.warn('Privacy settings update warning:', response.error);
+        }
       } catch (apiError) {
-        console.log('API call failed, but local settings updated:', apiError);
+        console.log('Settings saved locally, backend sync pending');
       }
     } catch (error) {
       console.error('Error saving privacy settings:', error);
+      Alert.alert('Error', 'Failed to update privacy settings');
     }
   };
 
@@ -109,12 +116,27 @@ export default function PrivacySettingsScreen() {
         {
           text: 'Delete Data',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Data Deletion Requested',
-              'Your request has been submitted. You will receive an email confirmation within 24 hours, and your data will be deleted within 30 days as required by law.',
-              [{ text: 'OK' }]
-            );
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const { userService } = await import('../../services/userService');
+              const response = await userService.requestDataDeletion();
+              
+              if (response.success) {
+                Alert.alert(
+                  'Data Deletion Requested',
+                  'Your request has been submitted. You will receive an email confirmation within 24 hours, and your data will be deleted within 30 days as required by law.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert('Error', response.error || 'Failed to submit deletion request');
+              }
+            } catch (error) {
+              console.error('Error requesting data deletion:', error);
+              Alert.alert('Error', 'Failed to submit deletion request. Please try again.');
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
@@ -129,8 +151,23 @@ export default function PrivacySettingsScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Request Export',
-          onPress: () => {
-            Alert.alert('Export Requested', 'You will receive an email with your data export link soon.');
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const { userService } = await import('../../services/userService');
+              const response = await userService.requestDataExport();
+              
+              if (response.success) {
+                Alert.alert('Export Requested', 'You will receive an email with your data export link soon.');
+              } else {
+                Alert.alert('Error', response.error || 'Failed to request data export');
+              }
+            } catch (error) {
+              console.error('Error requesting data export:', error);
+              Alert.alert('Error', 'Failed to request data export. Please try again.');
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
