@@ -1,7 +1,9 @@
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface CartItem {
   id: string;
@@ -30,6 +32,8 @@ export interface CommoditiesCartItem {
 class CartService {
   private readonly CART_STORAGE_KEY = 'cartItems';
   private readonly COMMODITIES_CART_KEY = 'commoditiesCart';
+  private realtimeChannel: RealtimeChannel | null = null;
+  private isOnline: boolean = true;
 
   // Get a fresh Firebase token with automatic refresh
   private async getFreshToken(): Promise<string | null> {
@@ -58,8 +62,89 @@ class CartService {
     }
   }
 
-  // Sync local cart to backend when possible
-  private async syncCartToBackend(token: string): Promise<void> {
+
+
+  // Initialize realtime cart sync
+  private async initializeRealtimeSync(): Promise<void> {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      // Clean up existing channel
+      if (this.realtimeChannel) {
+        this.realtimeChannel.unsubscribe();
+      }
+
+      // Create new realtime channel for cart updates
+      this.realtimeChannel = supabaseService.client
+        .channel(`cart-${currentUser.uid}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'cart_items',
+            filter: `user_id=eq.${currentUser.uid}`,
+          },
+          (payload: any) => {
+            console.log('Realtime cart update:', payload);
+            // Trigger local cart refresh
+            this.syncCartFromSupabase();
+          }
+        )
+        .subscribe((status: string) => {
+          console.log('Realtime cart subscription status:', status);
+        });
+    } catch (error) {
+      console.error('Error initializing realtime sync:', error);
+    }
+  }
+
+  // Sync cart from Supabase to local storage
+  private async syncCartFromSupabase(): Promise<void> {
+    try {
+      const { data: cartItems, error } = await supabaseService.client
+        .from('cart_items')
+        .select(`
+          id,
+          quantity,
+          unit_price,
+          merchant_id,
+          commodity_id,
+          merchants (
+            id,
+            name
+          ),
+          commodities (
+            id,
+            name,
+            unit
+          )
+        `);
+
+      if (error) throw error;
+
+      // Transform Supabase data to CartItem format
+      const transformedItems: CartItem[] = cartItems?.map(item => ({
+        id: item.id,
+        commodityId: item.commodity_id,
+        commodityName: item.commodities?.name || '',
+        merchantId: item.merchant_id,
+        merchantName: item.merchants?.name || '',
+        price: parseFloat(item.unit_price),
+        quantity: item.quantity,
+        unit: item.commodities?.unit || '',
+      })) || [];
+
+      // Update local storage
+      await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(transformedItems));
+    } catch (error) {
+      console.error('Error syncing cart from Supabase:', error);
+    }
+  }
+
+  // Sync local cart to Supabase
+  private async syncCartToSupabase(): Promise<void> {
     try {
       const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
       if (!localCart) return;
@@ -67,40 +152,62 @@ class CartService {
       const items: CartItem[] = JSON.parse(localCart);
       if (items.length === 0) return;
 
-      // Try to sync with backend
-      for (const item of items) {
-        await apiClient.post('/api/cart', item, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
-          console.log('Backend sync failed (non-critical):', err);
-        });
-      }
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      // Get user ID from Supabase
+      const { data: userData } = await supabaseService.client
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', currentUser.uid)
+        .single();
+
+      if (!userData) return;
+
+      // Clear existing cart items and insert new ones
+      await supabaseService.client
+        .from('cart_items')
+        .delete()
+        .eq('user_id', userData.id);
+
+      // Insert new cart items
+      const cartInserts = items.map(item => ({
+        user_id: userData.id,
+        merchant_id: item.merchantId,
+        commodity_id: item.commodityId,
+        quantity: item.quantity,
+        unit_price: item.price.toString(),
+      }));
+
+      const { error } = await supabaseService.client
+        .from('cart_items')
+        .insert(cartInserts);
+
+      if (error) throw error;
     } catch (error) {
-      console.log('Cart sync error (non-critical):', error);
+      console.error('Error syncing cart to Supabase:', error);
     }
   }
 
-  // Get cart items - use local storage with optional backend sync
+  // Get cart items - prioritize Supabase, fallback to local storage
   async getCartItems(): Promise<ApiResponse<CartItem[]>> {
     try {
-      // Always read from local storage first for immediate response
+      // Try to get from Supabase first
+      if (this.isOnline) {
+        try {
+          await this.syncCartFromSupabase();
+        } catch (error) {
+          console.log('Supabase sync failed, using local storage:', error);
+        }
+      }
+
+      // Always read from local storage for immediate response
       const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
       const localItems: CartItem[] = localCart ? JSON.parse(localCart) : [];
 
-      // Try to get fresh token and sync with backend in background
-      const token = await this.getFreshToken();
-      if (token) {
-        // Non-blocking backend sync
-        apiClient.get<CartItem[]>('/api/cart', { 
-          Authorization: `Bearer ${token}` 
-        }).then(async (response) => {
-          if (response.success && response.data) {
-            // Merge backend items with local items (backend takes priority)
-            await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(response.data));
-          }
-        }).catch(err => {
-          console.log('Backend cart fetch failed, using local cart:', err);
-        });
+      // Initialize realtime sync if not already done
+      if (!this.realtimeChannel) {
+        this.initializeRealtimeSync();
       }
 
       return { success: true, data: localItems };
@@ -110,31 +217,32 @@ class CartService {
     }
   }
 
-  // Add item to cart - local storage with backend sync
+  // Add item to cart - local storage with Supabase sync
   async addToCart(item: CartItem): Promise<ApiResponse<{ message: string }>> {
     try {
       // Update local storage immediately
       const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
       const items: CartItem[] = localCart ? JSON.parse(localCart) : [];
-      
+
       // Check if item already exists
-      const existingIndex = items.findIndex(i => i.commodityId === item.commodityId);
+      const existingIndex = items.findIndex(i => i.commodityId === item.commodityId && i.merchantId === item.merchantId);
       if (existingIndex >= 0) {
         items[existingIndex].quantity += item.quantity;
       } else {
-        items.push(item);
+        // Generate a temporary ID for new items
+        const newItem = { ...item, id: `temp-${Date.now()}-${Math.random()}` };
+        items.push(newItem);
       }
-      
+
       await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(items));
 
-      // Try to sync with backend using fresh token
-      const token = await this.getFreshToken();
-      if (token) {
-        apiClient.post('/api/cart', item, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
-          console.log('Backend sync failed (item saved locally):', err);
-        });
+      // Try to sync with Supabase
+      if (this.isOnline) {
+        try {
+          await this.syncCartToSupabase();
+        } catch (error) {
+          console.log('Supabase sync failed (item saved locally):', error);
+        }
       }
 
       return { success: true, data: { message: 'Item added to cart' } };
@@ -144,27 +252,26 @@ class CartService {
     }
   }
 
-  // Update item quantity - local storage with backend sync
+  // Update item quantity - local storage with Supabase sync
   async updateQuantity(itemId: string, newQuantity: number): Promise<ApiResponse<{ message: string }>> {
     try {
       // Update local storage immediately
       const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
       const items: CartItem[] = localCart ? JSON.parse(localCart) : [];
-      
-      const updatedItems = items.map(item => 
+
+      const updatedItems = items.map(item =>
         item.id === itemId ? { ...item, quantity: newQuantity } : item
       );
-      
+
       await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(updatedItems));
 
-      // Try to sync with backend using fresh token
-      const token = await this.getFreshToken();
-      if (token) {
-        apiClient.put(`/api/cart/${itemId}`, { quantity: newQuantity }, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
-          console.log('Backend sync failed (updated locally):', err);
-        });
+      // Try to sync with Supabase
+      if (this.isOnline) {
+        try {
+          await this.syncCartToSupabase();
+        } catch (error) {
+          console.log('Supabase sync failed (updated locally):', error);
+        }
       }
 
       return { success: true, data: { message: 'Quantity updated' } };
@@ -174,24 +281,23 @@ class CartService {
     }
   }
 
-  // Remove item from cart - local storage with backend sync
+  // Remove item from cart - local storage with Supabase sync
   async removeFromCart(itemId: string): Promise<ApiResponse<{ message: string }>> {
     try {
       // Update local storage immediately
       const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
       const items: CartItem[] = localCart ? JSON.parse(localCart) : [];
-      
+
       const filteredItems = items.filter(item => item.id !== itemId);
       await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(filteredItems));
 
-      // Try to sync with backend using fresh token
-      const token = await this.getFreshToken();
-      if (token) {
-        apiClient.delete(`/api/cart/${itemId}`, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
-          console.log('Backend sync failed (removed locally):', err);
-        });
+      // Try to sync with Supabase
+      if (this.isOnline) {
+        try {
+          await this.syncCartToSupabase();
+        } catch (error) {
+          console.log('Supabase sync failed (removed locally):', error);
+        }
       }
 
       return { success: true, data: { message: 'Item removed from cart' } };
@@ -201,24 +307,23 @@ class CartService {
     }
   }
 
-  // Clear entire cart - local storage with backend sync
+  // Clear entire cart - local storage with Supabase sync
   async clearCart(): Promise<ApiResponse<{ message: string }>> {
     try {
       // Clear local storage immediately
       await AsyncStorage.multiRemove([
-        this.CART_STORAGE_KEY, 
+        this.CART_STORAGE_KEY,
         this.COMMODITIES_CART_KEY,
         'checkoutItems'
       ]);
 
-      // Try to sync with backend using fresh token
-      const token = await this.getFreshToken();
-      if (token) {
-        apiClient.delete('/api/cart', { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
-          console.log('Backend sync failed (cleared locally):', err);
-        });
+      // Try to sync with Supabase
+      if (this.isOnline) {
+        try {
+          await this.syncCartToSupabase();
+        } catch (error) {
+          console.log('Supabase sync failed (cleared locally):', error);
+        }
       }
 
       return { success: true, data: { message: 'Cart cleared' } };

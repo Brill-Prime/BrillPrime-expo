@@ -6,6 +6,7 @@ import { API_ENDPOINTS } from './apiEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
 import type { Auth } from 'firebase/auth';
+import { supabaseService } from './supabaseService';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -124,24 +125,37 @@ class AuthService {
 
       // Don't store auth data yet - wait for OTP verification
 
-      // Sync with backend asynchronously (non-blocking)
-      apiClient.post<AuthResponse>(
-        API_ENDPOINTS.AUTH.REGISTER,
-        {
+      // Sync with backend and Supabase asynchronously (non-blocking)
+      Promise.all([
+        // Sync with backend API
+        apiClient.post<AuthResponse>(
+          API_ENDPOINTS.AUTH.REGISTER,
+          {
+            firebaseUid: firebaseUser.uid,
+            role: data.role,
+            phoneNumber: data.phoneNumber,
+            email: data.email,
+            firstName: data.firstName,
+            lastName: data.lastName,
+          },
+          {
+            Authorization: `Bearer ${firebaseToken}`,
+          }
+        ),
+        // Sync with Supabase
+        supabaseService?.syncFirebaseUser({
           firebaseUid: firebaseUser.uid,
-          role: data.role,
-          phoneNumber: data.phoneNumber,
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
-        },
-        {
-          Authorization: `Bearer ${firebaseToken}`,
-        }
-      ).then(response => {
-        console.log('Backend sync completed:', response);
+          phone: data.phoneNumber,
+          role: data.role as 'consumer' | 'merchant' | 'driver'
+        })
+      ]).then(([backendResponse, supabaseResponse]) => {
+        console.log('Backend sync completed:', backendResponse);
+        console.log('Supabase sync completed:', supabaseResponse);
       }).catch(err => {
-        console.log('Backend sync error (non-critical):', err);
+        console.log('Sync error (non-critical):', err);
       });
 
       return {

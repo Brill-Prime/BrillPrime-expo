@@ -27,7 +27,8 @@
       "lodash",
       "leaflet",
       "google.maps",
-      "mapbox-gl"
+      "mapbox-gl",
+      "jest"
     ],
     "paths": {
       "@/*": [
