@@ -241,6 +241,24 @@ class AuthService {
       // Initialize role status for the user
       await roleManagementService.initializeRoleStatus(userRole);
 
+      // Check if biometric is available but not enabled
+      const isBiometricEnabled = await AsyncStorage.getItem('biometricEnabled');
+      if (isBiometricEnabled !== 'true') {
+        const isAvailable = await SecurityService.isBiometricAvailable();
+        if (isAvailable) {
+          // Suggest enabling biometric for future logins (non-blocking)
+          setTimeout(async () => {
+            try {
+              await SecurityService.secureBiometricLogin();
+              await AsyncStorage.setItem('biometricEnabled', 'true');
+              console.log('✅ Biometric authentication enabled for future sign-ins');
+            } catch (err) {
+              console.log('User declined biometric setup');
+            }
+          }, 1000);
+        }
+      }
+
       // Fetch user data from backend asynchronously (non-blocking)
       apiClient.get<{ user: any }>(
         API_ENDPOINTS.AUTH.LOGIN,

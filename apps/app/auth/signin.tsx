@@ -22,6 +22,41 @@ import LockIcon from '../../components/LockIcon';
 // Import authService here to ensure it's available for checkRedirectAuth
 import { authService } from '../../services/authService';
 
+// Mocking useAuth for standalone execution, replace with actual import
+const useAuth = () => {
+  // Mock signIn function
+  const signIn = async (email, password) => {
+    console.log(`Attempting sign in with email: ${email}, password: ${password}`);
+    // Simulate a successful login for demonstration
+    if (email === "test@example.com" && password === "password123") {
+      return {
+        success: true,
+        data: {
+          token: "mock-token",
+          user: {
+            email: email,
+            role: "consumer" // Default role for mock
+          }
+        }
+      };
+    } else if (email === "user@test.com" && password === "userpass") {
+      return {
+        success: true,
+        data: {
+          token: "mock-token-user",
+          user: {
+            email: email,
+            role: "merchant" // Default role for mock
+          }
+        }
+      };
+    }
+    return { success: false, error: "Invalid credentials" };
+  };
+  return { signIn };
+};
+
+
 export default function SignIn() {
   const router = useRouter();
   const { showError, showConfirmDialog, showInfo } = useAlert();
@@ -30,6 +65,9 @@ export default function SignIn() {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [lastUserEmail, setLastUserEmail] = useState<string | null>(null);
+  const { signIn } = useAuth();
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -49,8 +87,29 @@ export default function SignIn() {
 
   useEffect(() => {
     checkAuthStatus();
-    checkRedirectAuth();
+    checkBiometricAvailability();
   }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const isBiometricEnabled = await AsyncStorage.getItem('biometricEnabled');
+      const storedEmail = await AsyncStorage.getItem('userEmail');
+
+      if (isBiometricEnabled === 'true' && storedEmail) {
+        // Dynamically import SecurityService to avoid runtime errors if not available
+        const { SecurityService } = await import('../../services/securityService');
+        const isAvailable = await SecurityService.isBiometricAvailable();
+
+        if (isAvailable) {
+          setBiometricAvailable(true);
+          setLastUserEmail(storedEmail);
+          setFormData((prev) => ({ ...prev, email: storedEmail })); // Pre-fill email
+        }
+      }
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+    }
+  };
 
   const checkRedirectAuth = async () => {
     try {
@@ -82,24 +141,66 @@ export default function SignIn() {
     }
   };
 
+  const handleBiometricSignIn = async () => {
+    if (!lastUserEmail) return;
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setLoading(true);
+    setError("");
+
+    try {
+      const { SecurityService } = await import('../../services/securityService');
+      const authenticated = await SecurityService.secureBiometricLogin();
+
+      if (authenticated) {
+        // Get stored token from SecureStore
+        const token = await SecurityService.getAuthToken();
+
+        if (token) {
+          // Validate token and get user data
+          const { authService } = await import('../../services/authService');
+          const storedUser = await authService.getStoredUser();
+
+          if (storedUser && storedUser.role) {
+            // Store relevant user data
+            await AsyncStorage.multiSet([
+              ["userToken", token],
+              ["userEmail", storedUser.email],
+              ["userRole", storedUser.role],
+              ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
+            ]);
+
+            // Navigate to role-specific home screen
+            if (storedUser.role === "consumer") {
+              router.replace("/(consumer)/(tabs)/home");
+            } else if (storedUser.role === "merchant") {
+              router.replace("/(merchant)/(tabs)/home");
+            } else if (storedUser.role === "driver") {
+              router.replace("/(driver)/(tabs)/home");
+            }
+            return;
+          }
+        }
+
+        setError("Session expired. Please sign in with your password.");
+      } else {
+        setError("Biometric authentication failed");
+      }
+    } catch (err: any) {
+      console.error('Biometric sign-in error:', err);
+      setError("Biometric authentication failed. Please use password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignIn = async () => {
-    setError(''); // Clear previous errors
-    setLoading(true); // Set loading state
-
     if (!formData.email.trim() || !formData.password.trim()) {
       showError("Error", "Please fill in all fields");
-      setLoading(false); // Reset loading state
       return;
     }
 
     if (!formData.email.includes("@")) {
       showError("Error", "Please enter a valid email address");
-      setLoading(false); // Reset loading state
       return;
     }
 
@@ -111,9 +212,11 @@ export default function SignIn() {
         "Please select your role first.",
         () => router.replace("/auth/role-selection")
       );
-      setLoading(false); // Reset loading state
       return;
     }
+
+    setLoading(true);
+    setError(''); // Clear previous errors
 
     try {
       const response = await authService.signIn({
@@ -293,11 +396,12 @@ export default function SignIn() {
               <TextInput
                 style={styles.input}
                 value={formData.email}
-                onChangeText={(value) => handleInputChange("email", value)}
+                onChangeText={(value) => setFormData((prev) => ({ ...prev, email: value }))}
                 placeholder="Email or phone number"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={!loading} // Disable input while loading
               />
             </View>
           </View>
@@ -309,14 +413,16 @@ export default function SignIn() {
               <TextInput
                 style={styles.input}
                 value={formData.password}
-                onChangeText={(value) => handleInputChange("password", value)}
+                onChangeText={(value) => setFormData((prev) => ({ ...prev, password: value }))}
                 placeholder="Password"
                 placeholderTextColor="#9CA3AF"
                 secureTextEntry={!showPassword}
+                editable={!loading} // Disable input while loading
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.rightIcon}
+                disabled={loading}
               >
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -328,21 +434,40 @@ export default function SignIn() {
           </View>
 
           {/* Error Message Display */}
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {/* Biometric Sign In Button */}
+          {biometricAvailable && lastUserEmail && (
+            <TouchableOpacity
+              style={[styles.biometricButton, loading && styles.disabledButton]}
+              onPress={handleBiometricSignIn}
+              disabled={loading}
+            >
+              <Ionicons name="finger-print" size={24} color="#fff" />
+              <Text style={styles.biometricButtonText}>
+                Sign in as {lastUserEmail}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Forgot Password */}
           <TouchableOpacity
             style={styles.forgotPassword}
             onPress={() => router.push("/auth/forgot-password")}
+            disabled={loading}
           >
             <Text style={styles.forgotPasswordText}>Forgot password? Reset</Text>
           </TouchableOpacity>
 
           {/* Sign In Button */}
-          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn} disabled={loading}>
-            <Text style={styles.signInText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
+          <TouchableOpacity
+            style={[styles.signInButton, loading && styles.disabledButton]}
+            onPress={handleSignIn}
+            disabled={loading}
+          >
+            <Text style={styles.signInButtonText}>
+              {loading ? "Signing in..." : biometricAvailable ? "Sign In with Password" : "Sign In"}
+            </Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -380,7 +505,7 @@ export default function SignIn() {
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/auth/signup")}>
+            <TouchableOpacity onPress={() => router.push("/auth/signup")} disabled={loading}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -467,14 +592,12 @@ const getResponsiveStyles = (screenData: any) => {
     },
     signInButton: {
       backgroundColor: PRIMARY_COLOR,
-      borderRadius: 25,
-      paddingVertical: Math.max(14, height * 0.02),
+      padding: 16,
+      borderRadius: 12,
       alignItems: "center",
-      marginBottom: Math.max(24, height * 0.04),
-      minHeight: 50,
-      justifyContent: "center",
+      marginTop: 8,
     },
-    signInText: {
+    signInButtonText: {
       color: "#FFFFFF",
       fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
       fontWeight: "500",
@@ -532,6 +655,24 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
       textAlign: 'center',
       marginBottom: Math.max(16, height * 0.025),
+    },
+    biometricButton: {
+      backgroundColor: "#4682B4", // A distinct color for biometric button
+      padding: 16,
+      borderRadius: 12,
+      alignItems: "center",
+      marginTop: 8,
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 8,
+    },
+    biometricButtonText: {
+      color: "#fff",
+      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+      fontWeight: "600",
+    },
+    disabledButton: {
+      opacity: 0.6,
     },
   });
 };
