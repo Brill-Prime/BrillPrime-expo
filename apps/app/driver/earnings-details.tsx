@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,24 +41,19 @@ function DriverEarningsDetails() {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('week');
   const [earnings, setEarnings] = useState<EarningsData>({
-    today: 1240,
-    week: 8750,
-    month: 32400,
-    total: 156800,
-    trips: [
-      { date: '2025-10-25', amount: 850, orderId: 'ORD-1234', distance: '12.5 km', duration: '45 min' },
-      { date: '2025-10-25', amount: 650, orderId: 'ORD-1235', distance: '8.2 km', duration: '30 min' },
-      { date: '2025-10-24', amount: 1200, orderId: 'ORD-1236', distance: '18.7 km', duration: '60 min' },
-      { date: '2025-10-24', amount: 420, orderId: 'ORD-1237', distance: '5.3 km', duration: '20 min' },
-      { date: '2025-10-23', amount: 980, orderId: 'ORD-1238', distance: '15.1 km', duration: '50 min' },
-    ],
+    today: 0,
+    week: 0,
+    month: 0,
+    total: 0,
+    trips: [],
     statistics: {
-      totalTrips: 234,
-      avgEarningsPerTrip: 670,
-      totalDistance: '2,845 km',
-      totalHours: 186,
+      totalTrips: 0,
+      avgEarningsPerTrip: 0,
+      totalDistance: '0 km',
+      totalHours: 0,
     },
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -68,14 +64,24 @@ function DriverEarningsDetails() {
   }, []);
 
   const loadEarningsData = async () => {
+    setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Fetch from API
-      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/earnings`, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
+      // Import driverService dynamically
+      const { driverService } = await import('../../services/driverService');
+      
+      // Fetch real earnings data from Supabase
+      const response = await driverService.getEarningsData();
+      
+      if (response.success && response.data) {
+        setEarnings(response.data);
+      } else {
+        console.error('Error fetching earnings:', response.error);
+        // Keep empty state on error
+      }
     } catch (error) {
       console.error('Error loading earnings:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,9 +114,15 @@ function DriverEarningsDetails() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Period Selector */}
-        <View style={styles.periodSelector}>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading earnings data...</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Period Selector */}
+          <View style={styles.periodSelector}>
           <TouchableOpacity
             style={[styles.periodButton, selectedPeriod === 'today' && styles.periodButtonActive]}
             onPress={() => setSelectedPeriod('today')}
@@ -220,6 +232,7 @@ function DriverEarningsDetails() {
           <Text style={styles.withdrawButtonText}>Withdraw Earnings</Text>
         </TouchableOpacity>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -255,6 +268,18 @@ const getResponsiveStyles = (screenData: any) => {
     content: {
       flex: 1,
       padding: theme.spacing.base,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: theme.spacing.xl,
+    },
+    loadingText: {
+      marginTop: theme.spacing.base,
+      fontSize: theme.typography.fontSize.md,
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.fontFamily.regular,
     },
     periodSelector: {
       flexDirection: 'row',

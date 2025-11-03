@@ -33,11 +33,11 @@ interface VehicleInfo {
 }
 
 interface VehicleDocument {
-  type: 'registration' | 'insurance' | 'roadworthiness';
+  type: 'registration' | 'insurance' | 'road_worthiness' | 'drivers_license';
   imageUrl: string;
   uploadDate: string;
   expiryDate?: string;
-  status: 'valid' | 'expiring' | 'expired';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
 }
 
 function VehicleManagement() {
@@ -48,40 +48,18 @@ function VehicleManagement() {
   const [editMode, setEditMode] = useState(false);
 
   const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo>({
-    make: 'Toyota',
-    model: 'Camry',
-    year: '2020',
-    color: 'Silver',
-    plateNumber: 'ABC-123-XY',
-    registrationNumber: 'REG-2020-12345',
-    insuranceNumber: 'INS-2024-67890',
-    insuranceExpiry: '2025-12-31',
-    registrationExpiry: '2025-06-30',
+    make: '',
+    model: '',
+    year: '',
+    color: '',
+    plateNumber: '',
+    registrationNumber: '',
+    insuranceNumber: '',
+    insuranceExpiry: '',
+    registrationExpiry: '',
   });
 
-  const [documents, setDocuments] = useState<VehicleDocument[]>([
-    {
-      type: 'registration',
-      imageUrl: 'https://example.com/registration.jpg',
-      uploadDate: '2024-01-15',
-      expiryDate: '2025-06-30',
-      status: 'valid',
-    },
-    {
-      type: 'insurance',
-      imageUrl: 'https://example.com/insurance.jpg',
-      uploadDate: '2024-01-15',
-      expiryDate: '2025-12-31',
-      status: 'valid',
-    },
-    {
-      type: 'roadworthiness',
-      imageUrl: 'https://example.com/roadworthy.jpg',
-      uploadDate: '2024-01-15',
-      expiryDate: '2025-03-15',
-      status: 'expiring',
-    },
-  ]);
+  const [documents, setDocuments] = useState<VehicleDocument[]>([]);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -94,14 +72,43 @@ function VehicleManagement() {
   }, []);
 
   const loadVehicleData = async () => {
+    setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to fetch vehicle data
-      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/vehicle`, {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
+      // Import driverService dynamically
+      const { driverService } = await import('../../services/driverService');
+      
+      // Fetch real vehicle data from Supabase
+      const response = await driverService.getVehicleInfo();
+      
+      if (response.success && response.data) {
+        setVehicleInfo({
+          make: response.data.make,
+          model: response.data.model,
+          year: response.data.year.toString(),
+          color: response.data.color,
+          plateNumber: response.data.license_plate,
+          registrationNumber: response.data.registration_number,
+          insuranceNumber: response.data.insurance_policy_number,
+          insuranceExpiry: response.data.insurance_expiry,
+          registrationExpiry: response.data.road_worthiness_expiry,
+        });
+      }
+
+      // Fetch vehicle documents
+      const docsResponse = await driverService.getVehicleDocuments();
+      if (docsResponse.success && docsResponse.data) {
+        setDocuments(docsResponse.data.map(doc => ({
+          type: doc.document_type as VehicleDocument['type'],
+          imageUrl: doc.document_url,
+          uploadDate: doc.uploaded_at,
+          expiryDate: doc.expiry_date || undefined,
+          status: doc.status as VehicleDocument['status'],
+        })));
+      }
     } catch (error) {
       console.error('Error loading vehicle data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -146,19 +153,28 @@ function VehicleManagement() {
 
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to update vehicle info
-      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/vehicle`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(vehicleInfo),
-      // });
+      // Import driverService dynamically
+      const { driverService } = await import('../../services/driverService');
+      
+      // Update vehicle info via Supabase
+      const response = await driverService.updateVehicleInfo({
+        make: vehicleInfo.make,
+        model: vehicleInfo.model,
+        year: parseInt(vehicleInfo.year),
+        color: vehicleInfo.color,
+        license_plate: vehicleInfo.plateNumber,
+        registration_number: vehicleInfo.registrationNumber,
+        insurance_policy_number: vehicleInfo.insuranceNumber,
+        insurance_expiry: vehicleInfo.insuranceExpiry,
+        road_worthiness_expiry: vehicleInfo.registrationExpiry,
+      });
 
-      showSuccess('Success', 'Vehicle information updated successfully');
-      setEditMode(false);
+      if (response.success) {
+        showSuccess('Success', 'Vehicle information updated successfully');
+        setEditMode(false);
+      } else {
+        throw new Error(response.error || 'Update failed');
+      }
     } catch (error) {
       console.error('Error updating vehicle info:', error);
       showError('Error', 'Failed to update vehicle information');
@@ -167,7 +183,7 @@ function VehicleManagement() {
     }
   };
 
-  const handleUploadDocument = async (documentType: VehicleDocument['type']) => {
+  const handleUploadDocument = async (documentType: 'registration' | 'insurance' | 'road_worthiness' | 'drivers_license') => {
     showConfirmDialog(
       'Upload Document',
       'Choose how you want to upload the document',
@@ -202,17 +218,45 @@ function VehicleManagement() {
     );
   };
 
-  const uploadDocumentImage = async (documentType: VehicleDocument['type'], imageUri: string) => {
+  const uploadDocumentImage = async (documentType: 'registration' | 'insurance' | 'road_worthiness' | 'drivers_license', imageUri: string) => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to upload document
-      // const formData = new FormData();
-      // formData.append('type', documentType);
-      // formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'document.jpg' });
       
-      showSuccess('Success', 'Document uploaded successfully');
-      loadVehicleData();
+      // Import driverService dynamically
+      const { driverService } = await import('../../services/driverService');
+      
+      // Note: In production, you would first upload the image to Supabase Storage
+      // and get the public URL, then pass it to uploadVehicleDocument
+      // For now, using the local URI as placeholder - real implementation needs file upload
+      if (!imageUri) {
+        throw new Error('No image selected');
+      }
+      
+      // TODO: Implement actual file upload to Supabase Storage
+      // const uploadedUrl = await uploadToSupabaseStorage(imageUri);
+      showError('Error', 'File upload to Supabase Storage not yet implemented. Please configure Supabase Storage first.');
+      return;
+      
+      // Get expiry date based on document type
+      const expiryDate = documentType === 'registration' 
+        ? vehicleInfo.registrationExpiry 
+        : documentType === 'insurance' 
+        ? vehicleInfo.insuranceExpiry 
+        : undefined;
+      
+      // This code will be used once file upload is implemented:
+      // const response = await driverService.uploadVehicleDocument(
+      //   documentType,
+      //   uploadedUrl,
+      //   expiryDate
+      // );
+      // 
+      // if (response.success) {
+      //   showSuccess('Success', 'Document uploaded successfully');
+      //   loadVehicleData();
+      // } else {
+      //   throw new Error(response.error || 'Upload failed');
+      // }
     } catch (error) {
       console.error('Error uploading document:', error);
       showError('Error', 'Failed to upload document');
@@ -227,8 +271,10 @@ function VehicleManagement() {
         return 'Vehicle Registration';
       case 'insurance':
         return 'Insurance Certificate';
-      case 'roadworthiness':
-        return 'Roadworthiness Certificate';
+      case 'road_worthiness':
+        return 'Road Worthiness Certificate';
+      case 'drivers_license':
+        return 'Driver License';
       default:
         return type;
     }
@@ -236,12 +282,14 @@ function VehicleManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'valid':
+      case 'approved':
         return '#10b981';
-      case 'expiring':
+      case 'pending':
         return '#f59e0b';
-      case 'expired':
+      case 'rejected':
         return '#ef4444';
+      case 'expired':
+        return '#9ca3af';
       default:
         return '#6b7280';
     }

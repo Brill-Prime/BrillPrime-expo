@@ -1,5 +1,6 @@
 
 import { supabase } from '../config/supabase';
+import { auth } from '../config/firebase';
 import { authService } from './authService';
 
 interface EscrowTransaction {
@@ -88,6 +89,13 @@ class EscrowService {
       return { data: null, error: 'Supabase not available' };
     }
 
+    // Get current user
+    const user = auth.currentUser;
+    if (!user) {
+      return { data: null, error: 'User not authenticated' };
+    }
+
+    // Update escrow status to disputed
     const { data: result, error } = await supabase
       .from('escrow_transactions')
       .update({
@@ -102,8 +110,21 @@ class EscrowService {
       return { data: null, error };
     }
 
-    // TODO: Store dispute details in a separate table if needed
-    console.log('Dispute reason:', data.reason, 'Description:', data.description);
+    // Store dispute details in disputes table
+    const { error: disputeError } = await supabase
+      .from('escrow_disputes')
+      .insert({
+        escrow_transaction_id: escrowId,
+        raised_by_user_id: user.uid,
+        reason: data.reason,
+        description: data.description,
+        status: 'open'
+      });
+
+    if (disputeError) {
+      console.error('Error storing dispute details:', disputeError);
+      // Still return success for the main escrow update
+    }
 
     return { data: { message: 'Escrow disputed successfully' }, error: null };
   }

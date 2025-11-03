@@ -56,21 +56,6 @@ export const NAIRA_SYMBOL = '₦';
  */
 export const CURRENCY_CODE = 'NGN';
 
-/**
- * Parse a Naira currency string to a number
- * @param currencyString - The currency string to parse (e.g., "₦1,234.56")
- * @returns The numeric value
- */
-export function parseNaira(currencyString: string): number {
-  if (typeof currencyString !== 'string') {
-    return 0;
-  }
-
-  const cleaned = currencyString.replace(/[₦,\s]/g, '');
-  const parsed = parseFloat(cleaned);
-
-  return isNaN(parsed) ? 0 : parsed;
-}
 
 /**
  * Format a number with thousands separators

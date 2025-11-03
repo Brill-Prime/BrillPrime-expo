@@ -44,44 +44,35 @@ export default function PerformanceAnalytics() {
   const fetchPerformanceMetrics = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await driverService.getPerformanceMetrics(selectedPeriod);
+      // Import driverService dynamically
+      const { driverService } = await import('../../services/driverService');
       
-      // Mock data for demonstration
-      const mockData: PerformanceMetrics = {
-        totalDeliveries: 156,
-        acceptanceRate: 94.5,
-        completionRate: 98.2,
-        averageRating: 4.8,
-        totalEarnings: 45600,
-        onTimeDeliveryRate: 96.3,
-        peakHours: [
-          { hour: '12:00 PM', deliveries: 23, earnings: 6900 },
-          { hour: '6:00 PM', deliveries: 31, earnings: 9300 },
-          { hour: '8:00 PM', deliveries: 19, earnings: 5700 },
-        ],
-        weeklyStats: [
-          { day: 'Mon', deliveries: 22, earnings: 6600 },
-          { day: 'Tue', deliveries: 25, earnings: 7500 },
-          { day: 'Wed', deliveries: 28, earnings: 8400 },
-          { day: 'Thu', deliveries: 24, earnings: 7200 },
-          { day: 'Fri', deliveries: 30, earnings: 9000 },
-          { day: 'Sat', deliveries: 18, earnings: 5400 },
-          { day: 'Sun', deliveries: 9, earnings: 2700 },
-        ],
-        customerFeedback: {
-          positive: 142,
-          neutral: 10,
-          negative: 4,
-        },
-        routeEfficiency: 89.5,
-        responseTime: 3.2,
-      };
-
-      setMetrics(mockData);
+      // Fetch real performance metrics from Supabase
+      const response = await driverService.getPerformanceMetrics(selectedPeriod);
+      
+      if (response.success && response.data) {
+        setMetrics(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch metrics');
+      }
     } catch (error) {
       console.error('Error fetching performance metrics:', error);
       showError('Error', 'Failed to load performance analytics');
+      
+      // Set empty metrics on error
+      setMetrics({
+        totalDeliveries: 0,
+        acceptanceRate: 0,
+        completionRate: 0,
+        averageRating: 0,
+        totalEarnings: 0,
+        onTimeDeliveryRate: 0,
+        peakHours: [],
+        weeklyStats: [],
+        customerFeedback: { positive: 0, neutral: 0, negative: 0 },
+        routeEfficiency: 0,
+        responseTime: 0,
+      });
     } finally {
       setLoading(false);
     }
