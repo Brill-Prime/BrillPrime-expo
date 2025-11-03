@@ -71,7 +71,7 @@ export default function ConsumerDashboard() {
         status: 'pending',
         limit: 10,
       });
-      
+
       if (response.success && response.data) {
         const orders = response.data.orders.map(order => ({
           id: order.id,
@@ -321,6 +321,56 @@ export default function ConsumerDashboard() {
           </TouchableOpacity>
         </View>
 
+        {/* New UI Components for Real-time Features */}
+        <View style={styles.activityHeader}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <TouchableOpacity onPress={() => router.push('/notifications')}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.activityList}>
+          {/* Placeholder for real-time activities. In a real app, this would be fetched from Supabase. */}
+          {activeOrders.slice(0, 3).map((order, index) => (
+            <View key={index} style={styles.activityItem}>
+              <View style={styles.activityIconContainer}>
+                <Ionicons name="receipt-outline" size={20} color="#4682B4" />
+              </View>
+              <View style={styles.activityContent}>
+                <Text style={styles.activityTitle}>Order #{order.id.substring(0, 6)}</Text>
+                <Text style={styles.activityDescription}>Status: {order.status}</Text>
+              </View>
+              <Text style={styles.activityTime}>{order.date}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.activeOrdersList}>
+          <Text style={styles.sectionTitle}>Active Orders</Text>
+          {activeOrders.length > 0 ? (
+            activeOrders.map((order, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.activeOrderCard}
+                onPress={() => router.push(`/orders/order-tracking?orderId=${order.id}`)}
+              >
+                <View style={styles.orderCardHeader}>
+                  <Text style={styles.orderCardTitle}>Order #{order.id.substring(0, 6)}</Text>
+                  <View style={[styles.orderStatusBadge, { backgroundColor: '#28a745' }]}>
+                    <Text style={styles.orderStatusText}>{order.status.toUpperCase()}</Text>
+                  </View>
+                </View>
+                <Text style={styles.orderMerchant}>Merchant Name</Text> {/* Placeholder */}
+                <View style={styles.orderCardFooter}>
+                  <Text style={styles.orderTotal}>Total: {formatNaira(Math.random() * 1000)}</Text> {/* Placeholder */}
+                  <Text style={styles.orderDate}>{order.date}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={{ textAlign: 'center', color: '#666', marginVertical: 16 }}>No active orders.</Text>
+          )}
+        </View>
+
       </ScrollView>
     </LinearGradient>
   );
@@ -563,9 +613,126 @@ const getResponsiveStyles = (screenData: any) => {
     },
     menuItemText: {
       flex: 1,
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 15,
-      color: "#2c3e50",
+      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
+      fontWeight: '500',
+      color: '#333',
       marginLeft: Math.max(12, width * 0.03),
+    },
+    reviewAlert: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#FFF9E6',
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 16,
+      gap: 8,
+    },
+    reviewAlertText: {
+      flex: 1,
+      fontSize: 14,
+      color: '#333',
+    },
+    activityHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    viewAllText: {
+      fontSize: 14,
+      color: '#4682B4',
+      fontWeight: '500',
+    },
+    activityList: {
+      backgroundColor: 'white',
+      borderRadius: 12,
+      padding: 12,
+    },
+    activityItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+    },
+    activityIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: '#E3F2FD',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    activityContent: {
+      flex: 1,
+    },
+    activityTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: 2,
+    },
+    activityDescription: {
+      fontSize: 12,
+      color: '#666',
+    },
+    activityTime: {
+      fontSize: 11,
+      color: '#999',
+    },
+    activeOrdersList: {
+      gap: 12,
+    },
+    activeOrderCard: {
+      backgroundColor: 'white',
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: '#E0E0E0',
+    },
+    orderCardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    orderCardTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#333',
+    },
+    orderStatusBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    orderStatusText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: 'white',
+    },
+    orderMerchant: {
+      fontSize: 14,
+      color: '#666',
+      marginBottom: 8,
+    },
+    orderCardFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: '#f0f0f0',
+    },
+    orderTotal: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#4682B4',
+    },
+    orderDate: {
+      fontSize: 12,
+      color: '#999',
     },
   });
 };
