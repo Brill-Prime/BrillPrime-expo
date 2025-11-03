@@ -900,7 +900,7 @@ function ConsumerHomeContent() {
           // Navigate to login screen
           await router.replace("/");
         } catch (error) {
-          console.error("Error signing out:", error);rror);
+          console.error("Error signing out:", error);
 
           if (error instanceof Error) {
             if (error.message.includes('AsyncStorage')) {
