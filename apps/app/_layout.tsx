@@ -10,6 +10,7 @@ import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator, Platform } from "react-native";
 import * as SplashScreen from 'expo-splash-screen';
 import { ErrorBoundary } from 'react-error-boundary';
+import AppErrorBoundary from '../components/ErrorBoundary';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from '../contexts/AppContext';
@@ -91,8 +92,9 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AuthProvider>
+    <AppErrorBoundary>
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <AuthProvider>
         <AppProvider>
           <NotificationProvider>
             <MerchantProvider>
@@ -112,7 +114,8 @@ export default function RootLayout() {
           </NotificationProvider>
         </AppProvider>
       </AuthProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </AppErrorBoundary>
   );
 }
 
