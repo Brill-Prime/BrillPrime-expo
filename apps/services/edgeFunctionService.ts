@@ -39,7 +39,7 @@ export class EdgeFunctionService {
       throw new Error('Supabase not initialized');
     }
 
-    const { data, error } = await supabase.functions.invoke('send-notifications', {
+    const { data: result, error } = await supabase.functions.invoke('send-notifications', {
       body: {
         userId,
         title,
@@ -53,7 +53,7 @@ export class EdgeFunctionService {
       throw error;
     }
 
-    return data;
+    return result;
   }
 
   /**
@@ -68,6 +68,52 @@ export class EdgeFunctionService {
       body: {
         userId,
         documents,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Handle order status webhook
+   */
+  static async orderWebhook(orderId: string, status: string, metadata?: any) {
+    if (!supabase) {
+      throw new Error('Supabase not initialized');
+    }
+
+    const { data, error } = await supabase.functions.invoke('order-webhook', {
+      body: {
+        orderId,
+        status,
+        metadata,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Get analytics aggregation
+   */
+  static async getAnalytics(userId: string, userRole: string, dateRange?: { start: string; end: string }) {
+    if (!supabase) {
+      throw new Error('Supabase not initialized');
+    }
+
+    const { data, error } = await supabase.functions.invoke('analytics-aggregation', {
+      body: {
+        userId,
+        userRole,
+        dateRange,
       },
     });
 
