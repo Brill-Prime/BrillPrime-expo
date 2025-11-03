@@ -92,9 +92,11 @@ export default function OTPVerification() {
         Alert.alert("Success", "Account verified successfully!");
 
         if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          router.replace("/(consumer)/(tabs)/home");
+        } else if (response.data.user.role === "merchant") {
+          router.replace("/(merchant)/(tabs)/home");
+        } else if (response.data.user.role === "driver") {
+          router.replace("/(driver)/(tabs)/home");
         }
       } else {
         Alert.alert("Verification Failed", response.error || "Invalid or expired code. Please try again.");

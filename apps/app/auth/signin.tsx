@@ -68,9 +68,11 @@ export default function SignIn() {
 
         // Route based on user role
         if (result.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else {
-          router.replace(`/dashboard/${result.data.user.role}`);
+          router.replace("/(consumer)/(tabs)/home");
+        } else if (result.data.user.role === "merchant") {
+          router.replace("/(merchant)/(tabs)/home");
+        } else if (result.data.user.role === "driver") {
+          router.replace("/(driver)/(tabs)/home");
         }
       } else if (result?.error) {
         showError('Authentication Error', result.error);
@@ -142,9 +144,11 @@ export default function SignIn() {
 
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          router.replace("/(consumer)/(tabs)/home");
+        } else if (response.data.user.role === "merchant") {
+          router.replace("/(merchant)/(tabs)/home");
+        } else if (response.data.user.role === "driver") {
+          router.replace("/(driver)/(tabs)/home");
         }
       } else {
         // Handle specific error cases
@@ -222,7 +226,7 @@ export default function SignIn() {
       // Common logic for successful social login
       if (response?.success && response.data) {
         console.log('Social login successful, storing data and routing...');
-        
+
         // Validate that the user's role matches selected role
         if (response.data.user.role !== selectedRole) {
           showConfirmDialog(
@@ -244,9 +248,11 @@ export default function SignIn() {
 
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          router.replace("/(consumer)/(tabs)/home");
+        } else if (response.data.user.role === "merchant") {
+          router.replace("/(merchant)/(tabs)/home");
+        } else if (response.data.user.role === "driver") {
+          router.replace("/(driver)/(tabs)/home");
         }
       } else if (response?.error && response.error !== 'Sign-in cancelled') {
         console.error(`${provider} sign-in failed:`, response.error);

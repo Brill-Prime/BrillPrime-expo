@@ -653,7 +653,7 @@ class AuthService {
     try {
       console.log('🔍 Starting OTP verification...');
       const pendingUserData = await AsyncStorage.getItem('pendingUserData');
-      
+
       if (!pendingUserData) {
         console.error('❌ No pending user data found');
         return { success: false, error: 'Session expired. Please sign up again.' };
@@ -675,9 +675,9 @@ class AuthService {
 
       if (!verifyResponse.success || !verifyResponse.data) {
         console.error('❌ OTP verification failed:', verifyResponse.error);
-        return { 
-          success: false, 
-          error: verifyResponse.error || 'Invalid or expired OTP code' 
+        return {
+          success: false,
+          error: verifyResponse.error || 'Invalid or expired OTP code'
         };
       }
 
@@ -718,9 +718,9 @@ class AuthService {
       return { success: true, data: authData };
     } catch (error: any) {
       console.error('❌ OTP verification error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to verify OTP. Please try again.' 
+      return {
+        success: false,
+        error: error.message || 'Failed to verify OTP. Please try again.'
       };
     }
   }
@@ -729,11 +729,11 @@ class AuthService {
   async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
     try {
       const pendingUserData = await AsyncStorage.getItem('pendingUserData');
-      
+
       if (!pendingUserData) {
-        return { 
-          success: false, 
-          error: 'Session expired. Please sign up again.' 
+        return {
+          success: false,
+          error: 'Session expired. Please sign up again.'
         };
       }
 
@@ -750,29 +750,29 @@ class AuthService {
       );
 
       if (response.success) {
-        return { 
-          success: true, 
-          data: { message: 'New verification code sent successfully' } 
+        return {
+          success: true,
+          data: { message: 'New verification code sent successfully' }
         };
       }
-      
-      return { 
-        success: false, 
-        error: response.error || 'Failed to send verification code' 
+
+      return {
+        success: false,
+        error: response.error || 'Failed to send verification code'
       };
     } catch (error: any) {
       console.error('Resend OTP error:', error);
-      
+
       if (error.message?.includes('too many')) {
-        return { 
-          success: false, 
-          error: 'Too many requests. Please wait a few minutes before trying again.' 
+        return {
+          success: false,
+          error: 'Too many requests. Please wait a few minutes before trying again.'
         };
       }
-      
-      return { 
-        success: false, 
-        error: error.message || 'Failed to resend verification code' 
+
+      return {
+        success: false,
+        error: error.message || 'Failed to resend verification code'
       };
     }
   }

@@ -222,9 +222,11 @@ export default function SignUp() {
 
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          router.replace("/(consumer)/(tabs)/home");
+        } else if (response.data.user.role === "merchant") {
+          router.replace("/(merchant)/(tabs)/home");
+        } else if (response.data.user.role === "driver") {
+          router.replace("/(driver)/(tabs)/home");
         }
       } else {
         const errorMessage = response?.error || `${provider} sign-up failed`;

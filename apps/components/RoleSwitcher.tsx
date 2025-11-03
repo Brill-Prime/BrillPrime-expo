@@ -214,7 +214,7 @@ export default function RoleSwitcher({ visible, onClose, onRoleSwitch }: RoleSwi
                         style={styles.registerButton}
                         onPress={() => {
                           onClose();
-                          router.push('/role-registration/merchant' as any);
+                          router.push('/role-registration/merchant');
                         }}
                       >
                         <Text style={styles.registerButtonText}>
@@ -227,7 +227,7 @@ export default function RoleSwitcher({ visible, onClose, onRoleSwitch }: RoleSwi
                         style={styles.registerButton}
                         onPress={() => {
                           onClose();
-                          router.push('/role-registration/driver' as any);
+                          router.push('/role-registration/driver');
                         }}
                       >
                         <Text style={styles.registerButtonText}>
