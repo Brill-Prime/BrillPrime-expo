@@ -1,7 +1,9 @@
 // Merchant service for BrillPrime app
 
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase';
 
 export interface Merchant {
         id: string;
@@ -24,18 +26,19 @@ export interface Commodity {
 // Fetch all merchants
 export const getMerchants = async (): Promise<Merchant[]> => {
         try {
-                const token = await authService.getToken();
-                if (!token) {
-                        console.warn('No authentication token available for fetching merchants');
+                const user = auth.currentUser;
+                if (!user) {
+                        console.warn('No authenticated user for fetching merchants');
                         return [];
                 }
-                
-                const response = await apiClient.get<Merchant[]>('/api/merchants', {
-                        Authorization: `Bearer ${token}`
-                });
-                return response.success && response.data ? response.data : [];
+                const { data, error } = await supabaseService.from('merchants').select('*');
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return [];
+                }
+                return data || [];
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching merchants:', error);
                 return [];
         }
 };
@@ -43,18 +46,19 @@ export const getMerchants = async (): Promise<Merchant[]> => {
 // Fetch a merchant by ID
 export const getMerchantById = async (id: string): Promise<Merchant | null> => {
         try {
-                const token = await authService.getToken();
-                if (!token) {
-                        console.warn('No authentication token available for fetching merchant details');
+                const user = auth.currentUser;
+                if (!user) {
+                        console.warn('No authenticated user for fetching merchant details');
                         return null;
                 }
-                
-                const response = await apiClient.get<Merchant>(`/api/merchants/${id}`, {
-                        Authorization: `Bearer ${token}`
-                });
-                return response.success && response.data ? response.data : null;
+                const { data, error } = await supabaseService.from('merchants').select('*').eq('id', id).single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return null;
+                }
+                return data || null;
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching merchant by ID:', error);
                 return null;
         }
 };
@@ -62,15 +66,17 @@ export const getMerchantById = async (id: string): Promise<Merchant | null> => {
 // Create a new merchant
 export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Merchant | null> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return null;
+                const user = auth.currentUser;
+                if (!user) return null;
 
-                const response = await apiClient.post<Merchant>('/api/merchants', merchant, {
-                        Authorization: `Bearer ${token}`
-                });
-                return response.success && response.data ? response.data : null;
+                const { data, error } = await supabaseService.from('merchants').insert([{ ...merchant, ownerId: user.uid }]).select('*').single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return null;
+                }
+                return data || null;
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error creating merchant:', error);
                 return null;
         }
 };
@@ -78,15 +84,17 @@ export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Me
 // Update an existing merchant
 export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant, 'id'>>): Promise<Merchant | null> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return null;
+                const user = auth.currentUser;
+                if (!user) return null;
 
-                const response = await apiClient.put<Merchant>(`/api/merchants/${id}`, merchant, {
-                        Authorization: `Bearer ${token}`
-                });
-                return response.success && response.data ? response.data : null;
+                const { data, error } = await supabaseService.from('merchants').update(merchant).eq('id', id).select('*').single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return null;
+                }
+                return data || null;
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error updating merchant:', error);
                 return null;
         }
 };
@@ -94,15 +102,17 @@ export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant
 // Delete a merchant
 export const deleteMerchant = async (id: string): Promise<boolean> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return false;
+                const user = auth.currentUser;
+                if (!user) return false;
 
-                const response = await apiClient.delete(`/api/merchants/${id}`, {
-                        Authorization: `Bearer ${token}`
-                });
-                return response.success;
+                const { error } = await supabaseService.from('merchants').delete().eq('id', id);
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return false;
+                }
+                return true;
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error deleting merchant:', error);
                 return false;
         }
 };
@@ -110,13 +120,14 @@ export const deleteMerchant = async (id: string): Promise<boolean> => {
 // Fetch all commodities
 export const getCommodities = async (): Promise<{ success: boolean; data?: Commodity[] }> => {
         try {
-                const token = await authService.getToken();
-                const response = await apiClient.get<Commodity[]>('/api/commodities', token ? {
-                        Authorization: `Bearer ${token}`
-                } : {});
-                return { success: response.success, data: response.data };
+                const { data, error } = await supabaseService.from('commodities').select('*');
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false, data: [] };
+                }
+                return { success: true, data: data || [] };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching commodities:', error);
                 return { success: false, data: [] };
         }
 };
@@ -124,13 +135,14 @@ export const getCommodities = async (): Promise<{ success: boolean; data?: Commo
 // Fetch commodities for a specific merchant
 export const getMerchantCommodities = async (merchantId: string): Promise<{ success: boolean; data?: Commodity[] }> => {
         try {
-                const token = await authService.getToken();
-                const response = await apiClient.get<Commodity[]>(`/api/merchants/${merchantId}/commodities`, token ? {
-                        Authorization: `Bearer ${token}`
-                } : {});
-                return { success: response.success, data: response.data };
+                const { data, error } = await supabaseService.from('commodities').select('*').eq('merchantId', merchantId);
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false, data: [] };
+                }
+                return { success: true, data: data || [] };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching merchant commodities:', error);
                 return { success: false, data: [] };
         }
 };
@@ -138,15 +150,14 @@ export const getMerchantCommodities = async (merchantId: string): Promise<{ succ
 // Add commodity for merchant
 export const addCommodity = async (merchantId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.post<Commodity>(`/api/merchants/${merchantId}/commodities`, commodity, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                const { data, error } = await supabaseService.from('commodities').insert([{ ...commodity, merchantId }]).select('*').single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false };
+                }
+                return { success: true, data: data };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error adding commodity:', error);
                 return { success: false };
         }
 };
@@ -154,15 +165,14 @@ export const addCommodity = async (merchantId: string, commodity: any): Promise<
 // Update commodity
 export const updateCommodity = async (merchantId: string, commodityId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.put<Commodity>(`/api/merchants/${merchantId}/commodities/${commodityId}`, commodity, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                const { data, error } = await supabaseService.from('commodities').update(commodity).eq('id', commodityId).select('*').single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false };
+                }
+                return { success: true, data: data };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error updating commodity:', error);
                 return { success: false };
         }
 };
@@ -170,15 +180,14 @@ export const updateCommodity = async (merchantId: string, commodityId: string, c
 // Delete commodity
 export const deleteCommodity = async (merchantId: string, commodityId: string): Promise<boolean> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return false;
-
-                const response = await apiClient.delete(`/api/merchants/${merchantId}/commodities/${commodityId}`, {
-                        Authorization: `Bearer ${token}`
-                });
-                return response.success;
+                const { error } = await supabaseService.from('commodities').delete().eq('id', commodityId);
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return false;
+                }
+                return true;
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error deleting commodity:', error);
                 return false;
         }
 }
@@ -186,16 +195,14 @@ export const deleteCommodity = async (merchantId: string, commodityId: string): 
 // Get merchant analytics
 export const getAnalytics = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                // Supabase doesn't directly support analytics queries like a traditional backend API.
+                // This would typically involve custom SQL functions or aggregating data from various tables.
+                // For now, returning a placeholder or an empty result.
+                console.warn('Analytics endpoint not directly supported by Supabase. Custom SQL function needed.');
+                return { success: false, data: {} };
         } catch (error) {
-                console.error('API Error:', error);
-                return { success: false };
+                console.error('Error getting analytics:', error);
+                return { success: false, data: {} };
         }
 };
 
@@ -206,28 +213,23 @@ export const getMerchantOrders = async (merchantId: string, filters?: {
         offset?: number;
 }): Promise<{ success: boolean; data?: any[] }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                let endpoint = `/api/merchants/${merchantId}/orders`;
-                const queryParams = new URLSearchParams();
+                let query = supabaseService.from('orders').select('*').eq('merchantId', merchantId);
 
                 if (filters) {
-                        if (filters.status) queryParams.append('status', filters.status);
-                        if (filters.limit) queryParams.append('limit', filters.limit.toString());
-                        if (filters.offset) queryParams.append('offset', filters.offset.toString());
+                        if (filters.status) query = query.eq('status', filters.status);
+                        if (filters.limit) query = query.limit(filters.limit);
+                        if (filters.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
                 }
 
-                if (queryParams.toString()) {
-                        endpoint += `?${queryParams.toString()}`;
-                }
+                const { data, error } = await query;
 
-                const response = await apiClient.get<any[]>(endpoint, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false, data: [] };
+                }
+                return { success: true, data: data || [] };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching merchant orders:', error);
                 return { success: false, data: [] };
         }
 };
@@ -242,15 +244,14 @@ export const updateStoreSettings = async (merchantId: string, settings: {
         acceptsOrders?: boolean;
 }): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.put<any>(`/api/merchants/${merchantId}/settings`, settings, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                const { data, error } = await supabaseService.from('merchant_settings').update(settings).eq('merchantId', merchantId).select('*').single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false };
+                }
+                return { success: true, data: data };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error updating store settings:', error);
                 return { success: false };
         }
 };
@@ -258,15 +259,14 @@ export const updateStoreSettings = async (merchantId: string, settings: {
 // Get merchant store settings
 export const getStoreSettings = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/settings`, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                const { data, error } = await supabaseService.from('merchant_settings').select('*').eq('merchantId', merchantId).single();
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false };
+                }
+                return { success: true, data: data };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error getting store settings:', error);
                 return { success: false };
         }
 };
@@ -274,20 +274,18 @@ export const getStoreSettings = async (merchantId: string): Promise<{ success: b
 // Get merchant reviews (using ratings endpoint from backend)
 export const getMerchantReviews = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                // Backend has /api/ratings/user/:userId endpoint
-                // We need to adapt this to get merchant reviews
-                const response = await apiClient.get<any>(`/api/ratings/user/${merchantId}`, token ? {
-                        Authorization: `Bearer ${token}`
-                } : {});
+                const { data, error } = await supabaseService.from('ratings').select(`*, user:users(fullName)`).eq('merchantId', merchantId);
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false, data: { averageRating: 0, reviews: [] } };
+                }
 
-                if (response.success && response.data) {
-                        // Transform the ratings data to reviews format
+                if (data && data.length > 0) {
                         return {
                                 success: true,
                                 data: {
-                                        averageRating: calculateAverageRating(response.data),
-                                        reviews: response.data.map((rating: any) => ({
+                                        averageRating: calculateAverageRating(data),
+                                        reviews: data.map((rating: any) => ({
                                                 id: rating.id,
                                                 userName: rating.user?.fullName || 'Anonymous',
                                                 rating: rating.rating,
@@ -297,9 +295,9 @@ export const getMerchantReviews = async (merchantId: string): Promise<{ success:
                                 }
                         };
                 }
-                return { success: false, data: { averageRating: 0, reviews: [] } };
+                return { success: true, data: { averageRating: 0, reviews: [] } };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching merchant reviews:', error);
                 return { success: false, data: { averageRating: 0, reviews: [] } };
         }
 };
@@ -314,23 +312,23 @@ const calculateAverageRating = (ratings: any[]): number => {
 // Submit merchant review
 export const submitMerchantReview = async (merchantId: string, review: { rating: number; comment: string }): Promise<{ success: boolean; error?: string; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false, error: 'Authentication required' };
+                const user = auth.currentUser;
+                if (!user) return { success: false, error: 'Authentication required' };
 
-                const response = await apiClient.post<any>('/api/ratings', {
+                const { data, error } = await supabaseService.from('ratings').insert([{
                         merchantId,
+                        userId: user.uid,
                         rating: review.rating,
                         comment: review.comment
-                }, {
-                        Authorization: `Bearer ${token}`
-                });
+                }]).select('*').single();
 
-                if (response.success && response.data) {
-                        return { success: true, data: response.data };
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false, error: 'Failed to submit review' };
                 }
-                return { success: false, error: 'Failed to submit review' };
+                return { success: true, data: data };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error submitting merchant review:', error);
                 return { success: false, error: 'Failed to submit review' };
         }
 };
@@ -338,15 +336,16 @@ export const submitMerchantReview = async (merchantId: string, review: { rating:
 // Get merchant customers
 export const getCustomers = async (merchantId: string): Promise<{ success: boolean; data?: any[] }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.get<any[]>(`/api/merchants/${merchantId}/customers`, {
-                        Authorization: `Bearer ${token}`
-                });
-                return { success: response.success, data: response.data };
+                // This assumes a 'customers' table linked to merchants, or a way to query users associated with a merchant.
+                // Adjust the Supabase query based on your actual database schema.
+                const { data, error } = await supabaseService.from('users').select('*').eq('merchantId', merchantId);
+                if (error) {
+                        console.error('Supabase Error:', error);
+                        return { success: false, data: [] };
+                }
+                return { success: true, data: data || [] };
         } catch (error) {
-                console.error('API Error:', error);
+                console.error('Error fetching customers:', error);
                 return { success: false, data: [] };
         }
 };
@@ -354,30 +353,50 @@ export const getCustomers = async (merchantId: string): Promise<{ success: boole
 // Fetch nearby merchants
 export const getNearbyMerchants = async (latitude: number, longitude: number, radius?: number): Promise<Merchant[]> => {
         try {
-                const token = await authService.getToken();
-                if (!token) {
-                        console.warn('No authentication token available for fetching nearby merchants');
+                // Supabase does not have built-in geospatial functions like PostGIS out-of-the-box.
+                // You would typically need to enable PostGIS extension in your Supabase project
+                // and use SQL queries with geospatial operators.
+                // For simplicity here, we'll simulate this by fetching all merchants and filtering client-side,
+                // or you'd construct a more complex SQL query for Supabase.
+                console.warn('Geospatial queries require Supabase PostGIS extension or custom SQL. Fetching all merchants as a fallback.');
+
+                const { data, error } = await supabaseService.from('merchants').select('*');
+                if (error) {
+                        console.error('Supabase Error:', error);
                         return [];
                 }
-                
-                const queryParams = new URLSearchParams({
-                        lat: latitude.toString(),
-                        lng: longitude.toString(),
-                        ...(radius && { radius: radius.toString() })
-                });
-                
-                const response = await apiClient.get<Merchant[]>(
-                        `/api/merchants/nearby?${queryParams.toString()}`,
-                        {
-                                Authorization: `Bearer ${token}`
-                        }
-                );
-                return response.success && response.data ? response.data : [];
+
+                // Basic client-side filtering if PostGIS is not enabled
+                if (data && radius) {
+                        const merchantsWithDistance = data.map(merchant => {
+                                // Simple distance calculation (Haversine formula recommended for accuracy)
+                                const R = 6371; // Radius of the earth in km
+                                const dLat = deg2rad(latitude - (merchant.latitude as number)); // Assuming merchant has lat/lng
+                                const dLon = deg2rad(longitude - (merchant.longitude as number));
+                                const a =
+                                        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                        Math.cos(deg2rad(latitude)) * Math.cos(deg2rad(merchant.latitude as number)) *
+                                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                                const distance = R * c; // Distance in km
+
+                                return { ...merchant, distance };
+                        });
+                        return merchantsWithDistance.filter(merchant => (merchant.distance as number) <= radius);
+                }
+
+                return data || [];
+
         } catch (error) {
-                console.error('API Error fetching nearby merchants:', error);
+                console.error('Error fetching nearby merchants:', error);
                 return [];
         }
 };
+
+// Helper for deg2rad
+const deg2rad = (deg: number): number => {
+        return deg * (Math.PI / 180);
+}
 
 export const merchantService = {
         getMerchants,

@@ -1,8 +1,10 @@
 // KYC Service
 // Handles Know Your Customer verification and document management
 
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase';
 
 export interface KYCDocument {
   id: string;
@@ -117,14 +119,19 @@ export interface DriverInfoRequest {
 class KYCService {
   // Get user's KYC profile
   async getKYCProfile(): Promise<ApiResponse<KYCProfile>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     try {
-      return await apiClient.get<KYCProfile>('/api/kyc/profile', {
-        Authorization: `Bearer ${token}`,
-      });
+      const { data, error } = await supabaseService.getProfile();
+      if (error) {
+        console.error('Supabase error fetching KYC profile:', error);
+        return { success: false, error: error.message || 'Failed to fetch KYC profile' };
+      }
+      // Supabase returns null if no profile exists, so we need to handle that
+      if (!data) {
+        return { success: true, data: { id: '', userId: '', verificationLevel: 'unverified', overallStatus: 'incomplete', documents: [], personalInfo: { firstName: '', lastName: '' }, lastUpdated: '' } };
+      }
+      // Assuming the Supabase profile table contains the KYC data directly or can be joined
+      // This part might need adjustment based on your actual Supabase schema
+      return { success: true, data: data as KYCProfile };
     } catch (error) {
       console.error('Get KYC profile error:', error);
       return { success: false, error: 'Failed to fetch KYC profile' };
@@ -168,18 +175,17 @@ class KYCService {
 
   // Update personal information
   async updatePersonalInfo(data: PersonalInfoRequest): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     const validation = this.validatePersonalInfo(data);
     if (!validation.isValid) {
       return { success: false, error: validation.error };
     }
     try {
-      return await apiClient.put<{ message: string }>('/api/kyc/personal-info', data, {
-        Authorization: `Bearer ${token}`,
-      });
+      const { error } = await supabaseService.updateProfile(data);
+      if (error) {
+        console.error('Supabase error updating personal info:', error);
+        return { success: false, error: error.message || 'Failed to update personal information' };
+      }
+      return { success: true, data: { message: 'Personal information updated successfully' } };
     } catch (error) {
       console.error('Update personal info error:', error);
       return { success: false, error: 'Failed to update personal information' };
@@ -221,18 +227,17 @@ class KYCService {
 
   // Update business information (for merchants)
   async updateBusinessInfo(data: BusinessInfoRequest): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     const validation = this.validateBusinessInfo(data);
     if (!validation.isValid) {
       return { success: false, error: validation.error };
     }
     try {
-      return await apiClient.put<{ message: string }>('/api/kyc/business-info', data, {
-        Authorization: `Bearer ${token}`,
-      });
+      const { error } = await supabaseService.updateBusinessInfo(data);
+      if (error) {
+        console.error('Supabase error updating business info:', error);
+        return { success: false, error: error.message || 'Failed to update business information' };
+      }
+      return { success: true, data: { message: 'Business information updated successfully' } };
     } catch (error) {
       console.error('Update business info error:', error);
       return { success: false, error: 'Failed to update business information' };
@@ -287,18 +292,17 @@ class KYCService {
 
   // Update driver information (for drivers)
   async updateDriverInfo(data: DriverInfoRequest): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     const validation = this.validateDriverInfo(data);
     if (!validation.isValid) {
       return { success: false, error: validation.error };
     }
     try {
-      return await apiClient.put<{ message: string }>('/api/kyc/driver-info', data, {
-        Authorization: `Bearer ${token}`,
-      });
+      const { error } = await supabaseService.updateDriverInfo(data);
+      if (error) {
+        console.error('Supabase error updating driver info:', error);
+        return { success: false, error: error.message || 'Failed to update driver information' };
+      }
+      return { success: true, data: { message: 'Driver information updated successfully' } };
     } catch (error) {
       console.error('Update driver info error:', error);
       return { success: false, error: 'Failed to update driver information' };
@@ -307,15 +311,15 @@ class KYCService {
 
   // Upload KYC document
   async uploadDocument(data: DocumentUploadRequest): Promise<ApiResponse<KYCDocument>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     try {
-      return await apiClient.post<KYCDocument>('/api/kyc/documents', data, {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
-      });
+      // Assuming Supabase handles file uploads and returns a URL or identifier
+      // The exact implementation will depend on your Supabase storage setup
+      const { data: uploadedDoc, error } = await supabaseService.uploadDocument(data);
+      if (error) {
+        console.error('Supabase error uploading document:', error);
+        return { success: false, error: error.message || 'Failed to upload document' };
+      }
+      return { success: true, data: uploadedDoc as KYCDocument };
     } catch (error) {
       console.error('Upload document error:', error);
       return { success: false, error: 'Failed to upload document' };
@@ -368,14 +372,13 @@ class KYCService {
 
   // Submit KYC for verification
   async submitForVerification(): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     try {
-      return await apiClient.post<{ message: string }>('/api/kyc/submit', {}, {
-        Authorization: `Bearer ${token}`,
-      });
+      const { error } = await supabaseService.submitKYC();
+      if (error) {
+        console.error('Supabase error submitting KYC:', error);
+        return { success: false, error: error.message || 'Failed to submit KYC for verification' };
+      }
+      return { success: true, data: { message: 'KYC submitted for verification' } };
     } catch (error) {
       console.error('Submit KYC error:', error);
       return { success: false, error: 'Failed to submit KYC for verification' };
@@ -389,14 +392,19 @@ class KYCService {
     completionPercentage: number;
     nextSteps: string[];
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
     try {
-      return await apiClient.get('/api/kyc/status', {
-        Authorization: `Bearer ${token}`,
-      });
+      const { data, error } = await supabaseService.getVerificationStatus();
+      if (error) {
+        console.error('Supabase error checking verification status:', error);
+        return { success: false, error: error.message || 'Failed to check verification status' };
+      }
+      // Assuming Supabase returns data in the expected format
+      return { success: true, data: data as {
+        status: KYCProfile['overallStatus'];
+        level: KYCProfile['verificationLevel'];
+        completionPercentage: number;
+        nextSteps: string[];
+      } };
     } catch (error) {
       console.error('Check verification status error:', error);
       return { success: false, error: 'Failed to check verification status' };

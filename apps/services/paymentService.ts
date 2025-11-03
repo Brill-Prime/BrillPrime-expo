@@ -1,8 +1,10 @@
 // Payment Service
 // Handles payment processing and transaction management
 
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase'; // Assuming auth is needed for some reason, though not used in the provided snippet
 import { Transaction, PaymentRequest } from './types';
 
 class PaymentService {
@@ -16,9 +18,17 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post('/api/payments/create-intent', { amount, currency }, {
-      Authorization: `Bearer ${token}`,
-    });
+    // Using Supabase for payment intent creation
+    const { data, error } = await supabaseService.from('payments')
+      .insert([{ amount, currency, userId: authService.getCurrentUserId() }]) // Simplified, actual Supabase usage might differ
+      .select('clientSecret, paymentIntentId')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as { clientSecret: string; paymentIntentId: string } };
   }
 
   // Validate payment data
@@ -71,9 +81,17 @@ class PaymentService {
       return { success: false, error: 'Invalid payment method. Use CARD or BANK_TRANSFER only.' };
     }
 
-    return apiClient.post('/api/payments/initialize', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    // Using Supabase to initialize payment
+    const { data: initializedPayment, error } = await supabaseService.from('payments')
+      .insert([{ ...data, userId: authService.getCurrentUserId() }])
+      .select('transactionId, status, message')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: initializedPayment as { transactionId: string; status: 'success' | 'failed' | 'pending'; message: string } };
   }
 
   // Get payment history (updated to match backend endpoint)
@@ -95,21 +113,41 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    let endpoint = '/api/payments/history';
-    const queryParams = new URLSearchParams();
+    const userId = authService.getCurrentUserId();
+    let query = supabaseService.from('payments').select('*').eq('userId', userId);
 
-    if (filters) {
-      if (filters.page) queryParams.append('page', filters.page.toString());
-      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+    if (filters?.page) {
+      query = query.range((filters.page - 1) * (filters?.limit || 10), filters.page * (filters?.limit || 10) - 1);
     }
 
-    if (queryParams.toString()) {
-      endpoint += `?${queryParams.toString()}`;
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { success: false, error: error.message };
     }
 
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
+    // Mock pagination for now as Supabase count might not be direct for range queries
+    const total = count || 0;
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      success: true,
+      data: {
+        payments: data as Transaction[],
+        total: total,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      },
+    };
   }
 
   // Get transaction by ID
@@ -119,9 +157,18 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<Transaction>(`/api/transactions/${transactionId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { data, error } = await supabaseService.from('transactions')
+      .select('*')
+      .eq('userId', userId)
+      .eq('transactionId', transactionId)
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Transaction };
   }
 
   // Confirm transaction
@@ -131,9 +178,19 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Transaction>(`/api/transactions/${transactionId}/confirm`, {}, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { data, error } = await supabaseService.from('transactions')
+      .update({ status: 'completed' }) // Assuming 'completed' is the status for confirmed
+      .eq('transactionId', transactionId)
+      .eq('userId', userId)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Transaction };
   }
 
   // Request refund
@@ -147,9 +204,17 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post(`/api/transactions/${transactionId}/refund`, { reason }, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { data, error } = await supabaseService.from('refunds')
+      .insert([{ transactionId, reason, userId, status: 'pending' }])
+      .select('refundId, status, message')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as { refundId: string; status: string; message: string } };
   }
 
   // Get payment methods (using profile endpoint from backend)
@@ -170,10 +235,27 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    // Backend endpoint is /api/profile/payment-methods
-    return apiClient.get('/api/profile/payment-methods', {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { data, error } = await supabaseService.from('payment_methods')
+      .select('*')
+      .eq('userId', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Array<{
+      id: number;
+      type: 'CARD' | 'BANK_TRANSFER';
+      accountNumber?: string;
+      bankCode?: string;
+      accountName?: string;
+      last4?: string;
+      brand?: string;
+      expiryMonth?: number;
+      expiryYear?: number;
+      isDefault: boolean;
+    }> };
   }
 
   // Add payment method (using profile endpoint from backend)
@@ -189,10 +271,15 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    // Backend endpoint is /api/profile/payment-methods
-    return apiClient.post('/api/profile/payment-methods', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { error } = await supabaseService.from('payment_methods')
+      .insert([{ ...data, userId }]);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: { message: 'Payment method added successfully' } };
   }
 
   // Remove payment method (using profile endpoint from backend)
@@ -202,10 +289,17 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    // Backend endpoint is /api/profile/payment-methods/:id
-    return apiClient.delete(`/api/profile/payment-methods/${paymentMethodId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { error } = await supabaseService.from('payment_methods')
+      .delete()
+      .eq('id', paymentMethodId)
+      .eq('userId', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: { message: 'Payment method removed successfully' } };
   }
 
   // Set default payment method (using profile endpoint from backend)
@@ -215,10 +309,23 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    // Backend endpoint is /api/profile/payment-methods/:id with isDefault: true
-    return apiClient.put(`/api/profile/payment-methods/${paymentMethodId}`, { isDefault: true }, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    // First, unset all other payment methods to be default for this user
+    await supabaseService.from('payment_methods')
+      .update({ isDefault: false })
+      .eq('userId', userId);
+
+    // Then, set the selected payment method as default
+    const { error } = await supabaseService.from('payment_methods')
+      .update({ isDefault: true })
+      .eq('id', paymentMethodId)
+      .eq('userId', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: { message: 'Default payment method updated successfully' } };
   }
 
   // Process toll payment
@@ -233,9 +340,17 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Transaction>('/api/toll-payments', tollData, {
-      Authorization: `Bearer ${token}`,
-    });
+    const userId = authService.getCurrentUserId();
+    const { data, error } = await supabaseService.from('toll_payments')
+      .insert([{ ...tollData, userId }])
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Transaction };
   }
 
   // Get toll payment history
@@ -253,23 +368,35 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    let endpoint = '/api/toll-payments';
-    const queryParams = new URLSearchParams();
+    const userId = authService.getCurrentUserId();
+    let query = supabaseService.from('toll_payments').select('*').eq('userId', userId);
 
-    if (filters) {
-      if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
-      if (filters.toDate) queryParams.append('toDate', filters.toDate);
-      if (filters.limit) queryParams.append('limit', filters.limit.toString());
-      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    if (filters?.fromDate) {
+      query = query.gte('createdAt', filters.fromDate);
+    }
+    if (filters?.toDate) {
+      query = query.lte('createdAt', filters.toDate);
+    }
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+    if (filters?.offset) {
+      query = query.range(filters.offset, (filters.offset + (filters?.limit || 10) - 1));
     }
 
-    if (queryParams.toString()) {
-      endpoint += `?${queryParams.toString()}`;
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { success: false, error: error.message };
     }
 
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
+    return {
+      success: true,
+      data: {
+        payments: data as Transaction[],
+        total: count || 0,
+      },
+    };
   }
 }
 

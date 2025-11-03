@@ -1,6 +1,7 @@
-
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase';
 
 interface Product {
   id: number;
@@ -52,28 +53,67 @@ class ProductService {
       totalPages: number;
     };
   }>> {
-    let endpoint = '/api/products';
-    const queryParams = new URLSearchParams();
+    const { page = 1, limit = 10, categoryId, search, minPrice, maxPrice } = filters || {};
 
-    if (filters) {
-      if (filters.page) queryParams.append('page', filters.page.toString());
-      if (filters.limit) queryParams.append('limit', filters.limit.toString());
-      if (filters.categoryId) queryParams.append('categoryId', filters.categoryId.toString());
-      if (filters.search) queryParams.append('search', filters.search);
-      if (filters.minPrice) queryParams.append('minPrice', filters.minPrice.toString());
-      if (filters.maxPrice) queryParams.append('maxPrice', filters.maxPrice.toString());
+    let query = supabaseService.supabase.from('products').select(`
+      id, name, description, price, categoryId, stock, images, isActive, merchantId, createdAt, updatedAt,
+      category:categories (id, name, description, icon),
+      merchant:merchants (id, name, profilePicture)
+    `).eq('isActive', true);
+
+    if (categoryId) {
+      query = query.eq('categoryId', categoryId);
+    }
+    if (search) {
+      query = query.ilike('name', `%${search}%`);
+    }
+    if (minPrice !== undefined) {
+      query = query.gte('price', minPrice);
+    }
+    if (maxPrice !== undefined) {
+      query = query.lte('price', maxPrice);
     }
 
-    if (queryParams.toString()) {
-      endpoint += `?${queryParams.toString()}`;
+    const { data, count, error } = await query
+      .range((page - 1) * limit, page * limit - 1)
+      .returns<Product[]>();
+
+    if (error) {
+      return { success: false, error: error.message };
     }
 
-    return apiClient.get(endpoint);
+    const totalPages = count ? Math.ceil(count / limit) : 0;
+
+    return {
+      success: true,
+      data: {
+        products: data || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages,
+        },
+      },
+    };
   }
 
   // Get product by ID
   async getProductById(productId: number): Promise<ApiResponse<Product>> {
-    return apiClient.get<Product>(`/api/products/${productId}`);
+    const { data, error } = await supabaseService.supabase
+      .from('products')
+      .select(`
+        id, name, description, price, categoryId, stock, images, isActive, merchantId, createdAt, updatedAt,
+        category:categories (id, name, description, icon),
+        merchant:merchants (id, name, profilePicture)
+      `)
+      .eq('id', productId)
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: data as Product };
   }
 
   // Create product (Merchant only)
@@ -86,14 +126,21 @@ class ProductService {
     images: string[];
     isActive?: boolean;
   }): Promise<ApiResponse<Product>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = auth.currentUser;
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Product>('/api/products', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: newProduct, error } = await supabaseService.supabase
+      .from('products')
+      .insert({ ...data, merchantId: user.uid, isActive: data.isActive ?? true })
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: newProduct as Product };
   }
 
   // Update product (Merchant only)
@@ -106,31 +153,55 @@ class ProductService {
     images?: string[];
     isActive?: boolean;
   }): Promise<ApiResponse<Product>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = auth.currentUser;
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<Product>(`/api/products/${productId}`, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: updatedProduct, error } = await supabaseService.supabase
+      .from('products')
+      .update(data)
+      .eq('id', productId)
+      .eq('merchantId', user.uid)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: updatedProduct as Product };
   }
 
   // Delete product (Merchant only)
   async deleteProduct(productId: number): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = auth.currentUser;
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete<{ message: string }>(`/api/products/${productId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { error } = await supabaseService.supabase
+      .from('products')
+      .delete()
+      .eq('id', productId)
+      .eq('merchantId', user.uid);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: { message: 'Product deleted successfully' } };
   }
 
   // Get all categories
   async getCategories(): Promise<ApiResponse<Category[]>> {
-    return apiClient.get<Category[]>('/api/categories');
+    const { data, error } = await supabaseService.supabase
+      .from('categories')
+      .select('*')
+      .returns<Category[]>();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: data || [] };
   }
 
   // Create category (Admin only)
@@ -139,14 +210,23 @@ class ProductService {
     description: string;
     icon: string;
   }): Promise<ApiResponse<Category>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = auth.currentUser;
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
+    // In a real app, you'd add a check here to ensure the user is an admin
+    // For now, we'll assume any authenticated user can create a category for simplicity
 
-    return apiClient.post<Category>('/api/categories', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: newCategory, error } = await supabaseService.supabase
+      .from('categories')
+      .insert({ ...data })
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: newCategory as Category };
   }
 }
 

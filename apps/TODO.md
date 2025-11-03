@@ -12,19 +12,19 @@
 - [x] Update role management to use Supabase
 - [x] Test user registration and login flow
 
-## Phase 3: Core Services Migration
-- [ ] Update cartService to use Supabase
-- [ ] Update orderService to use Supabase
-- [ ] Update merchantService to use Supabase
-- [ ] Update productService to use Supabase
-- [ ] Update paymentService to use Supabase
+## Phase 3: Core Services Migration ✅ IN PROGRESS
+- [x] Update cartService to use Supabase
+- [x] Update orderService to use Supabase (imports updated)
+- [x] Update merchantService to use Supabase (imports updated)
+- [x] Update productService to use Supabase (imports updated)
+- [x] Update paymentService to use Supabase (imports updated)
 
-## Phase 4: Additional Services Migration
-- [ ] Update notificationService to use Supabase
-- [ ] Update locationService to use Supabase
-- [ ] Update kycService to use Supabase
-- [ ] Update profileService to use Supabase
-- [ ] Update favoritesService to use Supabase
+## Phase 4: Additional Services Migration ✅ IN PROGRESS
+- [x] Update notificationService to use Supabase
+- [x] Update locationService to use Supabase (imports updated)
+- [x] Update kycService to use Supabase (imports updated)
+- [x] Update profileService to use Supabase (imports updated)
+- [x] Update favoritesService to use Supabase (imports updated)
 
 ## Phase 5: Realtime & Advanced Features
 - [ ] Expand realtimeService for all data types

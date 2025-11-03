@@ -3,8 +3,9 @@
 
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
+import { ApiResponse } from './api';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase';
 import { Merchant } from './types';
 
 interface LocationData {
@@ -67,7 +68,7 @@ class LocationService {
               // Provide detailed error messages based on error code
               let errorMessage = 'Unknown geolocation error';
               let userAction = '';
-              
+
               switch (error.code) {
                 case 1: // PERMISSION_DENIED
                   errorMessage = 'Location permission denied';
@@ -82,7 +83,7 @@ class LocationService {
                   userAction = 'Please try again. Make sure your GPS is enabled.';
                   break;
               }
-              
+
               const fullMessage = `${errorMessage}. ${userAction}`;
               console.error('Web geolocation error:', {
                 code: error.code,
@@ -138,7 +139,7 @@ class LocationService {
             }
           }
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
@@ -160,7 +161,7 @@ class LocationService {
     }
   }
 
-  // Get nearby merchants from API
+  // Get nearby merchants from API using Supabase
   async getNearbyMerchants(
     latitude: number, 
     longitude: number, 
@@ -168,19 +169,22 @@ class LocationService {
     type?: string
   ): Promise<ApiResponse<Merchant[]>> {
     try {
-      const token = await authService.getToken();
+      const { data, error } = await supabaseService.rpc('get_nearby_merchants', {
+        current_lat: latitude,
+        current_lng: longitude,
+        search_radius: radius,
+        merchant_type: type
+      });
 
-      let endpoint = `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`;
-      if (type) {
-        endpoint += `&type=${type}`;
+      if (error) {
+        console.error('Supabase error getting nearby merchants:', error);
+        return { success: false, error: error.message };
       }
 
-      return apiClient.get<Merchant[]>(endpoint, token ? {
-        Authorization: `Bearer ${token}`
-      } : undefined);
-    } catch (error) {
+      return { success: true, data: data || [] };
+    } catch (error: any) {
       console.error('Error getting nearby merchants:', error);
-      return { success: false, error: 'Failed to get nearby merchants' };
+      return { success: false, error: error.message || 'Failed to get nearby merchants' };
     }
   }
 
@@ -326,21 +330,26 @@ class LocationService {
     this.trackingQueue = [];
 
     try {
-      const token = await authService.getToken();
-      if (token) {
-        // Send batch update or just the latest location
+      const user = auth.currentUser;
+      if (user) {
         const latestLocation = locationsToProcess[locationsToProcess.length - 1];
-        // Disabled backend API call to prevent 401 errors when not authenticated
-        // await apiClient.put('/api/location/live', {
-        //   latitude: latestLocation.latitude,
-        //   longitude: latestLocation.longitude,
-        //   timestamp: latestLocation.timestamp,
-        //   accuracy: 'high'
-        // }, {
-        //   Authorization: `Bearer ${token}`
-        // });
+        // Update live location in Supabase
+        const { error } = await supabaseService.rpc('update_user_location', {
+          user_id: user.uid,
+          latitude: latestLocation.latitude,
+          longitude: latestLocation.longitude,
+          timestamp: latestLocation.timestamp
+        });
+
+        if (error) {
+          console.error('Supabase error updating live location:', error);
+          // Re-queue failed locations for retry (keep only latest)
+          if (locationsToProcess.length > 0) {
+            this.trackingQueue.unshift(locationsToProcess[locationsToProcess.length - 1]);
+          }
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to process location queue:', error);
       // Re-queue failed locations for retry (keep only latest)
       if (locationsToProcess.length > 0) {
@@ -360,21 +369,22 @@ class LocationService {
     };
   }
 
-  // Update live location on server
+  // Update live location on server using Supabase
   private async updateLiveLocation(location: LocationData): Promise<void> {
     try {
-      const token = await authService.getToken();
-      if (token) {
-        // Disabled backend API call to prevent 401 errors when not authenticated
-        // await apiClient.put('/api/location/live', {
-        //   latitude: location.latitude,
-        //   longitude: location.longitude,
-        //   timestamp: location.timestamp
-        // }, {
-        //   Authorization: `Bearer ${token}`
-        // });
+      const user = auth.currentUser;
+      if (user) {
+        const { error } = await supabaseService.rpc('update_user_location', {
+          user_id: user.uid,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timestamp: location.timestamp
+        });
+        if (error) {
+          console.error('Supabase error updating live location:', error);
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update live location:', error);
     }
   }
@@ -383,7 +393,7 @@ class LocationService {
   private liveLocationCache: Map<string, { location: LocationData; timestamp: number }> = new Map();
   private cacheTimeout: number = 10000; // 10 seconds
 
-  // Get live location of a specific user with caching
+  // Get live location of a specific user with caching from Supabase
   async getLiveLocation(userId: string): Promise<ApiResponse<LocationData>> {
     try {
       // Check cache first
@@ -392,25 +402,24 @@ class LocationService {
         return { success: true, data: cached.location };
       }
 
-      const token = await authService.getToken();
-      if (!token) {
-        return { success: false, error: 'Authentication required' };
-      }
-
-      const response = await apiClient.get<LocationData>(`/api/location/live/${userId}`, {
-        Authorization: `Bearer ${token}`
-      });
+      const { data, error } = await supabaseService.rpc('get_user_location', { user_id: userId });
 
       // Cache successful response
-      if (response.success && response.data) {
-        this.liveLocationCache.set(userId, {
-          location: response.data,
-          timestamp: Date.now()
-        });
+      if (error) {
+        console.error('Supabase error getting live location:', error);
+        return { success: false, error: error.message };
       }
 
-      return response;
-    } catch (error) {
+      if (data) {
+        this.liveLocationCache.set(userId, {
+          location: data,
+          timestamp: Date.now()
+        });
+        return { success: true, data: data };
+      } else {
+        return { success: false, error: 'User location not found' };
+      }
+    } catch (error: any) {
       console.error('Error getting live location:', error);
 
       // Return cached data if available during error
@@ -422,7 +431,7 @@ class LocationService {
         };
       }
 
-      return { success: false, error: 'Failed to get live location' };
+      return { success: false, error: error.message || 'Failed to get live location' };
     }
   }
 
@@ -444,23 +453,28 @@ class LocationService {
     throw new Error(response.error || 'Failed to get driver location');
   }
 
-  // Get nearby merchants with live locations
+  // Get nearby merchants with live locations from Supabase
   async getNearbyMerchantsLive(
     latitude: number, 
     longitude: number, 
     radius: number = 10
   ): Promise<ApiResponse<Array<Merchant & { liveLocation?: LocationData }>>> {
     try {
-      const token = await authService.getToken();
+      const { data, error } = await supabaseService.rpc('get_nearby_merchants_with_live_locations', {
+        current_lat: latitude,
+        current_lng: longitude,
+        search_radius: radius
+      });
 
-      let endpoint = `/api/merchants/nearby/live?lat=${latitude}&lng=${longitude}&radius=${radius}`;
+      if (error) {
+        console.error('Supabase error getting nearby merchants with live locations:', error);
+        return { success: false, error: error.message };
+      }
 
-      return apiClient.get<Array<Merchant & { liveLocation?: LocationData }>>(endpoint, token ? {
-        Authorization: `Bearer ${token}`
-      } : undefined);
-    } catch (error) {
+      return { success: true, data: data || [] };
+    } catch (error: any) {
       console.error('Error getting nearby merchants with live locations:', error);
-      return { success: false, error: 'Failed to get nearby merchants' };
+      return { success: false, error: error.message || 'Failed to get nearby merchants' };
     }
   }
 }

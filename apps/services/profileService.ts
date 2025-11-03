@@ -1,5 +1,7 @@
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase';
 
 interface Address {
   id: number;
@@ -79,14 +81,17 @@ const API_ENDPOINTS = {
 class ProfileService {
   // Get current user profile
   async getProfile(): Promise<ApiResponse<UserProfile>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<UserProfile>(API_ENDPOINTS.PROFILE.GET, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.getProfile(user.id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as UserProfile };
   }
 
   // Update profile
@@ -96,14 +101,17 @@ class ProfileService {
     profilePicture?: string;
     bio?: string;
   }): Promise<ApiResponse<UserProfile>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<UserProfile>(API_ENDPOINTS.PROFILE.GET, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: updatedProfile, error } = await supabaseService.updateProfile(user.id, data);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: updatedProfile as UserProfile };
   }
 
   // Change password
@@ -111,127 +119,160 @@ class ProfileService {
     currentPassword: string;
     newPassword: string;
   }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.PROFILE.CHANGE_PASSWORD, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { error } = await supabaseService.changePassword(user.id, data.currentPassword, data.newPassword);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: { message: 'Password changed successfully' } };
   }
 
   // Address Management
   async getAddresses(): Promise<ApiResponse<Address[]>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<Address[]>(API_ENDPOINTS.PROFILE.ADDRESSES.LIST, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.getAddresses(user.id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Address[] };
   }
 
   async addAddress(addressData: Omit<Address, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Address>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Address>(API_ENDPOINTS.PROFILE.ADDRESSES.CREATE, addressData, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.addAddress(user.id, addressData);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Address };
   }
 
   async updateAddress(addressId: number, addressData: Partial<Omit<Address, 'id' | 'createdAt' | 'updatedAt'>>): Promise<ApiResponse<Address>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<Address>(API_ENDPOINTS.PROFILE.ADDRESSES.UPDATE(addressId), addressData, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.updateAddress(addressId, addressData);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Address };
   }
 
   async deleteAddress(addressId: number): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete<{ message: string }>(API_ENDPOINTS.PROFILE.ADDRESSES.DELETE(addressId), {
-      Authorization: `Bearer ${token}`,
-    });
+    const { error } = await supabaseService.deleteAddress(addressId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: { message: 'Address deleted successfully' } };
   }
 
   // Payment Method Management
   async getPaymentMethods(): Promise<ApiResponse<PaymentMethod[]>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<PaymentMethod[]>(API_ENDPOINTS.PROFILE.PAYMENT_METHODS.LIST, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.getPaymentMethods(user.id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as PaymentMethod[] };
   }
 
   async addPaymentMethod(data: Omit<PaymentMethod, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<PaymentMethod>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<PaymentMethod>(API_ENDPOINTS.PROFILE.PAYMENT_METHODS.CREATE, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: newPaymentMethod, error } = await supabaseService.addPaymentMethod(user.id, data);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: newPaymentMethod as PaymentMethod };
   }
 
   async updatePaymentMethod(paymentMethodId: number, data: Partial<Omit<PaymentMethod, 'id' | 'createdAt' | 'updatedAt'>>): Promise<ApiResponse<PaymentMethod>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<PaymentMethod>(API_ENDPOINTS.PROFILE.PAYMENT_METHODS.UPDATE(paymentMethodId), data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: updatedPaymentMethod, error } = await supabaseService.updatePaymentMethod(paymentMethodId, data);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: updatedPaymentMethod as PaymentMethod };
   }
 
   async deletePaymentMethod(paymentMethodId: number): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete<{ message: string }>(API_ENDPOINTS.PROFILE.PAYMENT_METHODS.DELETE(paymentMethodId), {
-      Authorization: `Bearer ${token}`,
-    });
+    const { error } = await supabaseService.deletePaymentMethod(paymentMethodId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: { message: 'Payment method deleted successfully' } };
   }
 
   // Privacy Settings
   async getPrivacySettings(): Promise<ApiResponse<PrivacySettings>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<PrivacySettings>(API_ENDPOINTS.PROFILE.PRIVACY_SETTINGS.GET, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.getPrivacySettings(user.id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as PrivacySettings };
   }
 
   async updatePrivacySettings(data: Partial<PrivacySettings>): Promise<ApiResponse<PrivacySettings>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<PrivacySettings>(API_ENDPOINTS.PROFILE.PRIVACY_SETTINGS.UPDATE, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data: updatedSettings, error } = await supabaseService.updatePrivacySettings(user.id, data);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: updatedSettings as PrivacySettings };
   }
 }
 

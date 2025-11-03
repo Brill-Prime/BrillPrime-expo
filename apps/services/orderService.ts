@@ -1,8 +1,10 @@
 // Order Service
 // Handles order management and tracking API calls
 
-import { apiClient, ApiResponse } from './api';
+import { ApiResponse } from './api';
 import { authService } from './authService';
+import { supabaseService } from './supabaseService';
+import { auth } from '../config/firebase';
 import { Order, CreateOrderRequest } from './types';
 
 class OrderService {
@@ -66,14 +68,25 @@ class OrderService {
     paymentMethodId: number;
     notes?: string;
   }): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Order>('/api/orders', orderData, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.supabase
+      .from('orders')
+      .insert([{
+        ...orderData,
+        user_id: user.id,
+      }])
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Order };
   }
 
   // Get user orders
@@ -85,63 +98,94 @@ class OrderService {
     orders: Order[];
     total: number;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    let endpoint = '/api/orders';
-    const queryParams = new URLSearchParams();
+    let query = supabaseService.supabase
+      .from('orders')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id);
 
     if (filters) {
-      if (filters.status) queryParams.append('status', filters.status);
-      if (filters.limit) queryParams.append('limit', filters.limit.toString());
-      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+      if (filters.status) query = query.eq('status', filters.status);
+      if (filters.limit) query = query.limit(filters.limit);
+      if (filters.offset) query = query.offset(filters.offset);
     }
 
-    if (queryParams.toString()) {
-      endpoint += `?${queryParams.toString()}`;
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { success: false, error: error.message };
     }
 
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
+    return { success: true, data: { orders: data as Order[], total: count || 0 } };
   }
 
   // Get order by ID
   async getOrder(orderId: string): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<Order>(`/api/orders/${orderId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Order };
   }
 
   // Update order status (updated endpoint)
   async updateOrderStatus(orderId: string, status: 'PENDING' | 'CONFIRMED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED'): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<Order>(`/api/orders/${orderId}/status`, { status }, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Order };
   }
 
   // Cancel order (updated endpoint)
   async cancelOrder(orderId: string, reason?: string): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Order>(`/api/orders/${orderId}/cancel`, { reason }, {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.supabase
+      .from('orders')
+      .update({ status: 'CANCELLED', cancel_reason: reason })
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as Order };
   }
 
   // Track order
@@ -162,14 +206,41 @@ class OrderService {
       };
     };
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get(`/api/orders/${orderId}/tracking`, {
-      Authorization: `Bearer ${token}`,
-    });
+    // In a real Supabase integration, tracking info might come from a dedicated 'tracking' table
+    // or be embedded within the 'orders' table if simplified.
+    // For this example, we'll assume some basic tracking info is available.
+    const { data, error } = await supabaseService.supabase
+      .from('orders')
+      .select(`
+        *,
+        tracking:order_tracking(*)
+      `)
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Mocking tracking data structure for demonstration
+    const trackingData = {
+      status: data.status,
+      statusHistory: data.tracking ? data.tracking.map((t: any) => ({
+        status: t.status,
+        timestamp: new Date(t.created_at).toISOString(),
+        description: t.description,
+      })) : [],
+      estimatedDelivery: data.estimated_delivery,
+      driverInfo: data.driver_info,
+    };
+
+    return { success: true, data: { order: data as Order, tracking: trackingData } };
   }
 
   // Get order summary/stats
@@ -180,14 +251,36 @@ class OrderService {
     totalSpent: number;
     averageOrderValue: number;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
+    const user = await authService.getCurrentUser();
+    if (!user) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get('/api/orders/summary', {
-      Authorization: `Bearer ${token}`,
-    });
+    const { data, error } = await supabaseService.supabase
+      .from('orders')
+      .select('id, status, total_amount')
+      .eq('user_id', user.id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const totalOrders = data.length;
+    const completedOrders = data.filter(order => order.status === 'DELIVERED').length;
+    const pendingOrders = data.filter(order => order.status !== 'DELIVERED' && order.status !== 'CANCELLED').length;
+    const totalSpent = data.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+    const averageOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+
+    return {
+      success: true,
+      data: {
+        totalOrders,
+        completedOrders,
+        pendingOrders,
+        totalSpent,
+        averageOrderValue,
+      },
+    };
   }
 }
 
