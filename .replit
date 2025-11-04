@@ -14,38 +14,12 @@ run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Start App"
-author = 48040949
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx expo start --web --port 5000 --host 0.0.0.0"
-
-[[workflows.workflow]]
-name = "Mobile Dev"
-author = 48462500
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx expo start --tunnel"
+runButton = "Start App"
 
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
 author = 48462500
-mode = "sequential"
+mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -53,19 +27,10 @@ args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --lan"
+args = "npx expo start --lan --web"
 
 [[workflows.workflow]]
-name = "Expo Go Mobile"
-author = 48462500
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx expo start --web --port 8081 --host 0.0.0.0"
-
-[[workflows.workflow]]
-name = "Project"
+name = "Start App"
 author = 49172621
 mode = "sequential"
 
