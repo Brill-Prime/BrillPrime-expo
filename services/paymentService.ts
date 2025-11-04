@@ -61,10 +61,78 @@ class PaymentService {
       return { success: false, error: 'Authentication required' };
     }
 
-    // Calls: https://your-project.supabase.co/functions/v1/process-payment
+    // Calls: https://lkfprjjlqmtpamukoatl.supabase.co/functions/v1/process-payment
     return apiClient.post(
       '/functions/v1/process-payment',
       data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Initialize Paystack payment using edge function
+  async initializePaystackPayment(data: {
+    email: string;
+    amount: number;
+    orderId: string;
+    metadata?: Record<string, any>;
+  }): Promise<ApiResponse<{
+    authorization_url: string;
+    access_code: string;
+    reference: string;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/paystack-utils',
+      {
+        action: 'initialize',
+        ...data
+      },
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Verify Paystack payment using edge function
+  async verifyPaystackPayment(reference: string): Promise<ApiResponse<{
+    status: string;
+    amount: number;
+    reference: string;
+    paid_at: string;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/paystack-utils',
+      {
+        action: 'verify',
+        reference
+      },
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Process refund via Paystack edge function
+  async processPaystackRefund(data: {
+    transaction: string;
+    amount?: number;
+  }): Promise<ApiResponse<any>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/paystack-utils',
+      {
+        action: 'refund',
+        ...data
+      },
       { Authorization: `Bearer ${token}` }
     );
   }

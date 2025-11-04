@@ -17,13 +17,13 @@ class ApiClient {
   constructor() {
     // Use Supabase URL for all backend operations
     // Firebase is only used for authentication
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lkfprjjlqmtpamukoatl.supabase.co';
     const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('⚠️ CRITICAL: Supabase credentials missing!');
-      console.error('Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
-      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
+    if (!supabaseAnonKey) {
+      console.error('⚠️ CRITICAL: Supabase anon key missing!');
+      console.error('Please set EXPO_PUBLIC_SUPABASE_ANON_KEY');
+      this.baseURL = supabaseUrl;
       this.supabaseKey = '';
     } else {
       this.baseURL = supabaseUrl;
@@ -32,6 +32,7 @@ class ApiClient {
     
     console.log('🔷 Supabase API URL:', this.baseURL);
     console.log('✅ Architecture: Firebase Auth + Supabase Backend');
+    console.log('✅ Edge Functions: paystack-utils, paystack-webhook');
   }
 
   private async makeRequest<T>(

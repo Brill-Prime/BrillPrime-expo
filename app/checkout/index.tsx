@@ -99,7 +99,12 @@ export default function CheckoutScreen() {
 
     try {
       const { orderService } = await import('../../services/orderService');
-      const { locationService } = await import('../../services/locationService');
+      const { paymentService } = await import('../../services/paymentService');
+      const { authService } = await import('../../services/authService');
+      
+      // Get user info for payment
+      const user = await authService.getCurrentUser();
+      const userEmail = user?.email || '';
       
       // Get user location for driver assignment
       const userLocation = await AsyncStorage.getItem("userLocation");
@@ -107,6 +112,27 @@ export default function CheckoutScreen() {
       
       // Create orders for each cart item
       const createdOrders = [];
+      const totalAmount = getTotal();
+      
+      // For card/bank payments, initialize Paystack first
+      if (paymentMethod !== 'cash') {
+        const paymentResponse = await paymentService.initializePaystackPayment({
+          email: userEmail,
+          amount: totalAmount * 100, // Paystack uses kobo
+          orderId: `ORDER-${Date.now()}`,
+          metadata: {
+            cart_items: cartItems.length,
+            delivery_address: selectedAddress.address
+          }
+        });
+
+        if (!paymentResponse.success) {
+          throw new Error('Payment initialization failed');
+        }
+
+        // In a real app, redirect to paymentResponse.data.authorization_url
+        console.log('Payment URL:', paymentResponse.data?.authorization_url);
+      }
       
       for (const item of cartItems) {
         const itemTotal = item.price * item.quantity;
@@ -117,8 +143,8 @@ export default function CheckoutScreen() {
           quantity: item.quantity,
           deliveryAddress: selectedAddress.address,
           deliveryType: 'yourself' as const,
-          paymentMethod: paymentMethod === 'card' ? 'card' : 
-                        paymentMethod === 'bank' ? 'bank_transfer' : 'cash',
+          paymentMethod: paymentMethod === 'card' ? 'CARD' : 
+                        paymentMethod === 'bank' ? 'BANK_TRANSFER' : 'cash',
           notes: deliveryNotes,
           coordinates: coordinates ? {
             latitude: coordinates.latitude,
@@ -165,7 +191,7 @@ export default function CheckoutScreen() {
 
       Alert.alert(
         'Order Placed Successfully!',
-        `${createdOrders.length} order(s) placed successfully. A driver has been assigned and will pick up your order shortly.`,
+        `${createdOrders.length} order(s) placed successfully. ${paymentMethod === 'cash' ? 'Pay on delivery.' : 'Payment processed.'} A driver has been assigned and will pick up your order shortly.`,
         [
           { text: 'Track Order', onPress: () => router.replace(`/orders/order-tracking?orderId=${createdOrders[0].id}`) },
           { text: 'View Orders', onPress: () => router.replace('/orders/consumer-orders') }
