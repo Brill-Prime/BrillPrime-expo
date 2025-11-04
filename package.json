@@ -8,14 +8,21 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "EXPO_WEBPACK_ALLOW_EXTERNAL_ACCESS=true expo start --web --port 5000",
+    "server": "tsx server/index.ts",
     "test": "jest --watchAll",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "jest": {
     "preset": "jest-expo"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
+    "@hono/node-server": "^1.19.6",
+    "@neondatabase/serverless": "^1.0.2",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^7.3.10",
@@ -29,6 +36,8 @@
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.5.2",
     "dotenv": "^17.2.3",
+    "drizzle-kit": "^0.31.6",
+    "drizzle-orm": "^0.44.7",
     "eslint-config-expo": "^10.0.0",
     "expo": "~53.0.23",
     "expo-blur": "~14.1.5",
@@ -51,6 +60,7 @@
     "expo-system-ui": "~5.0.11",
     "expo-web-browser": "~14.2.0",
     "firebase": "^12.3.0",
+    "hono": "^4.10.4",
     "leaflet": "^1.9.4",
     "lodash": "^4.17.21",
     "lucide-react": "^0.544.0",
@@ -73,7 +83,9 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "socket.io-client": "^4.8.1",
-    "supabase": "^2.54.11"
+    "supabase": "^2.54.11",
+    "tsx": "^4.20.6",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
