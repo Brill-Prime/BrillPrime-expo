@@ -8,15 +8,17 @@ config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2');
 // Configure platform-specific extensions
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
 
-// Configure for Replit environment
+// Configure for Replit environment with proper CORS
 config.server = {
   ...config.server,
   port: 5000,
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
+      // Set CORS headers for Replit environment
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
       
       if (req.method === 'OPTIONS') {
         res.writeHead(200);
