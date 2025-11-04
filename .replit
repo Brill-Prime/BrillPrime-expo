@@ -64,12 +64,6 @@ mode = "sequential"
 task = "shell.exec"
 args = "npx expo start --web --port 8081 --host 0.0.0.0"
 
-
-
-[[ports]]
-localPort = 3000
-externalPort = 3000
-
 [[ports]]
 localPort = 5000
 externalPort = 80
