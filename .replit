@@ -81,34 +81,30 @@ args = "Backend Server"
 name = "Expo Web Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run web"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_NO_TYPESCRIPT_SETUP=1 npm run web"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Backend Server"
 author = "agent"
 mode = "sequential"
 
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server/index.js"
 waitForPort = 3000
 
-[workflows.workflow.metadata]
-outputType = "console"
-
 [[ports]]
 localPort = 3000
 externalPort = 3000
-
-[[ports]]
-localPort = 5000
-externalPort = 80
 
 [[ports]]
 localPort = 5001
@@ -155,5 +151,13 @@ localPort = 43473
 externalPort = 8080
 
 [[ports]]
+localPort = 43745
+externalPort = 80
+
+[[ports]]
 localPort = 46753
 externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
