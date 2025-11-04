@@ -27,7 +27,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --lan --web"
+args = "npx expo start --lan"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -39,8 +39,12 @@ task = "shell.exec"
 args = "npm install"
 
 [[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Mobile Dev (LAN)"
+
+[[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --web --port 5000 --host 0.0.0.0 --clear"
+args = "npx expo start --web"
 
 [[workflows.workflow]]
 name = "Project"
