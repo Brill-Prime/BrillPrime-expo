@@ -71,6 +71,9 @@ export default {
     firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
     // API configuration
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || (process.env.NODE_ENV === 'development' ? "https://brill-backend-wjyl.onrender.com" : "https://api.brillprime.com"),
-    apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "30000", 10)
+    apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "30000", 10),
+    // Supabase configuration
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "",
+    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ""
   }
 };

@@ -97,21 +97,25 @@ class AuthService {
       // Initialize role status for the user
       await roleManagementService.initializeRoleStatus(data.role);
 
-      // Sync with backend asynchronously (non-blocking)
+      // Sync with Supabase backend asynchronously (non-blocking)
+      // This stores additional user data in Supabase
       apiClient.post<AuthResponse>(
-        API_ENDPOINTS.AUTH.REGISTER,
+        '/rest/v1/users',
         {
-          firebaseUid: firebaseUser.uid,
+          firebase_uid: firebaseUser.uid,
+          email: firebaseUser.email,
           role: data.role,
-          phoneNumber: data.phoneNumber,
+          phone_number: data.phoneNumber,
+          full_name: displayName,
         },
         {
           Authorization: `Bearer ${firebaseToken}`,
+          'Prefer': 'resolution=merge-duplicates',
         }
       ).then(response => {
-        console.log('Backend sync completed:', response);
+        console.log('Supabase sync completed:', response);
       }).catch(err => {
-        console.log('Backend sync error (non-critical):', err);
+        console.log('Supabase sync error (non-critical):', err);
       });
 
       return {
@@ -175,24 +179,24 @@ class AuthService {
       // Initialize role status for the user
       await roleManagementService.initializeRoleStatus(userRole);
 
-      // Fetch user data from backend asynchronously (non-blocking)
-      apiClient.get<{ user: any }>(
-        API_ENDPOINTS.AUTH.LOGIN,
+      // Fetch user data from Supabase asynchronously (non-blocking)
+      apiClient.get<any>(
+        `/rest/v1/users?firebase_uid=eq.${firebaseUser.uid}&select=*`,
         {
           Authorization: `Bearer ${firebaseToken}`,
         }
       ).then(userDataResponse => {
-        // Update role if backend returns different role
-        if (userDataResponse.success && userDataResponse.data?.user?.role) {
-          const backendRole = userDataResponse.data.user.role;
-          if (backendRole !== userRole) {
-            console.log('Updating role from backend:', backendRole);
-            authData.user.role = backendRole;
+        // Update role if Supabase returns different role
+        if (userDataResponse.success && userDataResponse.data && userDataResponse.data.length > 0) {
+          const supabaseUser = userDataResponse.data[0];
+          if (supabaseUser.role && supabaseUser.role !== userRole) {
+            console.log('Updating role from Supabase:', supabaseUser.role);
+            authData.user.role = supabaseUser.role;
             this.storeAuthData(authData);
           }
         }
       }).catch(err => {
-        console.log('Backend user data fetch error (non-critical):', err);
+        console.log('Supabase user data fetch error (non-critical):', err);
       });
 
       return {
@@ -263,18 +267,21 @@ class AuthService {
       // Get Firebase ID token
       const firebaseToken = await user.getIdToken();
 
-      // Notify backend to sync user from Firebase (non-blocking)
+      // Sync user to Supabase (non-blocking)
       apiClient.post(
-        API_ENDPOINTS.AUTH.SOCIAL_LOGIN,
+        '/rest/v1/users',
         {
-          provider: 'google',
-          firebaseUid: user.uid,
+          firebase_uid: user.uid,
+          email: user.email,
           role: role || 'consumer',
+          full_name: user.displayName || '',
+          profile_image_url: user.photoURL || null,
         },
         {
           Authorization: `Bearer ${firebaseToken}`,
+          'Prefer': 'resolution=merge-duplicates',
         }
-      ).catch(err => console.log('Backend sync error (non-critical):', err));
+      ).catch(err => console.log('Supabase sync error (non-critical):', err));
 
       // Store auth data with Firebase token
       const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';

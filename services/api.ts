@@ -12,25 +12,23 @@ interface ApiResponse<T = any> {
 
 class ApiClient {
   private baseURL: string;
+  private supabaseKey: string;
 
   constructor() {
-    // Auto-detect environment and use appropriate backend
-    const replitDomain = process.env.REPLIT_DEV_DOMAIN;
-    const isDevelopment = process.env.NODE_ENV === 'development' || __DEV__;
+    // Use Supabase URL from environment variables
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     
-    // Use local backend if on Replit in development
-    let API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-    
-    if (!API_BASE_URL && isDevelopment && replitDomain) {
-      // In Replit, use localhost:3000 for local backend
-      // Both frontend and backend run in the same environment
-      API_BASE_URL = 'http://localhost:3000';
-    } else if (!API_BASE_URL) {
-      // Fallback to production backend
-      API_BASE_URL = 'https://api.brillprime.com';
+    if (!supabaseUrl) {
+      console.warn('EXPO_PUBLIC_SUPABASE_URL not found, falling back to api.brillprime.com');
+      this.baseURL = 'https://api.brillprime.com';
+    } else {
+      this.baseURL = supabaseUrl;
     }
     
-    this.baseURL = API_BASE_URL;
+    // Store Supabase anon key for headers
+    this.supabaseKey = supabaseAnonKey || '';
+    
     console.log('API Base URL:', this.baseURL);
   }
 
@@ -50,6 +48,7 @@ class ApiClient {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
+          'apikey': this.supabaseKey,
           ...options.headers,
         },
         signal: controller.signal,
