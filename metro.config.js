@@ -18,13 +18,14 @@ config.resolver.blockList = [
 config.server = {
   ...config.server,
   port: 5000,
+  rewriteRequestUrl: (url) => {
+    // Handle Replit's webview proxy
+    return url.replace(/^\/.*?\//, '/');
+  },
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
-      // Get the origin from the request
-      const origin = req.headers.origin || '*';
-      
       // Set CORS headers for Replit environment
-      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -38,6 +39,18 @@ config.server = {
       return middleware(req, res, next);
     };
   },
+};
+
+// Disable watchman for Replit environment
+config.watchFolders = [path.resolve(__dirname)];
+config.transformer = {
+  ...config.transformer,
+  getTransformOptions: async () => ({
+    transform: {
+      experimentalImportSupport: false,
+      inlineRequires: true,
+    },
+  }),
 };
 
 // Block react-native-maps from being bundled on web

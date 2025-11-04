@@ -40,7 +40,7 @@ args = "Mobile Dev (LAN)"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "rm -rf node_modules/.cache .expo"
+args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
