@@ -12,12 +12,16 @@ import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext pr
 function MerchantAnalytics() {
   const router = useRouter();
   const { loadMerchantId } = useMerchant();
-  const { user } = useAuth(); // Get user info from AuthContext
-  const merchantId = user?.merchantId; // Get merchantId from user object
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+
+  // Get merchant ID from authenticated user
+  const merchantId = user?.merchantId || user?.id;
 
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // const [analyticsData, setAnalyticsData] = useState<any>(null); // This was duplicated, removed one.
+  // const [loading, setLoading] = useState(true); // This was duplicated, removed one.
 
   useEffect(() => {
     loadMerchantId();

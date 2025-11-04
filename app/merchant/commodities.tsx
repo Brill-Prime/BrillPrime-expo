@@ -57,7 +57,8 @@ function MerchantCommoditiesScreen() {
   const { user } = useAuth(); // Get user from AuthContext
   const { params } = router.useSearchParams(); // Get route parameters
 
-  const merchantId = user?.merchantId || params?.merchantId; // Get merchantId from user or params
+  // Get merchantId from user or params
+  const merchantId = user?.merchantId || params?.merchantId;
 
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [commodities, setCommodities] = useState<Commodity[]>([]);
