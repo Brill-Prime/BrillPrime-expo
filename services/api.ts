@@ -15,23 +15,21 @@ class ApiClient {
   private supabaseKey: string;
 
   constructor() {
-    // Use Supabase URL for all backend operations
+    // Use Replit API server for all backend operations
     // Firebase is only used for authentication
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    const replitDomain = process.env.REPLIT_DEV_DOMAIN;
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('⚠️ CRITICAL: Supabase credentials missing!');
-      console.error('Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
-      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
+    if (replitDomain) {
+      this.baseURL = `https://${replitDomain}`;
       this.supabaseKey = '';
     } else {
-      this.baseURL = supabaseUrl;
-      this.supabaseKey = supabaseAnonKey;
+      // Fallback to localhost for local development
+      this.baseURL = 'http://localhost:3000';
+      this.supabaseKey = '';
     }
     
-    console.log('🔷 Supabase API URL:', this.baseURL);
-    console.log('✅ Architecture: Firebase Auth + Supabase Backend');
+    console.log('🔷 API URL:', this.baseURL);
+    console.log('✅ Architecture: Firebase Auth + Replit Postgres Backend');
   }
 
   private async makeRequest<T>(

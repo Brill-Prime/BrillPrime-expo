@@ -50,14 +50,15 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Determine API base URL based on environment
-// Architecture: Firebase for Auth, Supabase for all backend logic
+// Architecture: Firebase for Auth, Replit Postgres + Hono for all backend logic
 const getApiBaseUrl = () => {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) {
-    console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not set, using fallback');
-    return 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback to known Supabase URL
+  // In Replit, use the environment domain for the API server
+  const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+  if (replitDomain) {
+    return `https://${replitDomain}`;
   }
-  return supabaseUrl;
+  // Fallback to localhost for local development
+  return 'http://localhost:3000';
 };
 
 export const ENV = {
