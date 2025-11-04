@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAlert } from '../../components/AlertProvider';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import MapContainer, { Marker } from '../../components/Map';
-import MerchantDetailsModal from '../components/MerchantDetailsModal';
+import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 
 // Define missing types

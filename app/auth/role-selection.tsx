@@ -180,7 +180,6 @@ const getResponsiveStyles = (screenData: any) => {
     logo: {
       width: isTablet ? 160 : Math.min(width * 0.35, 140),
       height: isTablet ? 160 : Math.min(width * 0.35, 140),
-      resizeMode: "contain",
     },
     buttonsContainer: {
       paddingHorizontal: Math.max(20, width * 0.08),

@@ -15,21 +15,23 @@ class ApiClient {
   private supabaseKey: string;
 
   constructor() {
-    // Use Supabase URL from environment variables
+    // Use Supabase URL for all backend operations
+    // Firebase is only used for authentication
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     
-    if (!supabaseUrl) {
-      console.warn('EXPO_PUBLIC_SUPABASE_URL not found, falling back to api.brillprime.com');
-      this.baseURL = 'https://api.brillprime.com';
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('⚠️ CRITICAL: Supabase credentials missing!');
+      console.error('Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
+      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
+      this.supabaseKey = '';
     } else {
       this.baseURL = supabaseUrl;
+      this.supabaseKey = supabaseAnonKey;
     }
     
-    // Store Supabase anon key for headers
-    this.supabaseKey = supabaseAnonKey || '';
-    
-    console.log('API Base URL:', this.baseURL);
+    console.log('🔷 Supabase API URL:', this.baseURL);
+    console.log('✅ Architecture: Firebase Auth + Supabase Backend');
   }
 
   private async makeRequest<T>(

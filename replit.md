@@ -5,7 +5,34 @@ Brill Prime is a multi-role React Native application built with Expo for web dep
 
 ## Recent Changes
 
-### October 19, 2025 (Latest)
+### November 4, 2025 (Latest)
+- ✅ **Hybrid Backend Architecture** - Migrated to Firebase Auth + Supabase Backend
+  - **Firebase**: Handles all authentication (email/password, Google, Facebook, Apple)
+  - **Supabase**: Powers all backend operations (database, edge functions, realtime)
+  - **Data Sync**: User data automatically synchronized between Firebase and Supabase
+  - Updated API client to use Supabase URL for all backend requests
+  - Created comprehensive architecture documentation (SUPABASE_ARCHITECTURE.md)
+  - Configured proper authentication headers with Supabase anon key
+  - Benefits: Better scalability, realtime features, edge functions support
+- ✅ **Fixed Empty Asset Files** - Created valid placeholder images for app icons
+  - Generated icon.png, adaptive-icon.png, splash.png, and favicon.png with proper content
+  - Fixed Jimp "Could not find MIME for Buffer <null>" errors
+  - App now loads successfully without asset processing errors
+- ✅ **Fixed ErrorBoundary Routing Issue** - Resolved Expo Router treating components as routes
+  - Renamed `app/components/` to `app/_components/` to exclude from routing
+  - Added default export to ErrorBoundary component
+  - Updated import path in app/home/consumer.tsx
+  - Eliminated "Route missing default export" warnings
+- ✅ **Fixed Deprecated React Native Props** - Modernized image and style usage
+  - Removed `resizeMode` from style objects in auth/role-selection.tsx, chat/[conversationId].tsx, and kyc/documents.tsx
+  - Added `resizeMode` as props to Image components (proper React Native syntax)
+  - Fixed deprecation warnings for Image.resizeMode
+- ✅ **Workflow Configuration** - Updated package.json for Replit environment
+  - Changed web script to use environment variable for external access
+  - Removed incompatible `--host 0.0.0.0` flag from Expo start command
+  - Metro server now running successfully on port 5000
+
+### October 19, 2025
 - ✅ **Role-Based Access Control System** - Implemented comprehensive multi-role management
   - Created UserRoleStatus interface to track registration and verification for each role
   - Built RoleManagementService for role registration, verification checks, and switching

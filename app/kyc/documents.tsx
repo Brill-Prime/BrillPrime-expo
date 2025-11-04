@@ -246,7 +246,7 @@ export default function DocumentsScreen() {
     <TouchableOpacity style={styles.uploadCard} onPress={onPress}>
       {image ? (
         <View style={styles.imageContainer}>
-          <Image source={{ uri: image }} style={styles.uploadedImage} />
+          <Image source={{ uri: image }} style={styles.uploadedImage} resizeMode="cover" />
           <TouchableOpacity style={styles.removeButton} onPress={() => {
             if (title.includes('Front')) {
               setFrontImage(null);
@@ -488,7 +488,6 @@ const styles = StyleSheet.create({
   uploadedImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   removeButton: {
     position: 'absolute',

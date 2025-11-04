@@ -211,7 +211,7 @@ export default function ChatScreen() {
               {item.attachments.map((attachment: { id: string; uri: string; name?: string; type?: 'image' | 'document' }) => (
                 <View key={attachment.id} style={styles.messageAttachment}>
                   {attachment.type === 'image' ? (
-                    <Image source={{ uri: attachment.uri }} style={styles.messageImage} />
+                    <Image source={{ uri: attachment.uri }} style={styles.messageImage} resizeMode="cover" />
                   ) : (
                     <View style={styles.messageDocument}>
                       <Ionicons name="document" size={20} color="#4682B4" />
@@ -502,7 +502,6 @@ const getResponsiveStyles = (screenData: any) => {
       width: 200,
       height: 150,
       borderRadius: 8,
-      resizeMode: 'cover',
     },
     messageDocument: {
       flexDirection: 'row',

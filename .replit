@@ -15,7 +15,7 @@ run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Start App"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
@@ -42,15 +42,36 @@ args = "Mobile Dev (LAN)"
 task = "shell.exec"
 args = "npx expo start --web --port 5000 --host 0.0.0.0 --clear"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend"
+
+[[workflows.workflow]]
+name = "Frontend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run web"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[ports]]
 localPort = 5000
+externalPort = 3000
 
 [[ports]]
 localPort = 5001
 
 [[ports]]
 localPort = 8081
-externalPort = 80
 
 [[ports]]
 localPort = 8082
@@ -75,6 +96,9 @@ localPort = 38019
 
 [[ports]]
 localPort = 38123
+
+[[ports]]
+localPort = 39579
 
 [[ports]]
 localPort = 39653
