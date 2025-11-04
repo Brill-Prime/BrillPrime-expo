@@ -71,10 +71,15 @@ export default function RootLayout() {
 
       } catch (e) {
         console.error('Error loading fonts:', e);
+        // Continue anyway - app will use system fonts as fallback
       } finally {
         // Tell the application to render the child components
         setFontsLoaded(true);
-        await SplashScreen.hideAsync();
+        try {
+          await SplashScreen.hideAsync();
+        } catch (err) {
+          console.error('Error hiding splash screen:', err);
+        }
       }
     }
 
