@@ -83,35 +83,35 @@ export default function MerchantDashboard() {
       id: "manage-commodities",
       title: "Add Products",
       description: "List new items",
-      icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'),
+      icon: "add-circle",
       route: "/merchant/add-commodity"
     },
     {
       id: "manage-commodities",
       title: "Manage Inventory",
       description: "Track your stock",
-      icon: require('../../attached_assets/stock_images/3d_package_box_icon_1d5ed216.jpg'),
+      icon: "cube",
       route: "/merchant/commodities"
     },
     {
       id: "manage-orders",
       title: "Orders",
       description: "View customer orders",
-      icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'),
+      icon: "receipt",
       route: "/orders/consumer-orders"
     },
     {
       id: "analytics",
       title: "Analytics",
       description: "Sales insights",
-      icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'),
+      icon: "stats-chart",
       route: "/merchant/analytics"
     },
     {
       id: "store-settings",
       title: "Store Settings",
       description: "Manage your store",
-      icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'),
+      icon: "settings",
       route: "/profile/edit"
     }
   ];
@@ -154,11 +154,7 @@ export default function MerchantDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Image
-                  source={feature.icon}
-                  style={styles.featureIconImage}
-                  resizeMode="contain"
-                />
+                <Ionicons name={feature.icon} size={28} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -197,7 +193,7 @@ export default function MerchantDashboard() {
             style={styles.actionCard}
             onPress={() => router.push("/merchant/commodities")}
           >
-            <Image source={require('../../assets/images/manange_commodities_icon.png')} style={styles.actionIcon} />
+            <Ionicons name="grid" size={32} color="#4682B4" />
             <Text style={styles.actionText}>Manage Commodities</Text>
           </TouchableOpacity>
 
@@ -205,7 +201,7 @@ export default function MerchantDashboard() {
             style={styles.actionCard}
             onPress={() => router.push("/merchant/order-management")}
           >
-            <Image source={require('../../assets/images/manage_orders_icon.png')} style={styles.actionIcon} />
+            <Ionicons name="clipboard" size={32} color="#4682B4" />
             <Text style={styles.actionText}>Order Management</Text>
           </TouchableOpacity>
 

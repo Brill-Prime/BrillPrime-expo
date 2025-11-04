@@ -81,11 +81,11 @@ export default function ConsumerDashboard() {
   };
 
   const features = [
-    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: require('../../attached_assets/stock_images/3d_shopping_bag_icon_04f42e6d.jpg'), route: "/commodity/commodities" },
-    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: require('../../attached_assets/stock_images/3d_package_box_icon_1d5ed216.jpg'), route: "/orders/consumer-orders" },
-    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: require('../../attached_assets/stock_images/3d_chat_bubble_icon_1dc64b6c.jpg'), route: "/messages" },
-    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: require('../../attached_assets/stock_images/3d_heart_icon_favori_200752cd.jpg'), route: "/favorites" },
-    { id: 'support', title: "Support", description: "Get help anytime", icon: require('../../attached_assets/stock_images/3d_headphones_icon_s_281856ca.jpg'), route: "/support" }
+    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: "bag-handle", route: "/commodity/commodities" },
+    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: "cube", route: "/orders/consumer-orders" },
+    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: "chatbubbles", route: "/messages" },
+    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: "heart", route: "/favorites" },
+    { id: 'support', title: "Support", description: "Get help anytime", icon: "headset", route: "/support" }
   ];
 
   const styles = getResponsiveStyles(screenData);
@@ -136,11 +136,7 @@ export default function ConsumerDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Image 
-                  source={feature.icon}
-                  style={styles.featureIconImage}
-                  resizeMode="contain"
-                />
+                <Ionicons name={feature.icon} size={28} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -155,11 +151,7 @@ export default function ConsumerDashboard() {
             onPress={() => router.push('/order/fuel')}
           >
             <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
-              <Image
-                source={require('../../assets/images/consumer_order_fuel_icon.png')}
-                style={styles.serviceIcon}
-                resizeMode="contain"
-              />
+              <Ionicons name="water" size={30} color="white" />
             </View>
             <Text style={styles.serviceTitle}>Order Fuel</Text>
             <Text style={styles.serviceDescription}>Get fuel delivered to your location</Text>
@@ -170,11 +162,7 @@ export default function ConsumerDashboard() {
             onPress={() => router.push('/toll')}
           >
             <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
-              <Image
-                source={require('../../assets/images/purchase_toll_gate_white.png')}
-                style={styles.serviceIcon}
-                resizeMode="contain"
-              />
+              <Ionicons name="card" size={30} color="white" />
             </View>
             <Text style={styles.serviceTitle}>Toll Payment</Text>
             <Text style={styles.serviceDescription}>Pay toll fees in advance</Text>
