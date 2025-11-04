@@ -8,12 +8,15 @@ import { cartService } from "../../services/cartService";
 import { favoritesService } from "../../services/favoritesService";
 import { orderService } from "../../services/orderService";
 import { formatNaira } from "../../utils/currency";
+import { supabase } from '../../config/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ConsumerDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [cartItemCount, setCartItemCount] = useState(0);
+  const { user } = useAuth(); // Get user object from AuthContext
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -29,17 +32,15 @@ export default function ConsumerDashboard() {
     favoriteCount: 0
   });
 
-  useEffect(() => {
-    loadUserData();
-    loadCartCount();
-    loadUserStats();
-  }, []);
+  const loadDashboardData = async () => {
+    await loadCartCount();
+    await loadUserStats();
+  };
 
   // Add auto-refresh every minute for real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
-      loadCartCount();
-      loadUserStats();
+      loadDashboardData();
     }, 60000); // Refresh every minute
 
     return () => clearInterval(interval);
@@ -49,8 +50,7 @@ export default function ConsumerDashboard() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        loadCartCount();
-        loadUserStats();
+        loadDashboardData();
       }
     };
 
@@ -79,12 +79,12 @@ export default function ConsumerDashboard() {
       // Load user orders
       const orders = await orderService.getConsumerOrders();
       const totalOrders = orders?.length || 0;
-      
+
       // Calculate total spent from completed orders
       const totalSpent = orders
         ?.filter((order: any) => order.status === 'delivered' || order.status === 'completed')
         ?.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0) || 0;
-      
+
       // Load favorites count
       const favorites = await favoritesService.getFavorites();
       const favoriteCount = favorites?.length || 0;
@@ -140,6 +140,35 @@ export default function ConsumerDashboard() {
   ];
 
   const styles = getResponsiveStyles(screenData);
+
+  // Load initial data and set up real-time subscriptions
+  useEffect(() => {
+    loadUserData();
+    loadDashboardData();
+
+    // Subscribe to real-time order updates
+    const ordersChannel = supabase
+      .channel('orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `user_id=eq.${user?.id}`
+        },
+        (payload) => {
+          console.log('Order update:', payload);
+          // Refresh orders when changes occur
+          loadDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+    };
+  }, [user?.id]); // Depend on user?.id to re-subscribe if user changes
 
   return (
     <LinearGradient
