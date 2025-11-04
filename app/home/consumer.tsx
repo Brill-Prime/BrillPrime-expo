@@ -132,24 +132,15 @@ const theme = {
   },
   shadows: {
     small: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
       elevation: 2,
     },
     medium: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
+      boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.15)",
       elevation: 5,
     },
     large: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.2,
-      shadowRadius: 20,
+      boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
       elevation: 10,
     },
   },
@@ -482,6 +473,11 @@ function ConsumerHomeContent() {
     // Log informative message silently
     console.log("No registered merchants available in the system yet.");
     setStoreLocations([]);
+    
+    // Show user-friendly message if this is the first load
+    if (isMountedRef.current && storeLocations.length === 0) {
+      showInfo("No Merchants Found", "No merchants are currently registered in your area. Please check back later.");
+    }
   };
 
   const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
@@ -760,7 +756,7 @@ function ConsumerHomeContent() {
     Animated.timing(slideAnim, {
       toValue,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false, // Disable for web compatibility
     }).start();
     setIsSidebarOpen(!isSidebarOpen);
   }, [isSidebarOpen, slideAnim, sidebarWidth]);
@@ -771,7 +767,7 @@ function ConsumerHomeContent() {
       Animated.timing(slideAnim, {
         toValue: -sidebarWidth,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: false, // Disable for web compatibility
       }).start();
       setIsSidebarOpen(false);
     }

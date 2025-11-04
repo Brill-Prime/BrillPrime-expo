@@ -25,7 +25,16 @@ function MerchantAnalytics() {
 
   useEffect(() => {
     loadMerchantId();
-  }, [loadMerchantId]);
+  }, []);
+
+  useEffect(() => {
+    if (merchantId) {
+      const fetchAnalytics = async () => {
+        // Analytics will be fetched once merchantId is available
+      };
+      fetchAnalytics();
+    }
+  }, [merchantId]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
