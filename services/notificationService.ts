@@ -27,6 +27,30 @@ export interface NotificationSettings {
 }
 
 class NotificationService {
+
+
+  // Call Supabase Edge Function to send notification
+  async sendNotificationViaFunction(data: {
+    userId: string;
+    title: string;
+    message: string;
+    type: 'order' | 'promo' | 'system' | 'delivery' | 'payment';
+    data?: Record<string, any>;
+    role?: 'consumer' | 'merchant' | 'driver';
+  }): Promise<ApiResponse<any>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Calls: https://your-project.supabase.co/functions/v1/send-notification
+    return apiClient.post(
+      '/functions/v1/send-notification',
+      data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
   // Get user notifications
   async getNotifications(filters?: {
     type?: string;

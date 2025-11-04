@@ -47,6 +47,28 @@ class PaymentService {
   async initializePayment(data: {
     orderId: number;
     amount: number;
+
+
+  // Call Supabase Edge Function for payment processing
+  async processPaymentViaFunction(data: {
+    orderId: string;
+    amount: number;
+    paymentMethod: 'CARD' | 'BANK_TRANSFER';
+    reference: string;
+  }): Promise<ApiResponse<any>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Calls: https://your-project.supabase.co/functions/v1/process-payment
+    return apiClient.post(
+      '/functions/v1/process-payment',
+      data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
     paymentMethod: 'CARD' | 'BANK_TRANSFER';
   }): Promise<ApiResponse<{
     transactionId: string;

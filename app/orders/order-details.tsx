@@ -18,8 +18,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 import ReceiptSharingModal from '../../components/ReceiptSharingModal';
 
-// Assuming orderService is imported and has methods like cancelOrder
-// import orderService from '../../services/orderService'; // Placeholder for actual import
+// Uncommented import based on changes
+import orderService from '../../services/orderService'; // Placeholder for actual import
+
+// Assuming MerchantOrder is defined elsewhere or can be inferred
+interface MerchantOrder {
+  id: string;
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'out_for_delivery' | 'completed'; // Added 'completed' for the function
+  completedAt?: string;
+  estimatedTime?: string;
+  notes?: string;
+}
 
 interface OrderItem {
   name: string;
@@ -61,6 +70,12 @@ export default function OrderDetails() {
   const [showDriverCommunication, setShowDriverCommunication] = useState(false);
   const [showMerchantCommunication, setShowMerchantCommunication] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  // Mock state and variables required by the updateOrderStatus function from changes
+  // These are not part of the original OrderDetails component's state,
+  // but are added here to make the new function syntactically valid.
+  const [orders, setOrders] = useState<Order[]>([]); // Mock state
+  const [orderNotes, setOrderNotes] = useState<string | undefined>(undefined); // Mock state
 
   useEffect(() => {
     loadOrderDetails();
@@ -132,6 +147,41 @@ export default function OrderDetails() {
     }
   };
 
+  // Added the updateOrderStatus function based on the changes snippet
+  const updateOrderStatus = async (orderId: string, newStatus: MerchantOrder['status'], completionTime?: string) => {
+    try {
+      // Call Supabase Edge Function
+      const response = await orderService.updateOrderStatusViaFunction(orderId, {
+        newStatus: newStatus.toUpperCase() as any, // Use the new status here
+        notes: orderNotes // Use the mocked orderNotes
+      });
+
+      if (response.success) {
+        // Update local state using the mocked setOrders
+        const updatedOrders = orders.map(order => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              status: newStatus,
+              completedAt: newStatus === 'completed' ? new Date().toISOString() : order.completedAt,
+              estimatedTime: completionTime || order.estimatedTime,
+              notes: orderNotes || order.notes
+            };
+          }
+          return order;
+        });
+
+        setOrders(updatedOrders);
+        await AsyncStorage.setItem('merchantOrders', JSON.stringify(updatedOrders));
+        showSuccess('Success', `Order ${newStatus.replace('_', ' ')}`);
+      } else {
+        showError('Error', response.error || 'Failed to update order status');
+      }
+    } catch (error) {
+      showError('Error', 'Failed to update order status');
+    }
+  };
+
   const handleReportIssue = () => {
     router.push(`/orders/report-issue?orderId=${order?.id}`);
   };
@@ -157,6 +207,11 @@ export default function OrderDetails() {
   };
 
   const handleCancelOrder = async () => {
+    // Example of how to call the edge function from here if needed
+    // You might want to update the order status to 'cancelled' via the edge function
+    // For demonstration, we'll navigate to a cancellation screen.
+    // If you wanted to call the edge function directly:
+    // await updateOrderStatus(order.id, 'cancelled');
     router.push(`/orders/cancel-order?orderId=${order?.id}&orderTotal=${order?.totalAmount}`);
   };
 
@@ -166,7 +221,7 @@ export default function OrderDetails() {
 
   const handleContactDriver = (type: 'message' | 'call') => {
     setShowDriverCommunication(false);
-    
+
     if (type === 'message') {
       // Navigate to chat with driver
       router.push(`/chat/driver-${order?.id}`);
@@ -246,7 +301,7 @@ export default function OrderDetails() {
       ...step,
       completed: index < currentIndex,
       current: index === currentIndex,
-      time: index === 0 ? formatDate(order.orderDate) : 
+      time: index === 0 ? formatDate(order.orderDate) :
             index === currentIndex ? 'In Progress...' :
             index < currentIndex ? 'Completed' : 'Pending...'
     }));
@@ -307,14 +362,14 @@ export default function OrderDetails() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Detail Section */}
         <View style={[styles.orderDetail, { paddingHorizontal: responsivePadding }]}>
-          <View style={[styles.itemIcon, { 
-            width: isSmallScreen ? 60 : 80, 
-            height: isSmallScreen ? 60 : 80 
+          <View style={[styles.itemIcon, {
+            width: isSmallScreen ? 60 : 80,
+            height: isSmallScreen ? 60 : 80
           }]}>
-            <Ionicons 
-              name={getItemIcon(order.itemType)} 
-              size={isSmallScreen ? 40 : 48} 
-              color="#4682B4" 
+            <Ionicons
+              name={getItemIcon(order.itemType)}
+              size={isSmallScreen ? 40 : 48}
+              color="#4682B4"
             />
           </View>
           <Text style={[styles.orderTitle, { fontSize: responsiveFontSize.orderTitle }]}>
@@ -362,9 +417,9 @@ export default function OrderDetails() {
         </View>
 
         {/* Purchase Summary */}
-        <View style={[styles.summary, { 
+        <View style={[styles.summary, {
           marginHorizontal: responsivePadding,
-          padding: isSmallScreen ? 15 : 20 
+          padding: isSmallScreen ? 15 : 20
         }]}>
           <Text style={[styles.summaryTitle, { fontSize: isSmallScreen ? 16 : 18 }]}>
             Purchase Summary
@@ -393,7 +448,7 @@ export default function OrderDetails() {
         </View>
 
         {/* Contact Merchant */}
-        <View style={[styles.contactDriver, { 
+        <View style={[styles.contactDriver, {
           marginHorizontal: responsivePadding,
           padding: isSmallScreen ? 10 : 12,
           marginBottom: 15
@@ -402,8 +457,8 @@ export default function OrderDetails() {
             <Text style={[styles.contactText, { fontSize: responsiveFontSize.small }]}>
               Contact merchant
             </Text>
-            <View style={[styles.driverAvatar, { 
-              width: isSmallScreen ? 25 : 30, 
+            <View style={[styles.driverAvatar, {
+              width: isSmallScreen ? 25 : 30,
               height: isSmallScreen ? 25 : 30,
               borderRadius: isSmallScreen ? 12.5 : 15,
               backgroundColor: '#667eea'
@@ -427,18 +482,18 @@ export default function OrderDetails() {
         </View>
 
         {/* Contact Driver */}
-        <View style={[styles.contactDriver, { 
+        <View style={[styles.contactDriver, {
           marginHorizontal: responsivePadding,
-          padding: isSmallScreen ? 10 : 12 
+          padding: isSmallScreen ? 10 : 12
         }]}>
           <View style={styles.driverInfo}>
             <Text style={[styles.contactText, { fontSize: responsiveFontSize.small }]}>
               Contact driver
             </Text>
-            <View style={[styles.driverAvatar, { 
-              width: isSmallScreen ? 25 : 30, 
+            <View style={[styles.driverAvatar, {
+              width: isSmallScreen ? 25 : 30,
               height: isSmallScreen ? 25 : 30,
-              borderRadius: isSmallScreen ? 12.5 : 15 
+              borderRadius: isSmallScreen ? 12.5 : 15
             }]}>
               <Text style={[styles.driverAvatarText, { fontSize: responsiveFontSize.small }]}>
                 {order.driverName?.charAt(0) || 'M'}
@@ -472,10 +527,10 @@ export default function OrderDetails() {
                     step.completed && styles.completedIcon,
                     step.current && styles.currentIcon
                   ]}>
-                    <Ionicons 
-                      name={step.completed ? "checkmark" : step.current ? "time" : "ellipse-outline"} 
-                      size={16} 
-                      color={step.completed ? "#fff" : step.current ? "#2f75c2" : "#ccc"} 
+                    <Ionicons
+                      name={step.completed ? "checkmark" : step.current ? "time" : "ellipse-outline"}
+                      size={16}
+                      color={step.completed ? "#fff" : step.current ? "#2f75c2" : "#ccc"}
                     />
                   </View>
                   {index < getOrderSteps().length - 1 && (
@@ -506,7 +561,7 @@ export default function OrderDetails() {
         </View>
 
         {/* Action Buttons */}
-        <View style={[styles.actions, { 
+        <View style={[styles.actions, {
           paddingHorizontal: responsivePadding,
           flexDirection: 'column',
           gap: 15
@@ -514,15 +569,15 @@ export default function OrderDetails() {
           {/* Primary Actions Row */}
           {(order.status === 'pending' || order.status === 'confirmed') && (
             <View style={styles.primaryActions}>
-              <TouchableOpacity 
-                style={[styles.modifyButton, { flex: 1, marginRight: 10 }]} 
+              <TouchableOpacity
+                style={[styles.modifyButton, { flex: 1, marginRight: 10 }]}
                 onPress={handleModifyOrder}
               >
                 <Ionicons name="create-outline" size={18} color="#2f75c2" />
                 <Text style={styles.modifyButtonText}>Modify Order</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.cancelButton, { flex: 1 }]} 
+              <TouchableOpacity
+                style={[styles.cancelButton, { flex: 1 }]}
                 onPress={handleCancelOrder}
               >
                 <Ionicons name="close-circle-outline" size={18} color="#e74c3c" />
@@ -536,18 +591,18 @@ export default function OrderDetails() {
             flexDirection: isSmallScreen ? 'column' : 'row',
             gap: isSmallScreen ? 15 : 20
           }]}>
-            <TouchableOpacity style={[styles.reportButton, { 
+            <TouchableOpacity style={[styles.reportButton, {
               flex: isSmallScreen ? 0 : 1,
-              paddingVertical: isSmallScreen ? 10 : 12 
+              paddingVertical: isSmallScreen ? 10 : 12
             }]} onPress={handleReportIssue}>
               <Ionicons name="alert-circle-outline" size={18} color="#e74c3c" />
               <Text style={[styles.reportButtonText, { fontSize: isSmallScreen ? 14 : 16, marginLeft: 8 }]}>
                 Report Issue
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.shareButton, { 
+            <TouchableOpacity style={[styles.shareButton, {
               flex: isSmallScreen ? 0 : 1,
-              paddingVertical: isSmallScreen ? 10 : 12 
+              paddingVertical: isSmallScreen ? 10 : 12
             }]} onPress={handleShareReceipt}>
               <Ionicons name="share-outline" size={18} color="white" />
               <Text style={[styles.shareButtonText, { fontSize: isSmallScreen ? 14 : 16, marginLeft: 8 }]}>
@@ -557,7 +612,7 @@ export default function OrderDetails() {
           </View>
 
           {order.status === 'out_for_delivery' && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.trackButton]}
               onPress={() => setShowLiveTracking(true)}
             >
@@ -567,7 +622,7 @@ export default function OrderDetails() {
           )}
 
           {(order.status !== 'delivered' && order.status !== 'cancelled') && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => setShowDriverCommunication(true)}
             >
