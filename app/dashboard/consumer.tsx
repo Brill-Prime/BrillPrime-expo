@@ -5,6 +5,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { cartService } from "../../services/cartService";
+import { favoritesService } from "../../services/favoritesService";
+import { orderService } from "../../services/orderService";
+import { formatNaira } from "../../utils/currency";
 
 export default function ConsumerDashboard() {
   const router = useRouter();
@@ -20,9 +23,16 @@ export default function ConsumerDashboard() {
     return () => subscription?.remove();
   }, []);
 
+  const [userStats, setUserStats] = useState({
+    totalOrders: 0,
+    totalSpent: 0,
+    favoriteCount: 0
+  });
+
   useEffect(() => {
     loadUserData();
     loadCartCount();
+    loadUserStats();
 
     // Refresh cart count when screen is focused
     // Fix: Remove router.addListener as it doesn't exist on Router type
@@ -50,6 +60,32 @@ export default function ConsumerDashboard() {
       setUserEmail(email || "user@brillprime.com");
     } catch (error) {
       console.error("Error loading user data:", error);
+    }
+  };
+
+  const loadUserStats = async () => {
+    try {
+      // Load user orders
+      const orders = await orderService.getConsumerOrders();
+      const totalOrders = orders?.length || 0;
+      
+      // Calculate total spent from completed orders
+      const totalSpent = orders
+        ?.filter((order: any) => order.status === 'delivered' || order.status === 'completed')
+        ?.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0) || 0;
+      
+      // Load favorites count
+      const favorites = await favoritesService.getFavorites();
+      const favoriteCount = favorites?.length || 0;
+
+      setUserStats({
+        totalOrders,
+        totalSpent,
+        favoriteCount
+      });
+    } catch (error) {
+      console.error("Error loading user stats:", error);
+      // Keep default values on error
     }
   };
 
@@ -177,15 +213,15 @@ export default function ConsumerDashboard() {
           <Text style={styles.sectionTitle}>Your Stats</Text>
           <View style={styles.statsRow}>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>12</Text>
+              <Text style={styles.statNumber}>{userStats.totalOrders}</Text>
               <Text style={styles.statLabel}>Orders</Text>
             </View>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>₹2,450</Text>
+              <Text style={styles.statNumber}>{formatNaira(userStats.totalSpent, { includeDecimals: false })}</Text>
               <Text style={styles.statLabel}>Total Spent</Text>
             </View>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>8</Text>
+              <Text style={styles.statNumber}>{userStats.favoriteCount}</Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
           </View>
