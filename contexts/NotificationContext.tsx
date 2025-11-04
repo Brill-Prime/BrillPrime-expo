@@ -52,10 +52,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     refreshNotifications();
     
-    // Refresh every 30 seconds
+    // Refresh every 30 seconds for real-time updates
     const interval = setInterval(refreshNotifications, 30000);
     
-    return () => clearInterval(interval);
+    // Also refresh when window regains focus
+    const handleFocus = () => {
+      refreshNotifications();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+      }
+    };
   }, [refreshNotifications]);
 
   return (

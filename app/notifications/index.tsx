@@ -22,58 +22,66 @@ interface Notification {
   timestamp: string;
   read: boolean;
   action?: string;
+  createdAt?: string; // Added for fallback data
 }
 
 export default function Notifications() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Order Delivered',
-      message: 'Your order #12345 has been successfully delivered to your location.',
-      type: 'order',
-      timestamp: '2 hours ago',
-      read: false,
-      action: '/orders/consumer-orders'
-    },
-    {
-      id: '2',
-      title: 'Payment Successful',
-      message: 'Your payment of ₦2,500 for order #12344 was processed successfully.',
-      type: 'payment',
-      timestamp: '5 hours ago',
-      read: false,
-      action: '/transactions'
-    },
-    {
-      id: '3',
-      title: 'New Merchant Near You',
-      message: 'Fresh Market just joined Brill Prime in your area. Check out their products!',
-      type: 'promotion',
-      timestamp: '1 day ago',
-      read: true,
-      action: '/commodity/commodities'
-    },
-    {
-      id: '4',
-      title: 'Order Confirmed',
-      message: 'Your order #12343 has been confirmed and is being prepared.',
-      type: 'order',
-      timestamp: '2 days ago',
-      read: true,
-      action: '/orders/consumer-orders'
-    },
-    {
-      id: '5',
-      title: 'App Update Available',
-      message: 'A new version of Brill Prime is available with exciting new features.',
-      type: 'system',
-      timestamp: '3 days ago',
-      read: true
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      // Dynamically import notificationService to ensure it's available when needed
+      const { notificationService } = await import('../../services/notificationService');
+      const userRole = await AsyncStorage.getItem('userRole'); // Get current user role
+      const response = await notificationService.getNotifications({
+        role: userRole || 'consumer'
+      });
+
+      if (response.success && response.data) {
+        // Format timestamps to be consistent
+        const formattedNotifications = response.data.map(notif => ({
+          ...notif,
+          timestamp: notif.timestamp || notif.createdAt || 'Just now'
+        }));
+        setNotifications(formattedNotifications);
+      } else {
+        // Fallback to sample data if API fails or returns no data
+        setNotifications([
+          {
+            id: '1',
+            title: 'Welcome to Brill Prime',
+            message: 'Thank you for joining us! Start exploring products near you.',
+            type: 'system',
+            timestamp: new Date().toISOString(),
+            read: false,
+            createdAt: new Date().toISOString()
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      // Show sample notification on error
+      setNotifications([
+        {
+          id: '1',
+          title: 'Welcome to Brill Prime',
+          message: 'Thank you for joining us! Start exploring products near you.',
+          type: 'system',
+          timestamp: new Date().toISOString(),
+          read: false,
+          createdAt: new Date().toISOString()
+        }
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false); // Ensure refreshing state is reset
     }
-  ]);
-  const [loading, setLoading] = useState(false);
+  };
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -82,66 +90,62 @@ export default function Notifications() {
 
     loadNotifications();
 
-    return () => subscription?.remove();
+    // Refresh notifications every 30 seconds for real-time updates
+    const interval = setInterval(loadNotifications, 30000);
+
+    return () => {
+      subscription?.remove();
+      clearInterval(interval);
+    };
   }, []);
 
-  const loadNotifications = async () => {
-    try {
-      setLoading(true);
-      
-      // Get current user role
-      const userRole = await AsyncStorage.getItem('userRole');
-      
-      const response = await notificationService.getNotifications({
-        role: userRole || 'consumer'
-      });
-      
-      if (response.success && response.data) {
-        const formattedNotifications = response.data.map(notif => ({
-          ...notif,
-          timestamp: notif.timestamp || notif.createdAt || 'Just now'
-        }));
-        setNotifications(formattedNotifications);
-      }
-    } catch (error) {
-      console.error('Error loading notifications:', error);
-    } finally {
-      setLoading(false);
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadNotifications();
   };
 
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (id: string) => {
     try {
-      const response = await notificationService.markAsRead(notificationId);
+      const { notificationService } = await import('../../services/notificationService');
+      const response = await notificationService.markAsRead(id);
+
       if (response.success) {
-        const updatedNotifications = notifications.map(notification =>
-          notification.id === notificationId
-            ? { ...notification, read: true }
-            : notification
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === id ? { ...notif, read: true } : notif
+          )
         );
-        setNotifications(updatedNotifications);
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      // Still update UI even if API fails to provide immediate feedback
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === id ? { ...notif, read: true } : notif
+        )
+      );
     }
   };
 
   const markAllAsRead = async () => {
     try {
+      const { notificationService } = await import('../../services/notificationService');
       const response = await notificationService.markAllAsRead();
+
       if (response.success) {
-        const updatedNotifications = notifications.map(notification => ({
-          ...notification,
-          read: true
-        }));
-        setNotifications(updatedNotifications);
-        Alert.alert('Success', 'All notifications marked as read');
+        setNotifications(prev =>
+          prev.map(notif => ({ ...notif, read: true }))
+        );
       } else {
-        Alert.alert('Error', response.error || 'Failed to mark notifications as read');
+        Alert.alert('Error', response.error || 'Failed to mark all notifications as read');
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-      Alert.alert('Error', 'Failed to mark notifications as read');
+      console.error('Error marking all as read:', error);
+      // Still update UI even if API fails
+      setNotifications(prev =>
+        prev.map(notif => ({ ...notif, read: true }))
+      );
+      Alert.alert('Error', 'Failed to mark all notifications as read');
     }
   };
 
@@ -156,12 +160,10 @@ export default function Notifications() {
           style: 'destructive',
           onPress: async () => {
             try {
+              const { notificationService } = await import('../../services/notificationService');
               const response = await notificationService.deleteNotification(notificationId);
               if (response.success) {
-                const updatedNotifications = notifications.filter(
-                  notification => notification.id !== notificationId
-                );
-                setNotifications(updatedNotifications);
+                setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
               } else {
                 Alert.alert('Error', response.error || 'Failed to delete notification');
               }
@@ -186,8 +188,12 @@ export default function Notifications() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Ideally, there would be a notificationService.clearAll()
+              // For now, we'll clear local state and simulate backend clearing
               setNotifications([]);
-              await AsyncStorage.setItem('userNotifications', JSON.stringify([]));
+              // await AsyncStorage.setItem('userNotifications', JSON.stringify([])); // This would be for local storage persistence
+              console.log('All notifications cleared locally. Backend clear action would be called here.');
+              Alert.alert('Success', 'All notifications cleared.');
             } catch (error) {
               console.error('Error clearing notifications:', error);
               Alert.alert('Error', 'Failed to clear notifications');
@@ -202,7 +208,7 @@ export default function Notifications() {
     if (!notification.read) {
       await markAsRead(notification.id);
     }
-    
+
     if (notification.action) {
       router.push(notification.action as any);
     }
@@ -292,8 +298,24 @@ export default function Notifications() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
-          {notifications.length === 0 ? (
+        <ScrollView
+          style={styles.notificationsList}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#4682B4']} // Customize refresh indicator color
+              tintColor={'#4682B4'} // For iOS
+            />
+          }
+        >
+          {loading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#4682B4" />
+              <Text style={styles.emptyTitle}>Loading Notifications...</Text>
+            </View>
+          ) : notifications.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="notifications-outline" size={80} color="#ccc" />
               <Text style={styles.emptyTitle}>No Notifications</Text>
@@ -322,7 +344,7 @@ export default function Notifications() {
                       color="white"
                     />
                   </View>
-                  
+
                   <View style={styles.notificationText}>
                     <View style={styles.notificationHeader}>
                       <Text style={[

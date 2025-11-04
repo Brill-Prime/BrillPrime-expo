@@ -33,20 +33,31 @@ export default function ConsumerDashboard() {
     loadUserData();
     loadCartCount();
     loadUserStats();
+  }, []);
 
-    // Refresh cart count when screen is focused
-    // Fix: Remove router.addListener as it doesn't exist on Router type
-    const unsubscribe = () => {
-      // Replace with a different approach if needed
+  // Add auto-refresh every minute for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
       loadCartCount();
+      loadUserStats();
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh when component becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadCartCount();
+        loadUserStats();
+      }
     };
 
-    // Initial load
-    loadCartCount();
-
-    return () => {
-      // Clean up if needed
-    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
   }, []);
 
   const loadCartCount = async () => {

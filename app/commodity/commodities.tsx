@@ -105,12 +105,24 @@ export default function CommoditiesScreen() {
     }, [])
   );
 
+  // Add real-time auto-refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadCommodities();
+      loadCartCount();
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadCommodities();
-    await loadCartCount();
-    await loadCartItems();
-    await loadFavorites();
+    await Promise.all([
+      loadCommodities(),
+      loadCartCount(),
+      loadCartItems(),
+      loadFavorites()
+    ]);
     setRefreshing(false);
   }, []);
 

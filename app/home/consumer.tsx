@@ -781,24 +781,100 @@ function ConsumerHomeContent() {
     router.push('/dashboard/consumer');
   };
 
-  const handleMenuItemPress = useCallback((item: MenuItemString) => {
+  const handleMenuItemPress = useCallback(async (item: MenuItemString) => {
     toggleMenu();
-    setTimeout(async () => {
-      try {
-        if (!isLocationSet && item !== "Dashboard") {
-          showError("Location Required", "Please set your location first to access this feature.");
-          return;
-        }
+    
+    // Don't use setTimeout - execute immediately for real-time response
+    try {
+      if (!isLocationSet && item !== "Dashboard" && item !== "Profile" && item !== "Notifications" && item !== "Settings" && item !== "Support") {
+        showError("Location Required", "Please set your location first to access this feature.");
+        return;
+      }
 
-        // Validate route before navigation
-        const validRoutes = [
-          "/dashboard/consumer",
-          "/profile",
-          "/notifications",
-          "/profile/privacy-settings",
-          "/support",
-          "/home/merchant",
-          "/home/driver"
+      // Handle each menu item with proper navigation and data loading
+      switch (item) {
+        case "Dashboard":
+          router.push("/dashboard/consumer");
+          break;
+        
+        case "Profile":
+          router.push("/profile");
+          break;
+        
+        case "Notifications":
+          // Load notifications count before navigating
+          try {
+            const { notificationService } = await import('../../services/notificationService');
+            await notificationService.getUnreadCount();
+          } catch (error) {
+            console.log('Failed to load notifications, navigating anyway');
+          }
+          router.push("/notifications");
+          break;
+        
+        case "Settings":
+          router.push("/profile/privacy-settings");
+          break;
+        
+        case "Support":
+          router.push("/support");
+          break;
+        
+        case "Switch to Merchant":
+          // Update role in storage before switching
+          await AsyncStorage.setItem('userRole', 'merchant');
+          await AsyncStorage.setItem('selectedRole', 'merchant');
+          router.replace("/home/merchant");
+          break;
+        
+        case "Switch to Driver":
+          // Update role in storage before switching
+          await AsyncStorage.setItem('userRole', 'driver');
+          await AsyncStorage.setItem('selectedRole', 'driver');
+          router.replace("/home/driver");
+          break;
+        
+        default:
+          showInfo("Navigation", `Feature: ${item}`);
+          break;
+      }
+    } catch (error) {
+      console.error("Error handling menu item:", error);
+      showError("Navigation Error", "Failed to navigate. Please try again.");
+    }
+  }, [router, toggleMenu, showError, showInfo, isLocationSet]);
+
+  // Add real-time notification listener
+  useEffect(() => {
+    const setupNotificationListener = async () => {
+      try {
+        const { notificationService } = await import('../../services/notificationService');
+        
+        // Poll for notifications every 30 seconds
+        const interval = setInterval(async () => {
+          try {
+            await notificationService.getUnreadCount();
+          } catch (error) {
+            console.log('Failed to refresh notification count');
+          }
+        }, 30000);
+
+        return () => clearInterval(interval);
+      } catch (error) {
+        console.log('Failed to setup notification listener');
+      }
+    };
+
+    setupNotificationListener();
+  }, []);
+
+  // Add real-time merchant updates
+  useEffect(() => {
+    if (isLocationSet && currentLocation) {
+      // Refresh merchants when location changes
+      loadNearbyMerchants();
+    }
+  }, [currentLocation, isLocationSet]);
         ];
 
         let targetRoute = "";
