@@ -15,7 +15,7 @@ run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
 build = ["npm", "run", "build"]
 
 [workflows]
-runButton = "Project"
+runButton = "Start App"
 
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
@@ -37,6 +37,10 @@ mode = "parallel"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Mobile Dev (LAN)"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "rm -rf node_modules/.cache .expo"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
