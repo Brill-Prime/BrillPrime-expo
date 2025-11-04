@@ -2,6 +2,7 @@ import React, { useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Dimensions } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 import { MapErrorBoundary } from './MapErrorBoundary';
 
 const { width, height } = Dimensions.get('window');
@@ -118,10 +119,10 @@ const MapContainer: React.FC<MapContainerProps> = ({
           onRegionChangeComplete={onRegionChange}
           onMapReady={handleMapReady}
         >
-          {/* User marker - Only show when location is set */}
+          {/* User marker - Only show when location is set with 3D pin style */}
           {isLocationSet === true && (
             <>
-              {/* User's current location marker */}
+              {/* User's current location marker - 3D Pin */}
               <Marker
                 coordinate={{
                   latitude: region.latitude,
@@ -129,7 +130,15 @@ const MapContainer: React.FC<MapContainerProps> = ({
                 }}
                 title="Your Location"
                 description={userAddress}
-              />
+              >
+                <View style={styles.userLocationPin}>
+                  <View style={styles.pinTop}>
+                    <Ionicons name="person" size={16} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.pinPoint} />
+                  <View style={styles.pinShadow} />
+                </View>
+              </Marker>
 
               {/* Merchant markers */}
               {storeLocations && storeLocations.map((merchant) => (
@@ -176,6 +185,47 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+  },
+  userLocationPin: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: 50,
+    height: 60,
+  },
+  pinTop: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#4682B4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#4682B4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  pinPoint: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#4682B4',
+    marginTop: -2,
+  },
+  pinShadow: {
+    width: 20,
+    height: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginTop: 2,
   },
 });
 

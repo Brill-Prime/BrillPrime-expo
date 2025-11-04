@@ -1077,11 +1077,15 @@ function ConsumerHomeContent() {
             </Marker>
           ))}
 
-          {/* User Location Marker */}
+          {/* User Location Marker - 3D Pin Style */}
           {isLocationSet && (
             <Marker coordinate={region}>
-              <View style={styles.userMarker}>
-                <View style={styles.userMarkerDot} />
+              <View style={styles.userLocationPin}>
+                <View style={styles.pinTop}>
+                  <Ionicons name="person" size={16} color={theme.colors.white} />
+                </View>
+                <View style={styles.pinPoint} />
+                <View style={styles.pinShadow} />
               </View>
             </Marker>
           )}
@@ -1843,15 +1847,45 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
   },
-  userMarker: {
+  userLocationPin: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: 50,
+    height: 60,
+  },
+  pinTop: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: theme.colors.white,
+    ...theme.shadows.medium,
+    elevation: 8,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.4,
   },
-  userMarkerDot: {
+  pinPoint: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: theme.colors.primary,
+    marginTop: -2,
+  },
+  pinShadow: {
     width: 20,
-    height: 20,
-    backgroundColor: theme.colors.white,
+    height: 8,
     borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginTop: 2,
   },
   merchantMarker: {
     backgroundColor: theme.colors.white,

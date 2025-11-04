@@ -439,15 +439,26 @@ const MapWeb: React.FC<MapProps> = ({
                         maxZoom: 20
                       }).addTo(map);
 
-                      // Add user location marker if available
+                      // Add user location marker with 3D pin style
                       ${userLocation ? `
-                      L.circleMarker([${userLocation.latitude}, ${userLocation.longitude}], {
-                        radius: 8,
-                        fillColor: "#0066ff",
-                        color: "#fff",
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
+                      const userPinIcon = L.divIcon({
+                        html: \`
+                          <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+                            <div style="width: 36px; height: 36px; border-radius: 18px; background: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4); position: relative; z-index: 2;">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                              </svg>
+                            </div>
+                            <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px; position: relative; z-index: 1;"></div>
+                            <div style="width: 20px; height: 8px; border-radius: 10px; background: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
+                          </div>
+                        \`,
+                        className: 'user-location-pin',
+                        iconSize: [50, 60],
+                        iconAnchor: [25, 58]
+                      });
+                      L.marker([${userLocation.latitude}, ${userLocation.longitude}], {
+                        icon: userPinIcon
                       }).addTo(map);
                       ` : ''}
 
