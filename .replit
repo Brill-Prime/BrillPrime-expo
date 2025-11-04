@@ -32,11 +32,7 @@ args = "npx expo start --lan --web"
 [[workflows.workflow]]
 name = "Start App"
 author = 49172621
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Mobile Dev (LAN)"
+mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
