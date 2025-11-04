@@ -870,61 +870,11 @@ function ConsumerHomeContent() {
 
   // Add real-time merchant updates
   useEffect(() => {
-    if (isLocationSet && currentLocation) {
+    if (isLocationSet && region) {
       // Refresh merchants when location changes
-      loadNearbyMerchants();
+      loadNearbyMerchants(region.latitude, region.longitude);
     }
-  }, [currentLocation, isLocationSet]);
-        ];
-
-        let targetRoute = "";
-        switch (item) {
-          case "Dashboard":
-            targetRoute = "/dashboard/consumer";
-            break;
-          case "Profile":
-            targetRoute = "/profile";
-            break;
-          case "Notifications":
-            targetRoute = "/notifications";
-            break;
-          case "Settings":
-            targetRoute = "/profile/privacy-settings";
-            break;
-          case "Support":
-            targetRoute = "/support";
-            break;
-          case "Switch to Merchant":
-            targetRoute = "/home/merchant";
-            break;
-          case "Switch to Driver":
-            targetRoute = "/home/driver";
-            break;
-          default:
-            showInfo("Navigation", `Navigating to ${item}`);
-            return;
-        }
-
-        if (targetRoute && validRoutes.includes(targetRoute)) {
-          await router.push(targetRoute as any);
-        } else {
-          throw new Error(`Invalid route: ${targetRoute}`);
-        }
-      } catch (error) {
-        console.error(`Navigation error to ${item}:`, error);
-
-        if (error instanceof Error) {
-          if (error.message.includes('Invalid route')) {
-            showError("Navigation Error", "Invalid navigation destination.");
-          } else {
-            showError("Navigation Error", `Could not navigate to ${item}. Please try again.`);
-          }
-        } else {
-          showError("Navigation Error", "An unexpected error occurred during navigation.");
-        }
-      }
-    }, 300);
-  }, [router, toggleMenu, showInfo, isLocationSet, showError]);
+  }, [region.latitude, region.longitude, isLocationSet]);
 
   const handleSignOut = async () => {
     showConfirmDialog(
