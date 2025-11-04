@@ -11,6 +11,7 @@ config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 
 // Configure for Replit environment
 config.server = {
   ...config.server,
+  port: 5000,
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
