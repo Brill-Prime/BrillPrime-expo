@@ -1092,9 +1092,6 @@ function ConsumerHomeContent() {
           <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
             <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-            <Ionicons name="refresh" size={24} color={theme.colors.primary} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
             <Ionicons name="menu" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
@@ -1371,15 +1368,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: theme.colors.white,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.small,
-  },
-  refreshButton: {
     width: 40,
     height: 40,
     backgroundColor: theme.colors.white,
