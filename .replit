@@ -64,43 +64,7 @@ mode = "sequential"
 task = "shell.exec"
 args = "npx expo start --web --port 8081 --host 0.0.0.0"
 
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Expo Web Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Backend Server"
-
-[[workflows.workflow]]
-name = "Expo Web Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "EXPO_NO_TYPESCRIPT_SETUP=1 npm run web"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Backend Server"
-author = "agent"
-mode = "sequential"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server/index.js"
-waitForPort = 3000
 
 [[ports]]
 localPort = 3000

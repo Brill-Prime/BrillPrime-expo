@@ -51,11 +51,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-  // In development, use local backend or Replit URL
-  if (isDevelopment && process.env.REPLIT_DEV_DOMAIN) {
-    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  }
-  // Use the production backend deployed on Render
+  // Always use the production backend deployed on Render
   return 'https://api.brillprime.com';
 };
 
