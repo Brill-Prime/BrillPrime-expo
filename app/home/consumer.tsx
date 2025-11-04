@@ -778,11 +778,7 @@ function ConsumerHomeContent() {
   }, [isSidebarOpen, slideAnim, sidebarWidth]);
 
   const handleGoBack = () => {
-    showConfirmDialog(
-      "Go Back",
-      "Are you sure you want to go back to dashboard?",
-      () => router.push('/dashboard/consumer')
-    );
+    router.push('/dashboard/consumer');
   };
 
   const handleMenuItemPress = useCallback((item: MenuItemString) => {

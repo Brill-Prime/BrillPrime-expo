@@ -96,6 +96,12 @@ export default function ConsumerDashboard() {
       style={styles.container}
     >
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.push('/home/consumer')}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
         <View style={styles.headerTextContainer}>
           <Text style={styles.greeting}>Hello, Consumer! 👋</Text>
           <Text style={styles.email}>{userEmail}</Text>

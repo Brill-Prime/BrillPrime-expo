@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   Dimensions,
   Animated,
   StatusBar,
@@ -239,16 +239,16 @@ export default function MerchantHome() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.push('/dashboard/merchant')} 
+        <TouchableOpacity
           style={styles.headerButton}
+          onPress={() => router.push('/dashboard/merchant')}
         >
           <Ionicons name="arrow-back" size={20} color="#333" />
         </TouchableOpacity>
 
         <View style={styles.headerButtonsContainer}>
-          <TouchableOpacity 
-            onPress={() => router.push('/notifications')} 
+          <TouchableOpacity
+            onPress={() => router.push('/notifications')}
             style={styles.headerButton}
           >
             <Ionicons name="notifications" size={20} color="#333" />
@@ -304,8 +304,8 @@ export default function MerchantHome() {
       </View>
 
       {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab} 
+      <TouchableOpacity
+        style={styles.fab}
         onPress={() => router.push('/merchant/add-commodity')}
       >
         <Ionicons name="add" size={24} color="white" />
@@ -318,7 +318,7 @@ export default function MerchantHome() {
           <Text style={[styles.navLabel, styles.activeNavLabel]}>Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.push('/orders/consumer-orders')}
         >
@@ -326,7 +326,7 @@ export default function MerchantHome() {
           <Text style={styles.navLabel}>Orders</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.push('/merchant/commodities')}
         >
@@ -334,7 +334,7 @@ export default function MerchantHome() {
           <Text style={styles.navLabel}>Products</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.push('/profile')}
         >
@@ -358,9 +358,9 @@ export default function MerchantHome() {
           {/* Menu Items */}
           <View style={styles.menuList}>
             {['Dashboard', 'Profile', 'Notifications', 'Settings', 'Support'].map((item) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={item}
-                style={styles.menuItem} 
+                style={styles.menuItem}
                 onPress={() => handleMenuItemPress(item)}
               >
                 <Text style={styles.menuItemText}>{item}</Text>
@@ -371,22 +371,22 @@ export default function MerchantHome() {
 
           {/* Bottom Buttons */}
           <View style={styles.sidebarBottom}>
-            <TouchableOpacity 
-              style={styles.switchButton} 
+            <TouchableOpacity
+              style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Consumer")}
             >
               <Text style={styles.switchButtonText}>Switch to Consumer</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.switchButton} 
+            <TouchableOpacity
+              style={styles.switchButton}
               onPress={() => handleMenuItemPress("Switch to Driver")}
             >
               <Text style={styles.switchButtonText}>Switch to Driver</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.signOutButton} 
+            <TouchableOpacity
+              style={styles.signOutButton}
               onPress={handleSignOut}
             >
               <Text style={styles.signOutButtonText}>Sign out</Text>
@@ -397,8 +397,8 @@ export default function MerchantHome() {
 
       {/* Menu Overlay */}
       {isMenuOpen && (
-        <TouchableOpacity 
-          style={styles.menuOverlay} 
+        <TouchableOpacity
+          style={styles.menuOverlay}
           onPress={toggleMenu}
           activeOpacity={1}
         />

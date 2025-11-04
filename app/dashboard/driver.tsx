@@ -94,7 +94,7 @@ export default function DriverDashboard() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.push('/home/consumer')}
+          onPress={() => router.push('/home/driver')}
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
