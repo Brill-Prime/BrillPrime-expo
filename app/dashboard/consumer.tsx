@@ -76,8 +76,12 @@ export default function ConsumerDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    // Fix: Cast the dynamic path to any to avoid TypeScript errors
-    router.push(`/feature/${feature.id}` as any);
+    // Route to the appropriate feature page
+    if (feature.route) {
+      router.push(feature.route as any);
+    } else {
+      router.push(`/feature/${feature.id}` as any);
+    }
   };
 
   const features = [
