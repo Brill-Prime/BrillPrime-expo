@@ -1,10 +1,11 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "postgresql-17", "nix", "typescript-language-server"]
 [agent]
 expertMode = true
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_stripe:1.0.0", "javascript_sendgrid:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["supabase-cli"]
 
 
 
@@ -19,11 +20,10 @@ runButton = "Start App"
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
 author = 48462500
-mode = "parallel"
+mode = "sequential"
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
+task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -32,19 +32,11 @@ args = "npx expo start --lan --web"
 [[workflows.workflow]]
 name = "Start App"
 author = 49172621
-mode = "sequential"
+mode = "parallel"
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf .expo"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf node_modules/.cache"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
+task = "workflow.run"
+args = "Mobile Dev (LAN)"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -59,6 +51,10 @@ localPort = 5001
 [[ports]]
 localPort = 8081
 externalPort = 8081
+
+[[ports]]
+localPort = 8082
+externalPort = 80
 
 [[ports]]
 localPort = 33505
