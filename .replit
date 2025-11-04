@@ -64,6 +64,19 @@ mode = "sequential"
 task = "shell.exec"
 args = "npx expo start --web --port 8081 --host 0.0.0.0"
 
+[[workflows.workflow]]
+name = "Project"
+author = 49172621
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --web --port 5000 --host 0.0.0.0"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
