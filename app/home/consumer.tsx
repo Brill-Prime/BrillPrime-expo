@@ -297,14 +297,14 @@ function ConsumerHomeContent() {
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
-        showError("Network Error", "No internet connection. Please check your network and try again.");
+        console.log("No internet connection, falling back to cached data");
         await loadAllMerchants(); // Fallback to cached/all merchants
         return;
       }
 
-      // Show loading message on first attempt
+      // Log loading status silently (no popup)
       if (retryCount === 0) {
-        showInfo("Loading", "Connecting to server...");
+        console.log("Loading nearby merchants...");
       }
 
       // Get authentication token
@@ -368,17 +368,14 @@ function ConsumerHomeContent() {
       if (error instanceof TypeError && error.message.includes('fetch')) {
         if (retryCount < MAX_RETRIES) {
           console.log(`Retrying... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
-          showInfo("Retrying", "Backend server may be waking up. Please wait...");
           // Wait 3 seconds before retrying (Render cold start can take 50+ seconds)
           await new Promise(resolve => setTimeout(resolve, 3000));
           return loadNearbyMerchants(latitude, longitude, retryCount + 1);
         } else {
-          showError("Connection Failed", "Unable to connect to backend server after multiple attempts. The server may be down or waking up (Render free tier can take up to 60 seconds). Using cached data.");
+          console.log("Unable to connect to backend server after multiple attempts. Using cached data.");
         }
-      } else if (error instanceof Error && error.message.includes('API Error')) {
-        showError("Server Error", "Unable to load nearby merchants. Using cached data.");
       } else {
-        showError("Loading Error", "Failed to load nearby merchants. Using cached data.");
+        console.log("Failed to load nearby merchants. Using cached data.");
       }
 
       // Fallback to loading all merchants
@@ -392,7 +389,7 @@ function ConsumerHomeContent() {
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
-        showError("Network Error", "No internet connection. Using cached merchant data.");
+        console.log("No internet connection. Using cached merchant data.");
         // Load fallback data
         loadFallbackMerchants();
         return;
@@ -474,22 +471,16 @@ function ConsumerHomeContent() {
       loadFallbackMerchants();
 
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        showError(
-          "Backend Unavailable", 
-          "Cannot reach the backend server. It may be waking up (Render free tier takes 50-60 seconds on first load). Using cached data."
-        );
+        console.log("Cannot reach the backend server. Using cached data.");
       } else {
-        showError("Loading Error", "Failed to load merchants. Using cached data.");
+        console.log("Failed to load merchants. Using cached data.");
       }
     }
   };
 
   const loadFallbackMerchants = () => {
-    // Show informative message instead of fake data
-    showInfo(
-      "No Merchants Yet", 
-      "There are no registered merchants in the system yet. Merchants can register through the app to appear here."
-    );
+    // Log informative message silently
+    console.log("No registered merchants available in the system yet.");
     setStoreLocations([]);
   };
 
@@ -965,21 +956,22 @@ function ConsumerHomeContent() {
 
       // Don't retry on permission errors - it will just spam the user
       if (locationError instanceof Error) {
-        // Show the specific error message from locationService
+        // Only show critical errors that need user action
         if (locationError.message.includes('permission') || locationError.message.includes('denied')) {
-          showError("Location Permission Required", locationError.message);
+          showError("Location Permission Required", "Please enable location access in your browser settings to continue.");
           // Keep the location setup card visible so user can try again
           setIsLocationSet(false);
           setHasShownLocationPrompt(false);
-        } else if (locationError.message.includes('timeout') || locationError.message.includes('timed out')) {
-          showError("Location Timeout", locationError.message);
-        } else if (locationError.message.includes('unavailable')) {
-          showError("GPS Unavailable", locationError.message);
         } else {
-          showError("Location Error", locationError.message || "Failed to get your location. Please try again.");
+          // Log other errors silently
+          console.log("Location error:", locationError.message);
+          setIsLocationSet(false);
+          setHasShownLocationPrompt(false);
         }
       } else {
-        showError("Location Error", "An unexpected error occurred. Please enable location access in your browser settings.");
+        console.log("Unexpected location error");
+        setIsLocationSet(false);
+        setHasShownLocationPrompt(false);
       }
     } finally {
       setIsLoadingLocation(false);
