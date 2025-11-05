@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import { cartService } from '../services/cartService';
@@ -88,7 +87,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addToSearchHistory = useCallback(async (query: string) => {
     if (!query.trim()) return;
-    
+
     setState(prev => {
       const updated = [query, ...prev.searchHistory.filter(q => q !== query)].slice(0, 10);
       AsyncStorage.setItem('searchHistory', JSON.stringify(updated));
@@ -145,3 +144,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+export { AppProvider, useAppContext };
+export default AppProvider;

@@ -56,16 +56,21 @@ config.transformer = {
 // Block react-native-maps from being bundled on web
 const defaultResolver = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === 'web' && moduleName === 'react-native-maps') {
+  // Block native-only modules on web
+  const webBlockList = [
+    'react-native-maps',
+    'react-native-maps-directions',
+    'react-native-otp-verify',
+    'react-native-paystack-webview',
+    'react-native-view-shot'
+  ];
+  
+  if (platform === 'web' && webBlockList.includes(moduleName)) {
     return {
       type: 'empty',
     };
   }
-  if (platform === 'web' && moduleName === 'react-native-maps-directions') {
-    return {
-      type: 'empty',
-    };
-  }
+  
   // Use the default resolver
   if (defaultResolver) {
     return defaultResolver(context, moduleName, platform);
