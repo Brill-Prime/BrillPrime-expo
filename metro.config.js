@@ -54,6 +54,7 @@ config.transformer = {
 };
 
 // Block react-native-maps from being bundled on web
+const defaultResolver = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web' && moduleName === 'react-native-maps') {
     return {
@@ -64,6 +65,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     return {
       type: 'empty',
     };
+  }
+  // Use the default resolver
+  if (defaultResolver) {
+    return defaultResolver(context, moduleName, platform);
   }
   return context.resolveRequest(context, moduleName, platform);
 };
