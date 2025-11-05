@@ -188,6 +188,18 @@ export const API_ENDPOINTS = {
     PAYSTACK: '/api/webhooks/paystack',
   },
 
+  // Supabase Edge Functions
+  EDGE_FUNCTIONS: {
+    CREATE_ORDER: '/functions/v1/create-order',
+    UPDATE_ESCROW: '/functions/v1/update-escrow',
+    REFUND_PAYMENT: '/functions/v1/refund-payment',
+    MARK_PAID: '/functions/v1/mark-paid',
+    VERIFY_TRANSACTION: '/functions/v1/verify-transaction',
+    CREATE_TRANSACTION: '/functions/v1/create-transaction',
+    PAYSTACK_WEBHOOK: '/functions/v1/paystack-webhook',
+    PAYSTACK_UTILS: '/functions/v1/paystack-utils',
+  },
+
   // WebSocket
   WEBSOCKET: '/ws',
 } as const;

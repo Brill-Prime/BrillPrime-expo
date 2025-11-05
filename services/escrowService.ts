@@ -71,6 +71,28 @@ class EscrowService {
       Authorization: `Bearer ${token}`,
     });
   }
+
+  // Update escrow via Supabase Edge Function
+  async updateEscrow(data: {
+    escrowId: string;
+    status?: 'PENDING' | 'HELD' | 'RELEASED' | 'DISPUTED' | 'REFUNDED';
+    action?: 'release' | 'refund' | 'dispute';
+    notes?: string;
+    reason?: string;
+  }): Promise<ApiResponse<{ message: string; escrow?: any }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post<{ message: string; escrow?: any }>(
+      '/functions/v1/update-escrow',
+      data,
+      {
+        Authorization: `Bearer ${token}`,
+      }
+    );
+  }
 }
 
 export const escrowService = new EscrowService();
