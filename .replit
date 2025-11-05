@@ -36,7 +36,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --web --port 5000"
+args = "npx expo start --web --port 0.0.0.0"
 
 [[workflows.workflow]]
 name = "Project"
@@ -58,6 +58,10 @@ outputType = "webview"
 task = "shell.exec"
 args = "npm run web"
 waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 3000
 
 [[ports]]
 localPort = 5001
