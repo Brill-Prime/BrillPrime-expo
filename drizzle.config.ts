@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
@@ -5,6 +6,6 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.EXPO_PUBLIC_DATABASE_URL + '?sslmode=require',
+    url: process.env.EXPO_PUBLIC_DATABASE_URL!,
   },
 });
