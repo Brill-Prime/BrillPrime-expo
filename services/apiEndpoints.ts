@@ -188,7 +188,7 @@ export const API_ENDPOINTS = {
     PAYSTACK: '/api/webhooks/paystack',
   },
 
-  // Supabase Edge Functions
+  // Supabase Edge Functions (Deployed at https://lkfprjjlqmtpamukoatl.supabase.co)
   EDGE_FUNCTIONS: {
     CREATE_ORDER: '/functions/v1/create-order',
     UPDATE_ESCROW: '/functions/v1/update-escrow',

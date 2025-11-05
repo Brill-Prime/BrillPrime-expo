@@ -136,6 +136,88 @@ class PaymentService {
     );
   }
 
+  // Refund payment via edge function
+  async refundPayment(data: {
+    orderId: string;
+    amount: number;
+    reason: string;
+  }): Promise<ApiResponse<{ message: string; refund?: any }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/refund-payment',
+      data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Mark order as paid via edge function
+  async markOrderAsPaid(data: {
+    orderId: string;
+    reference: string;
+    amount: number;
+    paymentMethod: 'CARD' | 'BANK_TRANSFER';
+  }): Promise<ApiResponse<{ message: string; transaction?: any }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/mark-paid',
+      data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Verify transaction via edge function
+  async verifyTransaction(data: {
+    reference: string;
+    orderId?: string;
+  }): Promise<ApiResponse<{ 
+    status: string; 
+    transaction?: any;
+    verified: boolean;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/verify-transaction',
+      data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Create transaction via edge function
+  async createTransaction(data: {
+    orderId: string;
+    amount: number;
+    paymentMethod: 'CARD' | 'BANK_TRANSFER';
+    reference: string;
+    userId: string;
+    gateway?: string;
+  }): Promise<ApiResponse<{ 
+    transactionId: string;
+    transaction: any;
+  }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post(
+      '/functions/v1/create-transaction',
+      data,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
     paymentMethod: 'CARD' | 'BANK_TRANSFER';
   }): Promise<ApiResponse<{
     transactionId: string;

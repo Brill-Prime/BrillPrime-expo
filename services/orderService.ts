@@ -62,18 +62,45 @@ class OrderService {
       quantity: number;
       price: number;
     }>;
-    deliveryAddressId: number;
-    paymentMethodId: number;
-    notes?: string;
-  }): Promise<ApiResponse<Order>> {
+    deliveryAddress: string;
+    deliveryInstructions?: string;
+    paymentMethod: 'CARD' | 'BANK_TRANSFER';
+  }): Promise<ApiResponse<{ orderId: string; amount: number }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Order>('/api/orders', orderData, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<{ orderId: string; amount: number }>(
+      '/api/orders',
+      orderData,
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Create order via Supabase Edge Function
+  async createOrderViaFunction(orderData: {
+    items: Array<{
+      productId: string;
+      quantity: number;
+      price: number;
+    }>;
+    deliveryAddress: string;
+    deliveryInstructions?: string;
+    paymentMethod: 'CARD' | 'BANK_TRANSFER';
+    userId: string;
+    merchantId: string;
+  }): Promise<ApiResponse<{ orderId: string; order: any }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post<{ orderId: string; order: any }>(
+      '/functions/v1/create-order',
+      orderData,
+      { Authorization: `Bearer ${token}` }
+    );
   }
 
   // Get user orders
@@ -87,50 +114,6 @@ class OrderService {
   }>> {
     const token = await authService.getToken();
     if (!token) {
-
-
-  // Call Supabase Edge Function to update order status
-  async updateOrderStatusViaFunction(orderId: string, data: {
-    newStatus: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
-    driverId?: string;
-    notes?: string;
-  }): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    // Calls: https://your-project.supabase.co/functions/v1/update-order-status
-    return apiClient.post<Order>(
-      '/functions/v1/update-order-status',
-      {
-        orderId,
-        newStatus: data.newStatus,
-        driverId: data.driverId,
-        notes: data.notes
-      },
-      { Authorization: `Bearer ${token}` }
-    );
-  }
-
-  // Call Supabase Edge Function to assign driver
-  async assignDriverViaFunction(orderId: string, deliveryLocation: {
-    latitude: number;
-    longitude: number;
-  }): Promise<ApiResponse<any>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    // Calls: https://your-project.supabase.co/functions/v1/assign-driver
-    return apiClient.post(
-      '/functions/v1/assign-driver',
-      { orderId, deliveryLocation },
-      { Authorization: `Bearer ${token}` }
-    );
-  }
-
       return { success: false, error: 'Authentication required' };
     }
 
@@ -232,6 +215,48 @@ class OrderService {
     return apiClient.get('/api/orders/summary', {
       Authorization: `Bearer ${token}`,
     });
+  }
+
+  // Call Supabase Edge Function to update order status
+  async updateOrderStatusViaFunction(orderId: string, data: {
+    newStatus: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
+    driverId?: string;
+    notes?: string;
+  }): Promise<ApiResponse<Order>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Calls: https://your-project.supabase.co/functions/v1/update-order-status
+    return apiClient.post<Order>(
+      '/functions/v1/update-order-status',
+      {
+        orderId,
+        newStatus: data.newStatus,
+        driverId: data.driverId,
+        notes: data.notes
+      },
+      { Authorization: `Bearer ${token}` }
+    );
+  }
+
+  // Call Supabase Edge Function to assign driver
+  async assignDriverViaFunction(orderId: string, deliveryLocation: {
+    latitude: number;
+    longitude: number;
+  }): Promise<ApiResponse<any>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Calls: https://your-project.supabase.co/functions/v1/assign-driver
+    return apiClient.post(
+      '/functions/v1/assign-driver',
+      { orderId, deliveryLocation },
+      { Authorization: `Bearer ${token}` }
+    );
   }
 }
 
