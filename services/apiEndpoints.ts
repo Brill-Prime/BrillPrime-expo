@@ -1,4 +1,3 @@
-
 // API Endpoints Configuration
 // Maps all backend API endpoints with type safety
 
@@ -191,6 +190,8 @@ export const API_ENDPOINTS = {
   // Supabase Edge Functions (Deployed at https://lkfprjjlqmtpamukoatl.supabase.co)
   EDGE_FUNCTIONS: {
     CREATE_ORDER: '/functions/v1/create-order',
+    UPDATE_ORDER_STATUS: '/functions/v1/update-order-status',
+    ASSIGN_DRIVER: '/functions/v1/assign-driver',
     UPDATE_ESCROW: '/functions/v1/update-escrow',
     REFUND_PAYMENT: '/functions/v1/refund-payment',
     MARK_PAID: '/functions/v1/mark-paid',
@@ -198,6 +199,9 @@ export const API_ENDPOINTS = {
     CREATE_TRANSACTION: '/functions/v1/create-transaction',
     PAYSTACK_WEBHOOK: '/functions/v1/paystack-webhook',
     PAYSTACK_UTILS: '/functions/v1/paystack-utils',
+    SEND_NOTIFICATION: '/functions/v1/send-notification',
+    VERIFY_KYC_DOCUMENT: '/functions/v1/verify-kyc-document',
+    CALCULATE_DELIVERY_FEE: '/functions/v1/calculate-delivery-fee',
   },
 
   // WebSocket
