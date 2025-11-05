@@ -2,7 +2,6 @@
 // Handles payment processing and transaction management
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 import { Transaction, PaymentRequest } from './types';
 
 class PaymentService {

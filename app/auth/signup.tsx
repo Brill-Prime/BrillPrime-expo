@@ -171,12 +171,12 @@ export default function SignUp() {
 
       // Handle network errors specifically
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        showError(
+        Alert.alert(
           "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
       } else {
-        showError("Error", "Sign up failed. Please try again.");
+        Alert.alert("Error", "Sign up failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -190,10 +190,10 @@ export default function SignUp() {
       // Check if user has selected a role first
       const selectedRole = await AsyncStorage.getItem("selectedRole");
       if (!selectedRole) {
-        showConfirmDialog(
+        Alert.alert(
           "Role Required",
           "Please select your role first.",
-          () => router.replace("/auth/role-selection")
+          [{ text: "OK", onPress: () => router.replace("/auth/role-selection") }]
         );
         setLoading(false);
         return;

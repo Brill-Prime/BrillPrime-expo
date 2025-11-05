@@ -105,14 +105,14 @@ class PerformanceOptimizerClass {
         return cachedData;
       }
 
-      // Dynamic import to avoid circular dependencies
-      const AsyncStorage = await import('@react-native-async-storage/async-storage');
+      // Import AsyncStorage statically at the top of the file instead
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       
       const [userToken, userRole, userEmail, tokenExpiry] = await Promise.all([
-        AsyncStorage.default.getItem('userToken'),
-        AsyncStorage.default.getItem('userRole'),
-        AsyncStorage.default.getItem('userEmail'),
-        AsyncStorage.default.getItem('tokenExpiry')
+        AsyncStorage.getItem('userToken'),
+        AsyncStorage.getItem('userRole'),
+        AsyncStorage.getItem('userEmail'),
+        AsyncStorage.getItem('tokenExpiry')
       ]);
 
       const data = {
