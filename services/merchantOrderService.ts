@@ -296,6 +296,34 @@ class MerchantOrderService {
   }
 
   /**
+   * Subscribe to real-time order updates
+   */
+  subscribeToOrders(
+    merchantId: string,
+    callback: (payload: any) => void
+  ): { unsubscribe: () => void } {
+    const subscription = supabase
+      .channel(`merchant_orders_${merchantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `merchant_id=eq.${merchantId}`,
+        },
+        callback
+      )
+      .subscribe();
+
+    return {
+      unsubscribe: () => {
+        subscription.unsubscribe();
+      },
+    };
+  }
+
+  /**
    * Get order statistics for today
    */
   async getOrderStats(): Promise<{ success: boolean; stats?: OrderStats; error?: string }> {

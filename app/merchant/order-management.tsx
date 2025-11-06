@@ -68,6 +68,32 @@ export default function OrderManagementScreen() {
   useEffect(() => {
     fetchOrders();
     fetchStats();
+
+    // Subscribe to real-time updates
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    const setupRealtime = async () => {
+      const merchantResult = await merchantOrderService.getMerchantId();
+      if (merchantResult.success && merchantResult.merchantId) {
+        subscription = merchantOrderService.subscribeToOrders(
+          merchantResult.merchantId,
+          (payload) => {
+            console.log('Order update received:', payload);
+            // Refresh orders when changes occur
+            fetchOrders();
+            fetchStats();
+          }
+        );
+      }
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, [selectedFilter]);
 
   const onRefresh = useCallback(() => {
