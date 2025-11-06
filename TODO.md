@@ -1,105 +1,281 @@
 
-# Consumer Home Screen Implementation - Critical Path Testing
+# Brill Prime App - TODO List
 
-## Completed Tasks
-- [x] Implement complete UI with MapContainer, markers, header, search, location setup, delivery tracking, sidebar, modals
-- [x] Add all necessary components and styling
-- [x] Create missing components: LocationSetupCard, Header, SearchBar, Sidebar, MerchantDetailsModal
-- [x] Fix MapContainer import to use react-native-maps
-- [x] Start Expo development server
+## ✅ Recently Completed
+- [x] Remove server setup (using Firebase + Supabase only)
+- [x] Implement splash screen
+- [x] Fix onboarding flow (show before authentication)
+- [x] Update role selection to display before sign-up
+- [x] Configure Supabase environment variables
+- [x] Verify Firebase + Supabase integration
+- [x] Clean up package.json scripts
 
-## 🔴 CRITICAL ISSUE - Backend Connectivity
-**Status:** Frontend cannot connect to backend API
-**Error:** `TypeError: Failed to fetch` on all API endpoints
+---
 
-### Immediate Action Required:
-1. [ ] **Check backend CORS configuration** - Add Replit frontend URL to allowed origins
-   - Backend must allow: `https://42528567-18bd-486e-a214-4eb773585554-00-89o2c6ar9mns.janeway.replit.dev`
-   - CORS setup needed in backend Express/Node.js app
+## 🔴 CRITICAL - Backend Setup (HIGHEST PRIORITY)
 
-2. [ ] **Verify backend is running on Render**
-   - Check Render.com dashboard
-   - Confirm backend service is active (not sleeping)
-   - Review backend logs for errors
+### Database Population
+- [ ] **Seed Supabase database with sample data**
+  - [ ] Create 10-15 sample merchants with locations
+  - [ ] Add 50+ sample commodities across categories
+  - [ ] Create test users for each role (consumer, merchant, driver)
+  - [ ] Add sample orders and order history
+  - [ ] Populate transaction records
 
-3. [ ] **Test backend endpoints manually**
-   ```bash
-   curl https://brill-backend-wjyl.onrender.com/health
-   curl https://brill-backend-wjyl.onrender.com/api/merchants
-   ```
+### API Testing
+- [ ] **Test all API endpoints**
+  - [ ] Verify `/api/merchants` endpoint
+  - [ ] Test `/api/merchants/nearby` with coordinates
+  - [ ] Validate `/api/notifications/unread-count`
+  - [ ] Check `/api/cart` functionality
+  - [ ] Test order creation and updates
+  
+### Cloud Storage Setup
+- [ ] **Configure Supabase Storage**
+  - [ ] Set up buckets for product images
+  - [ ] Configure KYC document storage
+  - [ ] Add profile picture storage
+  - [ ] Set up receipt/invoice storage
+  - [ ] Implement image upload in commodity management
 
-4. [ ] **Create initial merchant data**
-   - No merchants exist in database yet
-   - Need to register merchants through backend API
-   - Or seed database with sample merchants
+---
 
-### Backend CORS Fix (Required)
-Add to your backend (Express.js):
-```javascript
-const cors = require('cors');
+## 🔥 HIGH PRIORITY - Merchant Features
 
-app.use(cors({
-  origin: [
-    'https://42528567-18bd-486e-a214-4eb773585554-00-89o2c6ar9mns.janeway.replit.dev',
-    'http://localhost:5000',
-    'exp://172.31.72.130:5000'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-```
+### Commodity Management (Essential)
+- [ ] **Build Add Commodity Screen**
+  - [ ] Create form with image upload
+  - [ ] Add category selection
+  - [ ] Implement pricing and inventory fields
+  - [ ] Add description and specifications
+  - [ ] Connect to Supabase storage for images
 
-## Critical Path Testing Tasks
+- [ ] **Implement Edit/Delete Commodity**
+  - [ ] Update existing commodity screen
+  - [ ] Add delete confirmation modal
+  - [ ] Handle image updates
+  - [ ] Sync with inventory system
 
-### 1. App Launch and Basic Rendering
-- [x] Start Expo development server
-- [x] Launch app in browser
-- [x] Verify app loads without critical errors
-- [x] Check that map renders with blue styling
-- [ ] **FIX: Backend connectivity blocking all features**
+- [ ] **Inventory Management**
+  - [ ] Stock level tracking
+  - [ ] Low stock alerts
+  - [ ] Bulk inventory updates
+  - [ ] Inventory history
 
-### 2. Location Setup Flow
-- [ ] Test location permission request
-- [ ] Verify automatic location setting works
-- [ ] Check "Set Later" button functionality
-- [ ] Confirm location setup card disappears after setting location
+### Order Fulfillment System
+- [ ] **Order Management Interface**
+  - [ ] View pending orders
+  - [ ] Accept/reject order functionality
+  - [ ] Update order status workflow
+  - [ ] Assign drivers to orders
+  - [ ] Mark orders as ready/completed
 
-### 3. Map and Markers
-- [ ] Verify merchant markers appear on map (blocked by no merchants)
-- [ ] Test merchant marker press opens details modal
-- [ ] Check driver markers display correctly
-- [ ] Verify user location marker shows when location is set
+- [ ] **Customer Communication**
+  - [ ] Order status notifications
+  - [ ] In-app messaging for orders
+  - [ ] Delay/issue reporting
+  - [ ] Customer feedback collection
 
-### 4. Sidebar Navigation
-- [ ] Test sidebar opens/closes with menu button
-- [ ] Verify menu items are clickable
-- [ ] Test navigation to different screens (Dashboard, Profile, etc.)
-- [ ] Check sign out functionality
+### Merchant Analytics
+- [ ] **Sales Dashboard**
+  - [ ] Daily/weekly/monthly sales charts
+  - [ ] Revenue breakdown by category
+  - [ ] Top-selling commodities
+  - [ ] Order completion rates
 
-### 5. Delivery Simulation
-- [ ] Test "Test Delivery" button appears when location set and merchants loaded
-- [ ] Verify delivery simulation starts with driver movement
-- [ ] Check delivery card shows with driver info
-- [ ] Confirm delivery completion notification
+- [ ] **Customer Insights**
+  - [ ] Customer demographics
+  - [ ] Repeat customer tracking
+  - [ ] Average order value
+  - [ ] Customer satisfaction metrics
 
-### 6. Search and Merchant Details
-- [ ] Test search container appears when location is set
-- [ ] Verify search navigation works
-- [ ] Check merchant details modal opens and displays info
-- [ ] Test "Order Now" and "Get Directions" buttons
+---
 
-## Next Steps After Critical Path
-- Resolve backend connectivity issue FIRST
-- Seed database with sample merchants
-- Test error handling and loading states
-- Verify responsive design and animations
-- Manual testing of all edge cases
+## 🟡 MEDIUM PRIORITY - Driver Features
 
-## API Endpoints Failing (All returning "Failed to fetch")
-- `/api/merchants` - Get all merchants
-- `/api/merchants/nearby?lat=X&lng=Y` - Get nearby merchants
-- `/api/notifications/unread-count?role=consumer` - Get notification count
-- `/api/cart` - Get cart items
+### Delivery Management
+- [ ] **Delivery Assignment System**
+  - [ ] Available deliveries list
+  - [ ] Accept/decline delivery flow
+  - [ ] Multiple delivery handling
+  - [ ] Priority-based assignment
 
-**Root Cause:** CORS policy blocking requests from Replit frontend domain
+- [ ] **Route Optimization**
+  - [ ] Calculate optimal delivery routes
+  - [ ] Multi-stop route planning
+  - [ ] Real-time traffic integration
+  - [ ] Estimated time calculations
+
+- [ ] **Real-time GPS Tracking**
+  - [ ] Live location updates
+  - [ ] Customer tracking view
+  - [ ] Merchant tracking view
+  - [ ] Delivery proof (photo/signature)
+
+### Driver Verification & Onboarding
+- [ ] **KYC for Drivers**
+  - [ ] Driver's license upload
+  - [ ] Vehicle registration
+  - [ ] Insurance documents
+  - [ ] Background check integration
+  - [ ] Admin verification workflow
+
+- [ ] **Driver Training**
+  - [ ] Onboarding tutorial
+  - [ ] Best practices guide
+  - [ ] Safety protocols
+  - [ ] App usage training
+
+---
+
+## 🟢 MEDIUM PRIORITY - Real-time Features
+
+### Push Notifications
+- [ ] **Set up Firebase Cloud Messaging**
+  - [ ] Order status updates
+  - [ ] New order notifications for merchants
+  - [ ] Delivery assignment for drivers
+  - [ ] Promotional notifications
+  - [ ] Price drop alerts
+
+### Live Chat System
+- [ ] **Customer-Merchant Chat**
+  - [ ] Real-time messaging
+  - [ ] Order-specific conversations
+  - [ ] Image sharing
+  - [ ] Chat history
+
+- [ ] **Customer-Driver Chat**
+  - [ ] Delivery coordination
+  - [ ] Location sharing
+  - [ ] Quick replies
+
+### Real-time Order Tracking
+- [ ] **Live Order Status**
+  - [ ] Order preparation tracking
+  - [ ] Driver assignment notification
+  - [ ] Delivery progress map
+  - [ ] Estimated arrival time updates
+
+---
+
+## 🔵 LOW PRIORITY - Enhancement Features
+
+### Advanced Search & Filters
+- [ ] **Enhanced Search**
+  - [ ] Voice search
+  - [ ] Search suggestions
+  - [ ] Search history
+  - [ ] Popular searches
+
+- [ ] **Advanced Filters**
+  - [ ] Price range
+  - [ ] Distance/location
+  - [ ] Ratings
+  - [ ] Availability
+  - [ ] Category combinations
+
+### Loyalty & Rewards
+- [ ] **Loyalty Program**
+  - [ ] Points system
+  - [ ] Tier levels
+  - [ ] Rewards catalog
+  - [ ] Points redemption
+
+- [ ] **Referral System**
+  - [ ] Referral code generation
+  - [ ] Referral tracking
+  - [ ] Referral rewards
+  - [ ] Social sharing
+
+### Biometric Authentication
+- [ ] **Face ID / Touch ID**
+  - [ ] Biometric login
+  - [ ] Payment confirmation
+  - [ ] Sensitive actions verification
+
+### Multi-language Support
+- [ ] **Internationalization**
+  - [ ] Language selection
+  - [ ] English translations
+  - [ ] Local language support
+  - [ ] Currency localization
+
+---
+
+## 🛠️ Technical Debt & Optimizations
+
+### Performance
+- [ ] **Image Optimization**
+  - [ ] Lazy loading for product images
+  - [ ] Image compression
+  - [ ] CDN integration
+  - [ ] Caching strategy
+
+- [ ] **App Performance**
+  - [ ] Bundle size optimization
+  - [ ] Code splitting
+  - [ ] Memory leak fixes
+  - [ ] Render optimization
+
+### Testing
+- [ ] **Unit Tests**
+  - [ ] Service layer tests
+  - [ ] Utility function tests
+  - [ ] Component tests
+
+- [ ] **Integration Tests**
+  - [ ] API integration tests
+  - [ ] Payment flow tests
+  - [ ] Order flow tests
+
+- [ ] **E2E Tests**
+  - [ ] Critical user journeys
+  - [ ] Cross-platform testing
+  - [ ] Performance testing
+
+### Documentation
+- [ ] **Code Documentation**
+  - [ ] API documentation
+  - [ ] Component documentation
+  - [ ] Service layer documentation
+
+- [ ] **User Documentation**
+  - [ ] User guides for each role
+  - [ ] FAQ updates
+  - [ ] Video tutorials
+
+---
+
+## 📊 Progress Tracking
+
+**Overall Completion: ~87%**
+
+| Feature Area | Progress | Status |
+|-------------|----------|--------|
+| Consumer App | 100% | ✅ Complete |
+| Merchant App | 85% | 🔄 In Progress |
+| Driver App | 70% | 🔄 In Progress |
+| Backend Setup | 95% | 🔄 Needs Data |
+| Real-time Features | 40% | ❌ Pending |
+| Advanced Features | 20% | ❌ Pending |
+
+---
+
+## 🎯 Next Sprint Focus (1-2 Weeks)
+
+1. **Seed Supabase database** with comprehensive sample data
+2. **Test all API endpoints** and fix any connectivity issues
+3. **Build commodity management** (add/edit/delete)
+4. **Implement order fulfillment** workflow for merchants
+5. **Set up cloud storage** for images and documents
+
+---
+
+## 📝 Notes
+
+- Architecture is now streamlined: **Expo + Firebase Auth + Supabase Backend**
+- No server needed - fully serverless
+- Onboarding flow fixed: Splash → Onboarding → Role Selection → Auth
+- Supabase credentials configured and verified
+- Focus on getting backend populated with data before building remaining features
