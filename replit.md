@@ -29,6 +29,8 @@ The application uses a consistent design system with a primary color of `#4682B4
 - **Multi-Role Support**: Consumer, Merchant, and Driver roles with granular access control and verification. Users can register for multiple roles and switch between them.
 - **Core Modules**: Location-based merchant discovery, order management, real-time communication (chat & calls), payment processing, and KYC verification.
 - **Authentication Flow**: Role selection, Firebase-first signup/signin, backend API call with Firebase UID, OTP verification, JWT-based session management with auto-logout.
+- **Merchant Analytics Dashboard**: Real-time analytics powered by `merchantAnalyticsService.ts` with direct Supabase queries for sales metrics, top products, customer insights, inventory tracking, and payment method breakdowns. Uses batch queries for optimal performance.
+- **In-app Chat System**: Real-time messaging using Supabase Realtime in `communicationService.ts`. Features optimized batch queries to avoid N+1 performance issues, user caching for realtime messages, and support for customer-merchant and customer-driver conversations.
 
 ### System Design Choices
 - **Hybrid Backend Architecture**: Leverages Firebase for robust authentication and Supabase for database, edge functions, and real-time features, providing scalability and flexibility. User data is synchronized between both platforms.
