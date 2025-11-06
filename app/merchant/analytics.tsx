@@ -1,113 +1,103 @@
 import { withRoleAccess } from '../../components/withRoleAccess';
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
 import { merchantService } from '../../services/merchantService';
 import { paymentService } from '../../services/paymentService';
 import { useMerchant } from '../../contexts/MerchantContext';
-import { useAuth } from '../../contexts/AuthContext'; // Assuming AuthContext provides user info
+import { useAuth } from '../../contexts/AuthContext';
+import { MerchantAnalyticsService } from '../../services/merchantAnalyticsService';
+import type { SalesMetrics, CategoryBreakdown, TopProduct, CustomerInsight, TimeSeriesData } from '../../services/merchantAnalyticsService';
 
 function MerchantAnalytics() {
   const router = useRouter();
   const { loadMerchantId } = useMerchant();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get merchant ID from authenticated user
-  const merchantId = user?.merchantId || user?.id;
+  const [metrics, setMetrics] = useState<SalesMetrics | null>(null);
+  const [categories, setCategories] = useState<CategoryBreakdown[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [customerInsights, setCustomerInsights] = useState<CustomerInsight | null>(null);
+  const [timeSeries, setTimeSeries] = useState<TimeSeriesData[]>([]);
+
+  const merchantId = user?.uid || '';
+
+  const getDateRange = () => {
+    const end = new Date();
+    const start = new Date();
+
+    switch (selectedPeriod) {
+      case '7days':
+        start.setDate(start.getDate() - 7);
+        break;
+      case '30days':
+        start.setDate(start.getDate() - 30);
+        break;
+      case '90days':
+        start.setDate(start.getDate() - 90);
+        break;
+      default:
+        start.setDate(start.getDate() - 30);
+    }
+
+    return { start, end };
+  };
+
+  const loadAnalytics = async () => {
+    if (!merchantId) {
+      setError('Merchant ID not found');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      const { start, end } = getDateRange();
+
+      const [metricsData, categoriesData, productsData, insightsData, timeSeriesData] = await Promise.all([
+        MerchantAnalyticsService.getSalesMetrics(merchantId, start, end),
+        MerchantAnalyticsService.getCategoryBreakdown(merchantId, start, end),
+        MerchantAnalyticsService.getTopProducts(merchantId, start, end, 5),
+        MerchantAnalyticsService.getCustomerInsights(merchantId, start, end),
+        MerchantAnalyticsService.getTimeSeriesData(merchantId, start, end, 'day')
+      ]);
+
+      setMetrics(metricsData);
+      setCategories(categoriesData);
+      setTopProducts(productsData);
+      setCustomerInsights(insightsData);
+      setTimeSeries(timeSeriesData);
+    } catch (err) {
+      console.error('Error loading analytics:', err);
+      setError('Failed to load analytics data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAnalytics();
+  };
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [selectedPeriod, merchantId]);
 
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  // const [analyticsData, setAnalyticsData] = useState<any>(null); // This was duplicated, removed one.
-  // const [loading, setLoading] = useState(true); // This was duplicated, removed one.
+  const [selectedPeriod, setSelectedPeriod] = useState('30days');
 
   useEffect(() => {
     loadMerchantId();
   }, []);
 
-  useEffect(() => {
-    if (merchantId) {
-      const fetchAnalytics = async () => {
-        // Analytics will be fetched once merchantId is available
-      };
-      fetchAnalytics();
-    }
-  }, [merchantId]);
-
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      if (!merchantId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        // Import the new Supabase-powered analytics service
-        const { merchantAnalyticsService } = await import('../../services/merchantAnalyticsService');
-        const response = await merchantAnalyticsService.getMerchantAnalytics(merchantId, 'month');
-
-        if (response.success && response.data) {
-          setAnalyticsData(response.data);
-        } else {
-          console.error('Failed to fetch analytics:', response.error);
-          // Show sample data as fallback
-          throw new Error('Analytics service unavailable');
-        }
-      } catch (error) {
-        console.error('Analytics fetch error:', error);
-        // Fallback to sample data if Supabase is not available
-        const fallbackData = {
-          totalSales: 125000,
-          totalOrders: 42,
-          averageOrderValue: 2976,
-          monthlyGrowth: 15.4,
-          customerRetention: 78,
-          topSellingProducts: [
-            { name: 'Premium Petrol', sales: 156, revenue: 101400 },
-            { name: 'Diesel', sales: 89, revenue: 51620 },
-            { name: 'Engine Oil', sales: 34, revenue: 28900 }
-          ],
-          dailySales: Array.from({ length: 7 }, (_, i) => ({
-            date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString(),
-            sales: Math.floor(Math.random() * 20000) + 10000
-          })),
-          categoryBreakdown: [
-            { category: 'fuel', percentage: 65, revenue: 81250 },
-            { category: 'lubricants', percentage: 20, revenue: 25000 },
-            { category: 'accessories', percentage: 15, revenue: 18750 }
-          ],
-          customerMetrics: {
-            newCustomers: 15,
-            returningCustomers: 27,
-            averageOrdersPerCustomer: 2.8,
-            customerSatisfaction: 4.7
-          },
-          inventoryMetrics: {
-            totalItems: 45,
-            lowStockItems: 3,
-            outOfStockItems: 1,
-            turnoverRate: '2.3x'
-          },
-          paymentMethods: [
-            { method: 'Card Payment', amount: 75000, percentage: 60 },
-            { method: 'Bank Transfer', amount: 37500, percentage: 30 },
-            { method: 'Digital Wallet', amount: 12500, percentage: 10 }
-          ]
-        };
-        setAnalyticsData(fallbackData);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAnalytics();
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenData(window);
-    });
-    return () => subscription?.remove();
-  }, [merchantId]);
+  // Removed the duplicate useEffect for fetching analytics
 
   const styles = getResponsiveStyles(screenData);
 
@@ -120,11 +110,14 @@ function MerchantAnalytics() {
     );
   }
 
-  if (!analyticsData) {
+  if (error) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B1A51' }}>
         <Ionicons name="alert-circle-outline" size={48} color="#fff" />
-        <Text style={{ color: '#fff', marginTop: 16 }}>No analytics data available.</Text>
+        <Text style={{ color: '#fff', marginTop: 16 }}>{error}</Text>
+        <TouchableOpacity onPress={loadAnalytics} style={{ marginTop: 16, padding: 10, backgroundColor: '#fff', borderRadius: 5 }}>
+          <Text style={{ color: '#0B1A51' }}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -145,65 +138,138 @@ function MerchantAnalytics() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4CAF50']} />
+        }
+      >
         <Text style={styles.sectionTitle}>Business Performance</Text>
 
         {/* Key Metrics */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>₦{(analyticsData.totalSales / 1000).toFixed(0)}K</Text>
-            <Text style={styles.metricLabel}>Total Sales</Text>
-            <View style={styles.growthIndicator}>
-              <Ionicons name="trending-up" size={16} color="#28a745" />
-              <Text style={styles.growthText}>+{analyticsData.monthlyGrowth}%</Text>
-            </View>
+            <Text style={styles.metricValue}>
+              ₦{metrics?.totalRevenue.toLocaleString() || '0'}
+            </Text>
+            <Text style={styles.metricLabel}>Total Revenue</Text>
+            <Text style={[
+              styles.metricChange,
+              { color: (metrics?.periodComparison.revenue || 0) >= 0 ? '#4CAF50' : '#f44336' }
+            ]}>
+              {(metrics?.periodComparison.revenue || 0) >= 0 ? '+' : ''}
+              {metrics?.periodComparison.revenue.toFixed(1)}%
+            </Text>
           </View>
 
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{analyticsData.totalOrders}</Text>
+            <Text style={styles.metricValue}>{metrics?.totalOrders.toLocaleString() || '0'}</Text>
             <Text style={styles.metricLabel}>Total Orders</Text>
-            <View style={styles.growthIndicator}>
-              <Ionicons name="trending-up" size={16} color="#28a745" />
-              <Text style={styles.growthText}>+12.3%</Text>
-            </View>
+            <Text style={[
+              styles.metricChange,
+              { color: (metrics?.periodComparison.orders || 0) >= 0 ? '#4CAF50' : '#f44336' }
+            ]}>
+              {(metrics?.periodComparison.orders || 0) >= 0 ? '+' : ''}
+              {metrics?.periodComparison.orders.toFixed(1)}%
+            </Text>
           </View>
 
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>₦{analyticsData.averageOrderValue}</Text>
+            <Text style={styles.metricValue}>
+              ₦{metrics?.averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 }) || '0'}
+            </Text>
             <Text style={styles.metricLabel}>Avg Order Value</Text>
-            <View style={styles.growthIndicator}>
-              <Ionicons name="trending-up" size={16} color="#28a745" />
-              <Text style={styles.growthText}>+8.7%</Text>
-            </View>
+            <Text style={styles.metricChange}>Per Order</Text>
           </View>
 
           <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{analyticsData.customerRetention}%</Text>
-            <Text style={styles.metricLabel}>Customer Retention</Text>
-            <View style={styles.growthIndicator}>
-              <Ionicons name="trending-up" size={16} color="#28a745" />
-              <Text style={styles.growthText}>+5.2%</Text>
-            </View>
+            <Text style={styles.metricValue}>
+              {metrics?.completionRate.toFixed(1)}%
+            </Text>
+            <Text style={styles.metricLabel}>Completion Rate</Text>
+            <Text style={styles.metricChange}>Success Rate</Text>
           </View>
         </View>
 
-        {/* Top Selling Products */}
-        <Text style={styles.sectionTitle}>Top Selling Products</Text>
-        <View style={styles.productsContainer}>
-          {analyticsData.topSellingProducts.map((product, index) => (
-            <View key={index} style={styles.productRow}>
-              <View style={styles.productRank}>
-                <Text style={styles.rankNumber}>{index + 1}</Text>
+        {/* Customer Insights */}
+        {customerInsights && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Customer Insights</Text>
+            <View style={styles.insightsGrid}>
+              <View style={styles.insightCard}>
+                <Ionicons name="people" size={24} color="#4CAF50" />
+                <Text style={styles.insightValue}>{customerInsights.totalCustomers}</Text>
+                <Text style={styles.insightLabel}>Total Customers</Text>
               </View>
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productSales}>{product.sales} units sold</Text>
+              <View style={styles.insightCard}>
+                <Ionicons name="repeat" size={24} color="#2196F3" />
+                <Text style={styles.insightValue}>{customerInsights.repeatCustomers}</Text>
+                <Text style={styles.insightLabel}>Repeat Customers</Text>
               </View>
-              <View style={styles.productRevenue}>
-                <Text style={styles.revenueAmount}>₦{(product.revenue / 1000).toFixed(1)}K</Text>
+              <View style={styles.insightCard}>
+                <Ionicons name="trending-up" size={24} color="#FF9800" />
+                <Text style={styles.insightValue}>{customerInsights.repeatRate.toFixed(1)}%</Text>
+                <Text style={styles.insightLabel}>Repeat Rate</Text>
+              </View>
+              <View style={styles.insightCard}>
+                <Ionicons name="cash" size={24} color="#9C27B0" />
+                <Text style={styles.insightValue}>
+                  ₦{customerInsights.averageLifetimeValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </Text>
+                <Text style={styles.insightLabel}>Avg LTV</Text>
               </View>
             </View>
-          ))}
+          </View>
+        )}
+
+        {/* Revenue by Category */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Revenue by Category</Text>
+          {categories.length === 0 ? (
+            <Text style={styles.emptyText}>No category data available</Text>
+          ) : (
+            categories.map((category, index) => (
+              <View key={index} style={styles.categoryCard}>
+                <View style={styles.categoryHeader}>
+                  <Text style={styles.categoryName}>{category.categoryName}</Text>
+                  <Text style={styles.categoryPercentage}>{category.percentage.toFixed(1)}%</Text>
+                </View>
+                <View style={styles.categoryBar}>
+                  <View
+                    style={[
+                      styles.categoryBarFill,
+                      { width: `${category.percentage}%` }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.categoryRevenue}>₦{(category.revenue / 1000).toFixed(0)}K</Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Top Selling Products */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top Selling Products</Text>
+          {topProducts.length === 0 ? (
+            <Text style={styles.emptyText}>No product data available</Text>
+          ) : (
+            topProducts.map((product, index) => (
+              <View key={index} style={styles.productRow}>
+                <View style={styles.productRank}>
+                  <Text style={styles.rankNumber}>{index + 1}</Text>
+                </View>
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{product.productName}</Text>
+                  <Text style={styles.productSales}>{product.unitsSold} units sold</Text>
+                </View>
+                <View style={styles.productRevenue}>
+                  <Text style={styles.revenueAmount}>₦{(product.totalRevenue / 1000).toFixed(1)}K</Text>
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
         {/* Sales Chart */}
@@ -211,16 +277,16 @@ function MerchantAnalytics() {
         <View style={styles.chartContainer}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Daily Sales</Text>
-            <Text style={styles.chartSubtitle}>Total: ₦{analyticsData.dailySales.reduce((sum, day) => sum + day.sales, 0).toLocaleString()}</Text>
+            <Text style={styles.chartSubtitle}>Total: ₦{timeSeries.reduce((sum, day) => sum + day.sales, 0).toLocaleString()}</Text>
           </View>
           <View style={styles.chart}>
-            {analyticsData.dailySales.map((day, index) => (
+            {timeSeries.map((day, index) => (
               <View key={index} style={styles.chartBar}>
-                <View 
+                <View
                   style={[
-                    styles.chartBarFill, 
-                    { height: `${(day.sales / 25000) * 100}%` }
-                  ]} 
+                    styles.chartBarFill,
+                    { height: `${(day.sales / (metrics?.maxSalesThisPeriod || 25000)) * 100}%` }
+                  ]}
                 />
                 <Text style={styles.chartBarLabel}>{new Date(day.date).getDate()}</Text>
               </View>
@@ -228,116 +294,10 @@ function MerchantAnalytics() {
           </View>
         </View>
 
-        {/* Category Breakdown */}
-        <Text style={styles.sectionTitle}>Revenue by Category</Text>
-        <View style={styles.categoryContainer}>
-          {analyticsData.categoryBreakdown.map((category, index) => (
-            <View key={index} style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryName}>{category.category.charAt(0).toUpperCase() + category.category.slice(1)}</Text>
-                <Text style={styles.categoryPercentage}>{category.percentage}%</Text>
-              </View>
-              <View style={styles.categoryBar}>
-                <View 
-                  style={[
-                    styles.categoryBarFill, 
-                    { width: `${category.percentage}%` }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.categoryRevenue}>₦{(category.revenue / 1000).toFixed(0)}K</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Customer Metrics */}
-        <Text style={styles.sectionTitle}>Customer Insights</Text>
-        <View style={styles.customerMetricsContainer}>
-          <View style={styles.customerMetricCard}>
-            <Text style={styles.metricValue}>{analyticsData.customerMetrics.newCustomers}</Text>
-            <Text style={styles.metricLabel}>New Customers</Text>
-            <View style={styles.metricTrend}>
-              <Ionicons name="trending-up" size={14} color="#28a745" />
-              <Text style={styles.trendText}>+15%</Text>
-            </View>
-          </View>
-          <View style={styles.customerMetricCard}>
-            <Text style={styles.metricValue}>{analyticsData.customerMetrics.returningCustomers}</Text>
-            <Text style={styles.metricLabel}>Returning</Text>
-            <View style={styles.metricTrend}>
-              <Ionicons name="trending-up" size={14} color="#28a745" />
-              <Text style={styles.trendText}>+8%</Text>
-            </View>
-          </View>
-          <View style={styles.customerMetricCard}>
-            <Text style={styles.metricValue}>{analyticsData.customerMetrics.averageOrdersPerCustomer}</Text>
-            <Text style={styles.metricLabel}>Avg Orders</Text>
-            <View style={styles.metricTrend}>
-              <Ionicons name="trending-up" size={14} color="#28a745" />
-              <Text style={styles.trendText}>+12%</Text>
-            </View>
-          </View>
-          <View style={styles.customerMetricCard}>
-            <Text style={styles.metricValue}>{analyticsData.customerMetrics.customerSatisfaction}</Text>
-            <Text style={styles.metricLabel}>Satisfaction</Text>
-            <View style={styles.metricTrend}>
-              <Ionicons name="star" size={14} color="#ffc107" />
-              <Text style={styles.trendText}>4.7/5</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Inventory Status */}
-        <Text style={styles.sectionTitle}>Inventory Overview</Text>
-        <View style={styles.inventoryContainer}>
-          <View style={styles.inventoryCard}>
-            <Ionicons name="cube" size={24} color="#4682B4" />
-            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.totalItems}</Text>
-            <Text style={styles.inventoryLabel}>Total Items</Text>
-          </View>
-          <View style={styles.inventoryCard}>
-            <Ionicons name="warning" size={24} color="#ffc107" />
-            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.lowStockItems}</Text>
-            <Text style={styles.inventoryLabel}>Low Stock</Text>
-          </View>
-          <View style={styles.inventoryCard}>
-            <Ionicons name="alert-circle" size={24} color="#dc3545" />
-            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.outOfStockItems}</Text>
-            <Text style={styles.inventoryLabel}>Out of Stock</Text>
-          </View>
-          <View style={styles.inventoryCard}>
-            <Ionicons name="repeat" size={24} color="#28a745" />
-            <Text style={styles.inventoryValue}>{analyticsData.inventoryMetrics.turnoverRate}</Text>
-            <Text style={styles.inventoryLabel}>Turnover Rate</Text>
-          </View>
-        </View>
-
-        {/* Payment Methods */}
-        <Text style={styles.sectionTitle}>Payment Methods</Text>
-        <View style={styles.paymentContainer}>
-          {analyticsData.paymentMethods.map((payment, index) => (
-            <View key={index} style={styles.paymentMethod}>
-              <View style={styles.paymentInfo}>
-                <Text style={styles.paymentMethodName}>{payment.method}</Text>
-                <Text style={styles.paymentAmount}>₦{(payment.amount / 1000).toFixed(0)}K</Text>
-              </View>
-              <View style={styles.paymentBar}>
-                <View 
-                  style={[
-                    styles.paymentBarFill, 
-                    { width: `${payment.percentage}%` }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.paymentPercentage}>{payment.percentage}%</Text>
-            </View>
-          ))}
-        </View>
-
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/transactions')}
           >
@@ -345,7 +305,7 @@ function MerchantAnalytics() {
             <Text style={styles.actionText}>View Transactions</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/merchant/commodities')}
           >
@@ -353,7 +313,7 @@ function MerchantAnalytics() {
             <Text style={styles.actionText}>Manage Products</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/merchant/order-management')}
           >
@@ -361,7 +321,7 @@ function MerchantAnalytics() {
             <Text style={styles.actionText}>Manage Orders</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/merchant/inventory')}
           >
@@ -369,7 +329,7 @@ function MerchantAnalytics() {
             <Text style={styles.actionText}>Inventory</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/chat')}
           >
@@ -454,15 +414,79 @@ const getResponsiveStyles = (screenData: any) => {
       color: "#7f8c8d",
       marginBottom: 8,
     },
-    growthIndicator: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
+    metricChange: {
+      fontSize: 12,
+      marginTop: 4,
     },
-    growthText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
-      color: "#28a745",
-      fontWeight: "600",
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: '#666',
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    errorText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: '#666',
+      textAlign: 'center',
+    },
+    retryButton: {
+      marginTop: 20,
+      backgroundColor: '#4CAF50',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    retryButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    emptyText: {
+      fontSize: 14,
+      color: '#999',
+      textAlign: 'center',
+      padding: 20,
+    },
+    insightsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -6,
+    },
+    insightCard: {
+      width: '48%',
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: 16,
+      margin: '1%',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    insightValue: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#000',
+      marginTop: 8,
+    },
+    insightLabel: {
+      fontSize: 12,
+      color: '#666',
+      marginTop: 4,
+      textAlign: 'center',
     },
     productsContainer: {
       backgroundColor: "white",
@@ -619,32 +643,7 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
       color: "#666",
     },
-    customerMetricsContainer: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: Math.max(12, width * 0.03),
-      marginBottom: Math.max(24, height * 0.04),
-    },
-    customerMetricCard: {
-      width: isTablet ? "48%" : "47%",
-      backgroundColor: "white",
-      padding: Math.max(16, width * 0.04),
-      borderRadius: 15,
-      borderWidth: 1,
-      borderColor: "#e9ecef",
-      alignItems: "center",
-    },
-    metricTrend: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: 4,
-    },
-    trendText: {
-      fontSize: isTablet ? 12 : 10,
-      color: "#28a745",
-      marginLeft: 4,
-      fontWeight: "600",
-    },
+    // Inventory Status styles were present in original, kept for consistency
     inventoryContainer: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -671,6 +670,7 @@ const getResponsiveStyles = (screenData: any) => {
       color: "#7f8c8d",
       textAlign: "center",
     },
+    // Payment Methods styles were present in original, kept for consistency
     paymentContainer: {
       backgroundColor: "white",
       borderRadius: 15,
@@ -713,7 +713,7 @@ const getResponsiveStyles = (screenData: any) => {
       color: "#666",
       textAlign: "right",
     },
-    // Chart placeholder styles
+    // Chart placeholder styles were present in original, kept for consistency
     chartPlaceholder: {
       alignItems: 'center',
       justifyContent: 'center',
@@ -723,11 +723,6 @@ const getResponsiveStyles = (screenData: any) => {
       borderWidth: 1,
       borderColor: '#e0e0e0',
       marginVertical: 10,
-    },
-    placeholderText: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
-      color: '#999',
-      marginTop: 10,
     },
     mockChart: {
       flexDirection: 'row',

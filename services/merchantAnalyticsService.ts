@@ -1,20 +1,21 @@
-// Merchant Analytics Service - Supabase-powered
-// Real-time merchant analytics from Supabase database
-
 import { supabase } from '../config/supabase';
-import { authService } from './authService';
 
-export interface DailySales {
-  date: string;
-  sales: number;
-  orders: number;
+export interface SalesMetrics {
+  totalRevenue: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  completionRate: number;
+  periodComparison: {
+    revenue: number;
+    orders: number;
+  };
 }
 
 export interface CategoryBreakdown {
   category: string;
-  percentage: number;
   revenue: number;
-  count: number;
+  orders: number;
+  percentage: number;
 }
 
 export interface TopProduct {
@@ -25,451 +26,346 @@ export interface TopProduct {
   image_url?: string;
 }
 
-export interface CustomerMetrics {
-  newCustomers: number;
-  returningCustomers: number;
-  averageOrdersPerCustomer: number;
-  customerSatisfaction: number;
+export interface CustomerInsight {
+  totalCustomers: number;
+  repeatCustomers: number;
+  repeatRate: number;
+  averageLifetimeValue: number;
 }
 
-export interface InventoryMetrics {
-  totalItems: number;
-  lowStockItems: number;
-  outOfStockItems: number;
-  turnoverRate: string;
+export interface TimeSeriesData {
+  date: string;
+  revenue: number;
+  orders: number;
 }
 
-export interface PaymentMethodBreakdown {
-  method: string;
-  amount: number;
-  percentage: number;
-  count: number;
-}
-
-export interface MerchantAnalytics {
-  totalSales: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  monthlyGrowth: number;
-  customerRetention: number;
-  topSellingProducts: TopProduct[];
-  dailySales: DailySales[];
-  categoryBreakdown: CategoryBreakdown[];
-  customerMetrics: CustomerMetrics;
-  inventoryMetrics: InventoryMetrics;
-  paymentMethods: PaymentMethodBreakdown[];
-  recentOrders: any[];
-}
-
-class MerchantAnalyticsService {
-  
+export class MerchantAnalyticsService {
   /**
-   * Get comprehensive merchant analytics from Supabase
+   * Get sales metrics for a merchant within a date range
    */
-  async getMerchantAnalytics(merchantId: string, timeframe: 'week' | 'month' | 'year' = 'month'): Promise<{
-    success: boolean;
-    data?: MerchantAnalytics;
-    error?: string;
-  }> {
+  static async getSalesMetrics(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<SalesMetrics> {
     try {
-      const user = await authService.getCurrentUser();
-      if (!user) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      switch (timeframe) {
-        case 'week':
-          startDate.setDate(endDate.getDate() - 7);
-          break;
-        case 'month':
-          startDate.setMonth(endDate.getMonth() - 1);
-          break;
-        case 'year':
-          startDate.setFullYear(endDate.getFullYear() - 1);
-          break;
-      }
-
-      // Fetch orders for the merchant
-      const { data: orders, error: ordersError } = await supabase
+      // Get orders within date range
+      const { data: orders, error } = await supabase
         .from('orders')
-        .select(`
-          id,
-          total_amount,
-          subtotal,
-          delivery_fee,
-          status,
-          payment_method,
-          user_id,
-          created_at,
-          order_items (
-            quantity,
-            unit_price,
-            total_price,
-            product_id,
-            products (
-              id,
-              name,
-              category,
-              image_url
-            )
-          )
-        `)
+        .select('total_amount, status, created_at')
         .eq('merchant_id', merchantId)
         .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: false });
+        .lte('created_at', endDate.toISOString());
 
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        return { success: false, error: ordersError.message };
-      }
+      if (error) throw error;
 
-      // Fetch products for inventory metrics
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select('id, name, category, stock_quantity, price, image_url, is_available')
-        .eq('merchant_id', merchantId);
+      const completedOrders = orders?.filter(o => o.status === 'completed') || [];
+      const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total_amount, 0);
+      const totalOrders = completedOrders.length;
+      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      const completionRate = orders && orders.length > 0
+        ? (completedOrders.length / orders.length) * 100
+        : 0;
 
-      if (productsError) {
-        console.error('Error fetching products:', productsError);
-      }
+      // Get previous period for comparison
+      const periodLength = endDate.getTime() - startDate.getTime();
+      const prevStartDate = new Date(startDate.getTime() - periodLength);
+      const prevEndDate = new Date(startDate.getTime());
 
-      // Fetch reviews for customer satisfaction
-      const { data: reviews, error: reviewsError } = await supabase
-        .from('reviews')
-        .select('rating')
-        .eq('merchant_id', merchantId);
+      const { data: prevOrders } = await supabase
+        .from('orders')
+        .select('total_amount, status')
+        .eq('merchant_id', merchantId)
+        .gte('created_at', prevStartDate.toISOString())
+        .lte('created_at', prevEndDate.toISOString())
+        .eq('status', 'completed');
 
-      if (reviewsError) {
-        console.error('Error fetching reviews:', reviewsError);
-      }
+      const prevRevenue = prevOrders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
+      const prevOrders­Count = prevOrders?.length || 0;
 
-      // Calculate analytics
-      const analytics = this.calculateAnalytics(
-        orders || [],
-        products || [],
-        reviews || [],
-        timeframe
-      );
+      const revenueChange = prevRevenue > 0
+        ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
+        : 0;
+      const ordersChange = prevOrders­Count > 0
+        ? ((totalOrders - prevOrders­Count) / prevOrders­Count) * 100
+        : 0;
 
       return {
-        success: true,
-        data: analytics,
+        totalRevenue,
+        totalOrders,
+        averageOrderValue,
+        completionRate,
+        periodComparison: {
+          revenue: revenueChange,
+          orders: ordersChange
+        }
       };
     } catch (error) {
-      console.error('Analytics error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch analytics',
-      };
+      console.error('Error fetching sales metrics:', error);
+      throw error;
     }
   }
 
   /**
-   * Calculate analytics from raw data
+   * Get revenue breakdown by category
    */
-  private calculateAnalytics(
-    orders: any[],
-    products: any[],
-    reviews: any[],
-    timeframe: string
-  ): MerchantAnalytics {
-    // Total sales and orders
-    const totalSales = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-    const totalOrders = orders.length;
-    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+  static async getCategoryBreakdown(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<CategoryBreakdown[]> {
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select(`
+          quantity,
+          price,
+          commodities (
+            category
+          ),
+          orders!inner (
+            merchant_id,
+            status,
+            created_at
+          )
+        `)
+        .eq('orders.merchant_id', merchantId)
+        .eq('orders.status', 'completed')
+        .gte('orders.created_at', startDate.toISOString())
+        .lte('orders.created_at', endDate.toISOString());
 
-    // Calculate daily sales for the chart
-    const dailySales = this.calculateDailySales(orders, timeframe);
+      if (error) throw error;
 
-    // Top selling products
-    const topSellingProducts = this.calculateTopProducts(orders);
+      const categoryMap = new Map<string, { revenue: number; orders: Set<string> }>();
+      let totalRevenue = 0;
 
-    // Category breakdown
-    const categoryBreakdown = this.calculateCategoryBreakdown(orders);
+      data?.forEach((item: any) => {
+        const category = item.commodities?.category || 'Uncategorized';
+        const revenue = item.quantity * item.price;
+        totalRevenue += revenue;
 
-    // Customer metrics
-    const customerMetrics = this.calculateCustomerMetrics(orders);
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, { revenue: 0, orders: new Set() });
+        }
 
-    // Inventory metrics
-    const inventoryMetrics = this.calculateInventoryMetrics(products);
+        const categoryData = categoryMap.get(category)!;
+        categoryData.revenue += revenue;
+        categoryData.orders.add(item.orders.id);
+      });
 
-    // Payment methods breakdown
-    const paymentMethods = this.calculatePaymentMethods(orders);
-
-    // Customer satisfaction from reviews
-    const customerSatisfaction = reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-      : 0;
-
-    customerMetrics.customerSatisfaction = Math.round(customerSatisfaction * 10) / 10;
-
-    // Calculate growth (compare with previous period)
-    const monthlyGrowth = this.calculateGrowth(orders, timeframe);
-
-    // Customer retention (estimate based on repeat customers)
-    const customerRetention = this.calculateRetention(orders);
-
-    // Recent orders for display
-    const recentOrders = orders.slice(0, 10);
-
-    return {
-      totalSales,
-      totalOrders,
-      averageOrderValue,
-      monthlyGrowth,
-      customerRetention,
-      topSellingProducts,
-      dailySales,
-      categoryBreakdown,
-      customerMetrics,
-      inventoryMetrics,
-      paymentMethods,
-      recentOrders,
-    };
-  }
-
-  /**
-   * Calculate daily sales for chart
-   */
-  private calculateDailySales(orders: any[], timeframe: string): DailySales[] {
-    const days = timeframe === 'week' ? 7 : timeframe === 'month' ? 30 : 365;
-    const dailySalesMap = new Map<string, { sales: number; orders: number }>();
-
-    // Initialize all days
-    const today = new Date();
-    for (let i = 0; i < days; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - (days - 1 - i));
-      const dateKey = date.toISOString().split('T')[0];
-      dailySalesMap.set(dateKey, { sales: 0, orders: 0 });
-    }
-
-    // Aggregate sales by day
-    orders.forEach(order => {
-      const orderDate = new Date(order.created_at);
-      const dateKey = orderDate.toISOString().split('T')[0];
-      const existing = dailySalesMap.get(dateKey);
-      if (existing) {
-        existing.sales += order.total_amount || 0;
-        existing.orders += 1;
-      }
-    });
-
-    // Convert to array
-    return Array.from(dailySalesMap.entries()).map(([date, data]) => ({
-      date,
-      sales: data.sales,
-      orders: data.orders,
-    }));
-  }
-
-  /**
-   * Calculate top selling products
-   */
-  private calculateTopProducts(orders: any[]): TopProduct[] {
-    const productSales = new Map<string, { name: string; sales: number; revenue: number; image_url?: string }>();
-
-    orders.forEach(order => {
-      if (order.order_items && Array.isArray(order.order_items)) {
-        order.order_items.forEach((item: any) => {
-          if (item.products) {
-            const productId = item.products.id;
-            const existing = productSales.get(productId) || {
-              name: item.products.name,
-              sales: 0,
-              revenue: 0,
-              image_url: item.products.image_url,
-            };
-            existing.sales += item.quantity || 0;
-            existing.revenue += item.total_price || 0;
-            productSales.set(productId, existing);
-          }
-        });
-      }
-    });
-
-    // Convert to array and sort by revenue
-    return Array.from(productSales.entries())
-      .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-  }
-
-  /**
-   * Calculate category breakdown
-   */
-  private calculateCategoryBreakdown(orders: any[]): CategoryBreakdown[] {
-    const categoryMap = new Map<string, { revenue: number; count: number }>();
-
-    orders.forEach(order => {
-      if (order.order_items && Array.isArray(order.order_items)) {
-        order.order_items.forEach((item: any) => {
-          if (item.products) {
-            const category = item.products.category || 'Uncategorized';
-            const existing = categoryMap.get(category) || { revenue: 0, count: 0 };
-            existing.revenue += item.total_price || 0;
-            existing.count += 1;
-            categoryMap.set(category, existing);
-          }
-        });
-      }
-    });
-
-    const totalRevenue = Array.from(categoryMap.values()).reduce(
-      (sum, cat) => sum + cat.revenue,
-      0
-    );
-
-    return Array.from(categoryMap.entries())
-      .map(([category, data]) => ({
+      return Array.from(categoryMap.entries()).map(([category, data]) => ({
         category,
         revenue: data.revenue,
-        count: data.count,
-        percentage: totalRevenue > 0 ? Math.round((data.revenue / totalRevenue) * 100) : 0,
-      }))
-      .sort((a, b) => b.revenue - a.revenue);
-  }
-
-  /**
-   * Calculate customer metrics
-   */
-  private calculateCustomerMetrics(orders: any[]): CustomerMetrics {
-    const customerOrdersMap = new Map<string, number>();
-
-    orders.forEach(order => {
-      const customerId = order.user_id;
-      customerOrdersMap.set(customerId, (customerOrdersMap.get(customerId) || 0) + 1);
-    });
-
-    const totalCustomers = customerOrdersMap.size;
-    const newCustomers = Array.from(customerOrdersMap.values()).filter(count => count === 1).length;
-    const returningCustomers = totalCustomers - newCustomers;
-    const averageOrdersPerCustomer =
-      totalCustomers > 0 ? orders.length / totalCustomers : 0;
-
-    return {
-      newCustomers,
-      returningCustomers,
-      averageOrdersPerCustomer: Math.round(averageOrdersPerCustomer * 10) / 10,
-      customerSatisfaction: 0, // Will be filled from reviews
-    };
-  }
-
-  /**
-   * Calculate inventory metrics
-   */
-  private calculateInventoryMetrics(products: any[]): InventoryMetrics {
-    const totalItems = products.length;
-    const lowStockItems = products.filter(
-      p => p.is_available && p.stock_quantity > 0 && p.stock_quantity < 10
-    ).length;
-    const outOfStockItems = products.filter(
-      p => !p.is_available || p.stock_quantity === 0
-    ).length;
-
-    return {
-      totalItems,
-      lowStockItems,
-      outOfStockItems,
-      turnoverRate: '2.4x', // Placeholder - requires historical data
-    };
-  }
-
-  /**
-   * Calculate payment methods breakdown
-   */
-  private calculatePaymentMethods(orders: any[]): PaymentMethodBreakdown[] {
-    const paymentMap = new Map<string, { amount: number; count: number }>();
-
-    orders.forEach(order => {
-      const method = order.payment_method || 'Unknown';
-      const existing = paymentMap.get(method) || { amount: 0, count: 0 };
-      existing.amount += order.total_amount || 0;
-      existing.count += 1;
-      paymentMap.set(method, existing);
-    });
-
-    const totalAmount = Array.from(paymentMap.values()).reduce(
-      (sum, data) => sum + data.amount,
-      0
-    );
-
-    return Array.from(paymentMap.entries())
-      .map(([method, data]) => ({
-        method: this.formatPaymentMethod(method),
-        amount: data.amount,
-        count: data.count,
-        percentage: totalAmount > 0 ? Math.round((data.amount / totalAmount) * 100) : 0,
-      }))
-      .sort((a, b) => b.amount - a.amount);
-  }
-
-  /**
-   * Format payment method name
-   */
-  private formatPaymentMethod(method: string): string {
-    const methodMap: Record<string, string> = {
-      card: 'Card Payment',
-      bank_transfer: 'Bank Transfer',
-      cash: 'Cash on Delivery',
-      wallet: 'Digital Wallet',
-    };
-    return methodMap[method.toLowerCase()] || method;
-  }
-
-  /**
-   * Calculate growth compared to previous period
-   */
-  private calculateGrowth(orders: any[], timeframe: string): number {
-    const now = new Date();
-    const midpoint = new Date(now);
-
-    switch (timeframe) {
-      case 'week':
-        midpoint.setDate(now.getDate() - 3.5);
-        break;
-      case 'month':
-        midpoint.setDate(now.getDate() - 15);
-        break;
-      case 'year':
-        midpoint.setMonth(now.getMonth() - 6);
-        break;
+        orders: data.orders.size,
+        percentage: totalRevenue > 0 ? (data.revenue / totalRevenue) * 100 : 0
+      })).sort((a, b) => b.revenue - a.revenue);
+    } catch (error) {
+      console.error('Error fetching category breakdown:', error);
+      throw error;
     }
-
-    const recentOrders = orders.filter(o => new Date(o.created_at) >= midpoint);
-    const olderOrders = orders.filter(o => new Date(o.created_at) < midpoint);
-
-    const recentRevenue = recentOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-    const olderRevenue = olderOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-
-    if (olderRevenue === 0) return recentRevenue > 0 ? 100 : 0;
-
-    return Math.round(((recentRevenue - olderRevenue) / olderRevenue) * 100);
   }
 
   /**
-   * Calculate customer retention rate
+   * Get top selling products
    */
-  private calculateRetention(orders: any[]): number {
-    const customerOrdersMap = new Map<string, number>();
+  static async getTopProducts(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date,
+    limit: number = 10
+  ): Promise<TopProduct[]> {
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select(`
+          commodity_id,
+          quantity,
+          price,
+          commodities (
+            id,
+            name,
+            image_url
+          ),
+          orders!inner (
+            merchant_id,
+            status,
+            created_at
+          )
+        `)
+        .eq('orders.merchant_id', merchantId)
+        .eq('orders.status', 'completed')
+        .gte('orders.created_at', startDate.toISOString())
+        .lte('orders.created_at', endDate.toISOString());
 
-    orders.forEach(order => {
-      const customerId = order.user_id;
-      customerOrdersMap.set(customerId, (customerOrdersMap.get(customerId) || 0) + 1);
-    });
+      if (error) throw error;
 
-    const totalCustomers = customerOrdersMap.size;
-    if (totalCustomers === 0) return 0;
+      const productMap = new Map<string, { name: string; sales: number; revenue: number; image_url?: string }>();
 
-    const returningCustomers = Array.from(customerOrdersMap.values()).filter(
-      count => count > 1
-    ).length;
+      data?.forEach((item: any) => {
+        const commodity = item.commodities;
+        if (!commodity) return;
 
-    return Math.round((returningCustomers / totalCustomers) * 100);
+        if (!productMap.has(commodity.id)) {
+          productMap.set(commodity.id, {
+            name: commodity.name,
+            sales: 0,
+            revenue: 0,
+            image_url: commodity.image_url
+          });
+        }
+
+        const product = productMap.get(commodity.id)!;
+        product.sales += item.quantity;
+        product.revenue += item.quantity * item.price;
+      });
+
+      return Array.from(productMap.entries())
+        .map(([id, data]) => ({ id, ...data }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, limit);
+    } catch (error) {
+      console.error('Error fetching top products:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get customer insights
+   */
+  static async getCustomerInsights(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<CustomerInsight> {
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('user_id, total_amount, status')
+        .eq('merchant_id', merchantId)
+        .eq('status', 'completed')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const customerMap = new Map<string, { orders: number; totalSpent: number }>();
+
+      orders?.forEach(order => {
+        if (!customerMap.has(order.user_id)) {
+          customerMap.set(order.user_id, { orders: 0, totalSpent: 0 });
+        }
+        const customer = customerMap.get(order.user_id)!;
+        customer.orders += 1;
+        customer.totalSpent += order.total_amount;
+      });
+
+      const totalCustomers = customerMap.size;
+      const repeatCustomers = Array.from(customerMap.values()).filter(c => c.orders > 1).length;
+      const repeatRate = totalCustomers > 0 ? (repeatCustomers / totalCustomers) * 100 : 0;
+      const totalRevenue = Array.from(customerMap.values()).reduce((sum, c) => sum + c.totalSpent, 0);
+      const averageLifetimeValue = totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
+
+      return {
+        totalCustomers,
+        repeatCustomers,
+        repeatRate,
+        averageLifetimeValue
+      };
+    } catch (error) {
+      console.error('Error fetching customer insights:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get time series data for charts
+   */
+  static async getTimeSeriesData(
+    merchantId: string,
+    startDate: Date,
+    endDate: Date,
+    interval: 'day' | 'week' | 'month' = 'day'
+  ): Promise<TimeSeriesData[]> {
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('total_amount, created_at, status')
+        .eq('merchant_id', merchantId)
+        .eq('status', 'completed')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const dateMap = new Map<string, { revenue: number; orders: number }>();
+
+      orders?.forEach(order => {
+        const date = new Date(order.created_at);
+        let key: string;
+
+        switch (interval) {
+          case 'week':
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay());
+            key = weekStart.toISOString().split('T')[0];
+            break;
+          case 'month':
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            break;
+          default:
+            key = date.toISOString().split('T')[0];
+        }
+
+        if (!dateMap.has(key)) {
+          dateMap.set(key, { revenue: 0, orders: 0 });
+        }
+
+        const dayData = dateMap.get(key)!;
+        dayData.revenue += order.total_amount;
+        dayData.orders += 1;
+      });
+
+      return Array.from(dateMap.entries())
+        .map(([date, data]) => ({ date, ...data }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    } catch (error) {
+      console.error('Error fetching time series data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get dashboard summary with all key metrics
+   */
+  static async getDashboardSummary(merchantId: string) {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30); // Last 30 days
+
+    try {
+      const [metrics, categories, topProducts, customerInsights, timeSeries] = await Promise.all([
+        this.getSalesMetrics(merchantId, startDate, endDate),
+        this.getCategoryBreakdown(merchantId, startDate, endDate),
+        this.getTopProducts(merchantId, startDate, endDate, 5),
+        this.getCustomerInsights(merchantId, startDate, endDate),
+        this.getTimeSeriesData(merchantId, startDate, endDate, 'day')
+      ]);
+
+      return {
+        metrics,
+        categories,
+        topProducts,
+        customerInsights,
+        timeSeries,
+        period: {
+          start: startDate,
+          end: endDate
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard summary:', error);
+      throw error;
+    }
   }
 }
-
-export const merchantAnalyticsService = new MerchantAnalyticsService();
