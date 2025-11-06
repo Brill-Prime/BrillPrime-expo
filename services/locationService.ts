@@ -12,6 +12,7 @@ interface LocationData {
   longitude: number;
   address?: string;
   timestamp: number;
+  accuracy?: number; // Added for Supabase broadcast
 }
 
 class LocationService {
@@ -59,7 +60,8 @@ class LocationService {
               this.currentLocation = {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                accuracy: position.coords.accuracy
               };
               resolve(this.currentLocation);
             },
@@ -67,7 +69,7 @@ class LocationService {
               // Provide detailed error messages based on error code
               let errorMessage = 'Unknown geolocation error';
               let userAction = '';
-              
+
               switch (error.code) {
                 case 1: // PERMISSION_DENIED
                   errorMessage = 'Location permission denied';
@@ -82,7 +84,7 @@ class LocationService {
                   userAction = 'Please try again. Make sure your GPS is enabled.';
                   break;
               }
-              
+
               const fullMessage = `${errorMessage}. ${userAction}`;
               console.error('Web geolocation error:', {
                 code: error.code,
@@ -113,7 +115,8 @@ class LocationService {
       this.currentLocation = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        accuracy: location.coords.accuracy
       };
 
       return this.currentLocation;
@@ -138,7 +141,7 @@ class LocationService {
             }
           }
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
@@ -233,61 +236,64 @@ class LocationService {
   private maxTrackingErrors: number = 5;
   private trackingQueue: LocationData[] = [];
 
-  // Start live location tracking with error recovery
-  async startLiveTracking(intervalMs: number = 5000): Promise<void> {
-    if (this.trackingInterval) {
-      this.stopLiveTracking();
+  // Start live tracking
+  async startLiveTracking(updateInterval: number = 5000): Promise<void> {
+    if (this.isTracking) {
+      console.log('Live tracking already active');
+      return;
     }
 
-    this.isTracking = true;
-    this.trackingErrorCount = 0;
+    try {
+      this.isTracking = true;
+      this.trackingErrorCount = 0;
 
-    const trackLocation = async () => {
-      try {
-        const location = await this.getCurrentLocation();
-        if (location && this.isTracking) {
-          // Performance optimization: only update if location changed significantly
-          const lastLocation = this.currentLocation;
-          if (!lastLocation || 
-              this.calculateDistance(
-                lastLocation.latitude, 
-                lastLocation.longitude, 
-                location.latitude, 
-                location.longitude
-              ) > 0.001 || // ~100 meters
-              Date.now() - this.lastLocationUpdate > 30000) { // or 30 seconds passed
-
-            this.lastLocationUpdate = Date.now();
-            this.trackingCallbacks.forEach(callback => {
-              try {
-                callback(location);
-              } catch (error) {
-                console.error('Tracking callback error:', error);
-              }
-            });
-
-            // Queue location for API update with retry mechanism
-            await this.queueLocationUpdate(location);
-          }
-
-          this.trackingErrorCount = 0; // Reset error count on success
-        }
-      } catch (error) {
-        console.error('Live tracking error:', error);
-        this.trackingErrorCount++;
-
-        if (this.trackingErrorCount >= this.maxTrackingErrors) {
-          console.warn('Max tracking errors reached, stopping live tracking');
-          this.stopLiveTracking();
-        }
+      // Get initial location
+      const location = await this.getCurrentLocation();
+      if (location) {
+        this.notifyLocationUpdate(location);
+        await this.updateDriverLocationInDatabase(location);
+        await this.broadcastLocationToSupabase(location);
       }
-    };
 
-    // Initial location update
-    await trackLocation();
+      // Set up tracking interval
+      this.trackingInterval = setInterval(async () => {
+        try {
+          const newLocation = await this.getCurrentLocation();
+          if (newLocation) {
+            // Only update if location has changed significantly (>10 meters)
+            const shouldUpdate = !this.currentLocation || 
+              this.calculateDistance(
+                this.currentLocation.latitude,
+                this.currentLocation.longitude,
+                newLocation.latitude,
+                newLocation.longitude
+              ) > 0.01; // ~10 meters
 
-    // Set up interval
-    this.trackingInterval = setInterval(trackLocation, intervalMs);
+            if (shouldUpdate) {
+              this.notifyLocationUpdate(newLocation);
+              await this.updateDriverLocationInDatabase(newLocation);
+              await this.broadcastLocationToSupabase(newLocation);
+              this.lastLocationUpdate = Date.now();
+              this.trackingErrorCount = 0;
+            }
+          }
+        } catch (error) {
+          console.error('Error in tracking interval:', error);
+          this.trackingErrorCount++;
+
+          if (this.trackingErrorCount >= this.maxTrackingErrors) {
+            console.error('Too many tracking errors, stopping live tracking');
+            this.stopLiveTracking();
+          }
+        }
+      }, updateInterval);
+
+      console.log('Live tracking started');
+    } catch (error) {
+      console.error('Error starting live tracking:', error);
+      this.isTracking = false;
+      throw error;
+    }
   }
 
   // Stop live location tracking
@@ -361,7 +367,7 @@ class LocationService {
   }
 
   // Update live location on server
-  private async updateLiveLocation(location: LocationData): Promise<void> {
+  private async updateDriverLocationInDatabase(location: LocationData): Promise<void> {
     try {
       const token = await authService.getToken();
       if (token) {
@@ -376,6 +382,36 @@ class LocationService {
       }
     } catch (error) {
       console.error('Failed to update live location:', error);
+    }
+  }
+
+  /**
+   * Broadcast location update to Supabase real-time channel
+   */
+  private async broadcastLocationToSupabase(location: LocationData): Promise<void> {
+    try {
+      const { authService } = await import('./authService');
+      const user = await authService.getStoredUser();
+      if (!user?.id) return;
+
+      const { supabase } = await import('../config/supabase');
+
+      // Update driver location in database
+      await supabase
+        .from('driver_locations')
+        .upsert({
+          driver_id: user.id,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timestamp: new Date().toISOString(),
+          accuracy: location.accuracy,
+        }, {
+          onConflict: 'driver_id'
+        });
+
+      console.log('📍 Driver location broadcasted to Supabase');
+    } catch (error) {
+      console.error('Error broadcasting location:', error);
     }
   }
 

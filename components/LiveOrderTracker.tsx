@@ -61,6 +61,15 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
   };
 
   const trackDriverLocation = () => {
+    // Subscribe to real-time location updates
+    const unsubscribe = locationService.onLocationUpdate((location) => {
+      if (order?.driverId) {
+        setDriverLocation(location);
+        calculateETA(location);
+      }
+    });
+
+    // Also poll every 5 seconds as fallback
     const interval = setInterval(async () => {
       if (order?.driverId) {
         const response = await locationService.getLiveLocation(order.driverId);
@@ -71,7 +80,10 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       }
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   };
 
   const calculateETA = (driverLoc: any) => {
@@ -211,7 +223,25 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
               <Ionicons name="call" size={20} color="white" />
               <Text style={styles.actionText}>Contact Customer</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.completeButton]}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.completeButton]}
+              onPress={async () => {
+                try {
+                  const { orderService } = await import('../services/orderService');
+                  const response = await orderService.updateOrderStatus(orderId, 'delivered');
+                  if (response.success) {
+                    Alert.alert('Success', 'Order marked as delivered', [
+                      { text: 'OK', onPress: onClose }
+                    ]);
+                  } else {
+                    Alert.alert('Error', response.error || 'Failed to update order status');
+                  }
+                } catch (error) {
+                  console.error('Error marking as delivered:', error);
+                  Alert.alert('Error', 'Failed to update order status');
+                }
+              }}
+            >
               <Ionicons name="checkmark" size={20} color="white" />
               <Text style={styles.actionText}>Mark Delivered</Text>
             </TouchableOpacity>

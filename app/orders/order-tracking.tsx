@@ -37,7 +37,39 @@ export default function OrderTrackingScreen() {
       setScreenDimensions(window);
     });
 
-    // Poll for order updates every 10 seconds
+    // Set up real-time order status subscription
+    let orderSubscription: { unsubscribe: () => void } | null = null;
+    const setupRealtimeSubscription = async () => {
+      try {
+        const { supabase } = await import('../../config/supabase');
+        orderSubscription = supabase
+          .channel(`order_${orderId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'orders',
+              filter: `id=eq.${orderId}`,
+            },
+            (payload: any) => {
+              console.log('Order updated:', payload.new);
+              setOrderDetails((prev: any) => ({
+                ...prev,
+                ...payload.new,
+                status: payload.new.status,
+              }));
+            }
+          )
+          .subscribe();
+      } catch (error) {
+        console.error('Error setting up order subscription:', error);
+      }
+    };
+
+    setupRealtimeSubscription();
+
+    // Poll for order updates every 10 seconds as fallback
     const pollInterval = setInterval(() => {
       loadOrderDetails();
       if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
@@ -52,6 +84,7 @@ export default function OrderTrackingScreen() {
 
     return () => {
       subscription?.remove();
+      orderSubscription?.unsubscribe();
       clearInterval(pollInterval);
     };
   }, [orderId, orderDetails?.driverId, orderDetails?.status]);
