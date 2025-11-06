@@ -45,132 +45,20 @@ function MerchantAnalytics() {
 
       try {
         setLoading(true);
-        const response = await merchantService.getAnalytics(merchantId);
+        // Import the new Supabase-powered analytics service
+        const { merchantAnalyticsService } = await import('../../services/merchantAnalyticsService');
+        const response = await merchantAnalyticsService.getMerchantAnalytics(merchantId, 'month');
 
         if (response.success && response.data) {
           setAnalyticsData(response.data);
         } else {
-          // Fetch data from multiple endpoints when primary analytics endpoint is not available
-          const [ordersResponse, commoditiesResponse, transactionsResponse] = await Promise.allSettled([
-            merchantService.getMerchantOrders?.(),
-            merchantService.getMerchantCommodities(merchantId),
-            paymentService.getPaymentHistory()
-          ]);
-
-          // Process and aggregate data from different sources
-          let processedAnalytics = {
-            totalSales: 0,
-            totalOrders: 0,
-            averageOrderValue: 0,
-            monthlyGrowth: 0,
-            customerRetention: 0,
-            topSellingProducts: [],
-            dailySales: [],
-            categoryBreakdown: [],
-            customerMetrics: {
-              newCustomers: 0,
-              returningCustomers: 0,
-              averageOrdersPerCustomer: 0,
-              customerSatisfaction: 0
-            },
-            inventoryMetrics: {
-              totalItems: 0,
-              lowStockItems: 0,
-              outOfStockItems: 0,
-              turnoverRate: 0
-            },
-            paymentMethods: []
-          };
-
-          // Process orders data if available
-          if (ordersResponse.status === 'fulfilled' && ordersResponse.value?.success) {
-            const orders = ordersResponse.value.data || [];
-            processedAnalytics.totalOrders = orders.length;
-            processedAnalytics.totalSales = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-            processedAnalytics.averageOrderValue = orders.length > 0 ? processedAnalytics.totalSales / orders.length : 0;
-
-            // Generate daily sales from orders
-            const today = new Date();
-            processedAnalytics.dailySales = Array.from({ length: 7 }, (_, i) => {
-              const date = new Date(today);
-              date.setDate(date.getDate() - (6 - i));
-              const dayOrders = orders.filter(order => {
-                const orderDate = new Date(order.createdAt || order.orderDate);
-                return orderDate.toDateString() === date.toDateString();
-              });
-              return {
-                date: date.toISOString(),
-                sales: dayOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0)
-              };
-            });
-
-            // Calculate customer metrics
-            const uniqueCustomers = new Set(orders.map(order => order.customerId || order.customerEmail)).size;
-            const completedOrders = orders.filter(order => order.status === 'completed' || order.status === 'delivered');
-            processedAnalytics.customerMetrics = {
-              newCustomers: Math.floor(uniqueCustomers * 0.3), // Estimate
-              returningCustomers: Math.floor(uniqueCustomers * 0.7), // Estimate
-              averageOrdersPerCustomer: uniqueCustomers > 0 ? orders.length / uniqueCustomers : 0,
-              customerSatisfaction: 4.2 // Default rating
-            };
-          }
-
-          // Process commodities data if available
-          if (commoditiesResponse.status === 'fulfilled' && commoditiesResponse.value?.success) {
-            const commodities = commoditiesResponse.value.data || [];
-            processedAnalytics.inventoryMetrics.totalItems = commodities.length;
-            processedAnalytics.inventoryMetrics.lowStockItems = commodities.filter(c => !c.inStock).length;
-            processedAnalytics.inventoryMetrics.outOfStockItems = Math.floor(commodities.length * 0.1);
-            processedAnalytics.inventoryMetrics.turnoverRate = '2.1x';
-
-            // Generate top selling products from commodities
-            processedAnalytics.topSellingProducts = commodities.slice(0, 5).map((commodity, index) => ({
-              name: commodity.name,
-              sales: Math.floor(Math.random() * 100) + 20,
-              revenue: Math.floor(Math.random() * 50000) + 10000
-            }));
-
-            // Generate category breakdown
-            const categoryMap = {};
-            commodities.forEach(commodity => {
-              const category = commodity.category || 'other';
-              categoryMap[category] = (categoryMap[category] || 0) + 1;
-            });
-
-            const totalCategories = Object.values(categoryMap).reduce((sum, count) => sum + count, 0);
-            processedAnalytics.categoryBreakdown = Object.entries(categoryMap).map(([category, count]) => ({
-              category,
-              percentage: totalCategories > 0 ? Math.round((count / totalCategories) * 100) : 0,
-              revenue: Math.floor(processedAnalytics.totalSales * (count / totalCategories))
-            }));
-          }
-
-          // Process transaction data if available
-          if (transactionsResponse.status === 'fulfilled' && transactionsResponse.value?.success) {
-            const payments = transactionsResponse.value.data?.payments || [];
-            const methodCounts = {};
-            payments.forEach(payment => {
-              const method = payment.paymentMethod || 'Unknown';
-              methodCounts[method] = (methodCounts[method] || 0) + (payment.amount || 0);
-            });
-
-            const totalPayments = Object.values(methodCounts).reduce((sum, amount) => sum + amount, 0);
-            processedAnalytics.paymentMethods = Object.entries(methodCounts).map(([method, amount]) => ({
-              method: method === 'CARD' ? 'Card Payment' : method === 'BANK_TRANSFER' ? 'Bank Transfer' : method,
-              amount,
-              percentage: totalPayments > 0 ? Math.round((amount / totalPayments) * 100) : 0
-            }));
-          }
-
-          // Set calculated growth metrics
-          processedAnalytics.monthlyGrowth = Math.floor(Math.random() * 20) + 5; // Random growth 5-25%
-          processedAnalytics.customerRetention = Math.floor(Math.random() * 30) + 60; // Random retention 60-90%
-
-          setAnalyticsData(processedAnalytics);
+          console.error('Failed to fetch analytics:', response.error);
+          // Show sample data as fallback
+          throw new Error('Analytics service unavailable');
         }
       } catch (error) {
         console.error('Analytics fetch error:', error);
-        // Fallback to sample data only if all requests fail
+        // Fallback to sample data if Supabase is not available
         const fallbackData = {
           totalSales: 125000,
           totalOrders: 42,
