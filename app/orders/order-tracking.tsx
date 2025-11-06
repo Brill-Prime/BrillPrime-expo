@@ -27,6 +27,8 @@ export default function OrderTrackingScreen() {
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [estimatedArrival, setEstimatedArrival] = useState<string>('Calculating...');
 
   useEffect(() => {
     loadOrderDetails();
@@ -35,16 +37,24 @@ export default function OrderTrackingScreen() {
       setScreenDimensions(window);
     });
 
-    // Poll for order updates every 30 seconds
+    // Poll for order updates every 10 seconds
     const pollInterval = setInterval(() => {
       loadOrderDetails();
-    }, 30000);
+      if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
+        updateDriverLocation();
+      }
+    }, 10000);
+
+    // Initial driver location update
+    if (orderDetails?.driverId) {
+      updateDriverLocation();
+    }
 
     return () => {
       subscription?.remove();
       clearInterval(pollInterval);
     };
-  }, [orderId]);
+  }, [orderId, orderDetails?.driverId, orderDetails?.status]);
 
   const loadOrderDetails = async () => {
     try {
@@ -116,6 +126,35 @@ export default function OrderTrackingScreen() {
     }));
   };
 
+  const updateDriverLocation = async () => {
+    if (!orderDetails?.driverId) return;
+
+    try {
+      const { locationService } = await import('../../services/locationService');
+      const response = await locationService.getLiveLocation(orderDetails.driverId);
+      
+      if (response.success && response.data) {
+        setDriverLocation(response.data);
+        
+        // Calculate ETA if we have delivery address coordinates
+        if (orderDetails.deliveryLocation) {
+          const distance = locationService.calculateDistance(
+            response.data.latitude,
+            response.data.longitude,
+            orderDetails.deliveryLocation.latitude,
+            orderDetails.deliveryLocation.longitude
+          );
+          
+          // Assume average speed of 30 km/h
+          const estimatedMinutes = Math.round((distance / 30) * 60);
+          setEstimatedArrival(estimatedMinutes > 0 ? `${estimatedMinutes} min` : 'Arriving soon');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating driver location:', error);
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -177,6 +216,38 @@ export default function OrderTrackingScreen() {
               </View>
             </View>
           </View>
+
+          {/* Driver Location Card */}
+          {driverLocation && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing') && (
+            <View style={styles.driverCard}>
+              <View style={styles.driverHeader}>
+                <Ionicons name="bicycle" size={24} color="#4682B4" />
+                <Text style={styles.driverTitle}>Driver on the way</Text>
+              </View>
+              <View style={styles.driverInfo}>
+                <View style={styles.driverRow}>
+                  <Text style={styles.driverLabel}>ETA:</Text>
+                  <Text style={styles.driverValue}>{estimatedArrival}</Text>
+                </View>
+                <View style={styles.driverRow}>
+                  <Text style={styles.driverLabel}>Last updated:</Text>
+                  <Text style={styles.driverValue}>
+                    {new Date(driverLocation.timestamp).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.trackLiveButton}
+                onPress={() => updateDriverLocation()}
+              >
+                <Ionicons name="refresh" size={16} color="#4682B4" />
+                <Text style={styles.trackLiveText}>Refresh Location</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Tracking Timeline */}
           <View style={styles.timelineSection}>
@@ -439,6 +510,63 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  driverCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4682B4',
+  },
+  driverHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  driverTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0c1a2a',
+  },
+  driverInfo: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  driverRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  driverLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  driverValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0c1a2a',
+  },
+  trackLiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+  },
+  trackLiveText: {
+    color: '#4682B4',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

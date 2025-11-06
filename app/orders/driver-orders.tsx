@@ -162,6 +162,28 @@ export default function DriverOrders() {
     );
   };
 
+  const handleRejectOrder = async (orderId: string) => {
+    showConfirmDialog(
+      'Reject Delivery',
+      'Are you sure you want to reject this delivery? This action cannot be undone.',
+      async () => {
+        try {
+          const response = await orderService.updateOrderStatus(orderId, 'CANCELLED');
+
+          if (response.success) {
+            showSuccess('Order Rejected', 'The order has been rejected successfully.');
+            loadOrders();
+          } else {
+            showError('Error', response.error || 'Failed to reject order');
+          }
+        } catch (error) {
+          console.error('Error rejecting order:', error);
+          showError('Error', 'Failed to reject order');
+        }
+      }
+    );
+  };
+
   const handleViewDetails = (order: DriverOrder) => {
     router.push({
       pathname: '/orders/driver-order-preview',
@@ -206,12 +228,20 @@ export default function DriverOrders() {
         </TouchableOpacity>
 
         {item.status === 'available' && (
-          <TouchableOpacity
-            style={styles.acceptButton}
-            onPress={() => handleAcceptOrder(item.id)}
-          >
-            <Text style={styles.acceptButtonText}>Accept</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.rejectButton}
+              onPress={() => handleRejectOrder(item.id)}
+            >
+              <Text style={styles.rejectButtonText}>Reject</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.acceptButton}
+              onPress={() => handleAcceptOrder(item.id)}
+            >
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {item.status !== 'available' && (
@@ -404,6 +434,18 @@ const styles = StyleSheet.create({
     color: '#4682B4',
     fontSize: 14,
     fontWeight: '500',
+  },
+  rejectButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#dc3545',
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   acceptButton: {
     flex: 1,
