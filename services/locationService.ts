@@ -444,6 +444,68 @@ class LocationService {
     throw new Error(response.error || 'Failed to get driver location');
   }
 
+  // Optimize route for multiple delivery stops
+  async optimizeRoute(stops: Array<{ latitude: number; longitude: number; priority?: number }>): Promise<{
+    optimizedOrder: number[];
+    totalDistance: number;
+    estimatedTime: number;
+  }> {
+    if (stops.length <= 1) {
+      return { optimizedOrder: [0], totalDistance: 0, estimatedTime: 0 };
+    }
+
+    // Simple nearest neighbor algorithm for route optimization
+    const visited = new Set<number>();
+    const route: number[] = [];
+    let currentIndex = 0;
+    let totalDistance = 0;
+
+    route.push(currentIndex);
+    visited.add(currentIndex);
+
+    while (visited.size < stops.length) {
+      let nearestIndex = -1;
+      let minDistance = Infinity;
+
+      for (let i = 0; i < stops.length; i++) {
+        if (visited.has(i)) continue;
+
+        const distance = this.calculateDistance(
+          stops[currentIndex].latitude,
+          stops[currentIndex].longitude,
+          stops[i].latitude,
+          stops[i].longitude
+        );
+
+        // Consider priority (higher priority = lower effective distance)
+        const effectiveDistance = stops[i].priority 
+          ? distance / stops[i].priority 
+          : distance;
+
+        if (effectiveDistance < minDistance) {
+          minDistance = distance;
+          nearestIndex = i;
+        }
+      }
+
+      if (nearestIndex !== -1) {
+        route.push(nearestIndex);
+        visited.add(nearestIndex);
+        totalDistance += minDistance;
+        currentIndex = nearestIndex;
+      }
+    }
+
+    // Estimate time based on average speed of 30 km/h
+    const estimatedTime = Math.round((totalDistance / 30) * 60); // in minutes
+
+    return {
+      optimizedOrder: route,
+      totalDistance: parseFloat(totalDistance.toFixed(2)),
+      estimatedTime,
+    };
+  }
+
   // Get nearby merchants with live locations
   async getNearbyMerchantsLive(
     latitude: number, 

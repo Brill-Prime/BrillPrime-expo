@@ -1,595 +1,458 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { orderService } from '../../services/orderService';
+import { locationService } from '../../services/locationService';
+import { useAlert } from '../../components/AlertProvider';
 
 interface DriverOrder {
   id: string;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  pickupAddress: string;
+  merchantName: string;
+  merchantAddress: string;
   deliveryAddress: string;
-  items: string[];
-  totalAmount: number;
-  distance: string;
-  estimatedDuration: string;
-  status: 'available' | 'accepted' | 'picked_up' | 'delivered' | 'cancelled';
-  timestamp: string;
-  earnings: number;
+  customerName: string;
+  distance: number;
+  estimatedEarnings: number;
+  status: 'available' | 'accepted' | 'picking_up' | 'delivering' | 'completed';
+  items: Array<{ name: string; quantity: number }>;
+  pickupLocation: { latitude: number; longitude: number };
+  deliveryLocation: { latitude: number; longitude: number };
 }
 
 export default function DriverOrders() {
   const router = useRouter();
-  const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [activeTab, setActiveTab] = useState<'available' | 'active' | 'completed'>('available');
-  const [orders, setOrders] = useState<DriverOrder[]>([
-    {
-      id: 'ORD001',
-      customerId: 'CUST001',
-      customerName: 'John Doe',
-      customerPhone: '+2348012345678',
-      pickupAddress: 'Prime Store, Jahi District',
-      deliveryAddress: 'Block 15, Maitama Estate',
-      items: ['Rice - 5kg', 'Cooking Oil - 2L'],
-      totalAmount: 3500,
-      distance: '2.5 km',
-      estimatedDuration: '15 mins',
-      status: 'available',
-      timestamp: '2 mins ago',
-      earnings: 500
-    },
-    {
-      id: 'ORD002',
-      customerId: 'CUST002',
-      customerName: 'Jane Smith',
-      customerPhone: '+2348098765432',
-      pickupAddress: 'Fresh Market, Wuse 2',
-      deliveryAddress: 'Gwarinpa Estate',
-      items: ['Vegetables', 'Fruits'],
-      totalAmount: 2200,
-      distance: '4.1 km',
-      estimatedDuration: '25 mins',
-      status: 'accepted',
-      timestamp: '10 mins ago',
-      earnings: 750
-    },
-    {
-      id: 'ORD003',
-      customerId: 'CUST003',
-      customerName: 'Mike Johnson',
-      customerPhone: '+2347012345678',
-      pickupAddress: 'Green Farm Store',
-      deliveryAddress: 'Life Camp',
-      items: ['Beans - 3kg', 'Garri - 2kg'],
-      totalAmount: 1800,
-      distance: '3.2 km',
-      estimatedDuration: '20 mins',
-      status: 'delivered',
-      timestamp: '2 hours ago',
-      earnings: 600
-    }
-  ]);
+  const { showError, showSuccess, showConfirmDialog } = useAlert();
+  const [orders, setOrders] = useState<DriverOrder[]>([]);
+  const [activeOrders, setActiveOrders] = useState<DriverOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenData(window);
-    });
+    loadOrders();
+    getCurrentLocation();
 
-    return () => subscription?.remove();
+    // Start live location tracking for active deliveries
+    const startTracking = async () => {
+      await locationService.startLiveTracking(5000);
+    };
+    startTracking();
+
+    return () => {
+      locationService.stopLiveTracking();
+    };
   }, []);
 
-  const acceptOrder = (orderId: string) => {
-    Alert.alert(
-      'Accept Order',
-      'Are you sure you want to accept this delivery order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Accept',
-          onPress: () => {
-            setOrders(prev => 
-              prev.map(order => 
-                order.id === orderId 
-                  ? { ...order, status: 'accepted' as const }
-                  : order
-              )
-            );
-            Alert.alert('Success', 'Order accepted! Head to pickup location.');
-          }
-        }
-      ]
-    );
+  const getCurrentLocation = async () => {
+    try {
+      const location = await locationService.getCurrentLocation();
+      if (location) {
+        setCurrentLocation(location);
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+    }
   };
 
-  const markAsPickedUp = (orderId: string) => {
-    setOrders(prev => 
-      prev.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'picked_up' as const }
-          : order
-      )
-    );
-    Alert.alert('Success', 'Order marked as picked up!');
-  };
+  const loadOrders = async () => {
+    setIsLoading(true);
+    try {
+      // Load available orders for pickup
+      const availableResponse = await orderService.getUserOrders({ status: 'confirmed' });
 
-  const markAsDelivered = (orderId: string) => {
-    Alert.alert(
-      'Mark as Delivered',
-      'Confirm that the order has been delivered to the customer?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delivered',
-          onPress: async () => {
-            setOrders(prev => 
-              prev.map(order => 
-                order.id === orderId 
-                  ? { ...order, status: 'delivered' as const }
-                  : order
-              )
-            );
-            
-            // Save completed delivery
-            try {
-              const completedOrders = await AsyncStorage.getItem('driverCompletedOrders');
-              const completed = completedOrders ? JSON.parse(completedOrders) : [];
-              const completedOrder = orders.find(o => o.id === orderId);
-              if (completedOrder) {
-                completed.push({ ...completedOrder, completedAt: new Date().toISOString() });
-                await AsyncStorage.setItem('driverCompletedOrders', JSON.stringify(completed));
-              }
-            } catch (error) {
-              console.error('Error saving completed order:', error);
+      // Load driver's active orders
+      const activeResponse = await orderService.getUserOrders({ 
+        status: 'in_transit' 
+      });
+
+      if (availableResponse.success && availableResponse.data) {
+        // Transform and calculate distances
+        const available = await Promise.all(
+          availableResponse.data.orders.map(async (order: any) => {
+            let distance = 0;
+            if (currentLocation && order.merchant?.location) {
+              distance = locationService.calculateDistance(
+                currentLocation.latitude,
+                currentLocation.longitude,
+                order.merchant.location.latitude,
+                order.merchant.location.longitude
+              );
             }
-            
-            Alert.alert('Success', 'Order marked as delivered! Earnings added to your account.');
+
+            return {
+              id: order.id,
+              merchantName: order.merchant?.name || 'Unknown Merchant',
+              merchantAddress: order.merchant?.address || '',
+              deliveryAddress: order.deliveryAddress || '',
+              customerName: order.customerName || 'Customer',
+              distance: parseFloat(distance.toFixed(1)),
+              estimatedEarnings: order.deliveryFee || 0,
+              status: 'available',
+              items: order.items || [],
+              pickupLocation: order.merchant?.location || { latitude: 0, longitude: 0 },
+              deliveryLocation: order.deliveryLocation || { latitude: 0, longitude: 0 },
+            };
+          })
+        );
+
+        setOrders(available);
+      }
+
+      if (activeResponse.success && activeResponse.data) {
+        const active = activeResponse.data.orders.map((order: any) => ({
+          id: order.id,
+          merchantName: order.merchant?.name || 'Unknown Merchant',
+          merchantAddress: order.merchant?.address || '',
+          deliveryAddress: order.deliveryAddress || '',
+          customerName: order.customerName || 'Customer',
+          distance: 0,
+          estimatedEarnings: order.deliveryFee || 0,
+          status: order.status,
+          items: order.items || [],
+          pickupLocation: order.merchant?.location || { latitude: 0, longitude: 0 },
+          deliveryLocation: order.deliveryLocation || { latitude: 0, longitude: 0 },
+        }));
+
+        setActiveOrders(active);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      showError('Error', 'Failed to load orders');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    showConfirmDialog(
+      'Accept Delivery',
+      'Are you sure you want to accept this delivery?',
+      async () => {
+        try {
+          const response = await orderService.updateOrderStatus(orderId, 'IN_TRANSIT');
+
+          if (response.success) {
+            showSuccess('Success', 'Order accepted! Navigate to pickup location.');
+            loadOrders();
+
+            // Navigate to tracking view
+            router.push({
+              pathname: '/orders/order-tracking',
+              params: { orderId }
+            });
+          } else {
+            showError('Error', response.error || 'Failed to accept order');
           }
+        } catch (error) {
+          console.error('Error accepting order:', error);
+          showError('Error', 'Failed to accept order');
         }
-      ]
+      }
     );
   };
 
-  const viewOrderDetails = (orderId: string) => {
-    router.push(`/orders/order-details?id=${orderId}`);
+  const handleViewDetails = (order: DriverOrder) => {
+    router.push({
+      pathname: '/orders/driver-order-preview',
+      params: { orderId: order.id }
+    });
   };
 
-  const callCustomer = (phoneNumber: string, customerName: string) => {
-    Alert.alert(
-      'Call Customer',
-      `Would you like to call ${customerName}?\n${phoneNumber}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => console.log('Calling:', phoneNumber) }
-      ]
+  const renderOrderItem = ({ item }: { item: DriverOrder }) => (
+    <View style={styles.orderCard}>
+      <View style={styles.orderHeader}>
+        <View style={styles.orderInfo}>
+          <Text style={styles.merchantName}>{item.merchantName}</Text>
+          <Text style={styles.orderDistance}>📍 {item.distance} km away</Text>
+        </View>
+        <View style={styles.earningsContainer}>
+          <Text style={styles.earningsLabel}>Earn</Text>
+          <Text style={styles.earningsAmount}>₦{item.estimatedEarnings}</Text>
+        </View>
+      </View>
+
+      <View style={styles.orderDetails}>
+        <View style={styles.locationRow}>
+          <Ionicons name="location" size={16} color="#4682B4" />
+          <Text style={styles.locationText} numberOfLines={1}>
+            Pickup: {item.merchantAddress}
+          </Text>
+        </View>
+        <View style={styles.locationRow}>
+          <Ionicons name="navigate" size={16} color="#28a745" />
+          <Text style={styles.locationText} numberOfLines={1}>
+            Deliver: {item.deliveryAddress}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.orderFooter}>
+        <TouchableOpacity
+          style={styles.detailsButton}
+          onPress={() => handleViewDetails(item)}
+        >
+          <Text style={styles.detailsButtonText}>View Details</Text>
+        </TouchableOpacity>
+
+        {item.status === 'available' && (
+          <TouchableOpacity
+            style={styles.acceptButton}
+            onPress={() => handleAcceptOrder(item.id)}
+          >
+            <Text style={styles.acceptButtonText}>Accept</Text>
+          </TouchableOpacity>
+        )}
+
+        {item.status !== 'available' && (
+          <TouchableOpacity
+            style={styles.trackButton}
+            onPress={() => router.push({
+              pathname: '/orders/order-tracking',
+              params: { orderId: item.id }
+            })}
+          >
+            <Text style={styles.trackButtonText}>Track</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4682B4" />
+        <Text style={styles.loadingText}>Loading orders...</Text>
+      </View>
     );
-  };
-
-  const getFilteredOrders = () => {
-    switch (activeTab) {
-      case 'available':
-        return orders.filter(order => order.status === 'available');
-      case 'active':
-        return orders.filter(order => ['accepted', 'picked_up'].includes(order.status));
-      case 'completed':
-        return orders.filter(order => ['delivered', 'cancelled'].includes(order.status));
-      default:
-        return orders;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available': return '#007bff';
-      case 'accepted': return '#ffc107';
-      case 'picked_up': return '#fd7e14';
-      case 'delivered': return '#28a745';
-      case 'cancelled': return '#dc3545';
-      default: return '#6c757d';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'available': return 'Available';
-      case 'accepted': return 'Accepted';
-      case 'picked_up': return 'Picked Up';
-      case 'delivered': return 'Delivered';
-      case 'cancelled': return 'Cancelled';
-      default: return status;
-    }
-  };
-
-  const filteredOrders = getFilteredOrders();
-  const styles = getResponsiveStyles(screenData);
+  }
 
   return (
-    <LinearGradient
-      colors={['#0B1A51', '#1e3a8a']}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="white" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Driver Orders</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Delivery Orders</Text>
+        <TouchableOpacity onPress={loadOrders}>
+          <Ionicons name="refresh" size={24} color="#4682B4" />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        {/* Tabs */}
-        <View style={styles.tabs}>
-          {[
-            { key: 'available', label: 'Available', count: orders.filter(o => o.status === 'available').length },
-            { key: 'active', label: 'Active', count: orders.filter(o => ['accepted', 'picked_up'].includes(o.status)).length },
-            { key: 'completed', label: 'Completed', count: orders.filter(o => ['delivered', 'cancelled'].includes(o.status)).length }
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tab,
-                activeTab === tab.key && styles.activeTab
-              ]}
-              onPress={() => setActiveTab(tab.key as any)}
-            >
-              <Text style={[
-                styles.tabText,
-                activeTab === tab.key && styles.activeTabText
-              ]}>
-                {tab.label}
-              </Text>
-              {tab.count > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{tab.count}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+      {activeOrders.length > 0 && (
+        <View style={styles.activeSection}>
+          <Text style={styles.sectionTitle}>Active Deliveries ({activeOrders.length})</Text>
+          <FlatList
+            data={activeOrders}
+            renderItem={renderOrderItem}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.activeList}
+          />
         </View>
+      )}
 
-        <ScrollView style={styles.ordersList} showsVerticalScrollIndicator={false}>
-          {filteredOrders.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="cube-outline" size={80} color="#ccc" />
-              <Text style={styles.emptyTitle}>No {activeTab} orders</Text>
-              <Text style={styles.emptyDescription}>
-                {activeTab === 'available' 
-                  ? 'New delivery orders will appear here when available.'
-                  : activeTab === 'active'
-                  ? 'Accepted orders will appear here.'
-                  : 'Completed orders will appear here.'
-                }
-              </Text>
-            </View>
-          ) : (
-            filteredOrders.map((order) => (
-              <View key={order.id} style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <Text style={styles.orderId}>#{order.id}</Text>
-                  <View style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(order.status) }
-                  ]}>
-                    <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
-                  </View>
-                </View>
+      <Text style={styles.sectionTitle}>
+        Available Orders ({orders.length})
+      </Text>
 
-                <View style={styles.customerInfo}>
-                  <Ionicons name="person" size={16} color="#666" />
-                  <Text style={styles.customerName}>{order.customerName}</Text>
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => callCustomer(order.customerPhone, order.customerName)}
-                  >
-                    <Ionicons name="call" size={16} color="#007bff" />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.addressInfo}>
-                  <View style={styles.addressRow}>
-                    <Ionicons name="location" size={16} color="#28a745" />
-                    <Text style={styles.addressText}>Pickup: {order.pickupAddress}</Text>
-                  </View>
-                  <View style={styles.addressRow}>
-                    <Ionicons name="location" size={16} color="#dc3545" />
-                    <Text style={styles.addressText}>Delivery: {order.deliveryAddress}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.orderDetails}>
-                  <Text style={styles.itemsText}>Items: {order.items.join(', ')}</Text>
-                  <View style={styles.detailsRow}>
-                    <Text style={styles.detailText}>Distance: {order.distance}</Text>
-                    <Text style={styles.detailText}>Duration: {order.estimatedDuration}</Text>
-                  </View>
-                  <View style={styles.detailsRow}>
-                    <Text style={styles.amountText}>Order Total: ₦{order.totalAmount.toLocaleString()}</Text>
-                    <Text style={styles.earningsText}>Your Earnings: ₦{order.earnings}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.orderActions}>
-                  {order.status === 'available' && (
-                    <TouchableOpacity
-                      style={styles.acceptButton}
-                      onPress={() => acceptOrder(order.id)}
-                    >
-                      <Text style={styles.acceptButtonText}>Accept Order</Text>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {order.status === 'accepted' && (
-                    <TouchableOpacity
-                      style={styles.pickedUpButton}
-                      onPress={() => markAsPickedUp(order.id)}
-                    >
-                      <Text style={styles.pickedUpButtonText}>Mark as Picked Up</Text>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {order.status === 'picked_up' && (
-                    <TouchableOpacity
-                      style={styles.deliveredButton}
-                      onPress={() => markAsDelivered(order.id)}
-                    >
-                      <Text style={styles.deliveredButtonText}>Mark as Delivered</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <Text style={styles.timestamp}>{order.timestamp}</Text>
-              </View>
-            ))
-          )}
-        </ScrollView>
-      </View>
-    </LinearGradient>
+      <FlatList
+        data={orders}
+        renderItem={renderOrderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={loadOrders} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cube-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>No available orders</Text>
+            <Text style={styles.emptySubtext}>
+              Check back later for new delivery requests
+            </Text>
+          </View>
+        }
+      />
+    </View>
   );
 }
 
-const getResponsiveStyles = (screenData: any) => {
-  const { width, height } = screenData;
-  const isTablet = width >= 768;
-  const isSmallScreen = width < 350;
-
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: Math.max(16, width * 0.05),
-      paddingTop: Math.max(50, height * 0.07),
-    },
-    backButton: {
-      padding: Math.max(8, width * 0.02),
-    },
-    headerTitle: {
-      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
-      fontWeight: "bold",
-      color: "white",
-    },
-    placeholder: {
-      width: 40,
-    },
-    content: {
-      flex: 1,
-      backgroundColor: "white",
-      borderTopLeftRadius: 35,
-      borderTopRightRadius: 35,
-      paddingTop: Math.max(24, height * 0.03),
-    },
-    tabs: {
-      flexDirection: 'row',
-      paddingHorizontal: Math.max(16, width * 0.05),
-      marginBottom: 16,
-      gap: 8,
-    },
-    tab: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: Math.max(10, height * 0.012),
-      borderRadius: 20,
-      backgroundColor: '#f8f9fa',
-      gap: 4,
-    },
-    activeTab: {
-      backgroundColor: '#4682B4',
-    },
-    tabText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
-      color: '#666',
-      fontWeight: '600',
-    },
-    activeTabText: {
-      color: 'white',
-    },
-    tabBadge: {
-      backgroundColor: '#e74c3c',
-      borderRadius: 10,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    tabBadgeText: {
-      color: 'white',
-      fontSize: 10,
-      fontWeight: 'bold',
-    },
-    ordersList: {
-      flex: 1,
-      paddingHorizontal: Math.max(16, width * 0.05),
-    },
-    emptyContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: Math.max(60, height * 0.1),
-    },
-    emptyTitle: {
-      fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
-      fontWeight: 'bold',
-      color: '#2c3e50',
-      marginTop: 20,
-      marginBottom: 10,
-      textTransform: 'capitalize',
-    },
-    emptyDescription: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      color: '#7f8c8d',
-      textAlign: 'center',
-      lineHeight: 22,
-      paddingHorizontal: 20,
-    },
-    orderCard: {
-      backgroundColor: 'white',
-      borderRadius: 15,
-      padding: Math.max(16, width * 0.04),
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: '#e9ecef',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    orderHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    orderId: {
-      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
-      fontWeight: 'bold',
-      color: '#2c3e50',
-    },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    statusText: {
-      color: 'white',
-      fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
-      fontWeight: '600',
-    },
-    customerInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-      gap: 8,
-    },
-    customerName: {
-      flex: 1,
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
-      color: '#2c3e50',
-    },
-    callButton: {
-      padding: 6,
-      borderRadius: 15,
-      backgroundColor: '#e3f2fd',
-    },
-    addressInfo: {
-      marginBottom: 12,
-      gap: 8,
-    },
-    addressRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-    },
-    addressText: {
-      flex: 1,
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      color: '#666',
-      lineHeight: 18,
-    },
-    orderDetails: {
-      marginBottom: 12,
-    },
-    itemsText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      color: '#666',
-      marginBottom: 8,
-    },
-    detailsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 4,
-    },
-    detailText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      color: '#666',
-    },
-    amountText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      fontWeight: '600',
-      color: '#2c3e50',
-    },
-    earningsText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 12 : 13,
-      fontWeight: 'bold',
-      color: '#28a745',
-    },
-    orderActions: {
-      marginBottom: 8,
-    },
-    acceptButton: {
-      backgroundColor: '#007bff',
-      paddingVertical: Math.max(10, height * 0.012),
-      borderRadius: 20,
-      alignItems: 'center',
-    },
-    acceptButtonText: {
-      color: 'white',
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
-    },
-    pickedUpButton: {
-      backgroundColor: '#ffc107',
-      paddingVertical: Math.max(10, height * 0.012),
-      borderRadius: 20,
-      alignItems: 'center',
-    },
-    pickedUpButtonText: {
-      color: 'white',
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
-    },
-    deliveredButton: {
-      backgroundColor: '#28a745',
-      paddingVertical: Math.max(10, height * 0.012),
-      borderRadius: 20,
-      alignItems: 'center',
-    },
-    deliveredButtonText: {
-      color: 'white',
-      fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
-    },
-    timestamp: {
-      fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
-      color: '#adb5bd',
-      textAlign: 'right',
-    },
-  });
-};
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+  },
+  activeSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  activeList: {
+    paddingLeft: 20,
+  },
+  listContainer: {
+    padding: 20,
+  },
+  orderCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    minWidth: 300,
+    marginRight: 15,
+  },
+  orderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  orderInfo: {
+    flex: 1,
+  },
+  merchantName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  orderDistance: {
+    fontSize: 14,
+    color: '#666',
+  },
+  earningsContainer: {
+    alignItems: 'flex-end',
+  },
+  earningsLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  earningsAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#28a745',
+  },
+  orderDetails: {
+    marginBottom: 15,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 13,
+    color: '#666',
+    marginLeft: 8,
+    flex: 1,
+  },
+  orderFooter: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  detailsButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    alignItems: 'center',
+  },
+  detailsButtonText: {
+    color: '#4682B4',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  acceptButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#4682B4',
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  trackButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#28a745',
+    alignItems: 'center',
+  },
+  trackButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 15,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+});
