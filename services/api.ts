@@ -95,19 +95,42 @@ class ApiClient {
       }
       console.error('API request failed:', errorInfo);
 
-      let errorMessage = 'Unknown error occurred';
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      let userFriendlyMessage = errorMessage;
 
       if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
-        errorMessage = 'Request timeout - The server is taking too long to respond. It may be waking up from sleep (this can take up to 60 seconds on first load).';
+        errorMessage = 'Request timeout - The server is taking too long to respond.';
+        userFriendlyMessage = 'The request is taking longer than expected. The server may be waking up from sleep mode. Please wait a moment and try again.';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        errorMessage = 'Cannot connect to server. Please check your internet connection or try again in a moment.';
+        errorMessage = 'Network error - Failed to connect to server.';
+        userFriendlyMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
       } else if (error instanceof Error) {
         errorMessage = error.message;
+        
+        // Map common error messages to user-friendly versions
+        if (error.message.includes('HTTP 401')) {
+          userFriendlyMessage = 'Your session has expired. Please sign in again.';
+        } else if (error.message.includes('HTTP 403')) {
+          userFriendlyMessage = 'You don\'t have permission to access this resource.';
+        } else if (error.message.includes('HTTP 404')) {
+          userFriendlyMessage = 'The requested resource was not found.';
+        } else if (error.message.includes('HTTP 500')) {
+          userFriendlyMessage = 'A server error occurred. Our team has been notified. Please try again later.';
+        } else if (error.message.includes('HTTP 503')) {
+          userFriendlyMessage = 'The service is temporarily unavailable. Please try again in a few moments.';
+        } else if (error.message.includes('Invalid JSON')) {
+          userFriendlyMessage = 'The server returned an invalid response. Please try again.';
+        } else if (error.message.toLowerCase().includes('network')) {
+          userFriendlyMessage = 'Network connection issue. Please check your internet and try again.';
+        } else {
+          userFriendlyMessage = errorMessage;
+        }
       }
 
       return {
         success: false,
-        error: errorMessage,
+        error: userFriendlyMessage,
+        message: userFriendlyMessage,
       };
     }
   }
