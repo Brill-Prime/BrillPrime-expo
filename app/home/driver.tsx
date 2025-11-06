@@ -17,32 +17,66 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
 import { useAuth } from "../../hooks/useAuth";
 import { PerformanceOptimizer } from "../../utils/performance";
+import { locationService } from "../../services/locationService";
+import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
 
-// Safe Map component with error boundary
-const SafeMapComponent = React.memo(() => {
+// Real-time Map component
+const RealTimeMapComponent = React.memo(({ 
+  region, 
+  currentLocation, 
+  mapRef 
+}: { 
+  region: any; 
+  currentLocation: any; 
+  mapRef: any;
+}) => {
   const [mapError, setMapError] = useState(false);
 
-  try {
-    if (Platform.OS === "web") {
-      return (
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="map" size={40} color="#4682B4" />
-          <Text style={styles.mapPlaceholderText}>Map View</Text>
-        </View>
-      );
-    }
-
-    const Map = require("../../components/Map").default;
-    return <Map style={styles.map} />;
-  } catch (error) {
-    console.warn("Map component failed to load:", error);
+  if (mapError) {
     return (
       <View style={styles.mapPlaceholder}>
         <Ionicons name="map" size={40} color="#4682B4" />
         <Text style={styles.mapPlaceholderText}>Map Unavailable</Text>
+        <TouchableOpacity 
+          style={styles.retryMapButton}
+          onPress={() => setMapError(false)}
+        >
+          <Text style={styles.retryMapText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
+
+  return (
+    <Map
+      ref={mapRef}
+      style={styles.map}
+      provider={PROVIDER_GOOGLE}
+      region={region}
+      showsUserLocation={true}
+      showsMyLocationButton={false}
+      showsCompass={true}
+      rotateEnabled={true}
+      pitchEnabled={true}
+      mapType="standard"
+      onError={() => setMapError(true)}
+    >
+      {currentLocation && (
+        <Marker
+          coordinate={{
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+          }}
+          title="Your Location"
+          description="Current driver position"
+        >
+          <View style={styles.driverLocationMarker}>
+            <Ionicons name="car-sport" size={24} color="#4682B4" />
+          </View>
+        </Marker>
+      )}
+    </Map>
+  );
 });
 
 const { width, height } = Dimensions.get("window");
@@ -78,12 +112,21 @@ export default function DriverHome() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(75);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [currentLocation, setCurrentLocation] = useState<any>(null);
+  const [region, setRegion] = useState({
+    latitude: 6.5244,
+    longitude: 3.3792,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+  const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  const mapRef = useRef<any>(null);
 
   const sidebarWidth = useMemo(() => Math.min(350, width * 0.9), []);
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const progressAnim = useState(new Animated.Value(0))[0];
 
-  // Animated progress rings
+  // Animated progress rings and energy calculation
   useEffect(() => {
     Animated.loop(
       Animated.timing(progressAnim, {
@@ -93,16 +136,28 @@ export default function DriverHome() {
       })
     ).start();
 
-    // Simulate energy level changes
+    // Calculate energy based on activity and time
     const interval = setInterval(() => {
       setEnergyLevel((prev) => {
-        const change = Math.random() * 2 - 1;
+        // Energy decreases when on delivery, increases when off duty
+        let change = 0;
+        if (activeTab === "On delivery") {
+          change = -0.5; // Decreases during delivery
+        } else if (activeTab === "Off duty") {
+          change = 1; // Increases when resting
+        } else if (activeTab === "Available") {
+          change = 0.2; // Slight increase when waiting
+        }
+        
+        // Add small random variation
+        change += (Math.random() * 0.4 - 0.2);
+        
         return Math.max(0, Math.min(100, prev + change));
       });
     }, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [activeTab]);
 
   const rotateAnimation = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -188,19 +243,69 @@ export default function DriverHome() {
     }
   }, []);
 
+  // Start real-time location tracking
+  const startLocationTracking = useCallback(async () => {
+    try {
+      setIsTrackingLocation(true);
+      
+      // Get initial location
+      const location = await locationService.getCurrentLocation();
+      if (location) {
+        setCurrentLocation(location);
+        setRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
+      }
+
+      // Start live tracking
+      await locationService.startLiveTracking(5000); // Update every 5 seconds
+      
+      // Subscribe to location updates
+      const unsubscribe = locationService.onLocationUpdate((newLocation) => {
+        setCurrentLocation(newLocation);
+        setRegion((prevRegion) => ({
+          ...prevRegion,
+          latitude: newLocation.latitude,
+          longitude: newLocation.longitude,
+        }));
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error("Error starting location tracking:", error);
+      showError("Location Error", "Failed to start location tracking. Please enable location services.");
+      setIsTrackingLocation(false);
+    }
+  }, [showError]);
+
+  // Stop location tracking
+  const stopLocationTracking = useCallback(() => {
+    locationService.stopLiveTracking();
+    setIsTrackingLocation(false);
+  }, []);
+
   const initializeData = useCallback(async () => {
     setIsLoading(true);
     try {
       await Promise.all([loadUserData(), loadDriverStats(), checkAuth()]);
+      // Start location tracking after data loads
+      await startLocationTracking();
     } catch (error) {
       console.error("Error initializing data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserData, loadDriverStats, checkAuth]);
+  }, [loadUserData, loadDriverStats, checkAuth, startLocationTracking]);
 
   useEffect(() => {
     initializeData();
+    
+    return () => {
+      stopLocationTracking();
+    };
   }, [initializeData]);
 
   const toggleMenu = useCallback(() => {
@@ -308,8 +413,12 @@ export default function DriverHome() {
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Full Screen Map */}
-      <SafeMapComponent />
+      {/* Full Screen Real-time Map */}
+      <RealTimeMapComponent 
+        region={region}
+        currentLocation={currentLocation}
+        mapRef={mapRef}
+      />
 
       {/* Overlay for UI elements */}
       <View style={styles.overlay}>
@@ -344,6 +453,15 @@ export default function DriverHome() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Location Tracking Indicator */}
+        {isTrackingLocation && (
+          <View style={styles.trackingIndicator}>
+            <View style={styles.trackingPulse} />
+            <Ionicons name="location" size={16} color="#4CAF50" />
+            <Text style={styles.trackingText}>Live Tracking</Text>
+          </View>
+        )}
 
         {/* Circular Progress Rings */}
         <View style={styles.progressContainer}>
@@ -530,6 +648,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#4682B4",
     fontFamily: "Montserrat-Medium",
+  },
+  retryMapButton: {
+    marginTop: 15,
+    backgroundColor: "#4682B4",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryMapText: {
+    color: "white",
+    fontFamily: "Montserrat-Medium",
+    fontSize: 14,
+  },
+  driverLocationMarker: {
+    backgroundColor: "white",
+    borderRadius: 25,
+    padding: 8,
+    borderWidth: 3,
+    borderColor: "#4682B4",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  trackingIndicator: {
+    position: "absolute",
+    top: 130,
+    left: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  trackingPulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  trackingText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontFamily: "Montserrat-SemiBold",
   },
   overlay: {
     position: "absolute",
