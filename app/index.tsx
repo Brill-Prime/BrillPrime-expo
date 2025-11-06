@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { Text, View, StyleSheet, Animated, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -12,11 +13,10 @@ export default function SplashScreenComponent() {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // State for initial loading
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
-    // Fix 5: Native Driver Animation Warning - Enable useNativeDriver for transforms and opacity
     const useNativeDriver = true;
 
     Animated.parallel([
@@ -52,28 +52,67 @@ export default function SplashScreenComponent() {
       if (!isMounted) return;
 
       try {
-        // Fix 6: Add better loading state for initial app load
+        // Show splash for minimum duration
         await new Promise(resolve => setTimeout(resolve, 1200));
 
-        const onboardingStatus = await AsyncStorage.getItem('hasSeenOnboarding');
-        console.log('hasSeenOnboarding:', onboardingStatus);
+        // Step 1: Check if user has seen onboarding
+        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        console.log('hasSeenOnboarding:', hasSeenOnboarding);
 
-        // Fix 4: Add better error handling for API calls (and general async operations)
-        const [token, tokenExpiry] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
-        const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
-
-        if (!token[1] || isTokenExpired) {
-          console.log('Redirecting to signin');
-          await AsyncStorage.multiRemove(['userToken', 'userEmail', 'userRole', 'tokenExpiry']);
+        if (!hasSeenOnboarding) {
+          // First time user - show onboarding
+          console.log('Redirecting to onboarding');
           if (isMounted) {
-            router.replace('/auth/signin');
+            router.replace('/onboarding/screen1');
           }
           return;
         }
 
-        const role = await AsyncStorage.getItem('userRole');
+        // Step 2: Check if user has selected a role
+        const selectedRole = await AsyncStorage.getItem('selectedRole');
+        console.log('selectedRole:', selectedRole);
 
-        // Fix 3: Merchant Analytics to Use Real User Data - assuming role is derived from user data
+        if (!selectedRole) {
+          // User has seen onboarding but hasn't selected role
+          console.log('Redirecting to role selection');
+          if (isMounted) {
+            router.replace('/auth/role-selection');
+          }
+          return;
+        }
+
+        // Step 3: Check authentication status
+        const [token, tokenExpiry] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
+        const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
+
+        if (!token[1] || isTokenExpired) {
+          // User has selected role but not authenticated - check if they have an account
+          console.log('Token expired or missing, checking for account');
+          const userEmail = await AsyncStorage.getItem('userEmail');
+          
+          if (userEmail) {
+            // User has registered before - go to sign in
+            console.log('Redirecting to sign in');
+            if (isMounted) {
+              router.replace('/auth/signin');
+            }
+          } else {
+            // New user - go to sign up
+            console.log('Redirecting to sign up');
+            if (isMounted) {
+              router.replace('/auth/signup');
+            }
+          }
+          
+          // Clear expired token
+          await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+          return;
+        }
+
+        // Step 4: User is authenticated - route to appropriate home screen
+        const role = await AsyncStorage.getItem('userRole');
+        console.log('User authenticated with role:', role);
+
         if (role === 'consumer' && isMounted) {
           router.replace('/home/consumer');
         } else if (role === 'merchant' && isMounted) {
@@ -81,22 +120,20 @@ export default function SplashScreenComponent() {
         } else if (role === 'driver' && isMounted) {
           router.replace('/home/driver');
         } else if (isMounted) {
-          // Fallback for unexpected roles or missing role
+          // Fallback - role missing, go back to role selection
           router.replace('/auth/role-selection');
         }
       } catch (error) {
         console.error('Error checking auth state:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
-        await SplashScreen.hideAsync(); // Ensure splash screen is hidden on error
-        setIsLoading(false); // Stop loading indicator on error
         if (isMounted) {
-          router.replace('/onboarding/screen1'); // Example: Reset to onboarding on error
+          // On error, start fresh with onboarding
+          router.replace('/onboarding/screen1');
         }
       } finally {
-        // Hide splash screen and stop loading indicator once auth state is checked or error occurs
         if (isMounted) {
           await SplashScreen.hideAsync();
-          setIsLoading(false); // Stop loading indicator
+          setIsLoading(false);
         }
       }
     };
@@ -109,7 +146,6 @@ export default function SplashScreenComponent() {
     };
   }, [router, fadeAnim, scaleAnim, pulseAnim]);
 
-  // Display error message if an error occurred
   if (error) {
     return (
       <View style={styles.container}>
@@ -117,9 +153,8 @@ export default function SplashScreenComponent() {
           <Text style={styles.errorText}>Error: {error}</Text>
           <Text style={styles.retryText} onPress={() => {
             setError(null);
-            setIsLoading(true); // Show loading indicator on retry
-            // Re-run the auth check or navigate to a reset page
-            router.replace('/onboarding/screen1'); // Example: reset to onboarding
+            setIsLoading(true);
+            router.replace('/onboarding/screen1');
           }}>
             Tap to continue
           </Text>
@@ -128,7 +163,6 @@ export default function SplashScreenComponent() {
     );
   }
 
-  // Display loading indicator while checking auth state
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -159,8 +193,6 @@ export default function SplashScreenComponent() {
     );
   }
 
-  // Fallback render if somehow neither error nor loading state is active.
-  // This should ideally not be reached if all routes are handled within checkAuthState.
   return (
     <View style={styles.container}>
       <Text>Initializing...</Text>
@@ -197,7 +229,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#6b7280', // Tailwind gray-500 equivalent
+    color: '#6b7280',
   },
   errorText: {
     color: '#e74c3c',

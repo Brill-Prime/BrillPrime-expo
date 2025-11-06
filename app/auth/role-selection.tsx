@@ -48,60 +48,8 @@ export default function RoleSelection() {
     setSelectedRole(role);
     try {
       await AsyncStorage.setItem("selectedRole", role);
-
-      // Check if user has valid token
-      const userToken = await AsyncStorage.getItem("userToken");
       
-      if (userToken) {
-        // Validate existing token with backend
-        try {
-          const { authService } = await import('../../services/authService');
-          const authCheck = await authService.isAuthenticatedWithValidation();
-          
-          if (authCheck.isAuthenticated) {
-            // User is already authenticated, navigate to appropriate home screen
-            switch (role) {
-              case 'consumer':
-                router.replace("/home/consumer");
-                break;
-              case 'merchant':
-                router.replace("/home/merchant");
-                break;
-              case 'driver':
-                router.replace("/home/driver");
-                break;
-              default:
-                router.replace("/home/consumer");
-            }
-            return;
-          }
-          
-          // Token is invalid or expired, clear it and proceed to auth
-          console.log("Token validation failed, clearing auth data");
-          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole", "tokenExpiry"]);
-          
-        } catch (tokenError: any) {
-          console.log("Token validation error:", tokenError);
-          
-          // Handle network errors gracefully
-          if (tokenError?.message?.includes('network') || tokenError?.message?.includes('fetch')) {
-            Alert.alert(
-              "Connection Error",
-              "Unable to verify your authentication. Please check your internet connection.",
-              [
-                { text: "Try Again", onPress: () => handleSelect(role) },
-                { text: "Continue Offline", onPress: () => proceedToAuth(role) }
-              ]
-            );
-            return;
-          } else {
-            // Other errors - clear auth data
-            await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole", "tokenExpiry"]);
-          }
-        }
-      }
-
-      // Proceed with normal authentication flow
+      // Always proceed to auth flow after selecting role
       await proceedToAuth(role);
       
     } catch (error) {
