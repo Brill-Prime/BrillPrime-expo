@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "postgresql-17", "nix", "typescript-language-server"]
+modules = ["nodejs-20", "bash"]
 [agent]
 expertMode = true
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_stripe:1.0.0", "javascript_sendgrid:1.0.0"]
