@@ -40,11 +40,28 @@ export default function OrderManagementScreen() {
       if (result.success && result.orders) {
         setOrders(result.orders);
       } else {
-        showError('Error', result.error || 'Failed to load orders');
+        // Check if error is network-related
+        const isNetworkError = result.error?.toLowerCase().includes('network') || 
+                              result.error?.toLowerCase().includes('connection');
+        
+        if (isNetworkError) {
+          showError('Connection Error', 'Please check your internet connection and try again');
+        } else {
+          showError('Error', result.error || 'Failed to load orders');
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
-      showError('Error', 'An error occurred while loading orders');
+      
+      // Handle network errors gracefully
+      const errorMessage = error?.message || 'An error occurred while loading orders';
+      const isNetworkError = errorMessage.toLowerCase().includes('network') || 
+                            errorMessage.toLowerCase().includes('fetch');
+      
+      showError(
+        isNetworkError ? 'Connection Error' : 'Error',
+        isNetworkError ? 'Unable to connect. Please check your connection.' : errorMessage
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);

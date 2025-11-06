@@ -206,10 +206,67 @@ class MerchantOrderService {
         return { success: false, error: error.message };
       }
 
+      // Send notifications to consumer and driver
+      await this.sendOrderStatusNotification(orderId, status, notes);
+
       return { success: true };
     } catch (error) {
       console.error('Error updating order status:', error);
       return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * Send order status notification to relevant parties
+   */
+  private async sendOrderStatusNotification(orderId: string, status: Order['status'], notes?: string): Promise<void> {
+    try {
+      // Get order details
+      const { data: order } = await supabase
+        .from('orders')
+        .select('consumer_id, driver_id, order_number')
+        .eq('id', orderId)
+        .single();
+
+      if (!order) return;
+
+      const statusMessages: Record<string, string> = {
+        accepted: 'Your order has been accepted and is being prepared',
+        rejected: notes ? `Your order was rejected: ${notes}` : 'Your order was rejected',
+        preparing: 'Your order is being prepared',
+        ready: 'Your order is ready for pickup',
+        in_transit: 'Your order is on the way',
+        delivered: 'Your order has been delivered',
+      };
+
+      const message = statusMessages[status] || `Order status updated to ${status}`;
+
+      // Notify consumer
+      if (order.consumer_id) {
+        await supabase.from('notifications').insert({
+          user_id: order.consumer_id,
+          title: `Order #${order.order_number}`,
+          message,
+          type: 'order',
+          data: { order_id: orderId, status },
+          read: false,
+        });
+      }
+
+      // Notify driver if assigned and status is relevant
+      if (order.driver_id && ['ready', 'in_transit'].includes(status)) {
+        await supabase.from('notifications').insert({
+          user_id: order.driver_id,
+          title: `Order #${order.order_number}`,
+          message: status === 'ready' ? 'Order ready for pickup' : 'Delivery in progress',
+          type: 'delivery',
+          data: { order_id: orderId, status },
+          read: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error sending order notification:', error);
+      // Don't throw - notification failure shouldn't break order update
     }
   }
 
@@ -225,6 +282,34 @@ class MerchantOrderService {
    */
   async rejectOrder(orderId: string, reason: string): Promise<{ success: boolean; error?: string }> {
     return this.updateOrderStatus(orderId, 'rejected', reason);
+  }
+
+  /**
+   * Cancel order (for accepted/preparing orders)
+   */
+  async cancelOrder(orderId: string, reason: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Check if order can be cancelled
+      const { data: order, error: fetchError } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', orderId)
+        .single();
+
+      if (fetchError || !order) {
+        return { success: false, error: 'Order not found' };
+      }
+
+      // Only allow cancellation for orders that are accepted or preparing
+      if (!['accepted', 'preparing'].includes(order.status)) {
+        return { success: false, error: 'Order cannot be cancelled at this stage' };
+      }
+
+      return this.updateOrderStatus(orderId, 'cancelled', reason);
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      return { success: false, error: String(error) };
+    }
   }
 
   /**
