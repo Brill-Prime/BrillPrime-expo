@@ -53,18 +53,23 @@
 ## 🔥 HIGH PRIORITY - Merchant Features
 
 ### Commodity Management (Essential)
-- [ ] **Build Add Commodity Screen**
-  - [ ] Create form with image upload
-  - [ ] Add category selection
-  - [ ] Implement pricing and inventory fields
-  - [ ] Add description and specifications
-  - [ ] Connect to Supabase storage for images
+- [x] **Build Add Commodity Screen** ✅ COMPLETED
+  - [x] Create form with image upload
+  - [x] Add category selection
+  - [x] Implement pricing and inventory fields
+  - [x] Add description and specifications
+  - [x] Connect to Supabase storage for images
+  - [x] Created commodityService with full CRUD operations
+  - [x] Safe image update flow (upload first, delete after)
+  - [x] Merchant ID integration via Firebase Auth
+  - [x] Comprehensive error handling
 
-- [ ] **Implement Edit/Delete Commodity**
-  - [ ] Update existing commodity screen
-  - [ ] Add delete confirmation modal
-  - [ ] Handle image updates
-  - [ ] Sync with inventory system
+- [x] **Implement Edit/Delete Commodity** ✅ PARTIALLY COMPLETE
+  - [x] Update existing commodity screen (edit mode working)
+  - [x] Handle image updates (with rollback protection)
+  - [x] Sync with inventory system
+  - [ ] Add delete confirmation modal (future enhancement)
+  - [ ] Delete functionality UI (future enhancement)
 
 - [ ] **Inventory Management**
   - [ ] Stock level tracking
