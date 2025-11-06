@@ -1,19 +1,24 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { notificationService } from '../services/notificationService';
+import { notificationService, Notification } from '../services/notificationService';
+import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface NotificationContextType {
   unreadCount: number;
+  latestNotification: Notification | null;
   refreshNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  clearLatestNotification: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [latestNotification, setLatestNotification] = useState<Notification | null>(null);
+  const [subscription, setSubscription] = useState<{ unsubscribe: () => void } | null>(null);
 
   const refreshNotifications = useCallback(async () => {
     try {
@@ -49,13 +54,67 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [refreshNotifications]);
 
+  const clearLatestNotification = useCallback(() => {
+    setLatestNotification(null);
+  }, []);
+
+  // Set up real-time notification subscription
   useEffect(() => {
+    const setupRealtimeSubscription = async () => {
+      try {
+        const userData = await authService.getStoredUser();
+        if (!userData?.id) return;
+
+        const { supabase } = await import('../config/supabase');
+        
+        // Get user ID from Supabase
+        const { data: users } = await supabase
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', userData.id)
+          .single();
+
+        if (!users) return;
+
+        // Subscribe to real-time notifications
+        const sub = notificationService.subscribeToNotifications(
+          users.id,
+          async (notification) => {
+            console.log('📬 New notification received:', notification);
+            
+            // Update unread count
+            await refreshNotifications();
+            
+            // Show latest notification
+            setLatestNotification(notification);
+            
+            // Send local push notification
+            await notificationService.sendLocalNotification(
+              notification.title,
+              notification.message,
+              notification.data
+            );
+
+            // Auto-clear after 5 seconds
+            setTimeout(() => {
+              setLatestNotification(null);
+            }, 5000);
+          }
+        );
+
+        setSubscription(sub);
+      } catch (error) {
+        console.error('Error setting up notification subscription:', error);
+      }
+    };
+
+    setupRealtimeSubscription();
     refreshNotifications();
     
-    // Refresh every 30 seconds for real-time updates
+    // Fallback polling every 30 seconds
     const interval = setInterval(refreshNotifications, 30000);
     
-    // Also refresh when window regains focus
+    // Refresh when window regains focus
     const handleFocus = () => {
       refreshNotifications();
     };
@@ -65,6 +124,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     
     return () => {
+      subscription?.unsubscribe();
       clearInterval(interval);
       if (typeof window !== 'undefined') {
         window.removeEventListener('focus', handleFocus);
@@ -76,9 +136,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     <NotificationContext.Provider
       value={{
         unreadCount,
+        latestNotification,
         refreshNotifications,
         markAsRead,
         markAllAsRead,
+        clearLatestNotification,
       }}
     >
       {children}

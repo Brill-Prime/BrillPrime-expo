@@ -247,6 +247,68 @@ class NotificationService {
       Authorization: `Bearer ${token}`,
     });
   }
+
+  /**
+   * Subscribe to real-time notifications
+   */
+  subscribeToNotifications(
+    userId: string,
+    callback: (notification: Notification) => void
+  ): { unsubscribe: () => void } {
+    const { supabase } = require('../config/supabase');
+    
+    const subscription = supabase
+      .channel(`notifications_${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload: any) => {
+          const notification: Notification = {
+            id: payload.new.id,
+            title: payload.new.title,
+            message: payload.new.message,
+            type: payload.new.type,
+            read: payload.new.read,
+            createdAt: payload.new.created_at,
+            timestamp: payload.new.created_at,
+            data: payload.new.data,
+          };
+          callback(notification);
+        }
+      )
+      .subscribe();
+
+    return {
+      unsubscribe: () => {
+        subscription.unsubscribe();
+      },
+    };
+  }
+
+  /**
+   * Send local push notification (for mobile)
+   */
+  async sendLocalNotification(title: string, message: string, data?: any): Promise<void> {
+    try {
+      // This would integrate with Expo Notifications
+      // For now, we'll just log it
+      console.log('Local notification:', { title, message, data });
+      
+      // TODO: Integrate with Expo Notifications when ready
+      // const { default: * as Notifications } = await import('expo-notifications');
+      // await Notifications.scheduleNotificationAsync({
+      //   content: { title, body: message, data },
+      //   trigger: null,
+      // });
+    } catch (error) {
+      console.error('Error sending local notification:', error);
+    }
+  }
 }
 
 export const notificationService = new NotificationService();

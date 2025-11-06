@@ -13,6 +13,7 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
+import RealtimeNotificationBanner from '../components/RealtimeNotificationBanner';
 
 // Import Leaflet CSS for web
 if (Platform.OS === 'web') {
@@ -98,6 +99,7 @@ export default function RootLayout() {
               <AlertProvider>
                 <View style={styles.container}>
                   <OfflineBanner />
+                  <RealtimeNotificationBanner />
                   <Stack
                     screenOptions={{
                       headerShown: false,
