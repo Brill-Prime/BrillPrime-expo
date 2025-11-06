@@ -73,7 +73,7 @@ export default function AddCommodityScreen() {
       if (!commodityId) return;
 
       const result = await commodityService.getCommodityById(commodityId);
-      
+
       if (result.success && result.commodity) {
         const commodity = result.commodity;
         setFormData({
@@ -218,7 +218,7 @@ export default function AddCommodityScreen() {
       let result;
       if (isEditing && commodityId) {
         result = await commodityService.updateCommodity(commodityId, formData, existingImageUrl);
-        
+
         if (result.success) {
           showSuccess('Success', 'Commodity updated successfully');
         } else {
@@ -227,10 +227,10 @@ export default function AddCommodityScreen() {
         }
       } else {
         result = await commodityService.createCommodity(formData);
-        
+
         if (result.success) {
           showSuccess('Success', 'Commodity added successfully');
-          
+
           // Reset form for new entry
           setFormData({
             name: '',

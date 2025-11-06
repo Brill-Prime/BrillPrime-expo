@@ -1,315 +1,229 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  Dimensions,
   Image,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAlert } from '../../components/AlertProvider';
-import { withRoleAccess } from '../../components/withRoleAccess';
-import { merchantService } from '../../services/merchantService';
-import { useMerchant } from '../../contexts/MerchantContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { theme } from '../../config/theme';
+import { commodityService, Commodity } from '../../services/commodityService';
+import { LoadingIndicator } from '../../components/LoadingIndicator';
 
-const { width } = Dimensions.get('window');
-
-interface Commodity {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  unit: string;
-  price: number;
-  image: string;
-  inStock: boolean;
-  createdAt: string;
-  merchantId: string;
-}
-
-const CATEGORIES = [
-  { id: 'all', name: 'All', color: theme.colors.primary },
-  { id: 'petrol', name: 'Petrol', color: theme.colors.primary },
-  { id: 'lubricant', name: 'Car Lubricant', color: theme.colors.primary },
-  { id: 'aviation', name: 'Aviation', color: theme.colors.primary },
-  { id: 'industrial', name: 'Industrial', color: theme.colors.primary },
-];
-
-const UNITS = [
-  'Litres',
-  'Kilograms',
-  'Pieces',
-  'Boxes',
-  'Gallons',
-  'Tons',
-  'Meters',
-];
-
-function MerchantCommoditiesScreen() {
+export default function MerchantCommodities() {
   const router = useRouter();
-  const { showConfirmDialog, showError, showSuccess } = useAlert();
-  const { loadMerchantId } = useMerchant();
-  const { user } = useAuth(); // Get user from AuthContext
-  const { params } = router.useSearchParams(); // Get route parameters
-
-  // Get merchantId from user or params
-  const merchantId = user?.merchantId || params?.merchantId;
-
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [commodities, setCommodities] = useState<Commodity[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-
-  useEffect(() => {
-    loadMerchantId();
-  }, [loadMerchantId]);
-
-  useEffect(() => {
-    const fetchCommodities = async () => {
-      if (!merchantId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await merchantService.getMerchantCommodities(merchantId);
-        if (response.success && Array.isArray(response.data)) {
-          setCommodities(response.data);
-        } else {
-          setCommodities([]);
-        }
-      } catch (error) {
-        console.error('Error loading commodities:', error);
-        showError('Error', 'Failed to load commodities');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCommodities();
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-    });
-
-    // Clean up subscription only
-    return () => {
-      subscription?.remove();
-    };
-  }, [merchantId]);
-
-  // Remove saveCommodities and AsyncStorage usage for real API
-
-  const handleGoBack = () => {
-    router.back();
-  };
-
-  const handleAddCommodity = () => {
-    router.push('/merchant/add-commodity');
-  };
-
-  const handleEditCommodity = (commodity: Commodity) => {
-    router.push({
-      pathname: '/merchant/add-commodity',
-      params: { commodityId: commodity.id }
-    });
-  };
-
-  const handleDeleteCommodity = (commodity: Commodity) => {
-    showConfirmDialog(
-      'Delete Commodity',
-      `Are you sure you want to delete "${commodity.name}"?`,
-      () => {
-        const updatedCommodities = commodities.filter(c => c.id !== commodity.id);
-        setCommodities(updatedCommodities);
-        showSuccess('Success', 'Commodity deleted successfully');
-      }
-    );
-  };
-
-  const handleToggleStock = async (commodity: Commodity) => {
+  const fetchCommodities = async () => {
     try {
-      const updatedCommodities = commodities.map(c =>
-        c.id === commodity.id
-          ? { ...c, inStock: !c.inStock }
-          : c
-      );
-      setCommodities(updatedCommodities);
-      showSuccess(
-        'Stock Updated',
-        `${commodity.name} is now ${!commodity.inStock ? 'in stock' : 'out of stock'}`
-      );
-    } catch (error) {
-      console.error('Error toggling stock:', error);
-      showError('Error', 'Failed to update stock status');
+      const result = await commodityService.getMerchantCommodities();
+      if (result.success && result.commodities) {
+        setCommodities(result.commodities);
+        setError(null);
+      } else {
+        setError(result.error || 'Failed to load commodities');
+      }
+    } catch (err) {
+      setError('An error occurred while loading commodities');
+      console.error('Fetch commodities error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    fetchCommodities();
+  }, []);
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCommodities();
+  }, []);
 
-  const filteredCommodities = selectedCategory === 'all'
-    ? commodities
-    : commodities.filter(c => c.category === selectedCategory);
+  const handleEdit = (commodity: Commodity) => {
+    router.push({
+      pathname: '/merchant/add-commodity',
+      params: {
+        mode: 'edit',
+        commodityId: commodity.id,
+        commodityData: JSON.stringify(commodity),
+      },
+    });
+  };
 
-  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+  const handleDelete = (commodity: Commodity) => {
+    Alert.alert(
+      'Delete Commodity',
+      `Are you sure you want to delete "${commodity.name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const result = await commodityService.deleteCommodity(
+                commodity.id,
+                commodity.image_url
+              );
 
-  const renderCommodityItem = (commodity: Commodity) => (
-    <View key={commodity.id} style={styles.commodityCard}>
-      <View style={styles.commodityHeader}>
-        <View style={[styles.categoryBadge, { backgroundColor: 'theme.colors.primary' }]}>
-          <Text style={styles.categoryText}>
-            {CATEGORIES.find(c => c.id === commodity.category)?.name || commodity.category}
+              if (result.success) {
+                Alert.alert('Success', 'Commodity deleted successfully');
+                fetchCommodities();
+              } else {
+                Alert.alert('Error', result.error || 'Failed to delete commodity');
+                setLoading(false);
+              }
+            } catch (err) {
+              Alert.alert('Error', 'An error occurred while deleting');
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleAvailability = async (commodity: Commodity) => {
+    try {
+      const result = await commodityService.toggleAvailability(
+        commodity.id,
+        !commodity.is_available
+      );
+
+      if (result.success) {
+        fetchCommodities();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update availability');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'An error occurred');
+    }
+  };
+
+  const renderCommodityCard = ({ item }: { item: Commodity }) => (
+    <View style={styles.commodityCard}>
+      <View style={styles.cardHeader}>
+        <Image
+          source={{ uri: item.image_url || 'https://via.placeholder.com/80' }}
+          style={styles.commodityImage}
+          resizeMode="cover"
+        />
+        <View style={styles.commodityInfo}>
+          <Text style={styles.commodityName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          <Text style={styles.commodityCategory}>{item.category}</Text>
+          <Text style={styles.commodityPrice}>
+            ₦{item.price.toLocaleString()} / {item.unit}
+          </Text>
+          <Text style={styles.commodityStock}>
+            Stock: {item.stock_quantity} {item.unit}(s)
           </Text>
         </View>
       </View>
 
-      <View style={styles.commodityContent}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={typeof commodity.image === 'string' ? { uri: commodity.image } : commodity.image}
-            style={styles.commodityImage}
-            resizeMode="contain"
-          />
-        </View>
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          style={[
+            styles.statusButton,
+            item.is_available ? styles.activeButton : styles.inactiveButton,
+          ]}
+          onPress={() => handleToggleAvailability(item)}
+        >
+          <Text style={styles.statusButtonText}>
+            {item.is_available ? 'Available' : 'Unavailable'}
+          </Text>
+        </TouchableOpacity>
 
-        <View style={styles.commodityDetails}>
-          <View style={styles.commodityInfo}>
-            <View style={styles.unitContainer}>
-              <Text style={styles.unitLabel}>Unit</Text>
-              <Text style={styles.unitValue}>{commodity.unit}</Text>
-            </View>
-
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>Price</Text>
-              <Text style={styles.priceValue}>₦{commodity.price.toLocaleString()}</Text>
-            </View>
-          </View>
-
-          <View style={styles.descriptionBadge}>
-            <Text style={styles.descriptionText} numberOfLines={2}>
-              {commodity.description}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.commodityFooter}>
-        <View style={styles.stockStatus}>
+        <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={[
-              styles.stockToggle,
-              { backgroundColor: commodity.inStock ? '#4CAF50' : '#FF9800' }
-            ]}
-            onPress={() => handleToggleStock(commodity)}
+            style={styles.iconButton}
+            onPress={() => handleEdit(item)}
           >
-            <Text style={styles.stockText}>
-              {commodity.inStock ? 'In Stock' : 'Out of Stock'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.commodityActions}>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => handleEditCommodity(commodity)}
-          >
-            <Ionicons name="pencil" size={18} color="white" />
+            <Ionicons name="create-outline" size={20} color="#0066CC" />
+            <Text style={styles.iconButtonText}>Edit</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteCommodity(commodity)}
+            style={styles.iconButton}
+            onPress={() => handleDelete(item)}
           >
-            <Ionicons name="trash" size={18} color="white" />
+            <Ionicons name="trash-outline" size={20} color="#CC0000" />
+            <Text style={styles.iconButtonText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 
+  if (loading && !refreshing) {
+    return <LoadingIndicator message="Loading commodities..." />;
+  }
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <View style={styles.backButtonCircle}>
-            <Ionicons name="chevron-back" size={24} color="#1C1B1F" />
-          </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Commodities</Text>
+        <Text style={styles.headerTitle}>My Commodities</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/merchant/add-commodity')}
+        >
+          <Ionicons name="add-circle" size={28} color="#0066CC" />
+        </TouchableOpacity>
       </View>
 
-      {/* Category Filters */}
-      <View style={[styles.categoriesContainer, { paddingHorizontal: responsivePadding }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {CATEGORIES.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryButton,
-                selectedCategory === category.id && styles.selectedCategoryButton,
-              ]}
-              onPress={() => setSelectedCategory(category.id)}
-            >
-              <Text
-                style={[
-                  styles.categoryButtonText,
-                  selectedCategory === category.id && styles.selectedCategoryButtonText,
-                ]}
-              >
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCommodity}>
-            <Text style={styles.addCategoryText}>+</Text>
+      {error && (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={24} color="#CC0000" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchCommodities} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* Commodities List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingHorizontal: responsivePadding }}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading commodities...</Text>
-            </View>
-          ) : filteredCommodities.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="cube-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyTitle}>No commodities found</Text>
-              <Text style={styles.emptyText}>
-                {selectedCategory === 'all'
-                  ? "You haven't added any commodities yet"
-                  : `No commodities in ${CATEGORIES.find(c => c.id === selectedCategory)?.name} category`
-                }
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.commoditiesGrid}>
-              {filteredCommodities.map(renderCommodityItem)}
-            </View>
-          )}
         </View>
-      </ScrollView>
+      )}
 
-      {/* Add New Commodity Button */}
-      <View style={[styles.addButtonContainer, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddCommodity}>
-          <Ionicons name="add" size={24} color="white" />
-          <Text style={styles.addButtonText}>Add New Commodities</Text>
-        </TouchableOpacity>
-      </View>
-
-
+      {!error && commodities.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="cube-outline" size={80} color="#CCC" />
+          <Text style={styles.emptyTitle}>No Commodities Yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Start adding products to your store
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={() => router.push('/merchant/add-commodity')}
+          >
+            <Text style={styles.emptyButtonText}>Add Your First Commodity</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={commodities}
+          renderItem={renderCommodityCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -317,275 +231,169 @@ function MerchantCommoditiesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   backButton: {
-    marginRight: 15,
-  },
-  backButtonCircle: {
-    width: 24,
-    height: 24,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#000',
-    fontFamily: 'Montserrat-ExtraBold',
-  },
-  categoriesContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 15,
-  },
-  categoriesScroll: {
-    flexDirection: 'row',
-  },
-  categoryButton: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: 'theme.colors.primary',
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedCategoryButton: {
-    backgroundColor: 'theme.colors.primary',
-  },
-  categoryButtonText: {
-    fontSize: 12,
-    color: '#131313',
-    fontFamily: 'Montserrat-Regular',
-  },
-  selectedCategoryButtonText: {
-    color: 'white',
-  },
-  addCategoryButton: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: 'theme.colors.primary',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addCategoryText: {
-    fontSize: 16,
-    color: '#131313',
-    fontFamily: 'Montserrat-Regular',
-  },
-  content: {
-    flex: 1,
-    paddingTop: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 50,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    fontFamily: 'Montserrat-Regular',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 15,
-    marginBottom: 5,
-    fontFamily: 'Montserrat-Bold',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+    flex: 1,
     textAlign: 'center',
-    fontFamily: 'Montserrat-Regular',
-  },
-  commoditiesGrid: {
-    paddingBottom: 100,
-  },
-  commodityCard: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  commodityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 8,
-  },
-  categoryBadge: {
-    paddingHorizontal: 38,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  categoryText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: 'white',
-    fontFamily: 'Montserrat-Bold',
-  },
-  commodityContent: {
-    flexDirection: 'row',
-    padding: 8,
-  },
-  imageContainer: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  commodityImage: {
-    width: 79,
-    height: 79,
-  },
-  commodityDetails: {
-    flex: 1,
-  },
-  commodityInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  unitContainer: {
-    flex: 1,
-  },
-  unitLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: 'theme.colors.primary',
-    fontFamily: 'Montserrat-Bold',
-  },
-  unitValue: {
-    fontSize: 12,
-    color: '#0B1A51',
-    fontFamily: 'Montserrat-Regular',
-    marginTop: 3,
-  },
-  priceContainer: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  priceLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: 'theme.colors.primary',
-    fontFamily: 'Montserrat-Bold',
-  },
-  priceValue: {
-    fontSize: 13,
-    color: '#0B1A51',
-    fontFamily: 'Montserrat-Regular',
-    marginTop: 3,
-  },
-  descriptionBadge: {
-    backgroundColor: 'theme.colors.primary',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
-  },
-  descriptionText: {
-    fontSize: 10,
-    fontWeight: '300',
-    color: 'white',
-    fontFamily: 'Montserrat-Light',
-  },
-  commodityFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 8,
-  },
-  stockStatus: {
-    flex: 1,
-  },
-  stockToggle: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    alignSelf: 'flex-start',
-  },
-  stockText: {
-    fontSize: 12,
-    color: 'white',
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Medium',
-  },
-  commodityActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  editButton: {
-    width: 30,
-    height: 30,
-    backgroundColor: 'theme.colors.primary',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteButton: {
-    width: 30,
-    height: 30,
-    backgroundColor: 'theme.colors.primary',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonContainer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
   },
   addButton: {
+    padding: 8,
+  },
+  listContainer: {
+    padding: 16,
+  },
+  commodityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  commodityImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#F0F0F0',
+  },
+  commodityInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  commodityName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  commodityCategory: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  commodityPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0066CC',
+    marginBottom: 2,
+  },
+  commodityStock: {
+    fontSize: 12,
+    color: '#999',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 12,
+  },
+  statusButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  activeButton: {
+    backgroundColor: '#E8F5E9',
+  },
+  inactiveButton: {
+    backgroundColor: '#FFEBEE',
+  },
+  statusButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  iconButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  iconButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#0B1A51',
-    borderRadius: 30,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    padding: 32,
   },
-  addButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '400',
-    marginLeft: 10,
-    fontFamily: 'Montserrat-Regular',
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
   },
-
-});
-export default withRoleAccess(MerchantCommoditiesScreen, {
-  requiredRole: 'merchant',
-  fallbackRoute: '/home/consumer',
-  showUnauthorizedMessage: true,
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#CC0000',
+    marginTop: 12,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
