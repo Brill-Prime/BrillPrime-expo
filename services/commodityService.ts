@@ -220,18 +220,19 @@ class CommodityService {
   ): Promise<{ success: boolean; commodity?: Commodity; error?: string }> {
     try {
       let imageUrl = oldImageUrl;
+      let newImageUrl: string | undefined;
 
-      // If new image provided, upload it and delete old one
+      // If new image provided, upload it first before deleting the old one
       if (formData.images.length > 0 && formData.images[0] !== oldImageUrl) {
-        // Delete old image
-        if (oldImageUrl) {
-          await this.deleteImage(oldImageUrl);
-        }
-
-        // Upload new image
+        // Upload new image first
         const uploadResult = await this.uploadImage(formData.images[0], commodityId);
+        
         if (uploadResult.success && uploadResult.url) {
-          imageUrl = uploadResult.url;
+          newImageUrl = uploadResult.url;
+          imageUrl = newImageUrl;
+        } else {
+          // If upload fails, keep the old image and show warning
+          console.warn('New image upload failed, keeping existing image:', uploadResult.error);
         }
       }
 
@@ -253,7 +254,16 @@ class CommodityService {
 
       if (error) {
         console.error('Database update error:', error);
+        // If database update failed and we uploaded a new image, clean it up
+        if (newImageUrl) {
+          await this.deleteImage(newImageUrl);
+        }
         return { success: false, error: error.message };
+      }
+
+      // Only delete old image after successful database update
+      if (newImageUrl && oldImageUrl && oldImageUrl !== newImageUrl) {
+        await this.deleteImage(oldImageUrl);
       }
 
       return { success: true, commodity: data as Commodity };

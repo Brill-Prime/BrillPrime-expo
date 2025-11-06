@@ -105,12 +105,14 @@ VALUES (
 - Automatic image compression and format handling
 - Supports web (drag & drop) and mobile (camera/gallery)
 - 5MB file size limit
+- **Safe image updates**: New images are uploaded first, old images deleted only after successful save (prevents data loss)
 
 ### ✅ Database Integration  
 - Create new commodities linked to merchant
 - Update existing commodities
 - Automatic merchant ID association
 - Proper error handling and validation
+- **Rollback protection**: Failed database updates clean up uploaded images
 
 ### ✅ User Experience
 - Beautiful, consistent UI matching app design
@@ -118,6 +120,12 @@ VALUES (
 - Loading states during upload
 - Success/error notifications
 - Form reset after successful save
+
+### ⚠️ Not Yet Implemented
+- **Specifications and Tags**: Currently collected in the form but not persisted to database
+  - The `products` table doesn't have columns for specifications/tags yet
+  - These fields are reserved for future enhancement
+  - No data loss occurs—they're simply not saved
 
 ## 🔧 Troubleshooting
 
