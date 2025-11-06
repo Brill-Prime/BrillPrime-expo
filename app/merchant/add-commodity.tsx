@@ -14,18 +14,14 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 import * as ImagePicker from 'expo-image-picker';
 import { 
   validateCommodityForm, 
   COMMODITY_CATEGORIES, 
-  COMMODITY_UNITS, 
-  generateCommodityId,
-  formatPrice,
-  type Commodity,
-  type CommodityFormData,
+  COMMODITY_UNITS,
 } from '../../utils/commodityUtils';
+import { commodityService, type CommodityFormData } from '../../services/commodityService';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +33,7 @@ export default function AddCommodityScreen() {
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>();
 
   const [formData, setFormData] = useState<CommodityFormData>({
     name: '',
@@ -73,24 +70,27 @@ export default function AddCommodityScreen() {
   const loadCommodityForEdit = async () => {
     try {
       setLoading(true);
-      const savedCommodities = await AsyncStorage.getItem('merchantCommodities');
-      if (savedCommodities) {
-        const commodities: Commodity[] = JSON.parse(savedCommodities);
-        const commodity = commodities.find(c => c.id === commodityId);
-        if (commodity) {
-          setFormData({
-            name: commodity.name,
-            description: commodity.description,
-            category: commodity.category,
-            unit: commodity.unit,
-            price: commodity.price.toString(),
-            availableQuantity: commodity.availableQuantity?.toString() || '1',
-            minOrderQuantity: commodity.minOrderQuantity?.toString() || '1',
-            images: commodity.images || [],
-            specifications: commodity.specifications || {},
-            tags: commodity.tags || [],
-          });
-        }
+      if (!commodityId) return;
+
+      const result = await commodityService.getCommodityById(commodityId);
+      
+      if (result.success && result.commodity) {
+        const commodity = result.commodity;
+        setFormData({
+          name: commodity.name,
+          description: commodity.description,
+          category: commodity.category,
+          unit: commodity.unit,
+          price: commodity.price.toString(),
+          availableQuantity: commodity.stock_quantity?.toString() || '1',
+          minOrderQuantity: '1',
+          images: commodity.image_url ? [commodity.image_url] : [],
+          specifications: {},
+          tags: [],
+        });
+        setExistingImageUrl(commodity.image_url);
+      } else {
+        showError('Error', result.error || 'Failed to load commodity details');
       }
     } catch (error) {
       console.error('Error loading commodity for edit:', error);
@@ -214,79 +214,49 @@ export default function AddCommodityScreen() {
 
     try {
       setLoading(true);
-      const savedCommodities = await AsyncStorage.getItem('merchantCommodities');
-      let commodities: Commodity[] = savedCommodities ? JSON.parse(savedCommodities) : [];
 
-      const price = parseFloat(formData.price);
-      const availableQuantity = parseInt(formData.availableQuantity) || 1;
-      const minOrderQuantity = parseInt(formData.minOrderQuantity) || 1;
-
+      let result;
       if (isEditing && commodityId) {
-        commodities = commodities.map(c =>
-          c.id === commodityId
-            ? {
-                ...c,
-                name: formData.name.trim(),
-                description: formData.description.trim(),
-                category: formData.category,
-                unit: formData.unit,
-                price: price,
-                availableQuantity,
-                minOrderQuantity,
-                images: formData.images.length > 0 ? formData.images : c.images,
-                specifications: formData.specifications,
-                tags: formData.tags,
-                updatedAt: new Date().toISOString(),
-              }
-            : c
-        );
-        showSuccess('Success', 'Commodity updated successfully');
+        result = await commodityService.updateCommodity(commodityId, formData, existingImageUrl);
+        
+        if (result.success) {
+          showSuccess('Success', 'Commodity updated successfully');
+        } else {
+          showError('Error', result.error || 'Failed to update commodity');
+          return;
+        }
       } else {
-        const newCommodity: Commodity = {
-          id: Date.now().toString(),
-          merchantId: 'merchant1',
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          category: formData.category,
-          unit: formData.unit,
-          price: price,
-          availableQuantity,
-          minOrderQuantity,
-          images: formData.images.length > 0 ? formData.images : ['https://via.placeholder.com/300'],
-          specifications: formData.specifications,
-          tags: formData.tags,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        commodities.push(newCommodity);
-        showSuccess('Success', 'Commodity added successfully');
+        result = await commodityService.createCommodity(formData);
+        
+        if (result.success) {
+          showSuccess('Success', 'Commodity added successfully');
+          
+          // Reset form for new entry
+          setFormData({
+            name: '',
+            description: '',
+            category: 'electronics',
+            unit: 'piece',
+            price: '',
+            availableQuantity: '1',
+            minOrderQuantity: '1',
+            images: [],
+            specifications: {},
+            tags: [],
+          });
+        } else {
+          showError('Error', result.error || 'Failed to add commodity');
+          return;
+        }
       }
 
-      await AsyncStorage.setItem('merchantCommodities', JSON.stringify(commodities));
-
-      if (!isEditing) {
-        setFormData({
-          name: '',
-          description: '',
-          category: 'electronics',
-          unit: 'piece',
-          price: '',
-          availableQuantity: '1',
-          minOrderQuantity: '1',
-          images: [],
-          specifications: {},
-          tags: [],
-        });
-      }
-
+      // Navigate back after a short delay
       setTimeout(() => {
         router.back();
       }, 1500);
     } catch (error) {
       console.error('Error saving commodity:', error);
-      showError('Error', 'Failed to save commodity');
+      showError('Error', 'Failed to save commodity. Please try again.');
     } finally {
       setLoading(false);
     }

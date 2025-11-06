@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { authService } from './authService';
+import type { CommodityFormData } from '../utils/commodityUtils';
 
 export interface Commodity {
   id: string;
@@ -21,16 +22,7 @@ export interface Commodity {
   };
 }
 
-export interface CommodityFormData {
-  name: string;
-  description: string;
-  category: string;
-  unit: string;
-  price: string;
-  availableQuantity: string;
-  minOrderQuantity: string;
-  images: string[];
-}
+export type { CommodityFormData };
 
 class CommodityService {
   private readonly STORAGE_BUCKET = 'product-images';
