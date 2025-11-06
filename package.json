@@ -7,7 +7,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "EXPO_WEBPACK_ALLOW_EXTERNAL_ACCESS=true expo start --web --port 5000",
-    "test": "jest"
+    "test": "jest",
+    "setup:db": "bash scripts/setup-database.sh",
+    "seed:db": "psql $EXPO_PUBLIC_SUPABASE_URL -f supabase/seed-data.sql",
+    "test:api": "bash test-endpoints.sh"
   },
   "jest": {
     "preset": "jest-expo"
