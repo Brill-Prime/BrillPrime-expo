@@ -12,7 +12,6 @@ packages = ["supabase-cli"]
 [deployment]
 deploymentTarget = "autoscale"
 run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
-build = ["npm", "run", "build"]
 
 [workflows]
 runButton = "Project"
