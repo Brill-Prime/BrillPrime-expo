@@ -81,13 +81,13 @@ export class MerchantAnalyticsService {
         .eq('status', 'completed');
 
       const prevRevenue = prevOrders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
-      const prevOrders­Count = prevOrders?.length || 0;
+      const prevOrdersCount = prevOrders?.length || 0;
 
       const revenueChange = prevRevenue > 0
         ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
         : 0;
-      const ordersChange = prevOrders­Count > 0
-        ? ((totalOrders - prevOrders­Count) / prevOrders­Count) * 100
+      const ordersChange = prevOrdersCount > 0
+        ? ((totalOrders - prevOrdersCount) / prevOrdersCount) * 100
         : 0;
 
       return {

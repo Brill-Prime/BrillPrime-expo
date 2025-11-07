@@ -7,7 +7,8 @@ import {
   Modal,
   Animated,
   Image,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info';
@@ -79,13 +80,13 @@ export default function AlertModal({
     if (visible) {
       Animated.spring(scaleValue, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     } else {
       Animated.timing(scaleValue, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }
   }, [visible]);

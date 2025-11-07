@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface OrderStatusBannerProps {
@@ -26,7 +26,7 @@ export default function OrderStatusBanner({
     if (visible) {
       Animated.spring(slideAnim, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         tension: 50,
         friction: 8,
       }).start();
@@ -44,7 +44,7 @@ export default function OrderStatusBanner({
     Animated.timing(slideAnim, {
       toValue: -100,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start(() => onDismiss());
   };
 

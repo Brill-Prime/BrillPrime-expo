@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import ArrowForwardIcon from '../../components/ArrowForwardIcon';
 import { theme } from '../../config/theme';
@@ -20,13 +20,13 @@ export default function OnboardingScreen1() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
         tension: 50,
         friction: 7,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
 

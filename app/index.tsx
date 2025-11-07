@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
-import { Text, View, StyleSheet, Animated, Image, ActivityIndicator } from "react-native";
+import { Text, View, StyleSheet, Animated, Image, ActivityIndicator, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
@@ -17,7 +17,7 @@ export default function SplashScreenComponent() {
 
   useEffect(() => {
     let isMounted = true;
-    const useNativeDriver = true;
+    const useNativeDriver = Platform.OS !== 'web';
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -52,8 +52,8 @@ export default function SplashScreenComponent() {
       if (!isMounted) return;
 
       try {
-        // Show splash for minimum duration
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        // Show splash for 5 seconds
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Step 1: Check if user has seen onboarding
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
@@ -186,7 +186,6 @@ export default function SplashScreenComponent() {
           </Animated.View>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#3b82f6" />
-            <Text style={styles.loadingText}>Loading your app...</Text>
           </View>
         </View>
       </View>

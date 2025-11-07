@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useRouter } from 'expo-router';
@@ -15,7 +15,7 @@ export default function RealtimeNotificationBanner() {
       // Slide in
       Animated.spring(slideAnim, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         tension: 50,
         friction: 8,
       }).start();
@@ -24,7 +24,7 @@ export default function RealtimeNotificationBanner() {
       Animated.timing(slideAnim, {
         toValue: -100,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }
   }, [latestNotification]);

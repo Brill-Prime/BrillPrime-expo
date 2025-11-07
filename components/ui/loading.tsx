@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, Animated } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { theme } from '../../config/theme';
 
 interface LoadingProps {
@@ -17,12 +17,12 @@ export const Loading: React.FC<LoadingProps> = ({ message, size = 'large' }) => 
         Animated.timing(pulseAnim, {
           toValue: 1.1,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     ).start();
