@@ -55,27 +55,36 @@ export default function ProfileScreen() {
 
   const loadUserProfile = async () => {
     try {
-      // Load user data from AsyncStorage (stored by authService)
-      const userDataString = await AsyncStorage.getItem('userData');
+      // Load user data from Supabase
+      const { userService } = await import('../../services/userService');
+      const response = await userService.getProfile();
       
-      if (userDataString) {
-        const userData = JSON.parse(userDataString);
-        setUserProfile({
-          name: userData.name || '',
+      if (response.success && response.data) {
+        const userData = response.data;
+        const profile = {
+          name: `${userData.firstName} ${userData.lastName}`.trim() || userData.email.split('@')[0],
           email: userData.email || '',
           phone: userData.phone || '',
           profileImage: userData.profileImageUrl || undefined,
-          joinDate: userData.createdAt || new Date().toISOString(),
-        });
+          joinDate: new Date().toISOString(), // TODO: Add created_at to response
+        };
+        setUserProfile(profile);
+        
+        // Update AsyncStorage cache
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
       } else {
-        // Fallback to loading individual fields
-        const email = await AsyncStorage.getItem('userEmail');
-        setUserProfile({
-          name: 'User',
-          email: email || '',
-          phone: '',
-          joinDate: new Date().toISOString(),
-        });
+        // Fallback to AsyncStorage
+        const userDataString = await AsyncStorage.getItem('userData');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          setUserProfile({
+            name: userData.name || '',
+            email: userData.email || '',
+            phone: userData.phone || '',
+            profileImage: userData.profileImageUrl || undefined,
+            joinDate: userData.createdAt || new Date().toISOString(),
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading user profile:', error);

@@ -69,9 +69,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = useCallback(async () => {
     try {
-      const response = await authService.getCurrentUser();
+      const { userService } = await import('../services/userService');
+      const response = await userService.getProfile();
       if (response.success && response.data) {
-        setUser(response.data as User);
+        const userData = response.data as User;
+        setUser(userData);
+        
+        // Update AsyncStorage
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        await AsyncStorage.setItem('userEmail', userData.email);
+        if (userData.firstName) {
+          await AsyncStorage.setItem('userFirstName', userData.firstName);
+        }
+        if (userData.lastName) {
+          await AsyncStorage.setItem('userLastName', userData.lastName);
+        }
+        if (userData.phone) {
+          await AsyncStorage.setItem('userPhone', userData.phone);
+        }
       }
     } catch (error) {
       console.error('Error refreshing user:', error);

@@ -53,9 +53,65 @@ class UserService {
       return { success: false, error: validation.error };
     }
 
-    return apiClient.put<User>('/api/auth/profile', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    try {
+      // Get current user from auth
+      const user = await authService.getStoredUser();
+      if (!user || !user.id) {
+        return { success: false, error: 'User not found' };
+      }
+
+      // Update in Supabase
+      const { supabase } = await import('../config/supabase');
+      const { data: updatedUser, error } = await supabase
+        .from('users')
+        .update({
+          full_name: `${data.firstName} ${data.lastName}`.trim(),
+          email: data.email,
+          phone_number: data.phone,
+          profile_image_url: data.profileImageUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase update error:', error);
+        return { success: false, error: error.message || 'Failed to update profile' };
+      }
+
+      // Also update merchant table if user is a merchant
+      if (user.role === 'merchant' && data.address) {
+        const { error: merchantError } = await supabase
+          .from('merchants')
+          .update({
+            business_name: data.firstName, // For merchants, firstName is business name
+            address: data.address,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+
+        if (merchantError) {
+          console.error('Merchant update error:', merchantError);
+        }
+      }
+
+      return { 
+        success: true, 
+        data: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: updatedUser.phone_number,
+          profileImageUrl: updatedUser.profile_image_url
+        } as User
+      };
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      return { success: false, error: error.message || 'Failed to update profile' };
+    }
   }
 
   // Get user profile
@@ -65,9 +121,40 @@ class UserService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<User>('/api/auth/profile', {
-      Authorization: `Bearer ${token}`,
-    });
+    try {
+      const user = await authService.getStoredUser();
+      if (!user || !user.id) {
+        return { success: false, error: 'User not found' };
+      }
+
+      const { supabase } = await import('../config/supabase');
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Get profile error:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { 
+        success: true, 
+        data: {
+          id: data.id,
+          email: data.email,
+          role: data.role,
+          firstName: data.full_name?.split(' ')[0] || '',
+          lastName: data.full_name?.split(' ').slice(1).join(' ') || '',
+          phone: data.phone_number,
+          profileImageUrl: data.profile_image_url
+        } as User
+      };
+    } catch (error: any) {
+      console.error('Get profile error:', error);
+      return { success: false, error: error.message || 'Failed to get profile' };
+    }
   }
 
   // Update user settings
@@ -138,37 +225,63 @@ class UserService {
     }
 
     try {
-      // Convert image to base64 or FormData for upload
-      const formData = new FormData();
-      
-      // Extract filename from URI
-      const filename = imageUri.split('/').pop() || 'profile.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-      formData.append('profileImage', {
-        uri: imageUri,
-        name: filename,
-        type,
-      } as any);
-
-      // Use fetch for FormData upload (apiClient doesn't handle FormData well)
-      // Note: Do NOT set Content-Type header manually - let fetch set it with the boundary
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/user/profile-photo`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return { success: true, data };
-      } else {
-        return { success: false, error: data.message || 'Failed to upload profile photo' };
+      const user = await authService.getStoredUser();
+      if (!user || !user.id) {
+        return { success: false, error: 'User not found' };
       }
+
+      const { supabase } = await import('../config/supabase');
+      
+      // Convert image URI to blob for upload
+      let blob: Blob;
+      if (imageUri.startsWith('data:')) {
+        // Base64 image
+        const response = await fetch(imageUri);
+        blob = await response.blob();
+      } else if (imageUri.startsWith('file://')) {
+        // File URI (mobile)
+        const response = await fetch(imageUri);
+        blob = await response.blob();
+      } else {
+        // Already a URL, no need to upload
+        return { success: true, data: { profileImageUrl: imageUri } };
+      }
+
+      // Generate unique filename
+      const fileExt = blob.type.split('/')[1] || 'jpg';
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `profile-photos/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, blob, {
+          contentType: blob.type,
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return { success: false, error: uploadError.message };
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+
+      // Update user record with new image URL
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ profile_image_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        return { success: false, error: updateError.message };
+      }
+
+      return { success: true, data: { profileImageUrl: publicUrl } };
     } catch (error: any) {
       console.error('Profile photo upload error:', error);
       return { success: false, error: error.message || 'Failed to upload profile photo' };

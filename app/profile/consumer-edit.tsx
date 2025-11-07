@@ -55,41 +55,44 @@ export default function ConsumerEditProfileScreen() {
 
   const loadConsumerProfile = async () => {
     try {
-      const userDataString = await AsyncStorage.getItem('userData');
+      // First try to load from Supabase
+      const { userService } = await import('../../services/userService');
+      const response = await userService.getProfile();
 
-      if (userDataString) {
-        const userData = JSON.parse(userDataString);
-        setProfile({
+      if (response.success && response.data) {
+        const userData = response.data;
+        const profileData = {
           firstName: userData.firstName || '',
           lastName: userData.lastName || '',
           email: userData.email || '',
           phone: userData.phone || '',
-          dateOfBirth: userData.dateOfBirth || '',
-          gender: userData.gender || '',
+          dateOfBirth: '', // TODO: Add to database schema
+          gender: '', // TODO: Add to database schema
           profileImage: userData.profileImageUrl || undefined,
-        });
-      } else {
-        // Load individual fields as fallback
-        const email = await AsyncStorage.getItem('userEmail');
-        const phone = await AsyncStorage.getItem('userPhone');
-        const firstName = await AsyncStorage.getItem('userFirstName') || '';
-        const lastName = await AsyncStorage.getItem('userLastName') || '';
-        const dateOfBirth = await AsyncStorage.getItem('userDateOfBirth') || '';
-        const gender = await AsyncStorage.getItem('userGender') || '';
-        const profileImage = await AsyncStorage.getItem('userProfileImage');
+        };
+        setProfile(profileData);
 
-        setProfile({
-          firstName,
-          lastName,
-          email: email || '',
-          phone: phone || '',
-          dateOfBirth,
-          gender,
-          profileImage: profileImage || undefined,
-        });
+        // Update AsyncStorage cache
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      } else {
+        // Fallback to AsyncStorage
+        const userDataString = await AsyncStorage.getItem('userData');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          setProfile({
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            email: userData.email || '',
+            phone: userData.phone || '',
+            dateOfBirth: userData.dateOfBirth || '',
+            gender: userData.gender || '',
+            profileImage: userData.profileImageUrl || undefined,
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading consumer profile:', error);
+      showError('Error', 'Failed to load profile. Please try again.');
     }
   };
 

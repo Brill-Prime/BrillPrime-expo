@@ -72,33 +72,74 @@ export default function EditProfileScreen() {
 
   const loadMerchantProfile = async () => {
     try {
-      const email = await AsyncStorage.getItem('userEmail');
-      const phone = await AsyncStorage.getItem('userPhone');
-      const businessName = await AsyncStorage.getItem('merchantBusinessName') || await AsyncStorage.getItem('userName');
-      const category = await AsyncStorage.getItem('merchantCategory');
-      const address = await AsyncStorage.getItem('userAddress');
-      const profileImage = await AsyncStorage.getItem('userProfileImage');
-      const operatingHours = await AsyncStorage.getItem('merchantOperatingHours');
+      // First try to load from Supabase
+      const { userService } = await import('../../services/userService');
+      const response = await userService.getProfile();
 
-      setProfile({
-        businessName: businessName || 'Total Energy',
-        category: category || 'Oil & Gas',
-        email: email || 'info@totalenergies.com',
-        phone: phone || '+234 8100 0000 00',
-        address: address || 'Wuse II, Abuja',
-        profileImage: profileImage || undefined,
-        operatingHours: operatingHours ? JSON.parse(operatingHours) : {
-          monday: '8:00am - 6:00pm',
-          tuesday: '8:00am - 6:00pm',
-          wednesday: '8:00am - 6:00pm',
-          thursday: '8:00am - 6:00pm',
-          friday: '8:00am - 6:00pm',
-          saturday: '8:00am - 6:00pm',
-          sunday: 'Closed',
-        },
-      });
+      if (response.success && response.data) {
+        const userData = response.data;
+        
+        // Also fetch merchant-specific data
+        const { supabase } = await import('../../config/supabase');
+        const { data: merchantData } = await supabase
+          .from('merchants')
+          .select('*')
+          .eq('user_id', userData.id)
+          .single();
+
+        const profileData = {
+          businessName: merchantData?.business_name || userData.firstName || '',
+          category: merchantData?.business_type || 'Oil & Gas',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          address: merchantData?.address || '',
+          profileImage: userData.profileImageUrl || undefined,
+          operatingHours: merchantData?.operating_hours || {
+            monday: '8:00am - 6:00pm',
+            tuesday: '8:00am - 6:00pm',
+            wednesday: '8:00am - 6:00pm',
+            thursday: '8:00am - 6:00pm',
+            friday: '8:00am - 6:00pm',
+            saturday: '8:00am - 6:00pm',
+            sunday: 'Closed',
+          },
+        };
+        setProfile(profileData);
+
+        // Update AsyncStorage cache
+        await AsyncStorage.setItem('merchantBusinessName', profileData.businessName);
+        await AsyncStorage.setItem('merchantCategory', profileData.category);
+      } else {
+        // Fallback to AsyncStorage
+        const email = await AsyncStorage.getItem('userEmail');
+        const phone = await AsyncStorage.getItem('userPhone');
+        const businessName = await AsyncStorage.getItem('merchantBusinessName') || await AsyncStorage.getItem('userName');
+        const category = await AsyncStorage.getItem('merchantCategory');
+        const address = await AsyncStorage.getItem('userAddress');
+        const profileImage = await AsyncStorage.getItem('userProfileImage');
+        const operatingHours = await AsyncStorage.getItem('merchantOperatingHours');
+
+        setProfile({
+          businessName: businessName || '',
+          category: category || 'Oil & Gas',
+          email: email || '',
+          phone: phone || '',
+          address: address || '',
+          profileImage: profileImage || undefined,
+          operatingHours: operatingHours ? JSON.parse(operatingHours) : {
+            monday: '8:00am - 6:00pm',
+            tuesday: '8:00am - 6:00pm',
+            wednesday: '8:00am - 6:00pm',
+            thursday: '8:00am - 6:00pm',
+            friday: '8:00am - 6:00pm',
+            saturday: '8:00am - 6:00pm',
+            sunday: 'Closed',
+          },
+        });
+      }
     } catch (error) {
       console.error('Error loading merchant profile:', error);
+      showError('Error', 'Failed to load profile. Please try again.');
     }
   };
 
