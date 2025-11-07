@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +27,9 @@ interface Notification {
   createdAt?: string; // Added for fallback data
 }
 
-export default function Notifications() {
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+function NotificationsScreen() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -35,14 +39,12 @@ export default function Notifications() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      // Dynamically import notificationService to ensure it's available when needed
-      const { notificationService } = await import('../../services/notificationService');
-      const userRole = await AsyncStorage.getItem('userRole'); // Get current user role
+      const userRole = await AsyncStorage.getItem('userRole');
       const response = await notificationService.getNotifications({
         role: userRole || 'consumer'
       });
 
-      if (response.success && response.data) {
+      if (response.success && response.data && response.data.length > 0) {
         // Format timestamps to be consistent
         const formattedNotifications = response.data.map(notif => ({
           ...notif,
@@ -50,36 +52,16 @@ export default function Notifications() {
         }));
         setNotifications(formattedNotifications);
       } else {
-        // Fallback to sample data if API fails or returns no data
-        setNotifications([
-          {
-            id: '1',
-            title: 'Welcome to Brill Prime',
-            message: 'Thank you for joining us! Start exploring products near you.',
-            type: 'system',
-            timestamp: new Date().toISOString(),
-            read: false,
-            createdAt: new Date().toISOString()
-          }
-        ]);
+        // Empty state - no notifications
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
-      // Show sample notification on error
-      setNotifications([
-        {
-          id: '1',
-          title: 'Welcome to Brill Prime',
-          message: 'Thank you for joining us! Start exploring products near you.',
-          type: 'system',
-          timestamp: new Date().toISOString(),
-          read: false,
-          createdAt: new Date().toISOString()
-        }
-      ]);
+      // Empty state on error - don't show fake notifications
+      setNotifications([]);
     } finally {
       setLoading(false);
-      setRefreshing(false); // Ensure refreshing state is reset
+      setRefreshing(false);
     }
   };
 
@@ -376,6 +358,14 @@ export default function Notifications() {
         </ScrollView>
       </View>
     </LinearGradient>
+  );
+}
+
+export default function Notifications() {
+  return (
+    <ErrorBoundary>
+      <NotificationsScreen />
+    </ErrorBoundary>
   );
 }
 

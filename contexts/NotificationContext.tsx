@@ -26,9 +26,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const response = await notificationService.getUnreadCount(userRole || 'consumer');
       if (response.success && response.data) {
         setUnreadCount(response.data.count);
+      } else {
+        // Set to 0 on error instead of leaving stale data
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Error refreshing notifications:', error);
+      // Set to 0 on error
+      setUnreadCount(0);
     }
   }, []);
 
