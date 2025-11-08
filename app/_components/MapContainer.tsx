@@ -118,6 +118,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
           region={region}
           onRegionChangeComplete={onRegionChange}
           onMapReady={handleMapReady}
+          showsUserLocation={true}
         >
           {/* User marker - Only show when location is set with 3D pin style */}
           {isLocationSet === true && (

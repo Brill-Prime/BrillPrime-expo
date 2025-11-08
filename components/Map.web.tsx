@@ -107,6 +107,28 @@ const MapWeb: React.FC<MapProps> = ({
     longitudeDelta: 0.0421,
   };
 
+  // Get user's current location if showsUserLocation is true
+  useEffect(() => {
+    if (showsUserLocation && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting user location:', error);
+          // Use region/initialRegion as fallback
+          setUserLocation({
+            latitude: displayRegion.latitude,
+            longitude: displayRegion.longitude,
+          });
+        }
+      );
+    }
+  }, [showsUserLocation, displayRegion.latitude, displayRegion.longitude]);
+
   // Convert latitudeDelta to zoom level
   const getZoomLevel = (latitudeDelta: number): number => {
     return Math.round(Math.log(360 / latitudeDelta) / Math.LN2);
@@ -446,12 +468,71 @@ const MapWeb: React.FC<MapProps> = ({
         <MapUpdater region={region} />
 
         {/* User location marker */}
-        {showsUserLocation && (
-          <Circle
-            center={center}
-            radius={50}
-            pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.3 }}
-          />
+        {showsUserLocation && userLocation && (
+          <>
+            <Marker
+              position={[userLocation.latitude || center[0], userLocation.longitude || center[1]]}
+              icon={L.divIcon({
+                className: 'user-location-marker',
+                html: `
+                  <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center;">
+                    <div style="width: 36px; height: 36px; border-radius: 18px; background-color: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                      </svg>
+                    </div>
+                    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px;"></div>
+                    <div style="width: 20px; height: 8px; border-radius: 10px; background-color: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
+                  </div>
+                `,
+                iconSize: [50, 60],
+                iconAnchor: [25, 60],
+              })}
+            >
+              <Popup>
+                <strong>Your Location</strong>
+              </Popup>
+            </Marker>
+            <Circle
+              center={[userLocation.latitude || center[0], userLocation.longitude || center[1]]}
+              radius={50}
+              pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.2 }}
+            />
+          </>
+        )}
+        
+        {/* Fallback marker if showsUserLocation is true but no userLocation */}
+        {showsUserLocation && !userLocation && (
+          <>
+            <Marker
+              position={center}
+              icon={L.divIcon({
+                className: 'user-location-marker',
+                html: `
+                  <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center;">
+                    <div style="width: 36px; height: 36px; border-radius: 18px; background-color: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                      </svg>
+                    </div>
+                    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px;"></div>
+                    <div style="width: 20px; height: 8px; border-radius: 10px; background-color: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
+                  </div>
+                `,
+                iconSize: [50, 60],
+                iconAnchor: [25, 60],
+              })}
+            >
+              <Popup>
+                <strong>Your Location</strong>
+              </Popup>
+            </Marker>
+            <Circle
+              center={center}
+              radius={50}
+              pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.2 }}
+            />
+          </>
         )}
 
         {/* Regular markers */}
