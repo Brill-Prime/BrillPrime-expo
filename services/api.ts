@@ -39,18 +39,26 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      // Increased timeout for Render cold starts (free tier can take 50+ seconds)
+      // Increased timeout for cold starts
       const controller = new AbortController();
       const timeoutMs = 60000; // 60 seconds for cold start
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      console.log(`🌐 API Request: ${this.baseURL}${endpoint}`);
+      // Convert /api/ endpoints to Supabase edge functions
+      let finalUrl = endpoint;
+      if (endpoint.startsWith('/api/')) {
+        // Convert /api/endpoint to /functions/v1/endpoint
+        finalUrl = endpoint.replace('/api/', '/functions/v1/');
+      }
+
+      console.log(`🌐 API Request: ${this.baseURL}${finalUrl}`);
       const startTime = Date.now();
 
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetch(`${this.baseURL}${finalUrl}`, {
         headers: {
           'Content-Type': 'application/json',
           'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
           ...options.headers,
         },
         signal: controller.signal,

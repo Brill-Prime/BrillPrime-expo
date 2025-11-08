@@ -229,23 +229,64 @@ class NotificationService {
 
   // Get unread count
   async getUnreadCount(role?: string): Promise<ApiResponse<{ count: number }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
+    try {
+      const token = await authService.getToken();
+      if (!token) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Get user data
+      const userData = await authService.getStoredUser();
+      if (!userData?.id) {
+        return { success: false, error: 'User not found' };
+      }
+
+      // Get user role if not provided
+      let userRole = role;
+      if (!userRole) {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+      }
+
+      // Use Supabase client directly
+      const { supabase } = await import('../config/supabase');
+      
+      // Get user ID from Supabase
+      const { data: users } = await supabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', userData.id)
+        .single();
+
+      if (!users) {
+        return { success: false, error: 'User not found in database' };
+      }
+
+      // Count unread notifications
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', users.id)
+        .eq('read', false)
+        .eq('role', userRole);
+
+      if (error) {
+        console.error('Error getting unread count:', error);
+        return { success: false, error: error.message };
+      }
+
+      return {
+        success: true,
+        data: { count: count || 0 }
+      };
+    } catch (error) {
+      console.error('Error in getUnreadCount:', error);
+      return {
+        success: false,
+        error: 'Failed to get unread count',
+        data: { count: 0 }
+      };
     }
-
-    // Get user role if not provided
-    let userRole = role;
-    if (!userRole) {
-      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      userRole = await AsyncStorage.getItem('userRole') || 'consumer';
-    }
-
-    const endpoint = `/api/notifications/unread-count?role=${userRole}`;
-
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
   }
 
   /**

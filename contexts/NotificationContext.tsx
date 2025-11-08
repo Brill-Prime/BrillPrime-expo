@@ -28,11 +28,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setUnreadCount(response.data.count);
       } else {
         // Set to 0 on error instead of leaving stale data
+        console.log('Failed to fetch notifications, using default count');
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error('Error refreshing notifications:', error);
-      // Set to 0 on error
+      // Silently fail - notifications are not critical
+      console.log('Notification refresh skipped');
       setUnreadCount(0);
     }
   }, []);
