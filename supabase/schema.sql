@@ -20,6 +20,17 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add phone_number column if it doesn't exist (for existing databases)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'users' AND column_name = 'phone_number'
+  ) THEN
+    ALTER TABLE users ADD COLUMN phone_number TEXT;
+  END IF;
+END $$;
+
 -- Merchants table
 CREATE TABLE IF NOT EXISTS merchants (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

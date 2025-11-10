@@ -62,15 +62,20 @@ class UserService {
 
       // Update in Supabase
       const { supabase } = await import('../config/supabase');
+      
+      // Build update object with only defined fields
+      const updateData: any = {
+        full_name: `${data.firstName} ${data.lastName}`.trim(),
+        updated_at: new Date().toISOString()
+      };
+      
+      if (data.email) updateData.email = data.email;
+      if (data.phone) updateData.phone_number = data.phone;
+      if (data.profileImageUrl) updateData.profile_image_url = data.profileImageUrl;
+      
       const { data: updatedUser, error } = await supabase
         .from('users')
-        .update({
-          full_name: `${data.firstName} ${data.lastName}`.trim(),
-          email: data.email,
-          phone_number: data.phone,
-          profile_image_url: data.profileImageUrl,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', user.id)
         .select()
         .single();
