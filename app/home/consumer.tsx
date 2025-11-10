@@ -200,6 +200,8 @@ function ConsumerHomeContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedRating, setSelectedRating] = useState<number>(0);
   const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
+  const [locationRetryCount, setLocationRetryCount] = useState(0);
+  const MAX_LOCATION_RETRIES = 3;
 
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
@@ -473,7 +475,7 @@ function ConsumerHomeContent() {
     // Log informative message silently
     console.log("No registered merchants available in the system yet.");
     setStoreLocations([]);
-    
+
     // Show user-friendly message if this is the first load
     if (isMountedRef.current && storeLocations.length === 0) {
       showInfo("No Merchants Found", "No merchants are currently registered in your area. Please check back later.");
@@ -779,7 +781,7 @@ function ConsumerHomeContent() {
 
   const handleMenuItemPress = useCallback(async (item: MenuItemString) => {
     toggleMenu();
-    
+
     // Don't use setTimeout - execute immediately for real-time response
     try {
       if (!isLocationSet && item !== "Dashboard" && item !== "Profile" && item !== "Notifications" && item !== "Settings" && item !== "Support") {
@@ -792,11 +794,11 @@ function ConsumerHomeContent() {
         case "Dashboard":
           router.push("/dashboard/consumer");
           break;
-        
+
         case "Profile":
           router.push("/profile");
           break;
-        
+
         case "Notifications":
           // Load notifications count before navigating
           try {
@@ -807,29 +809,29 @@ function ConsumerHomeContent() {
           }
           router.push("/notifications");
           break;
-        
+
         case "Settings":
           router.push("/profile/privacy-settings");
           break;
-        
+
         case "Support":
           router.push("/support");
           break;
-        
+
         case "Switch to Merchant":
           // Update role in storage before switching
           await AsyncStorage.setItem('userRole', 'merchant');
           await AsyncStorage.setItem('selectedRole', 'merchant');
           router.replace("/home/merchant");
           break;
-        
+
         case "Switch to Driver":
           // Update role in storage before switching
           await AsyncStorage.setItem('userRole', 'driver');
           await AsyncStorage.setItem('selectedRole', 'driver');
           router.replace("/home/driver");
           break;
-        
+
         default:
           showInfo("Navigation", `Feature: ${item}`);
           break;
@@ -845,7 +847,7 @@ function ConsumerHomeContent() {
     const setupNotificationListener = async () => {
       try {
         const { notificationService } = await import('../../services/notificationService');
-        
+
         // Poll for notifications every 30 seconds
         const interval = setInterval(async () => {
           try {
@@ -915,32 +917,40 @@ function ConsumerHomeContent() {
   const handleSetLocationAutomatically = async () => {
     // Set this immediately to prevent multiple prompts
     setHasShownLocationPrompt(true);
-    setIsLoadingLocation(true);
+    // Prevent rapid retries
+    if (locationRetryCount >= MAX_LOCATION_RETRIES) {
+      showError(
+        "Location Unavailable",
+        "Unable to access your location. Please ensure location services are enabled in your browser settings, or set your location manually."
+      );
+      return;
+    }
 
     try {
-      // Use locationService which handles both web and native platforms
+      setIsLoadingLocation(true);
+      setLocationRetryCount(prev => prev + 1);
+      console.log(`Attempting to get current location (attempt ${locationRetryCount + 1}/${MAX_LOCATION_RETRIES})...`);
+
       const location = await locationService.getCurrentLocation();
 
       if (!location) {
-        throw new Error('Unable to get location coordinates. Please check your browser permissions.');
+        throw new Error("Unable to access location. Please check browser permissions.");
       }
 
       const { latitude, longitude } = location;
-      const deltas = calculateDelta(latitude);
+      console.log("Location obtained:", { latitude, longitude });
 
-      // Update region with current location
       const newRegion = {
         latitude,
         longitude,
-        ...deltas
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
       };
-
       setRegion(newRegion);
 
-      // Try to get address with retry logic
+      // Try to get address
       try {
         const addressText = await locationService.reverseGeocode(latitude, longitude);
-
         if (addressText) {
           setUserAddress(addressText);
           await AsyncStorage.setItem("userAddress", addressText);
@@ -950,7 +960,6 @@ function ConsumerHomeContent() {
       } catch (addressError) {
         console.error("Error getting address:", addressError);
         setUserAddress("Your Location");
-        // Don't throw here - address is optional
       }
 
       // Save location to AsyncStorage
@@ -968,28 +977,21 @@ function ConsumerHomeContent() {
       }
 
       setIsLocationSet(true);
+      setLocationRetryCount(0); // Reset retry count on success
       showSuccess("Location Set", "Your location has been updated successfully!");
     } catch (locationError) {
       console.error("Error setting location automatically:", locationError);
 
-      // Don't retry on permission errors - it will just spam the user
-      if (locationError instanceof Error) {
-        // Only show critical errors that need user action
-        if (locationError.message.includes('permission') || locationError.message.includes('denied')) {
-          showError("Location Permission Required", "Please enable location access in your browser settings to continue.");
-          // Keep the location setup card visible so user can try again
-          setIsLocationSet(false);
-          setHasShownLocationPrompt(false);
-        } else {
-          // Log other errors silently
-          console.log("Location error:", locationError.message);
-          setIsLocationSet(false);
-          setHasShownLocationPrompt(false);
-        }
+      if (locationRetryCount + 1 >= MAX_LOCATION_RETRIES) {
+        showError(
+          "Location Unavailable",
+          "Unable to access your location after multiple attempts. Please enable location services in your browser settings, or set your location manually."
+        );
       } else {
-        console.log("Unexpected location error");
-        setIsLocationSet(false);
-        setHasShownLocationPrompt(false);
+        showError(
+          "Location Error",
+          locationError instanceof Error ? locationError.message : "Unable to get your current location. Retrying..."
+        );
       }
     } finally {
       setIsLoadingLocation(false);

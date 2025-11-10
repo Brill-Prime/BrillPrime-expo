@@ -142,9 +142,12 @@ export default function ConsumerDashboard() {
   const styles = getResponsiveStyles(screenData);
 
   // Load initial data and set up real-time subscriptions
+  const [locationStatus, setLocationStatus] = useState<'checking' | 'enabled' | 'disabled'>('checking');
+
   useEffect(() => {
     loadUserData();
     loadDashboardData();
+    checkLocationStatus();
 
     // Subscribe to real-time order updates
     const ordersChannel = supabase
@@ -168,7 +171,26 @@ export default function ConsumerDashboard() {
     return () => {
       supabase.removeChannel(ordersChannel);
     };
-  }, [user?.id]); // Depend on user?.id to re-subscribe if user changes
+  }, [user?.id]);
+
+  const checkLocationStatus = async () => {
+    if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+        setLocationStatus(permission.state === 'granted' ? 'enabled' : 'disabled');
+        
+        // Listen for permission changes
+        permission.onchange = () => {
+          setLocationStatus(permission.state === 'granted' ? 'enabled' : 'disabled');
+        };
+      } catch (error) {
+        console.log('Permission API not available');
+        setLocationStatus('enabled'); // Assume enabled if we can't check
+      }
+    } else {
+      setLocationStatus('enabled');
+    }
+  };
 
   return (
     <LinearGradient

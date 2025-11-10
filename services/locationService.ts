@@ -6,6 +6,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 import { Merchant } from './types';
+import { Platform } from 'react-native'; // Import Platform
+
+// Define Location type for clarity and consistency
+interface Location {
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  timestamp: number;
+  isStale?: boolean; // For cached data during errors
+}
 
 interface LocationData {
   latitude: number;
@@ -24,7 +34,20 @@ class LocationService {
       // For web platform, check if geolocation is available
       if (typeof window !== 'undefined' && 'geolocation' in navigator) {
         // Browser will prompt for permission when getCurrentPosition is called
-        return true;
+        // However, we can attempt to pre-check permission status if the Permissions API is available
+        if ('permissions' in navigator) {
+          try {
+            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+            if (permissionStatus.state === 'denied') {
+              console.warn('Web geolocation permission denied.');
+              return false; // Explicitly deny if already denied
+            }
+          } catch (permError) {
+            // Permissions API might not be fully supported, proceed with caution
+            console.log('Permissions API check skipped:', permError);
+          }
+        }
+        return true; // Assume permission can be granted when requested
       }
 
       // For native platforms, request permissions
@@ -37,91 +60,105 @@ class LocationService {
   }
 
   // Get current location
-  async getCurrentLocation(): Promise<LocationData | null> {
+  async getCurrentLocation(): Promise<Location | null> {
     try {
-      // For web platform, use browser geolocation API
-      if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-        // First check if permissions API is available to pre-check permission status
+      if (Platform.OS === 'web') {
+        // First check if geolocation is available
+        if (!navigator.geolocation) {
+          console.error('Geolocation not supported');
+          return null;
+        }
+
+        // Check permission state before requesting location
         if ('permissions' in navigator) {
           try {
-            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-            if (permissionStatus.state === 'denied') {
-              throw new Error('Location permission was previously denied. Please enable location access in your browser settings (usually in the address bar or browser settings).');
+            const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+            if (permission.state === 'denied') {
+              console.warn('Location permission denied by user');
+              return null;
             }
           } catch (permError) {
-            // Permissions API might not be fully supported, continue anyway
-            console.log('Permissions API check skipped:', permError);
+            console.warn('Could not check permission state:', permError);
+            // Continue anyway - some browsers don't support permissions API
           }
         }
 
-        return new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              this.currentLocation = {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                timestamp: Date.now(),
-                accuracy: position.coords.accuracy
-              };
-              resolve(this.currentLocation);
-            },
-            (error) => {
-              // Provide detailed error messages based on error code
-              let errorMessage = 'Unknown geolocation error';
-              let userAction = '';
-
-              switch (error.code) {
-                case 1: // PERMISSION_DENIED
-                  errorMessage = 'Location permission denied';
-                  userAction = 'Please click the location icon in your browser address bar and allow location access, or check your browser settings.';
-                  break;
-                case 2: // POSITION_UNAVAILABLE
-                  errorMessage = 'Location information unavailable';
-                  userAction = 'Please check your device GPS settings and ensure location services are enabled.';
-                  break;
-                case 3: // TIMEOUT
-                  errorMessage = 'Location request timed out';
-                  userAction = 'Please try again. Make sure your GPS is enabled.';
-                  break;
-              }
-
-              const fullMessage = `${errorMessage}. ${userAction}`;
-              console.error('Web geolocation error:', {
-                code: error.code,
-                message: error.message,
-                detailedMessage: fullMessage
-              });
-              reject(new Error(fullMessage));
-            },
-            {
-              enableHighAccuracy: true,
-              timeout: 20000,
-              maximumAge: 5000
-            }
-          );
-        });
+        return await this.getWebLocation();
+      } else {
+        return await this.getNativeLocation();
       }
+    } catch (error) {
+      console.error('Error getting current location:', error);
+      return null;
+    }
+  }
 
-      // For native platforms, use Expo Location
-      const hasPermission = await this.requestLocationPermission();
-      if (!hasPermission) {
-        throw new Error('Location permission denied');
-      }
+  private async getWebLocation(): Promise<Location | null> {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Location request timed out after 15 seconds'));
+      }, 15000);
 
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          clearTimeout(timeoutId);
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: position.timestamp,
+          });
+        },
+        (error) => {
+          clearTimeout(timeoutId);
+          let errorMessage = 'Unknown location error';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location unavailable. Please ensure location services are enabled and you have a GPS signal.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out. Please try again.';
+              break;
+          }
+          console.error('Web geolocation error:', { 
+            code: error.code, 
+            message: error.message,
+            detailedMessage: errorMessage 
+          });
+          resolve(null); // Resolve with null instead of rejecting to prevent crashes
+        },
+        {
+          enableHighAccuracy: false, // Use false for faster initial response
+          timeout: 12000,
+          maximumAge: 60000, // Accept cached location up to 1 minute old
+        }
+      );
+    });
+  }
+
+  private async getNativeLocation(): Promise<Location | null> {
+    const hasPermission = await this.requestLocationPermission();
+    if (!hasPermission) {
+      console.error('Native location permission denied');
+      return null;
+    }
+
+    try {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
 
-      this.currentLocation = {
+      return {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        timestamp: Date.now(),
-        accuracy: location.coords.accuracy
+        accuracy: location.coords.accuracy,
+        timestamp: Date.now(), // Use current time for consistency
       };
-
-      return this.currentLocation;
     } catch (error) {
-      console.error('Error getting current location:', error);
+      console.error('Error getting native location:', error);
       return null;
     }
   }
@@ -250,9 +287,16 @@ class LocationService {
       // Get initial location
       const location = await this.getCurrentLocation();
       if (location) {
-        this.notifyLocationUpdate(location);
-        await this.updateDriverLocationInDatabase(location);
-        await this.broadcastLocationToSupabase(location);
+        // Cast location to LocationData for consistency, assuming accuracy is compatible
+        const locationData: LocationData = {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timestamp: location.timestamp,
+          accuracy: location.accuracy ?? undefined, // Use provided accuracy or undefined
+        };
+        this.notifyLocationUpdate(locationData);
+        await this.updateDriverLocationInDatabase(locationData);
+        await this.broadcastLocationToSupabase(locationData);
       }
 
       // Set up tracking interval
@@ -270,9 +314,15 @@ class LocationService {
               ) > 0.01; // ~10 meters
 
             if (shouldUpdate) {
-              this.notifyLocationUpdate(newLocation);
-              await this.updateDriverLocationInDatabase(newLocation);
-              await this.broadcastLocationToSupabase(newLocation);
+              const locationData: LocationData = {
+                latitude: newLocation.latitude,
+                longitude: newLocation.longitude,
+                timestamp: newLocation.timestamp,
+                accuracy: newLocation.accuracy ?? undefined,
+              };
+              this.notifyLocationUpdate(locationData);
+              await this.updateDriverLocationInDatabase(locationData);
+              await this.broadcastLocationToSupabase(locationData);
               this.lastLocationUpdate = Date.now();
               this.trackingErrorCount = 0;
             }
@@ -366,6 +416,12 @@ class LocationService {
     };
   }
 
+  // Notify all subscribed callbacks about location update
+  private notifyLocationUpdate(location: LocationData): void {
+    this.currentLocation = location; // Update internal current location
+    this.trackingCallbacks.forEach(callback => callback(location));
+  }
+
   // Update live location on server
   private async updateDriverLocationInDatabase(location: LocationData): Promise<void> {
     try {
@@ -390,14 +446,25 @@ class LocationService {
    */
   private async broadcastLocationToSupabase(location: LocationData): Promise<void> {
     try {
-      const { authService } = await import('./authService');
-      const user = await authService.getStoredUser();
-      if (!user?.id) return;
+      // Dynamically import to avoid potential circular dependencies or issues on non-web platforms
+      const auth = await import('./authService');
+      const user = await auth.authService.getStoredUser();
+      if (!user?.id) {
+        console.warn('User ID not found, cannot broadcast location.');
+        return;
+      }
 
-      const { supabase } = await import('../config/supabase');
+      const supabaseModule = await import('../config/supabase');
+      const { supabase } = supabaseModule;
+
+      // Check if supabase client is available
+      if (!supabase) {
+        console.error('Supabase client not initialized.');
+        return;
+      }
 
       // Update driver location in database
-      await supabase
+      const { error } = await supabase
         .from('driver_locations')
         .upsert({
           driver_id: user.id,
@@ -408,6 +475,16 @@ class LocationService {
         }, {
           onConflict: 'driver_id'
         });
+
+      if (error) {
+        // Handle Supabase API errors, specifically for 401 (Unauthorized)
+        if (error.code === '401' || error.message.includes('No API key found')) {
+          console.error('Supabase broadcast failed: Authentication error (401). Check Supabase API key configuration.');
+        } else {
+          console.error('Supabase broadcast error:', error.message);
+        }
+        return; // Stop here if there was an error
+      }
 
       console.log('📍 Driver location broadcasted to Supabase');
     } catch (error) {
@@ -547,13 +624,13 @@ class LocationService {
     latitude: number, 
     longitude: number, 
     radius: number = 10
-  ): Promise<ApiResponse<Array<Merchant & { liveLocation?: LocationData }>>> {
+  ): Promise<ApiResponse<Array<Merchant & { liveLocation?: Location }>>> {
     try {
       const token = await authService.getToken();
 
       let endpoint = `/api/merchants/nearby/live?lat=${latitude}&lng=${longitude}&radius=${radius}`;
 
-      return apiClient.get<Array<Merchant & { liveLocation?: LocationData }>>(endpoint, token ? {
+      return apiClient.get<Array<Merchant & { liveLocation?: Location }>>(endpoint, token ? {
         Authorization: `Bearer ${token}`
       } : undefined);
     } catch (error) {
