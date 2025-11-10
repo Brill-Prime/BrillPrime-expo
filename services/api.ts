@@ -19,7 +19,7 @@ class ApiClient {
     // Firebase is only used for authentication
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    
+
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error('⚠️ CRITICAL: Supabase credentials missing!');
       console.error('Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
@@ -29,7 +29,7 @@ class ApiClient {
       this.baseURL = supabaseUrl;
       this.supabaseKey = supabaseAnonKey;
     }
-    
+
     console.log('🔷 Supabase API URL:', this.baseURL);
     console.log('✅ Architecture: Firebase Auth + Supabase Backend');
   }
@@ -46,14 +46,56 @@ class ApiClient {
 
       // Map API endpoints to Supabase edge functions
       const endpointMapping: Record<string, string> = {
+        // Cart endpoints
         '/api/cart': '/functions/v1/cart-get',
         '/api/cart/add': '/functions/v1/cart-add',
+        '/api/cart/update': '/functions/v1/cart-update',
+
+        // Payment & Transaction endpoints
+        '/api/payment/process': '/functions/v1/create-transaction',
+        '/api/payment/verify': '/functions/v1/verify-transaction',
+        '/api/payment/mark-paid': '/functions/v1/mark-paid',
+        '/api/payment/refund': '/functions/v1/refund-payment',
+        '/api/transactions': '/functions/v1/list-transactions',
+        '/api/transactions/reconcile': '/functions/v1/reconcile-transactions',
+
+        // Order endpoints
+        '/api/orders/create': '/functions/v1/create-order',
+        '/api/orders/update-status': '/functions/v1/update-order-status',
+        '/api/orders/cancel': '/functions/v1/cancel-order',
+        '/api/orders/update-address': '/functions/v1/update-delivery-address',
+        '/api/orders/report-issue': '/functions/v1/report-order-issue',
+
+        // Merchant endpoints
         '/api/merchants/nearby': '/functions/v1/merchants-nearby',
-        '/api/payments/process': '/functions/v1/payment-process',
-        '/api/orders': '/functions/v1/create-order',
+        '/api/merchants/inventory': '/functions/v1/update-inventory',
+        '/api/merchants/store-hours': '/functions/v1/manage-store-hours',
+        '/api/merchants/analytics': '/functions/v1/generate-merchant-analytics',
+
+        // Driver endpoints
+        '/api/driver/location': '/functions/v1/update-driver-location',
+        '/api/driver/accept-delivery': '/functions/v1/accept-delivery',
+        '/api/driver/complete-delivery': '/functions/v1/complete-delivery',
+        '/api/driver/earnings': '/functions/v1/calculate-earnings',
+        '/api/driver/analytics': '/functions/v1/generate-driver-analytics',
+
+        // Communication endpoints
+        '/api/conversations/create': '/functions/v1/create-conversation',
+        '/api/messages/send': '/functions/v1/send-message',
+        '/api/notifications/send': '/functions/v1/notify-user',
+
+        // Admin endpoints
+        '/api/admin/kyc/batch-approve': '/functions/v1/batch-approve-kyc',
+        '/api/admin/users/manage-status': '/functions/v1/manage-user-status',
+        '/api/admin/content/review': '/functions/v1/review-flagged-content',
+        '/api/admin/withdrawals/process': '/functions/v1/process-withdrawal',
+        '/api/admin/analytics': '/functions/v1/generate-platform-analytics',
+
+        // Escrow endpoints
+        '/api/escrow/update': '/functions/v1/update-escrow',
       };
 
-      // Convert /api/ endpoints to Supabase edge functions
+      // Map API endpoints to Supabase edge functions
       let finalUrl = endpoint;
       if (endpoint.startsWith('/api/')) {
         // Check for exact matches first
@@ -134,7 +176,7 @@ class ApiClient {
         userFriendlyMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
       } else if (error instanceof Error) {
         errorMessage = error.message;
-        
+
         // Map common error messages to user-friendly versions
         if (error.message.includes('HTTP 401')) {
           userFriendlyMessage = 'Your session has expired. Please sign in again.';
