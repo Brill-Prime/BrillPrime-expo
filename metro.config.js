@@ -12,23 +12,6 @@ config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 
 config.server = {
   ...config.server,
   port: 5000,
-  enhanceMiddleware: (middleware) => {
-    return (req, res, next) => {
-      // Set CORS headers for Replit environment
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', '*');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      
-      if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
-        return;
-      }
-      
-      return middleware(req, res, next);
-    };
-  },
 };
 
 // Block react-native-maps from being bundled on web

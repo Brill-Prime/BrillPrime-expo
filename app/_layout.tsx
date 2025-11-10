@@ -57,18 +57,23 @@ export default function RootLayout() {
 
         // Load fonts
         console.log('Loading fonts...');
-        await Font.loadAsync({
-          ...Ionicons.font,
-          'Montserrat-Black': require('../assets/fonts/Montserrat-Black.ttf'),
-          'Montserrat-ExtraBold': require('../assets/fonts/Montserrat-ExtraBold.ttf'),
-          'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
-          'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
-          'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
-          'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
-          'Montserrat-Light': require('../assets/fonts/Montserrat-Light.ttf'),
-          'Montserrat-ExtraLight': require('../assets/fonts/Montserrat-ExtraLight.ttf'),
-        });
-        console.log('Fonts loaded successfully');
+        try {
+          await Font.loadAsync({
+            ...Ionicons.font,
+            'Montserrat-Black': require('../assets/fonts/Montserrat-Black.ttf'),
+            'Montserrat-ExtraBold': require('../assets/fonts/Montserrat-ExtraBold.ttf'),
+            'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
+            'Montserrat-SemiBold': require('../assets/fonts/Montserrat-SemiBold.ttf'),
+            'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
+            'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
+            'Montserrat-Light': require('../assets/fonts/Montserrat-Light.ttf'),
+            'Montserrat-ExtraLight': require('../assets/fonts/Montserrat-ExtraLight.ttf'),
+          });
+          console.log('Fonts loaded successfully');
+        } catch (fontError) {
+          console.warn('Font loading failed, using system fonts:', fontError);
+          // Continue anyway - app will use fallback system fonts
+        }
 
       } catch (e) {
         console.error('Error loading fonts:', e);
