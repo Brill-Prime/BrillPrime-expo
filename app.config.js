@@ -7,7 +7,7 @@ export default {
   slug: "brillprime",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/icon.png",
+  icon: "./assets/images/logo.png",
   userInterfaceStyle: "light",
   scheme: "brillprime",
   splash: {
@@ -23,7 +23,7 @@ export default {
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: "./assets/adaptive-icon.png",
+      foregroundImage: "./assets/images/logo.png",
       backgroundColor: "#ffffff"
     },
     package: "com.brillprime.app",
@@ -31,7 +31,7 @@ export default {
   },
   web: {
     bundler: "metro",
-    favicon: "./assets/favicon.png",
+    favicon: "./assets/images/logo.png",
     output: "single"
   },
   plugins: [
