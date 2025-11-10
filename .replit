@@ -14,7 +14,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
 
 [workflows]
-runButton = "Frontend"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
@@ -54,20 +54,17 @@ args = "Frontend"
 name = "Frontend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run web"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
 
-[[ports]]
-localPort = 5000
-externalPort = 3000
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
 
 [[ports]]
-localPort = 5001
+localPort = 5000
+externalPort = 80
 
 [[ports]]
 localPort = 8081
