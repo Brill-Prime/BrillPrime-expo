@@ -44,7 +44,7 @@ class ApiClient {
       const timeoutMs = 60000; // 60 seconds for cold start
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      // Map API endpoints to Supabase edge functions
+      // Map API endpoints to Supabase edge functions (all deployed)
       const endpointMapping: Record<string, string> = {
         // Cart endpoints
         '/api/cart': '/functions/v1/cart-get',
@@ -52,14 +52,18 @@ class ApiClient {
         '/api/cart/update': '/functions/v1/cart-update',
 
         // Payment & Transaction endpoints
+        '/api/payment/initialize': '/functions/v1/create-transaction',
         '/api/payment/process': '/functions/v1/create-transaction',
         '/api/payment/verify': '/functions/v1/verify-transaction',
         '/api/payment/mark-paid': '/functions/v1/mark-paid',
         '/api/payment/refund': '/functions/v1/refund-payment',
+        '/api/payments/initialize': '/functions/v1/create-transaction',
+        '/api/payments/history': '/functions/v1/list-transactions',
         '/api/transactions': '/functions/v1/list-transactions',
         '/api/transactions/reconcile': '/functions/v1/reconcile-transactions',
 
         // Order endpoints
+        '/api/orders': '/functions/v1/create-order',
         '/api/orders/create': '/functions/v1/create-order',
         '/api/orders/update-status': '/functions/v1/update-order-status',
         '/api/orders/cancel': '/functions/v1/cancel-order',
@@ -93,6 +97,9 @@ class ApiClient {
 
         // Escrow endpoints
         '/api/escrow/update': '/functions/v1/update-escrow',
+
+        // Paystack webhook (internal)
+        '/api/paystack/webhook': '/functions/v1/paystack-webhook',
       };
 
       // Map API endpoints to Supabase edge functions
