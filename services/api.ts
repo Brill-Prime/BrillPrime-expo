@@ -44,11 +44,32 @@ class ApiClient {
       const timeoutMs = 60000; // 60 seconds for cold start
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+      // Map API endpoints to Supabase edge functions
+      const endpointMapping: Record<string, string> = {
+        '/api/cart': '/functions/v1/cart-get',
+        '/api/cart/add': '/functions/v1/cart-add',
+        '/api/merchants/nearby': '/functions/v1/merchants-nearby',
+        '/api/payments/process': '/functions/v1/payment-process',
+        '/api/orders': '/functions/v1/create-order',
+      };
+
       // Convert /api/ endpoints to Supabase edge functions
       let finalUrl = endpoint;
       if (endpoint.startsWith('/api/')) {
-        // Convert /api/endpoint to /functions/v1/endpoint
-        finalUrl = endpoint.replace('/api/', '/functions/v1/');
+        // Check for exact matches first
+        if (endpointMapping[endpoint]) {
+          finalUrl = endpointMapping[endpoint];
+        } else {
+          // Handle dynamic routes like /api/cart/{itemId}
+          const baseEndpoint = endpoint.split('/').slice(0, 3).join('/');
+          if (endpointMapping[baseEndpoint]) {
+            finalUrl = endpoint.replace(baseEndpoint, endpointMapping[baseEndpoint]);
+          } else {
+            // Default conversion
+            finalUrl = endpoint.replace('/api/', '/functions/v1/')
+          }
+        }
+      };
       }
 
       console.log(`🌐 API Request: ${this.baseURL}${finalUrl}`);
