@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -9,6 +8,7 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -153,7 +153,7 @@ export default function Settings() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -265,13 +265,28 @@ export default function Settings() {
           </TouchableOpacity>
         </View>
 
+        {/* Development/Testing Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Developer Tools</Text>
+          <TouchableOpacity 
+            style={styles.option}
+            onPress={() => router.push('/settings/biometric-test')}
+          >
+            <View style={styles.optionLeft}>
+              <Ionicons name="finger-print" size={24} color="#4682B4" />
+              <Text style={styles.optionText}>Test Biometric Auth</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
+          </TouchableOpacity>
+        </View>
+
         {/* App Info */}
         <View style={styles.infoSection}>
           <Text style={styles.infoText}>Version 1.0.0</Text>
           <Text style={styles.infoText}>© 2024 BrillPrime</Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -385,5 +400,24 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textLight,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  optionText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '500',
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.text,
+    marginLeft: theme.spacing.md,
   },
 });

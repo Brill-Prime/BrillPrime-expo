@@ -24,17 +24,33 @@ export const useSessionTimeout = () => {
 
     // Set warning timer
     warningIdRef.current = setTimeout(async () => {
-      const biometricEnabled = await biometricService.isBiometricEnabled();
-      const biometricAvailable = await biometricService.isBiometricAvailable();
-      
-      if (biometricEnabled && biometricAvailable) {
-        const authenticated = await biometricService.authenticate('Verify to continue your session');
-        if (authenticated) {
-          resetTimers();
+      try {
+        const biometricEnabled = await biometricService.isBiometricEnabled();
+        const biometricAvailable = await biometricService.isBiometricAvailable();
+        
+        if (biometricEnabled && biometricAvailable) {
+          const authenticated = await biometricService.authenticate('Verify to continue your session');
+          if (authenticated) {
+            resetTimers();
+          } else {
+            handleSessionExpiry();
+          }
         } else {
-          handleSessionExpiry();
+          // Fallback to dialog if biometric not available
+          showConfirmDialog(
+            'Session Expiring',
+            'Your session will expire in 5 minutes due to inactivity. Continue?',
+            () => {
+              resetTimers();
+            },
+            () => {
+              handleSessionExpiry();
+            }
+          );
         }
-      } else {
+      } catch (error) {
+        console.error('Error in session timeout warning:', error);
+        // Fallback to dialog on error
         showConfirmDialog(
           'Session Expiring',
           'Your session will expire in 5 minutes due to inactivity. Continue?',
