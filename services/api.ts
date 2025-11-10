@@ -66,10 +66,9 @@ class ApiClient {
             finalUrl = endpoint.replace(baseEndpoint, endpointMapping[baseEndpoint]);
           } else {
             // Default conversion
-            finalUrl = endpoint.replace('/api/', '/functions/v1/')
+            finalUrl = endpoint.replace('/api/', '/functions/v1/');
           }
         }
-      };
       }
 
       console.log(`🌐 API Request: ${this.baseURL}${finalUrl}`);
