@@ -9,7 +9,8 @@ import {
   Dimensions,
   Modal,
   Platform,
-  Clipboard
+  Clipboard,
+  Share // Import Share module
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,8 @@ interface Order {
   deliveryTime?: string;
   driverName?: string;
   date?: string; // Added for receipt generation
+  createdAt?: string; // Added for receipt generation
+  total?: number; // Added for receipt generation
 }
 
 export default function OrderDetails() {
@@ -57,7 +60,7 @@ export default function OrderDetails() {
   const [order, setOrder] = useState<Order | null>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [showLiveTracking, setShowLiveTracking] = useState(false);
-  const [userRole, setUserRole] = useState<'consumer' | 'driver'>('consumer');
+  const [userRole, setUserRole] = useState<'driver' | 'consumer'>('consumer');
   const [showDriverCommunication, setShowDriverCommunication] = useState(false);
   const [showMerchantCommunication, setShowMerchantCommunication] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -118,7 +121,9 @@ export default function OrderDetails() {
         timeTaken: '15 mins',
         deliveryTime: '05:00pm',
         driverName: 'Mike',
-        date: 'January 15, 2024' // Added for receipt generation
+        date: 'January 15, 2024', // Added for receipt generation
+        createdAt: '2024-01-15T17:00:00', // Added for receipt generation
+        total: 30500, // Added for receipt generation
       };
       // Simulate a status change for demonstration purposes
       if (id === '1001') { // Example ID for an order that is out for delivery
@@ -136,24 +141,73 @@ export default function OrderDetails() {
     router.push(`/orders/report-issue?orderId=${order?.id}`);
   };
 
-  const handleShareReceipt = () => {
-    setShowReceiptModal(true);
+  const handleShareReceipt = async () => {
+    try {
+      const { default: Share } = await import('react-native').then(m => ({ default: m.Share }));
+
+      if (!order) return;
+
+      const receiptText = `
+Receipt - Order #${order.id}
+
+Items:
+${order.items?.map(item => `- ${item.name} x${item.quantity}: ₦${item.price * item.quantity}`).join('\n')}
+
+Subtotal: ₦${order.subtotal || 0}
+Delivery Fee: ₦${order.deliveryFee || 0}
+Total: ₦${order.total}
+
+Status: ${order.status}
+Date: ${new Date(order.createdAt).toLocaleDateString()}
+
+Thank you for shopping with Brill Prime!
+      `.trim();
+
+      await Share.share({
+        message: receiptText,
+        title: `Order Receipt #${order.id}`,
+      });
+    } catch (error) {
+      console.error('Error sharing receipt:', error);
+      Alert.alert('Error', 'Failed to share receipt');
+    }
   };
 
   const handleModifyOrder = () => {
-    if (order?.status === 'pending' || order?.status === 'confirmed') {
+    if (!order) return;
+
+    // Only allow modification for pending orders
+    if (order.status !== 'pending' && order.status !== 'confirmed') {
       Alert.alert(
-        'Modify Order',
-        'What would you like to modify?',
-        [
-          { text: 'Cancel Order', onPress: handleCancelOrder, style: 'destructive' },
-          { text: 'Change Delivery Address', onPress: handleChangeAddress },
-          { text: 'Cancel', style: 'cancel' }
-        ]
+        'Cannot Modify',
+        'Orders can only be modified while they are pending or confirmed.'
       );
-    } else {
-      Alert.alert('Cannot Modify', 'This order can no longer be modified');
+      return;
     }
+
+    Alert.alert(
+      'Modify Order',
+      'What would you like to modify?',
+      [
+        {
+          text: 'Change Address',
+          onPress: () => router.push(`/orders/change-address?orderId=${order.id}`),
+        },
+        {
+          text: 'Cancel Order',
+          style: 'destructive',
+          onPress: () => router.push(`/orders/cancel-order?orderId=${order.id}`),
+        },
+        {
+          text: 'Report Issue',
+          onPress: () => router.push(`/orders/report-issue?orderId=${order.id}`),
+        },
+        {
+          text: 'Close',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   const handleCancelOrder = async () => {
@@ -166,7 +220,7 @@ export default function OrderDetails() {
 
   const handleContactDriver = (type: 'message' | 'call') => {
     setShowDriverCommunication(false);
-    
+
     if (type === 'message') {
       // Navigate to chat with driver
       router.push(`/chat/driver-${order?.id}`);

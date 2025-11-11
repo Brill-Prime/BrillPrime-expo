@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -45,6 +44,7 @@ export default function AdminControlCenter() {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(false); // Added loading state
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>({
     platform: {
       totalUsers: 12543,
@@ -74,9 +74,9 @@ export default function AdminControlCenter() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    
+
     loadSystemMetrics();
-    
+
     return () => subscription?.remove();
   }, []);
 
@@ -121,93 +121,167 @@ export default function AdminControlCenter() {
   };
 
   const handleQuickAction = async (action: string) => {
-    switch (action) {
-      case 'announcement':
-        Alert.prompt(
-          'Send Announcement',
-          'Enter your announcement message:',
-          async (text) => {
-            if (text) {
-              try {
-                const token = await AsyncStorage.getItem('adminToken');
-                const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/announcements`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify({
-                    title: 'Platform Announcement',
-                    message: text,
-                    targetAudience: 'all',
-                    priority: 'medium'
-                  })
-                });
-                
-                if (response.ok) {
-                  Alert.alert('Success', 'Announcement sent successfully');
-                } else {
-                  throw new Error('Failed to send announcement');
-                }
-              } catch (error) {
-                console.error('Send announcement error:', error);
-                Alert.alert('Error', 'Failed to send announcement');
-              }
-            }
-          }
-        );
-        break;
-      case 'maintenance':
-        Alert.alert(
-          'Maintenance Mode',
-          'Enable maintenance mode?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Enable',
-              onPress: async () => {
+    try {
+      setLoading(true);
+      const { adminService } = await import('../../services/adminService');
+
+      switch (action) {
+        case 'announcement':
+          Alert.prompt(
+            'Send Announcement',
+            'Enter your announcement message:',
+            async (text) => {
+              if (text) {
                 try {
                   const token = await AsyncStorage.getItem('adminToken');
-                  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/maintenance`, {
+                  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/announcements`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
                       'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
-                      enabled: true,
-                      message: 'System under maintenance'
+                      title: 'Platform Announcement',
+                      message: text,
+                      targetAudience: 'all',
+                      priority: 'medium'
                     })
                   });
-                  
+
                   if (response.ok) {
-                    Alert.alert('Success', 'Maintenance mode enabled');
+                    Alert.alert('Success', 'Announcement sent successfully');
                   } else {
-                    throw new Error('Failed to enable maintenance mode');
+                    throw new Error('Failed to send announcement');
                   }
                 } catch (error) {
-                  console.error('Maintenance mode error:', error);
-                  Alert.alert('Error', 'Failed to enable maintenance mode');
+                  console.error('Send announcement error:', error);
+                  Alert.alert('Error', 'Failed to send announcement');
                 }
               }
             }
-          ]
-        );
-        break;
-      case 'reports':
-        router.push('/admin/reports');
-        break;
-      case 'escrow':
-        router.push('/admin/escrow-management');
-        break;
-      case 'kyc':
-        router.push('/admin/kyc-verification');
-        break;
-      case 'moderation':
-        router.push('/admin/moderation');
-        break;
-      default:
-        Alert.alert('Coming Soon', 'This feature is under development.');
+          );
+          break;
+        case 'maintenance':
+          Alert.alert(
+            'Maintenance Mode',
+            'Enable maintenance mode?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Enable',
+                onPress: async () => {
+                  try {
+                    const token = await AsyncStorage.getItem('adminToken');
+                    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/maintenance`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        enabled: true,
+                        message: 'System under maintenance'
+                      })
+                    });
+
+                    if (response.ok) {
+                      Alert.alert('Success', 'Maintenance mode enabled');
+                    } else {
+                      throw new Error('Failed to enable maintenance mode');
+                    }
+                  } catch (error) {
+                    console.error('Maintenance mode error:', error);
+                    Alert.alert('Error', 'Failed to enable maintenance mode');
+                  }
+                }
+              }
+            ]
+          );
+          break;
+        case 'reports':
+          router.push('/admin/reports');
+          break;
+        case 'escrow':
+          router.push('/admin/escrow-management');
+          break;
+        case 'kyc':
+          router.push('/admin/kyc-verification');
+          break;
+        case 'moderation':
+          router.push('/admin/moderation');
+          break;
+        
+        // Implementing real control center actions
+        case 'Emergency Shutdown':
+          Alert.alert(
+            'Confirm Emergency Shutdown',
+            'This will temporarily disable all transactions. Continue?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Confirm',
+                style: 'destructive',
+                onPress: async () => {
+                  const result = await adminService.toggleSystemMaintenance(true);
+                  if (result.success) {
+                    Alert.alert('Success', 'System maintenance mode enabled');
+                  } else {
+                    Alert.alert('Error', result.error || 'Failed to enable maintenance mode');
+                  }
+                },
+              },
+            ]
+          );
+          break;
+
+        case 'System Health Check':
+          const healthResult = await adminService.getSystemHealth();
+          if (healthResult.success && healthResult.data) {
+            Alert.alert(
+              'System Health',
+              `Status: ${healthResult.data.status}\nUptime: ${healthResult.data.uptime}s\nActive Users: ${healthResult.data.activeUsers}`
+            );
+          } else {
+            Alert.alert('Error', 'Failed to fetch system health');
+          }
+          break;
+
+        case 'Clear Cache':
+          Alert.alert(
+            'Clear Cache',
+            'This will clear all cached data. Continue?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Confirm',
+                onPress: async () => {
+                  // Clear AsyncStorage cache
+                  const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
+                  await AsyncStorage.clear();
+                  Alert.alert('Success', 'Cache cleared successfully');
+                },
+              },
+            ]
+          );
+          break;
+
+        case 'Backup Database':
+          const backupResult = await adminService.createBackup();
+          if (backupResult.success) {
+            Alert.alert('Success', 'Database backup initiated');
+          } else {
+            Alert.alert('Error', backupResult.error || 'Failed to create backup');
+          }
+          break;
+
+        default:
+          Alert.alert('Info', `${action} executed`);
+      }
+    } catch (error) {
+      console.error(`Error executing ${action}:`, error);
+      Alert.alert('Error', `Failed to execute ${action}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -251,8 +325,8 @@ export default function AdminControlCenter() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -267,7 +341,7 @@ export default function AdminControlCenter() {
             icon="people"
             color="#4ade80"
           />
-          
+
           <MetricCard
             title="Escrow Balance"
             value={formatCurrency(systemMetrics.transactions.escrowBalance)}
@@ -275,7 +349,7 @@ export default function AdminControlCenter() {
             icon="card"
             color="#f59e0b"
           />
-          
+
           <MetricCard
             title="Security Alerts"
             value={systemMetrics.security.fraudAlerts}
@@ -283,7 +357,7 @@ export default function AdminControlCenter() {
             icon="shield-checkmark"
             color="#ef4444"
           />
-          
+
           <MetricCard
             title="System Health"
             value={systemMetrics.platform.serverHealth}
@@ -345,6 +419,55 @@ export default function AdminControlCenter() {
             </View>
           </View>
         )}
+        
+        {activeTab === 'transactions' && (
+          <View style={styles.tabContent}>
+            <View style={styles.overviewCard}>
+              <Text style={styles.cardTitle}>Transaction Overview</Text>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Total Transactions</Text>
+                <Text style={styles.activityLabel}>{systemMetrics.transactions.totalTransactions.toLocaleString()}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Total Volume</Text>
+                <Text style={styles.activityLabel}>{formatCurrency(systemMetrics.transactions.totalVolume)}</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Disputed Transactions</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{systemMetrics.transactions.disputedTransactions}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {activeTab === 'security' && (
+          <View style={styles.tabContent}>
+            <View style={styles.overviewCard}>
+              <Text style={styles.cardTitle}>Security Overview</Text>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Suspicious Activities</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{systemMetrics.security.suspiciousActivities}</Text>
+                </View>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Blocked Users</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{systemMetrics.security.blockedUsers}</Text>
+                </View>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityLabel}>Security Incidents</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{systemMetrics.security.securityIncidents}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
 
         {activeTab === 'actions' && (
           <View style={styles.tabContent}>
@@ -402,10 +525,51 @@ export default function AdminControlCenter() {
                 <Text style={styles.actionTitle}>Generate Reports</Text>
                 <Text style={styles.actionDescription}>Analytics and reports</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('Emergency Shutdown')}
+              >
+                <Ionicons name="power" size={32} color="rgb(11, 26, 81)" />
+                <Text style={styles.actionTitle}>Emergency Shutdown</Text>
+                <Text style={styles.actionDescription}>Disable all transactions</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('System Health Check')}
+              >
+                <Ionicons name="pulse" size={32} color="rgb(11, 26, 81)" />
+                <Text style={styles.actionTitle}>System Health Check</Text>
+                <Text style={styles.actionDescription}>Check system status</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('Clear Cache')}
+              >
+                <Ionicons name="trash" size={32} color="rgb(11, 26, 81)" />
+                <Text style={styles.actionTitle}>Clear Cache</Text>
+                <Text style={styles.actionDescription}>Clear application cache</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('Backup Database')}
+              >
+                <Ionicons name="cloud-upload" size={32} color="rgb(11, 26, 81)" />
+                <Text style={styles.actionTitle}>Backup Database</Text>
+                <Text style={styles.actionDescription}>Create database backup</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
       </ScrollView>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="white" />
+        </View>
+      )}
     </LinearGradient>
   );
 }
@@ -583,6 +747,12 @@ const getResponsiveStyles = (screenData: any) => {
       color: '#6b7280',
       marginTop: 4,
       textAlign: 'center',
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });
 };

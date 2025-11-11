@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -26,9 +25,9 @@ export default function AdminDashboard() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    
+
     checkAdminAccess();
-    
+
     return () => subscription?.remove();
   }, []);
 
@@ -83,6 +82,7 @@ export default function AdminDashboard() {
 
   const adminFeatures = [
     {
+      id: 'control',
       title: 'Control Center',
       description: 'System overview and management',
       icon: 'speedometer',
@@ -90,6 +90,7 @@ export default function AdminDashboard() {
       color: 'rgb(11, 26, 81)'
     },
     {
+      id: 'escrow',
       title: 'Escrow Management',
       description: 'Monitor payment transactions',
       icon: 'shield-checkmark',
@@ -97,6 +98,7 @@ export default function AdminDashboard() {
       color: 'rgb(11, 26, 81)'
     },
     {
+      id: 'kyc',
       title: 'KYC Verification',
       description: 'Review user documents',
       icon: 'document-text',
@@ -104,6 +106,7 @@ export default function AdminDashboard() {
       color: 'rgb(11, 26, 81)'
     },
     {
+      id: 'moderation',
       title: 'Content Moderation',
       description: 'Review reported content',
       icon: 'eye',
@@ -111,6 +114,7 @@ export default function AdminDashboard() {
       color: 'rgb(11, 26, 81)'
     },
     {
+      id: 'users',
       title: 'User Management',
       description: 'Manage user accounts',
       icon: 'people',
@@ -118,6 +122,7 @@ export default function AdminDashboard() {
       color: 'rgb(11, 26, 81)'
     },
     {
+      id: 'analytics',
       title: 'Analytics & Reports',
       description: 'Platform insights',
       icon: 'bar-chart',
@@ -125,6 +130,32 @@ export default function AdminDashboard() {
       color: 'rgb(11, 26, 81)'
     }
   ];
+
+  const handleFeaturePress = (feature: any) => {
+    // Navigate to actual feature screens
+    switch (feature.id) {
+      case 'users':
+        router.push('/admin/users');
+        break;
+      case 'kyc':
+        router.push('/admin/kyc-verification');
+        break;
+      case 'analytics':
+        router.push('/admin/analytics');
+        break;
+      case 'moderation':
+        router.push('/admin/moderation');
+        break;
+      case 'escrow':
+        router.push('/admin/escrow-management');
+        break;
+      case 'control':
+        router.push('/admin/control-center');
+        break;
+      default:
+        Alert.alert("Navigation", `Navigating to ${feature.title}`);
+    }
+  };
 
   const styles = getResponsiveStyles(screenData);
 
@@ -160,7 +191,7 @@ export default function AdminDashboard() {
             <TouchableOpacity
               key={index}
               style={styles.featureCard}
-              onPress={() => router.push(feature.route as any)}
+              onPress={() => handleFeaturePress(feature)}
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>

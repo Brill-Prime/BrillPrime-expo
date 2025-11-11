@@ -39,9 +39,7 @@ export default function MerchantReviewsScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (merchantId) {
-      loadReviews();
-    }
+    loadReviews();
   }, [merchantId]);
 
   const loadReviews = async () => {

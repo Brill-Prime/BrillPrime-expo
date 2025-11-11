@@ -123,17 +123,34 @@ export default function ConsumerDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    // Route to the appropriate feature page
-    if (feature.route) {
-      router.push(feature.route as any);
-    } else {
-      router.push(`/feature/${feature.id}` as any);
+    // Navigate to actual feature screens
+    switch (feature.id) {
+      case 'browse':
+        router.push('/commodity/commodities');
+        break;
+      case 'orders':
+        router.push('/orders/consumer-orders');
+        break;
+      case 'favorites':
+        router.push('/favorites');
+        break;
+      case 'cart':
+        router.push('/cart');
+        break;
+      case 'profile':
+        router.push('/profile');
+        break;
+      case 'support':
+        router.push('/support');
+        break;
+      default:
+        Alert.alert("Info", `Opening ${feature.title}`);
     }
   };
 
   const features = [
-    { id: 'browse-commodities', title: "Browse Products", description: "Discover amazing products", icon: "bag-handle", route: "/commodity/commodities" },
-    { id: 'my-orders', title: "My Orders", description: "Track your orders", icon: "cube", route: "/orders/consumer-orders" },
+    { id: 'browse', title: "Browse Products", description: "Discover amazing products", icon: "bag-handle", route: "/commodity/commodities" },
+    { id: 'orders', title: "My Orders", description: "Track your orders", icon: "cube", route: "/orders/consumer-orders" },
     { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: "chatbubbles", route: "/messages" },
     { id: 'favorites', title: "Favorites", description: "Your saved items", icon: "heart", route: "/favorites" },
     { id: 'support', title: "Support", description: "Get help anytime", icon: "headset", route: "/support" }
@@ -178,7 +195,7 @@ export default function ConsumerDashboard() {
       try {
         const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
         setLocationStatus(permission.state === 'granted' ? 'enabled' : 'disabled');
-        
+
         // Listen for permission changes
         permission.onchange = () => {
           setLocationStatus(permission.state === 'granted' ? 'enabled' : 'disabled');

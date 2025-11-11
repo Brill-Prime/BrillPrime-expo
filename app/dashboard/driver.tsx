@@ -65,8 +65,11 @@ export default function DriverDashboard() {
   ];
 
   const handleFeaturePress = (feature: any) => {
+    // Navigate to actual feature screens
     switch (feature.id) {
       case 'available-orders':
+        router.push('/orders/driver-orders');
+        break;
       case 'my-deliveries':
         router.push('/orders/driver-orders');
         break;

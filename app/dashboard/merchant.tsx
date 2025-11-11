@@ -54,51 +54,48 @@ export default function MerchantDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
+    // Navigate to actual feature screens
     switch (feature.id) {
-      case 'manage-commodities':
+      case 'commodities':
         router.push('/merchant/commodities');
         break;
-      case 'manage-orders':
+      case 'orders':
         router.push('/merchant/order-management');
         break;
       case 'analytics':
         router.push('/merchant/analytics');
         break;
-      case 'customer-communication':
-        router.push('/chat');
-        break;
       case 'inventory':
         router.push('/merchant/inventory');
         break;
-      case 'store-settings':
+      case 'drivers':
+        router.push('/merchant/driver-assignment');
+        break;
+      case 'communication':
+        router.push('/merchant/customer-communication');
+        break;
+      case 'settings':
         router.push('/merchant/store-settings');
         break;
       default:
-        router.push(`/${feature.route}` || '/profile');
+        Alert.alert("Info", `Opening ${feature.title}`);
     }
   };
 
   const features = [
     {
-      id: "manage-commodities",
-      title: "Add Products",
+      id: "commodities",
+      title: "Manage Products",
       description: "List new items",
-      icon: "add-circle",
-      route: "/merchant/add-commodity"
-    },
-    {
-      id: "manage-commodities",
-      title: "Manage Inventory",
-      description: "Track your stock",
       icon: "cube",
       route: "/merchant/commodities"
     },
     {
-      id: "manage-orders",
-      title: "Orders",
+      id: "orders",
+      title: "Manage Orders",
       description: "View customer orders",
       icon: "receipt",
-      route: "/orders/consumer-orders"
+      route: "/merchant/order-management"
     },
     {
       id: "analytics",
@@ -108,11 +105,32 @@ export default function MerchantDashboard() {
       route: "/merchant/analytics"
     },
     {
-      id: "store-settings",
+      id: "inventory",
+      title: "Inventory",
+      description: "Track your stock",
+      icon: "library",
+      route: "/merchant/inventory"
+    },
+    {
+      id: "drivers",
+      title: "Driver Assignment",
+      description: "Assign deliveries",
+      icon: "car-sport",
+      route: "/merchant/driver-assignment"
+    },
+    {
+      id: "communication",
+      title: "Customer Communication",
+      description: "Connect with customers",
+      icon: "chatbubbles",
+      route: "/merchant/customer-communication"
+    },
+    {
+      id: "settings",
       title: "Store Settings",
       description: "Manage your store",
       icon: "settings",
-      route: "/profile/edit"
+      route: "/merchant/store-settings"
     }
   ];
 
