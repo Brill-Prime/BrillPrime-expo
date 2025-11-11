@@ -521,64 +521,72 @@ export default function DriverHome() {
 
       {isMenuOpen && (
         <Animated.View style={[styles.sidebar, { left: slideAnim }]}>
-          <ScrollView style={styles.sidebarScrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.sidebarContent}>
-              <View style={styles.sidebarProfile}>
-                <View style={styles.sidebarProfileImage}>
-                  <Ionicons name="person" size={30} color="#4682B4" />
-                </View>
-                <Text style={styles.sidebarProfileName}>{driverData.name}</Text>
-                <Text style={styles.sidebarProfileEmail}>{userEmail}</Text>
+          <View style={styles.sidebarHeader}>
+            <TouchableOpacity style={styles.closeButton} onPress={toggleMenu}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+            <View style={styles.profileSection}>
+              <View style={styles.avatarContainer}>
+                <Ionicons name="person-circle" size={60} color="#4682B4" />
               </View>
+              <Text style={styles.userName}>{driverData.name}</Text>
+              <Text style={styles.userEmail}>{userEmail}</Text>
+            </View>
+          </View>
 
-              <View style={styles.menuList}>
-                {["Profile", "Notifications", "Earnings", "Settings", "Support"].map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    style={styles.menuItem}
-                    onPress={() => handleMenuItemPress(item)}
-                  >
-                    <View style={styles.menuItemContent}>
-                      <Text style={styles.menuItemText}>{item}</Text>
-                      {item === "Notifications" && unreadNotifications > 0 && (
-                        <View style={styles.notificationBadge}>
-                          <Text style={styles.notificationBadgeText}>
-                            {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                          </Text>
-                        </View>
-                      )}
+          <ScrollView
+            style={styles.sidebarScrollView}
+            contentContainerStyle={styles.sidebarScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            scrollEventThrottle={16}
+          >
+            <View style={styles.menuList}>
+              {[
+                { label: "Profile", icon: "person-outline" },
+                { label: "Notifications", icon: "notifications-outline" },
+                { label: "Earnings", icon: "wallet-outline" },
+                { label: "Settings", icon: "settings-outline" },
+                { label: "Support", icon: "help-circle-outline" },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={styles.menuItem}
+                  onPress={() => handleMenuItemPress(item.label)}
+                >
+                  <Ionicons name={item.icon as any} size={22} color="#666" />
+                  <Text style={styles.menuItemText}>{item.label}</Text>
+                  {item.label === "Notifications" && unreadNotifications > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>
+                        {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                      </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <View style={styles.sidebarBottom}>
-                <TouchableOpacity
-                  style={styles.switchButton}
-                  onPress={() => handleMenuItemPress("Switch to Consumer")}
-                >
-                  <Text style={styles.switchButtonText}>
-                    Switch to Consumer
-                  </Text>
+                  )}
+                  <Ionicons name="chevron-forward" size={20} color="#666" style={{ marginLeft: 'auto' }} />
                 </TouchableOpacity>
+              ))}
+            </View>
 
-                <TouchableOpacity
-                  style={styles.switchButton}
-                  onPress={() => handleMenuItemPress("Switch to Merchant")}
-                >
-                  <Text style={styles.switchButtonText}>
-                    Switch to Merchant
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.signOutButton}
-                  onPress={handleSignOut}
-                >
-                  <Text style={styles.signOutButtonText}>Sign out</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.sidebarFooter}>
+              <TouchableOpacity
+                style={styles.switchRoleButton}
+                onPress={() => handleMenuItemPress("Switch to Consumer")}
+              >
+                <Ionicons name="cart-outline" size={20} color="#4682B4" />
+                <Text style={styles.switchRoleText}>Switch to Consumer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.switchRoleButton}
+                onPress={() => handleMenuItemPress("Switch to Merchant")}
+              >
+                <Ionicons name="storefront-outline" size={20} color="#4682B4" />
+                <Text style={styles.switchRoleText}>Switch to Merchant</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                <Ionicons name="log-out-outline" size={20} color="#e74c3c" />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </Animated.View>
@@ -910,46 +918,49 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 10,
     zIndex: 20,
+  },
+  sidebarHeader: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    backgroundColor: "#fff",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    padding: 4,
+    zIndex: 10,
+  },
+  profileSection: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  avatarContainer: {
+    marginBottom: 15,
+  },
+  userName: {
+    color: "#333",
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 5,
+    fontFamily: "Montserrat-SemiBold",
+  },
+  userEmail: {
+    color: "#666",
+    fontSize: 13,
+    fontFamily: "Montserrat-Regular",
   },
   sidebarScrollView: {
     flex: 1,
   },
-  sidebarContent: {
-    paddingTop: 60,
-    paddingBottom: 30,
-  },
-  sidebarProfile: {
-    alignItems: "center",
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  sidebarProfileImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 15,
-  },
-  sidebarProfileName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 5,
-    fontFamily: "Montserrat-SemiBold",
-    textAlign: "center",
-  },
-  sidebarProfileEmail: {
-    fontSize: 14,
-    color: "#666",
-    fontFamily: "Montserrat-Regular",
-    textAlign: "center",
+  sidebarScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   menuList: {
     paddingVertical: 10,
@@ -963,15 +974,10 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
     gap: 15,
   },
-  menuItemContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
   menuItemText: {
     flex: 1,
-    fontSize: 16,
     color: "#333",
+    fontSize: 16,
     fontFamily: "Montserrat-Medium",
   },
   notificationBadge: {
@@ -989,38 +995,33 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontFamily: "Montserrat-Bold",
   },
-  sidebarBottom: {
-    padding: 24,
-    paddingTop: 20,
+  sidebarFooter: {
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
-    marginTop: 10,
-  },
-  switchButton: {
-    backgroundColor: "#f8f9fa",
-    paddingVertical: 14,
+    paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 12,
-    alignItems: "center",
+    marginTop: 20,
   },
-  switchButtonText: {
-    fontSize: 15,
+  switchRoleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  switchRoleText: {
     color: "#4682B4",
-    fontWeight: "500",
+    fontSize: 16,
     fontFamily: "Montserrat-Medium",
   },
   signOutButton: {
-    backgroundColor: "#ffe6e6",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 10,
   },
-  signOutButtonText: {
-    fontSize: 15,
+  signOutText: {
     color: "#e74c3c",
-    fontWeight: "500",
+    fontSize: 16,
     fontFamily: "Montserrat-Medium",
   },
   menuOverlay: {
