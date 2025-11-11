@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ViewStyle, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Platform
@@ -149,7 +149,7 @@ const MapWeb: React.FC<MapProps> = ({
           // Check for Google Maps API key
           const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY; // Assuming API key is in environment variables
           setHasGoogleMapsKey(!!googleMapsApiKey);
-          
+
           if (!googleMapsApiKey) {
             setUseLeafletFallback(true);
           }
@@ -450,139 +450,153 @@ const MapWeb: React.FC<MapProps> = ({
         </View>
       )}
 
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        style={{ width: '100%', height: '100%' }}
-        scrollWheelZoom={props.zoomEnabled !== false}
-        dragging={props.scrollEnabled !== false}
-        ref={mapRef}
-        onMoveEnd={handleMapMove}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          maxZoom={20}
-        />
-
-        <MapUpdater region={region} />
-
-        {/* User location marker */}
-        {showsUserLocation && userLocation && (
-          <>
-            <Marker
-              position={[userLocation.latitude || center[0], userLocation.longitude || center[1]]}
-              icon={L.divIcon({
-                className: 'user-location-marker',
-                html: `
-                  <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center;">
-                    <div style="width: 36px; height: 36px; border-radius: 18px; background-color: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                      </svg>
-                    </div>
-                    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px;"></div>
-                    <div style="width: 20px; height: 8px; border-radius: 10px; background-color: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
-                  </div>
-                `,
-                iconSize: [50, 60],
-                iconAnchor: [25, 60],
-              })}
-            >
-              <Popup>
-                <strong>Your Location</strong>
-              </Popup>
-            </Marker>
-            <Circle
-              center={[userLocation.latitude || center[0], userLocation.longitude || center[1]]}
-              radius={50}
-              pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.2 }}
-            />
-          </>
-        )}
-        
-        {/* Fallback marker if showsUserLocation is true but no userLocation */}
-        {showsUserLocation && !userLocation && (
-          <>
-            <Marker
-              position={center}
-              icon={L.divIcon({
-                className: 'user-location-marker',
-                html: `
-                  <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center;">
-                    <div style="width: 36px; height: 36px; border-radius: 18px; background-color: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                      </svg>
-                    </div>
-                    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px;"></div>
-                    <div style="width: 20px; height: 8px; border-radius: 10px; background-color: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
-                  </div>
-                `,
-                iconSize: [50, 60],
-                iconAnchor: [25, 60],
-              })}
-            >
-              <Popup>
-                <strong>Your Location</strong>
-              </Popup>
-            </Marker>
-            <Circle
-              center={center}
-              radius={50}
-              pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.2 }}
-            />
-          </>
-        )}
-
-        {/* Regular markers */}
-        {markers.map((marker, index) => (
-          <Marker
-            key={`marker-${index}`}
-            position={[marker.coordinate.latitude, marker.coordinate.longitude]}
-            eventHandlers={{
-              click: () => handleMarkerPress(marker),
-            }}
-          >
-            {(marker.title || marker.description) && (
-              <Popup>
-                {marker.title && <strong>{marker.title}</strong>}
-                {marker.description && <p>{marker.description}</p>}
-              </Popup>
-            )}
-          </Marker>
-        ))}
-
-        {/* Store locations */}
-        {mapComponents && stores.map((store, index) => (
-          <Marker
-            key={`store-${index}`}
-            position={[store.coords?.lat || store.latitude, store.coords?.lng || store.longitude]}
-            eventHandlers={{
-              click: () => handleMarkerPress(store),
-            }}
-          >
-            <Popup>
-              <strong>{store.title}</strong>
-              {store.address && <p>{store.address}</p>}
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* Live tracking markers */}
-        {liveLocations.map((location, index) => (
-          <Marker
-            key={`live-${index}`}
-            position={[location.latitude, location.longitude]}
-            icon={L.divIcon({
-              className: 'live-marker',
-              html: `<div style="background: #00ff00; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px;"></div>`,
-            })}
+      {!hasGoogleMapsKey ? (
+        // Simple placeholder - no OpenStreetMap
+        <View style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#f0f8ff',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          {children}
+        </View>
+      ) : (
+        <MapContainer
+          center={center}
+          zoom={zoom}
+          style={{ width: '100%', height: '100%' }}
+          scrollWheelZoom={props.zoomEnabled !== false}
+          dragging={props.scrollEnabled !== false}
+          ref={mapRef}
+          onMoveEnd={handleMapMove}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            maxZoom={20}
           />
-        ))}
 
-        {children}
-      </MapContainer>
+          <MapUpdater region={region} />
+
+          {/* User location marker */}
+          {showsUserLocation && userLocation && (
+            <>
+              <Marker
+                position={[userLocation.latitude || center[0], userLocation.longitude || center[1]]}
+                icon={L.divIcon({
+                  className: 'user-location-marker',
+                  html: `
+                  <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center;">
+                    <div style="width: 36px; height: 36px; border-radius: 18px; background-color: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                      </svg>
+                    </div>
+                    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px;"></div>
+                    <div style="width: 20px; height: 8px; border-radius: 10px; background-color: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
+                  </div>
+                `,
+                  iconSize: [50, 60],
+                  iconAnchor: [25, 60],
+                })}
+              >
+                <Popup>
+                  <strong>Your Location</strong>
+                </Popup>
+              </Marker>
+              <Circle
+                center={[userLocation.latitude || center[0], userLocation.longitude || center[1]]}
+                radius={50}
+                pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.2 }}
+              />
+            </>
+          )}
+
+          {/* Fallback marker if showsUserLocation is true but no userLocation */}
+          {showsUserLocation && !userLocation && (
+            <>
+              <Marker
+                position={center}
+                icon={L.divIcon({
+                  className: 'user-location-marker',
+                  html: `
+                  <div style="position: relative; width: 50px; height: 60px; display: flex; flex-direction: column; align-items: center;">
+                    <div style="width: 36px; height: 36px; border-radius: 18px; background-color: #4682B4; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                      </svg>
+                    </div>
+                    <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #4682B4; margin-top: -2px;"></div>
+                    <div style="width: 20px; height: 8px; border-radius: 10px; background-color: rgba(0, 0, 0, 0.2); margin-top: 2px;"></div>
+                  </div>
+                `,
+                  iconSize: [50, 60],
+                  iconAnchor: [25, 60],
+                })}
+              >
+                <Popup>
+                  <strong>Your Location</strong>
+                </Popup>
+              </Marker>
+              <Circle
+                center={center}
+                radius={50}
+                pathOptions={{ color: '#4682B4', fillColor: '#4682B4', fillOpacity: 0.2 }}
+              />
+            </>
+          )}
+
+          {/* Regular markers */}
+          {markers.map((marker, index) => (
+            <Marker
+              key={`marker-${index}`}
+              position={[marker.coordinate.latitude, marker.coordinate.longitude]}
+              eventHandlers={{
+                click: () => handleMarkerPress(marker),
+              }}
+            >
+              {(marker.title || marker.description) && (
+                <Popup>
+                  {marker.title && <strong>{marker.title}</strong>}
+                  {marker.description && <p>{marker.description}</p>}
+                </Popup>
+              )}
+            </Marker>
+          ))}
+
+          {/* Store locations */}
+          {mapComponents && stores.map((store, index) => (
+            <Marker
+              key={`store-${index}`}
+              position={[store.coords?.lat || store.latitude, store.coords?.lng || store.longitude]}
+              eventHandlers={{
+                click: () => handleMarkerPress(store),
+              }}
+            >
+              <Popup>
+                <strong>{store.title}</strong>
+                {store.address && <p>{store.address}</p>}
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* Live tracking markers */}
+          {liveLocations.map((location, index) => (
+            <Marker
+              key={`live-${index}`}
+              position={[location.latitude, location.longitude]}
+              icon={L.divIcon({
+                className: 'live-marker',
+                html: `<div style="background: #00ff00; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px;"></div>`,
+              })}
+            />
+          ))}
+
+          {children}
+        </MapContainer>
+      )}
+
 
       {/* Selected marker info */}
       {selectedMarker && (

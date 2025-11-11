@@ -35,14 +35,11 @@ const RealTimeMapComponent = React.memo(({
   if (mapError) {
     return (
       <View style={styles.mapPlaceholder}>
-        <Ionicons name="map" size={40} color="#4682B4" />
+        <Ionicons name="map-outline" size={40} color="#4682B4" />
         <Text style={styles.mapPlaceholderText}>Map Unavailable</Text>
-        <TouchableOpacity
-          style={styles.retryMapButton}
-          onPress={() => setMapError(false)}
-        >
-          <Text style={styles.retryMapText}>Retry</Text>
-        </TouchableOpacity>
+        <Text style={[styles.mapPlaceholderText, { fontSize: 12, marginTop: 8 }]}>
+          Enable location services to view map
+        </Text>
       </View>
     );
   }
