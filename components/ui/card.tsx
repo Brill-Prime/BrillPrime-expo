@@ -54,18 +54,25 @@ export const CardContent: React.FC<CardProps> = ({ children, style, ...props }) 
   );
 };
 
+const { width } = Dimensions.get('window');
+
+const getResponsiveValue = (baseValue: number) => {
+  const scale = width / 375;
+  return Math.round(baseValue * scale);
+};
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.base,
-    marginBottom: theme.spacing.base,
+    borderRadius: getResponsiveValue(theme.borderRadius.lg),
+    padding: Math.max(theme.spacing.base, getResponsiveValue(16)),
+    marginBottom: Math.max(theme.spacing.base, getResponsiveValue(12)),
   },
   cardHeader: {
-    marginBottom: theme.spacing.md,
+    marginBottom: Math.max(theme.spacing.md, getResponsiveValue(12)),
   },
   cardTitle: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: Math.max(theme.typography.fontSize.lg, getResponsiveValue(18)),
     fontFamily: theme.typography.fontFamily.semiBold,
     color: theme.colors.text,
   },

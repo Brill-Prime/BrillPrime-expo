@@ -74,6 +74,22 @@ import { Dimensions } from 'react-native';
 const { width, height } = Dimensions.get('window');
 const sidebarWidth = Math.min(300, width * 0.85);
 
+// Responsive sizing utilities
+const getResponsiveSize = (baseSize: number) => {
+  const scale = width / 375;
+  return Math.round(baseSize * scale);
+};
+
+const getResponsivePadding = () => Math.max(15, width * 0.04);
+const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
+  const sizes = {
+    small: getResponsiveSize(12),
+    medium: getResponsiveSize(16),
+    large: getResponsiveSize(20),
+  };
+  return sizes[size];
+};
+
 // Blue map style (Bolt-inspired) for Google Maps
 const blueMapStyle = [
   {
@@ -1357,18 +1373,18 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 100,
+    left: getResponsivePadding(),
+    right: getResponsivePadding(),
+    bottom: Math.max(80, height * 0.12),
     zIndex: 10,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.white,
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    borderRadius: getResponsiveSize(30),
+    paddingHorizontal: getResponsivePadding(),
+    paddingVertical: getResponsiveSize(12),
     ...theme.shadows.medium,
   },
   searchIcon: {
@@ -1395,19 +1411,19 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
     backgroundColor: theme.colors.white,
-    borderRadius: 20,
+    borderRadius: getResponsiveSize(20),
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.small,
   },
   menuButton: {
-    width: 40,
-    height: 40,
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
     backgroundColor: theme.colors.white,
-    borderRadius: 20,
+    borderRadius: getResponsiveSize(20),
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.small,
@@ -1417,15 +1433,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 400,
+    minHeight: Math.min(400, height * 0.5),
+    maxHeight: height * 0.7,
     backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    borderTopLeftRadius: getResponsiveSize(25),
+    borderTopRightRadius: getResponsiveSize(25),
     ...theme.shadows.medium,
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 30,
+    paddingTop: getResponsiveSize(60),
+    paddingBottom: getResponsivePadding() * 2,
+    paddingHorizontal: getResponsivePadding(),
     zIndex: 20,
   },
   locationIconContainer: {

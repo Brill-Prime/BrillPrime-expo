@@ -21,6 +21,22 @@ import SimpleArrowIcon from '../../components/SimpleArrowIcon';
 
 const { width, height } = Dimensions.get('window');
 
+// Responsive sizing utilities
+const getResponsiveSize = (baseSize: number) => {
+  const scale = width / 375;
+  return Math.round(baseSize * scale);
+};
+
+const getResponsivePadding = () => Math.max(15, width * 0.04);
+const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
+  const sizes = {
+    small: getResponsiveSize(12),
+    medium: getResponsiveSize(16),
+    large: getResponsiveSize(20),
+  };
+  return sizes[size];
+};
+
 export default function MerchantHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
@@ -431,18 +447,18 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: 50,
-    left: 20,
-    right: 20,
+    top: Math.max(40, height * 0.05),
+    left: getResponsivePadding(),
+    right: getResponsivePadding(),
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     zIndex: 10,
   },
   headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: getResponsiveSize(44),
+    height: getResponsiveSize(44),
+    borderRadius: getResponsiveSize(22),
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -451,7 +467,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
-    position: 'relative', // Needed for badge positioning
+    position: 'relative',
   },
   headerButtonsContainer: {
     flexDirection: 'row',
@@ -478,15 +494,15 @@ const styles = StyleSheet.create({
   },
   merchantCard: {
     position: 'absolute',
-    top: 120,
-    left: 20,
-    right: 20,
+    top: Math.max(110, height * 0.14),
+    left: getResponsivePadding(),
+    right: getResponsivePadding(),
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
+    borderRadius: getResponsiveSize(15),
+    padding: getResponsivePadding(),
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: getResponsiveSize(10),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -495,10 +511,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   merchantIcon: {
-    width: 40,
-    height: 40,
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
     backgroundColor: '#4682B4',
-    borderRadius: 20,
+    borderRadius: getResponsiveSize(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -519,18 +535,18 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     position: 'absolute',
-    top: 200,
-    left: 20,
-    right: 20,
+    top: Math.max(190, height * 0.24),
+    left: getResponsivePadding(),
+    right: getResponsivePadding(),
     flexDirection: 'row',
-    gap: 10,
+    gap: getResponsiveSize(10),
     zIndex: 10,
   },
   statCard: {
     flex: 1,
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
+    borderRadius: getResponsiveSize(15),
+    padding: getResponsivePadding(),
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -625,12 +641,12 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: Math.max(15, height * 0.02),
+    left: getResponsivePadding(),
+    right: getResponsivePadding(),
     backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 15,
+    borderRadius: getResponsiveSize(25),
+    padding: getResponsivePadding(),
     flexDirection: 'row',
     justifyContent: 'space-around',
     shadowColor: '#000',

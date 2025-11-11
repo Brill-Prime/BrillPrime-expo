@@ -81,6 +81,22 @@ const RealTimeMapComponent = React.memo(({
 
 const { width, height } = Dimensions.get("window");
 
+// Responsive sizing utilities
+const getResponsiveSize = (baseSize: number) => {
+  const scale = width / 375; // Base on iPhone X width
+  return Math.round(baseSize * scale);
+};
+
+const getResponsivePadding = () => Math.max(15, width * 0.04);
+const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
+  const sizes = {
+    small: getResponsiveSize(12),
+    medium: getResponsiveSize(16),
+    large: getResponsiveSize(20),
+  };
+  return sizes[size];
+};
+
 // Default data to prevent dependency issues
 const defaultDriverData = {
   userId: "DR456789",
@@ -728,12 +744,12 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    left: 20,
-    top: 20,
-    width: 40,
-    height: 40,
+    left: getResponsivePadding(),
+    top: Math.max(20, height * 0.025),
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
     backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: getResponsiveSize(20),
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -744,12 +760,12 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     position: "absolute",
-    right: 20,
-    top: 20,
-    width: 40,
-    height: 40,
+    right: getResponsivePadding(),
+    top: Math.max(20, height * 0.025),
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
     backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: getResponsiveSize(20),
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -760,23 +776,23 @@ const styles = StyleSheet.create({
   },
   tabs: {
     position: "absolute",
-    left: width * 0.05,
-    top: 80,
+    left: getResponsivePadding(),
+    top: Math.max(80, height * 0.1),
     flexDirection: "row",
-    gap: 10,
+    gap: getResponsiveSize(10),
     flexWrap: "wrap",
-    maxWidth: width * 0.9,
+    maxWidth: width - (getResponsivePadding() * 2),
   },
   tab: {
-    minWidth: 100,
-    height: 35,
-    borderRadius: 30,
+    minWidth: getResponsiveSize(100),
+    height: getResponsiveSize(35),
+    borderRadius: getResponsiveSize(30),
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#4682B4",
-    paddingHorizontal: 15,
+    paddingHorizontal: getResponsivePadding(),
   },
   activeTab: {
     backgroundColor: "#4682B4",
@@ -883,13 +899,13 @@ const styles = StyleSheet.create({
   },
   bottomButton: {
     position: "absolute",
-    left: "5%",
-    bottom: "5%",
-    width: "90%",
-    maxWidth: 350,
-    height: Math.max(40, Math.min(60, width * 0.12)),
+    left: getResponsivePadding(),
+    bottom: Math.max(20, height * 0.03),
+    width: width - (getResponsivePadding() * 2),
+    maxWidth: Math.min(350, width * 0.9),
+    height: getResponsiveSize(50),
     backgroundColor: "#4682B4",
-    borderRadius: 30,
+    borderRadius: getResponsiveSize(30),
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
@@ -901,7 +917,7 @@ const styles = StyleSheet.create({
   },
   bottomButtonText: {
     color: "white",
-    fontSize: Math.max(12, Math.min(16, width * 0.04)),
+    fontSize: getResponsiveFontSize('medium'),
     fontWeight: "500",
     fontFamily: "Montserrat-Medium",
   },
