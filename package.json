@@ -7,13 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web --port 5000",
-    "server": "tsx server/index.ts",
-    "dev": "concurrently \"npm run server\" \"npm run web\"",
-    "test": "jest",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "dev": "expo start --web --port 5000",
+    "test": "jest"
   },
   "jest": {
     "preset": "jest-expo"
