@@ -471,14 +471,17 @@ function ConsumerHomeContent() {
     }
   };
 
+  const [hasShownNoMerchantsMessage, setHasShownNoMerchantsMessage] = useState(false);
+
   const loadFallbackMerchants = () => {
     // Log informative message silently
     console.log("No registered merchants available in the system yet.");
     setStoreLocations([]);
 
-    // Show user-friendly message if this is the first load
-    if (isMountedRef.current && storeLocations.length === 0) {
+    // Show user-friendly message only once per session
+    if (isMountedRef.current && storeLocations.length === 0 && !hasShownNoMerchantsMessage) {
       showInfo("No Merchants Found", "No merchants are currently registered in your area. Please check back later.");
+      setHasShownNoMerchantsMessage(true);
     }
   };
 
