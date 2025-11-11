@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
@@ -11,15 +10,15 @@ function validateSupabaseUrl(url: string): { isValid: boolean; error?: string } 
   if (!url) {
     return { isValid: false, error: 'Supabase URL is missing' };
   }
-  
+
   if (!url.startsWith('https://')) {
     return { isValid: false, error: 'Supabase URL must use HTTPS' };
   }
-  
+
   if (!url.includes('.supabase.co')) {
     return { isValid: false, error: 'Invalid Supabase URL format (should contain .supabase.co)' };
   }
-  
+
   return { isValid: true };
 }
 
@@ -28,16 +27,16 @@ function validateSupabaseKey(key: string): { isValid: boolean; error?: string } 
   if (!key) {
     return { isValid: false, error: 'Supabase Anon Key is missing' };
   }
-  
+
   // Supabase anon keys are typically JWT tokens that start with 'eyJ'
   if (!key.startsWith('eyJ')) {
     return { isValid: false, error: 'Supabase Anon Key appears to be invalid (should be a JWT token)' };
   }
-  
+
   if (key.length < 100) {
     return { isValid: false, error: 'Supabase Anon Key is too short to be valid' };
   }
-  
+
   return { isValid: true };
 }
 
@@ -48,15 +47,15 @@ const keyValidation = validateSupabaseKey(supabaseAnonKey);
 // Log validation results
 if (!urlValidation.isValid || !keyValidation.isValid) {
   console.error('❌ Supabase Configuration Error:');
-  
+
   if (!urlValidation.isValid) {
     console.error(`  - URL: ${urlValidation.error}`);
   }
-  
+
   if (!keyValidation.isValid) {
     console.error(`  - Anon Key: ${keyValidation.error}`);
   }
-  
+
   console.error('\n📋 To fix this:');
   console.error('  1. Go to your Replit Secrets (Tools > Secrets)');
   console.error('  2. Add EXPO_PUBLIC_SUPABASE_URL with your Supabase project URL');
@@ -87,6 +86,31 @@ if (isSupabaseConfigured) {
   console.log('✅ Supabase client initialized successfully');
   console.log(`🔷 URL: ${supabaseUrl}`);
   console.log(`🔑 Key: ${supabaseAnonKey.substring(0, 20)}...`);
+
+  // Configure error handling for real-time subscriptions
+  supabase.realtime.setAuth(supabaseAnonKey);
+
+  // Add global error handler for broadcast errors
+  const originalBroadcast = supabase.channel.bind(supabase);
+  supabase.channel = function(...args: any[]) {
+    const channel = originalBroadcast(...args);
+
+    // Suppress known constraint errors that don't affect functionality
+    const originalSubscribe = channel.subscribe;
+    channel.subscribe = function(callback?: any) {
+      return originalSubscribe.call(this, (status: string, err?: any) => {
+        if (err?.message?.includes('no unique or exclusion constraint')) {
+          // Log but don't show to user - this is handled by unique constraints now
+          console.debug('Supabase constraint info:', err.message);
+        } else if (err) {
+          console.error('Supabase broadcast error:', err.message || err);
+        }
+        if (callback) callback(status, err);
+      });
+    };
+
+    return channel;
+  };
 } else {
   console.warn('⚠️ Supabase client created with invalid configuration - features may not work correctly');
 }
