@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { formatNaira } from "../../utils/currency";
 
 
 export default function DriverDashboard() {
@@ -148,16 +149,16 @@ export default function DriverDashboard() {
           <Text style={styles.sectionTitle}>Today's Summary</Text>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>8</Text>
+              <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Deliveries</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>₹1,240</Text>
+              <Text style={styles.statNumber}>₦0.00</Text>
               <Text style={styles.statLabel}>Earnings</Text>
             </View>
             <View style={styles.statCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.statNumber}>4.8 </Text>
+                <Text style={styles.statNumber}>0.0 </Text>
                 <Ionicons name="star" size={20} color="#FFD700" />
               </View>
               <Text style={styles.statLabel}>Rating</Text>

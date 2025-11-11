@@ -54,23 +54,23 @@ function DriverEarningsDetails() {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('week');
   
   const [summary, setSummary] = useState<EarningsSummary>({
-    totalEarnings: 45750.00,
-    todayEarnings: 3200.00,
-    weekEarnings: 18500.00,
-    monthEarnings: 45750.00,
-    completedDeliveries: 127,
-    averagePerDelivery: 360.24,
-    pendingPayout: 8300.00,
-    lastPayoutDate: '2025-01-20',
-    lastPayoutAmount: 15000.00,
+    totalEarnings: 0.00,
+    todayEarnings: 0.00,
+    weekEarnings: 0.00,
+    monthEarnings: 0.00,
+    completedDeliveries: 0,
+    averagePerDelivery: 0.00,
+    pendingPayout: 0.00,
+    lastPayoutDate: '',
+    lastPayoutAmount: 0.00,
   });
 
   const [breakdown, setBreakdown] = useState<EarningsBreakdown>({
-    deliveryFees: 35000.00,
-    tips: 5500.00,
-    bonuses: 3250.00,
-    fuelReimbursement: 1500.00,
-    tollReimbursement: 500.00,
+    deliveryFees: 0.00,
+    tips: 0.00,
+    bonuses: 0.00,
+    fuelReimbursement: 0.00,
+    tollReimbursement: 0.00,
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>([

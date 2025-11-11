@@ -21,13 +21,13 @@ import { locationService } from "../../services/locationService";
 import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
 
 // Real-time Map component
-const RealTimeMapComponent = React.memo(({ 
-  region, 
-  currentLocation, 
-  mapRef 
-}: { 
-  region: any; 
-  currentLocation: any; 
+const RealTimeMapComponent = React.memo(({
+  region,
+  currentLocation,
+  mapRef
+}: {
+  region: any;
+  currentLocation: any;
   mapRef: any;
 }) => {
   const [mapError, setMapError] = useState(false);
@@ -37,7 +37,7 @@ const RealTimeMapComponent = React.memo(({
       <View style={styles.mapPlaceholder}>
         <Ionicons name="map" size={40} color="#4682B4" />
         <Text style={styles.mapPlaceholderText}>Map Unavailable</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.retryMapButton}
           onPress={() => setMapError(false)}
         >
@@ -98,6 +98,11 @@ const defaultStats = {
   pendingNotifications: 1,
 };
 
+// Function to format currency to Naira
+const formatNaira = (amount: number): string => {
+  return `N${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+};
+
 export default function DriverHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
@@ -148,10 +153,10 @@ export default function DriverHome() {
         } else if (activeTab === "Available") {
           change = 0.2; // Slight increase when waiting
         }
-        
+
         // Add small random variation
         change += (Math.random() * 0.4 - 0.2);
-        
+
         return Math.max(0, Math.min(100, prev + change));
       });
     }, 2000);
@@ -247,7 +252,7 @@ export default function DriverHome() {
   const startLocationTracking = useCallback(async () => {
     try {
       setIsTrackingLocation(true);
-      
+
       // Get initial location
       const location = await locationService.getCurrentLocation();
       if (location) {
@@ -262,7 +267,7 @@ export default function DriverHome() {
 
       // Start live tracking
       await locationService.startLiveTracking(5000); // Update every 5 seconds
-      
+
       // Subscribe to location updates
       const unsubscribe = locationService.onLocationUpdate((newLocation) => {
         setCurrentLocation(newLocation);
@@ -302,7 +307,7 @@ export default function DriverHome() {
 
   useEffect(() => {
     initializeData();
-    
+
     return () => {
       stopLocationTracking();
     };
@@ -414,7 +419,7 @@ export default function DriverHome() {
       <StatusBar backgroundColor="transparent" translucent />
 
       {/* Full Screen Real-time Map */}
-      <RealTimeMapComponent 
+      <RealTimeMapComponent
         region={region}
         currentLocation={currentLocation}
         mapRef={mapRef}
@@ -947,16 +952,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   menuList: {
-    paddingTop: 20,
+    paddingVertical: 10,
   },
   menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 25,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    gap: 15,
   },
   menuItemContent: {
     flexDirection: "row",
@@ -964,6 +969,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   menuItemText: {
+    flex: 1,
     fontSize: 16,
     color: "#333",
     fontFamily: "Montserrat-Medium",
