@@ -2,6 +2,16 @@
 # Brill Prime App - TODO List
 
 ## ✅ Recently Completed (Latest Session)
+- [x] **Cart & Checkout Backend Integration** ✅ COMPLETE
+  - [x] Cart service with Supabase Edge Functions integration
+  - [x] Fresh token authentication with auto-refresh (55min expiry)
+  - [x] Local storage fallback for offline mode
+  - [x] Cart operations: get, add, update, delete, clear
+  - [x] Checkout flow with real order creation
+  - [x] Order creation via Supabase Edge Function
+  - [x] Automatic driver assignment on order placement
+  - [x] Order tracking integration with real-time updates
+  - [x] Test script for cart/checkout functionality
 - [x] Real-time location tracking service with queue management
 - [x] Driver order management interface with accept/decline
 - [x] Driver homepage with real-time map background
@@ -26,7 +36,31 @@
 
 ---
 
-## 🔴 CRITICAL - Backend Setup (HIGHEST PRIORITY)
+## 🔴 CRITICAL - Backend Setup & Data Population (HIGHEST PRIORITY)
+
+### Cart & Checkout ✅ COMPLETE
+- [x] **Shopping Cart Backend Integration**
+  - [x] Supabase Edge Functions for cart operations
+  - [x] Token refresh mechanism for authentication
+  - [x] Offline mode with local storage fallback
+  - [x] Cart synchronization with backend
+  
+- [x] **Checkout & Order Creation**
+  - [x] Order creation via Edge Function
+  - [x] Payment method integration
+  - [x] Driver auto-assignment
+  - [x] Real-time order tracking setup
+  - [x] Order confirmation flow
+
+### Database Population (NEXT CRITICAL)
+- [ ] **Seed Test Data**
+  - [ ] Create 10+ sample merchants with locations
+  - [ ] Add 50+ sample products/commodities
+  - [ ] Set up test users (consumer, merchant, driver)
+  - [ ] Generate sample order history
+  - [ ] Add merchant reviews and ratings
+
+### Remaining Backend Integration (HIGH PRIORITY)
 
 ### Database Population
 - [ ] **Seed Supabase database with sample data**
