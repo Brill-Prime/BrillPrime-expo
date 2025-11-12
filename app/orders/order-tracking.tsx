@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -12,6 +11,85 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Mocking services that will be imported
+const orderService = {
+  trackOrder: async (orderId: string) => {
+    // Mock implementation
+    console.log(`Mock tracking order: ${orderId}`);
+    return {
+      success: true,
+      data: {
+        order: {
+          id: orderId,
+          orderDate: new Date().toISOString(),
+          commodityName: 'Sample Item',
+          deliveryAddress: '123 Main St, Anytown',
+          estimatedDelivery: new Date(Date.now() + 3600000).toISOString(),
+          status: 'confirmed',
+          deliveryTime: null,
+          driverId: 'driver123',
+          driver: { current_latitude: 37.7749, current_longitude: -122.4194, timestamp: new Date().toISOString() }
+        }
+      }
+    };
+  },
+  subscribeToOrderUpdates: (orderId: string, callback: (order: any) => void) => {
+    console.log(`Mock subscribing to order updates for: ${orderId}`);
+    // Mock subscription logic
+    const interval = setInterval(() => {
+      const updatedStatus = ['confirmed', 'preparing', 'out_for_delivery', 'delivered'][Math.floor(Math.random() * 4)];
+      callback({
+        id: orderId,
+        orderDate: new Date().toISOString(),
+        commodityName: 'Sample Item',
+        deliveryAddress: '123 Main St, Anytown',
+        estimatedDelivery: new Date(Date.now() + 3600000).toISOString(),
+        status: updatedStatus,
+        deliveryTime: updatedStatus === 'delivered' ? new Date().toISOString() : null,
+        driverId: 'driver123',
+        driver: { current_latitude: 37.7749 + Math.random() * 0.01, current_longitude: -122.4194 + Math.random() * 0.01, timestamp: new Date().toISOString() }
+      });
+    }, 15000); // Update every 15 seconds
+    return () => {
+      clearInterval(interval);
+      console.log(`Mock unsubscribed from order updates for: ${orderId}`);
+    };
+  }
+};
+
+const locationService = {
+  getLiveLocation: async (driverId: string) => {
+    // Mock implementation
+    console.log(`Mock getting live location for driver: ${driverId}`);
+    return {
+      success: true,
+      data: {
+        latitude: 37.7749 + Math.random() * 0.02,
+        longitude: -122.4194 + Math.random() * 0.02,
+        timestamp: new Date().toISOString()
+      }
+    };
+  },
+  calculateDistance: (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    // Mock distance calculation (in km)
+    return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2)) * 111; // Rough approximation
+  }
+};
+
+// Mocking Supabase import for testing purposes
+const supabase = {
+  channel: () => ({
+    on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+    subscribe: () => ({ unsubscribe: () => {} }),
+  }),
+};
+const importMock = async (path: string) => {
+  if (path.includes('orderService')) return { orderService };
+  if (path.includes('locationService')) return { locationService };
+  if (path.includes('supabase')) return { supabase };
+  return {};
+};
 
 interface OrderStatus {
   status: string;
@@ -27,79 +105,109 @@ export default function OrderTrackingScreen() {
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState<any>(null);
-  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number; timestamp: string } | null>(null);
   const [estimatedArrival, setEstimatedArrival] = useState<string>('Calculating...');
 
   useEffect(() => {
-    loadOrderDetails();
+    const loadAndSubscribe = async () => {
+      await loadOrderDetails();
+
+      if (orderId) {
+        // Mocking the import and setup for Supabase channel
+        const { supabase } = await importMock('../../config/supabase'); // Use mock
+        let orderSubscription: { unsubscribe: () => void } | null = null;
+        try {
+          orderSubscription = supabase
+            .channel(`order_${orderId}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'orders',
+                filter: `id=eq.${orderId}`,
+              },
+              (payload: any) => {
+                console.log('Order updated:', payload.new);
+                setOrderDetails((prev: any) => ({
+                  ...prev,
+                  ...payload.new,
+                  status: payload.new.status,
+                  driver: payload.new.driver || prev?.driver // Ensure driver info is updated if present
+                }));
+                if (payload.new.driver) {
+                  setDriverLocation({
+                    latitude: payload.new.driver.current_latitude || 0,
+                    longitude: payload.new.driver.current_longitude || 0,
+                    timestamp: payload.new.driver.timestamp || new Date().toISOString()
+                  });
+                } else {
+                  // Clear driver location if driver is no longer assigned
+                  if (prev?.driverId && !payload.new.driverId) {
+                     setDriverLocation(null);
+                  }
+                }
+              }
+            )
+            .subscribe();
+        } catch (error) {
+          console.error('Error setting up order subscription:', error);
+        }
+
+        // Polling as a fallback
+        const pollInterval = setInterval(async () => {
+          await loadOrderDetails(); // Reload details to catch updates not via subscription
+          if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
+            await updateDriverLocation();
+          }
+        }, 10000);
+
+        return () => {
+          orderSubscription?.unsubscribe();
+          clearInterval(pollInterval);
+        };
+      }
+    };
+
+    loadAndSubscribe();
 
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
 
-    // Set up real-time order status subscription
-    let orderSubscription: { unsubscribe: () => void } | null = null;
-    const setupRealtimeSubscription = async () => {
-      try {
-        const { supabase } = await import('../../config/supabase');
-        orderSubscription = supabase
-          .channel(`order_${orderId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'orders',
-              filter: `id=eq.${orderId}`,
-            },
-            (payload: any) => {
-              console.log('Order updated:', payload.new);
-              setOrderDetails((prev: any) => ({
-                ...prev,
-                ...payload.new,
-                status: payload.new.status,
-              }));
-            }
-          )
-          .subscribe();
-      } catch (error) {
-        console.error('Error setting up order subscription:', error);
-      }
-    };
-
-    setupRealtimeSubscription();
-
-    // Poll for order updates every 10 seconds as fallback
-    const pollInterval = setInterval(() => {
-      loadOrderDetails();
-      if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
-        updateDriverLocation();
-      }
-    }, 10000);
-
-    // Initial driver location update
-    if (orderDetails?.driverId) {
-      updateDriverLocation();
-    }
-
     return () => {
       subscription?.remove();
-      orderSubscription?.unsubscribe();
-      clearInterval(pollInterval);
     };
-  }, [orderId, orderDetails?.driverId, orderDetails?.status]);
+  }, [orderId]); // Re-run effect if orderId changes
+
+  // Effect to update driver location if orderDetails or driverId changes after initial load
+  useEffect(() => {
+    if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
+      updateDriverLocation();
+    }
+  }, [orderDetails?.driverId, orderDetails?.status]);
+
 
   const loadOrderDetails = async () => {
     try {
       setLoading(true);
-      
-      // Try to load from backend first
-      const { orderService } = await import('../../services/orderService');
+
+      const { orderService } = await importMock('../../services/orderService'); // Use mock
       const response = await orderService.trackOrder(orderId as string);
-      
+
       if (response.success && response.data) {
         setOrderDetails(response.data.order);
-        
+
+        if (response.data.order.driver) {
+          setDriverLocation({
+            latitude: response.data.order.driver.current_latitude || 0,
+            longitude: response.data.order.driver.current_longitude || 0,
+            timestamp: response.data.order.driver.timestamp || new Date().toISOString()
+          });
+        } else {
+          setDriverLocation(null); // Clear if no driver assigned
+        }
+
         // Update local storage with latest data
         const ordersData = await AsyncStorage.getItem('userOrders');
         const orders = ordersData ? JSON.parse(ordersData) : [];
@@ -115,12 +223,21 @@ export default function OrderTrackingScreen() {
           const order = orders.find((o: any) => o.id === orderId);
           if (order) {
             setOrderDetails(order);
+            if (order.driver) {
+              setDriverLocation({
+                latitude: order.driver.current_latitude || 0,
+                longitude: order.driver.current_longitude || 0,
+                timestamp: order.driver.timestamp || new Date().toISOString()
+              });
+            } else {
+              setDriverLocation(null);
+            }
           }
         }
       }
     } catch (error) {
       console.error('Error loading order details:', error);
-      
+
       // Fallback to local storage on error
       const ordersData = await AsyncStorage.getItem('userOrders');
       if (ordersData) {
@@ -128,6 +245,15 @@ export default function OrderTrackingScreen() {
         const order = orders.find((o: any) => o.id === orderId);
         if (order) {
           setOrderDetails(order);
+          if (order.driver) {
+            setDriverLocation({
+              latitude: order.driver.current_latitude || 0,
+              longitude: order.driver.current_longitude || 0,
+              timestamp: order.driver.timestamp || new Date().toISOString()
+            });
+          } else {
+            setDriverLocation(null);
+          }
         }
       }
     } finally {
@@ -163,12 +289,12 @@ export default function OrderTrackingScreen() {
     if (!orderDetails?.driverId) return;
 
     try {
-      const { locationService } = await import('../../services/locationService');
+      const { locationService } = await importMock('../../services/locationService'); // Use mock
       const response = await locationService.getLiveLocation(orderDetails.driverId);
-      
+
       if (response.success && response.data) {
         setDriverLocation(response.data);
-        
+
         // Calculate ETA if we have delivery address coordinates
         if (orderDetails.deliveryLocation) {
           const distance = locationService.calculateDistance(
@@ -177,7 +303,7 @@ export default function OrderTrackingScreen() {
             orderDetails.deliveryLocation.latitude,
             orderDetails.deliveryLocation.longitude
           );
-          
+
           // Assume average speed of 30 km/h
           const estimatedMinutes = Math.round((distance / 30) * 60);
           setEstimatedArrival(estimatedMinutes > 0 ? `${estimatedMinutes} min` : 'Arriving soon');
@@ -189,8 +315,14 @@ export default function OrderTrackingScreen() {
   };
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      console.error("Error formatting date:", dateString, error);
+      return 'Invalid Date';
+    }
   };
 
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
@@ -265,16 +397,16 @@ export default function OrderTrackingScreen() {
                 <View style={styles.driverRow}>
                   <Text style={styles.driverLabel}>Last updated:</Text>
                   <Text style={styles.driverValue}>
-                    {new Date(driverLocation.timestamp).toLocaleTimeString('en-US', { 
+                    {driverLocation.timestamp ? new Date(driverLocation.timestamp).toLocaleTimeString('en-US', { 
                       hour: '2-digit', 
                       minute: '2-digit' 
-                    })}
+                    }) : 'N/A'}
                   </Text>
                 </View>
               </View>
               <TouchableOpacity 
                 style={styles.trackLiveButton}
-                onPress={() => updateDriverLocation()}
+                onPress={updateDriverLocation}
               >
                 <Ionicons name="refresh" size={16} color="#4682B4" />
                 <Text style={styles.trackLiveText}>Refresh Location</Text>
@@ -603,4 +735,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

@@ -105,51 +105,61 @@ export default function CheckoutScreen() {
       const userLocation = await AsyncStorage.getItem("userLocation");
       const coordinates = userLocation ? JSON.parse(userLocation) : null;
       
-      // Create orders for each cart item
-      const createdOrders = [];
-      
-      for (const item of cartItems) {
-        const itemTotal = item.price * item.quantity;
-        
-        const orderData = {
-          merchantId: item.merchantId || '',
-          commodityId: item.commodityId || item.id,
-          quantity: item.quantity,
-          deliveryAddress: selectedAddress.address,
-          deliveryType: 'yourself' as const,
-          paymentMethod: paymentMethod === 'card' ? 'card' : 
-                        paymentMethod === 'bank' ? 'bank_transfer' : 'cash',
-          notes: deliveryNotes,
-          coordinates: coordinates ? {
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude
-          } : undefined
-        };
+      // Prepare order items for backend
+      const orderItems = cartItems.map(item => ({
+        productId: item.commodityId || item.id,
+        quantity: item.quantity
+      }));
 
-        // Call backend to create order and assign driver
-        const response = await orderService.createOrder(orderData);
-        
-        if (response.success && response.data) {
-          // Backend will automatically find nearest driver
-          createdOrders.push(response.data);
-          
-          // Save to local storage for offline access
-          const existingOrders = await AsyncStorage.getItem('userOrders');
-          const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
-          allOrders.push({
-            ...response.data,
-            commodityName: item.commodityName,
-            merchantName: item.merchantName,
-            unitPrice: item.price,
-            subtotal: itemTotal,
-            deliveryFee,
-            serviceFee,
-            totalAmount: itemTotal + deliveryFee + serviceFee,
-            itemType: item.category || 'product',
-          });
-          await AsyncStorage.setItem('userOrders', JSON.stringify(allOrders));
-        }
+      // Get address ID (you may need to store this when selecting address)
+      const addressId = await AsyncStorage.getItem('selectedAddressId') || '1';
+      
+      // Create order via backend
+      const orderPayload = {
+        items: orderItems,
+        deliveryAddressId: addressId,
+        paymentMethodId: paymentMethod,
+        notes: deliveryNotes
+      };
+
+      const { authService } = await import('../../services/authService');
+      const token = await authService.getToken();
+      
+      if (!token) {
+        throw new Error('Authentication required');
       }
+
+      const { apiClient } = await import('../../services/api');
+      const response = await apiClient.post('/functions/v1/create-order', orderPayload, {
+        Authorization: `Bearer ${token}`
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to create order');
+      }
+
+      const createdOrder = response.data.data;
+      
+      // Save to local storage for offline access
+      const existingOrders = await AsyncStorage.getItem('userOrders');
+      const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
+      allOrders.push({
+        id: createdOrder.id,
+        orderNumber: createdOrder.order_number || `ORD-${createdOrder.id}`,
+        status: createdOrder.status,
+        totalAmount: createdOrder.total_amount,
+        deliveryFee: createdOrder.delivery_fee,
+        createdAt: createdOrder.created_at,
+        items: cartItems.map(item => ({
+          commodityName: item.commodityName,
+          merchantName: item.merchantName,
+          quantity: item.quantity,
+          unitPrice: item.price
+        }))
+      });
+      await AsyncStorage.setItem('userOrders', JSON.stringify(allOrders));
+      
+      const createdOrders = [createdOrder];
 
       // Save last order ID for quick access
       if (createdOrders.length > 0) {

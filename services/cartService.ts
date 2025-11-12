@@ -80,44 +80,77 @@ class CartService {
     }
   }
 
-  // Get cart items - use local storage with optional backend sync
+  // Get cart items - use backend with local storage fallback
   async getCartItems(): Promise<ApiResponse<CartItem[]>> {
     try {
-      // Always read from local storage first for immediate response
-      const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
-      const localItems: CartItem[] = localCart ? JSON.parse(localCart) : [];
-
-      // Try to get fresh token and sync with backend in background
       const token = await this.getFreshToken();
+      
       if (token) {
-        // Non-blocking backend sync
-        apiClient.get<CartItem[]>('/api/cart', { 
+        // Try backend first
+        const response = await apiClient.get<any>('/functions/v1/cart-get', { 
           Authorization: `Bearer ${token}` 
-        }).then(async (response) => {
-          if (response.success && response.data) {
-            // Merge backend items with local items (backend takes priority)
-            await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(response.data));
-          }
-        }).catch(err => {
-          console.log('Backend cart fetch failed, using local cart:', err);
         });
+
+        if (response.success && response.data?.data) {
+          // Transform backend data to CartItem format
+          const cartItems: CartItem[] = response.data.data.map((item: any) => ({
+            id: item.id,
+            commodityId: item.product_id,
+            commodityName: item.products?.name || 'Unknown',
+            merchantId: item.products?.merchant?.id || '',
+            merchantName: item.products?.merchant?.business_name || 'Unknown',
+            price: item.products?.price || 0,
+            quantity: item.quantity,
+            unit: 'unit',
+            category: 'product',
+            image: item.products?.image_url
+          }));
+
+          // Update local storage
+          await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(cartItems));
+          return { success: true, data: cartItems };
+        }
       }
 
+      // Fallback to local storage
+      const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
+      const localItems: CartItem[] = localCart ? JSON.parse(localCart) : [];
       return { success: true, data: localItems };
     } catch (error) {
       console.error('Error getting cart items:', error);
-      return { success: false, error: 'Failed to get cart items' };
+      
+      // Fallback to local storage on error
+      const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
+      const localItems: CartItem[] = localCart ? JSON.parse(localCart) : [];
+      return { success: true, data: localItems };
     }
   }
 
-  // Add item to cart - local storage with backend sync
+  // Add item to cart - backend with local storage fallback
   async addToCart(item: CartItem): Promise<ApiResponse<{ message: string }>> {
     try {
-      // Update local storage immediately
+      const token = await this.getFreshToken();
+      
+      // Try backend first
+      if (token) {
+        const response = await apiClient.post('/functions/v1/cart-add', {
+          productId: item.commodityId,
+          quantity: item.quantity
+        }, { 
+          Authorization: `Bearer ${token}` 
+        });
+
+        if (response.success) {
+          // Update local storage to match backend
+          await this.getCartItems();
+          return { success: true, data: { message: 'Item added to cart' } };
+        }
+      }
+
+      // Fallback to local storage
       const localCart = await AsyncStorage.getItem(this.CART_STORAGE_KEY);
       const items: CartItem[] = localCart ? JSON.parse(localCart) : [];
       
-      // Check if item already exists
       const existingIndex = items.findIndex(i => i.commodityId === item.commodityId);
       if (existingIndex >= 0) {
         items[existingIndex].quantity += item.quantity;
@@ -126,18 +159,7 @@ class CartService {
       }
       
       await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(items));
-
-      // Try to sync with backend using fresh token
-      const token = await this.getFreshToken();
-      if (token) {
-        apiClient.post('/api/cart', item, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
-          console.log('Backend sync failed (item saved locally):', err);
-        });
-      }
-
-      return { success: true, data: { message: 'Item added to cart' } };
+      return { success: true, data: { message: 'Item added to cart (offline)' } };
     } catch (error) {
       console.error('Error adding to cart:', error);
       return { success: false, error: 'Failed to add to cart' };

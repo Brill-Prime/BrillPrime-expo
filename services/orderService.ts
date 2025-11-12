@@ -55,23 +55,32 @@ class OrderService {
     return { isValid: true };
   }
 
-  // Create order (updated to match backend structure)
+  // Create order (handled by checkout flow now)
   async createOrder(orderData: {
-    items: Array<{
-      productId: number;
-      quantity: number;
-      price: number;
-    }>;
-    deliveryAddressId: number;
-    paymentMethodId: number;
+    merchantId: string;
+    commodityId: string;
+    quantity: number;
+    deliveryAddress: string;
+    deliveryType: 'yourself' | 'merchant';
+    paymentMethod: 'card' | 'bank_transfer' | 'cash';
     notes?: string;
+    coordinates?: { latitude: number; longitude: number };
   }): Promise<ApiResponse<Order>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Order>('/api/orders', orderData, {
+    // Use Supabase edge function
+    return apiClient.post<Order>('/functions/v1/create-order', {
+      items: [{
+        productId: orderData.commodityId,
+        quantity: orderData.quantity
+      }],
+      deliveryAddressId: '1', // You'll need to handle address selection
+      paymentMethodId: orderData.paymentMethod,
+      notes: orderData.notes
+    }, {
       Authorization: `Bearer ${token}`,
     });
   }
