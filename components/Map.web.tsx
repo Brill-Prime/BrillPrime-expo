@@ -142,12 +142,11 @@ const MapWeb: React.FC<MapProps> = ({
     if (typeof window !== 'undefined') {
       Promise.all([
         import('react-leaflet'),
-        import('leaflet'),
-        import('leaflet/dist/leaflet.css')
+        import('leaflet')
       ])
         .then(([reactLeaflet, L]) => {
           // Check for Google Maps API key
-          const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY; // Assuming API key is in environment variables
+          const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
           setHasGoogleMapsKey(!!googleMapsApiKey);
 
           if (!googleMapsApiKey) {
@@ -178,6 +177,8 @@ const MapWeb: React.FC<MapProps> = ({
           setMapError(true);
           setIsLoading(false);
         });
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
