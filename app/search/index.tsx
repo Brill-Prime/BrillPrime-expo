@@ -8,6 +8,8 @@ import {
   ScrollView,
   FlatList,
   Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +39,9 @@ export default function SearchScreen() {
   const [selectedFilters, setSelectedFilters] = useState<Filter[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
   const categories = [
     'All',
@@ -127,7 +132,22 @@ export default function SearchScreen() {
           price: 1200,
         },
       ];
-      setSearchResults(mockResults);
+      // Apply filters to mock results for demonstration
+      const filteredResults = mockResults.filter(result => {
+        let matches = true;
+        if (minPrice && result.price !== undefined && result.price < parseFloat(minPrice)) {
+          matches = false;
+        }
+        if (maxPrice && result.price !== undefined && result.price > parseFloat(maxPrice)) {
+          matches = false;
+        }
+        if (selectedRating !== null && result.rating !== undefined && result.rating < selectedRating) {
+          matches = false;
+        }
+        // Add category filter logic here if needed
+        return matches;
+      });
+      setSearchResults(filteredResults);
       setIsSearching(false);
     }, 500);
   };
@@ -158,6 +178,21 @@ export default function SearchScreen() {
       default:
         return 'search';
     }
+  };
+
+  const handleApplyFilters = () => {
+    // In a real app, this would trigger the performSearch with filters
+    console.log('Applying filters:', { minPrice, maxPrice, selectedRating });
+    performSearch(); // Re-run search with current filters
+    setShowFilters(false);
+  };
+
+  const handleClearFilters = () => {
+    setMinPrice('');
+    setMaxPrice('');
+    setSelectedRating(null);
+    // In a real app, this would reset filters and re-run search
+    performSearch(); // Re-run search with cleared filters
   };
 
   return (
@@ -302,6 +337,122 @@ export default function SearchScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Filter Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showFilters}
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowFilters(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.filterModal}>
+                <View style={styles.filterHeader}>
+                  <Text style={styles.filterTitle}>Filters</Text>
+                  <TouchableOpacity onPress={() => setShowFilters(false)}>
+                    <Ionicons name="close" size={24} color="#333" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.filterContent}>
+                  {/* Price Filter */}
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterSectionTitle}>Price Range</Text>
+                    <View style={styles.priceInputs}>
+                      <View style={styles.priceInputContainer}>
+                        <Text style={styles.priceLabel}>Min</Text>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="0"
+                          keyboardType="numeric"
+                          value={minPrice}
+                          onChangeText={setMinPrice}
+                        />
+                      </View>
+                      <Text style={styles.priceSeparator}>-</Text>
+                      <View style={styles.priceInputContainer}>
+                        <Text style={styles.priceLabel}>Max</Text>
+                        <TextInput
+                          style={styles.priceInput}
+                          placeholder="Unlimited"
+                          keyboardType="numeric"
+                          value={maxPrice}
+                          onChangeText={setMaxPrice}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Rating Filter */}
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterSectionTitle}>Minimum Rating</Text>
+                    <View style={styles.ratingFilters}>
+                      {[5, 4, 3, 2, 1].map((rating) => (
+                        <TouchableOpacity
+                          key={rating}
+                          style={[
+                            styles.ratingFilterChip,
+                            selectedRating === rating && styles.ratingFilterChipActive,
+                          ]}
+                          onPress={() => setSelectedRating(rating)}
+                        >
+                          <Ionicons
+                            name="star"
+                            size={14}
+                            color={selectedRating === rating ? '#fff' : '#4682B4'}
+                          />
+                          <Text
+                            style={[
+                              styles.ratingFilterText,
+                              selectedRating === rating && styles.ratingFilterTextActive,
+                            ]}
+                          >
+                            {rating}+
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Category Filter (example, can be expanded) */}
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterSectionTitle}>Categories</Text>
+                    <View style={styles.categoryFilters}>
+                      {categories.slice(1).map((category) => ( // Skip 'All' category
+                        <TouchableOpacity
+                          key={category}
+                          style={styles.categoryFilterChip}
+                          onPress={() => {
+                            // Logic to select/deselect category filter
+                            console.log(`Selected category: ${category}`);
+                          }}
+                        >
+                          <Text style={styles.categoryFilterText}>{category}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </ScrollView>
+                <View style={styles.filterActions}>
+                  <TouchableOpacity
+                    style={styles.clearFiltersButton}
+                    onPress={handleClearFilters}
+                  >
+                    <Text style={styles.clearFiltersText}>Clear All</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.applyFiltersButton}
+                    onPress={handleApplyFilters}
+                  >
+                    <Text style={styles.applyFiltersText}>Apply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -483,7 +634,139 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#bbb',
+    color: '#999',
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  filterTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  filterContent: {
+    padding: 20,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  priceInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  priceInputContainer: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  priceInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  priceSeparator: {
+    fontSize: 18,
+    color: '#666',
+  },
+  ratingFilters: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ratingFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    gap: 4,
+  },
+  ratingFilterChipActive: {
+    backgroundColor: '#4682B4',
+  },
+  ratingFilterText: {
+    fontSize: 14,
+    color: '#4682B4',
+  },
+  ratingFilterTextActive: {
+    color: '#fff',
+  },
+  categoryFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryFilterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  categoryFilterText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  filterActions: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  clearFiltersButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    alignItems: 'center',
+  },
+  clearFiltersText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4682B4',
+  },
+  applyFiltersButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#4682B4',
+    alignItems: 'center',
+  },
+  applyFiltersText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

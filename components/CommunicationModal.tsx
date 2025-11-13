@@ -89,8 +89,8 @@ export default function CommunicationModal({
 
       if (callResponse.success) {
         Alert.alert(
-          'In-App Call',
-          `Starting in-app call with ${contactName}...`,
+          'Voice Call',
+          `Starting voice call with ${contactName}...`,
           [
             { text: 'End Call', style: 'destructive', onPress: () => {
               if (callResponse.data) {
@@ -107,7 +107,7 @@ export default function CommunicationModal({
       onClose();
     } catch (error) {
       console.error('Error initiating in-app call:', error);
-      Alert.alert('Error', 'Failed to start in-app call. Please try again.');
+      Alert.alert('Error', 'Failed to start voice call. Please try again.');
     }
   };
 
@@ -176,15 +176,15 @@ export default function CommunicationModal({
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
 
-            {/* In-App Call */}
+            {/* In-App Voice Call */}
             <TouchableOpacity style={styles.optionButton} onPress={handleInAppCall}>
               <View style={[styles.optionIcon, { backgroundColor: '#28a745' }]}>
-                <Ionicons name="videocam" size={24} color="#fff" />
+                <Ionicons name="call" size={24} color="#fff" />
               </View>
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>In-App Call</Text>
+                <Text style={styles.optionTitle}>In-App Voice Call</Text>
                 <Text style={styles.optionSubtitle}>
-                  Voice/video call through the app
+                  Voice call through the app
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#666" />
@@ -194,12 +194,12 @@ export default function CommunicationModal({
             {contactPhone && (
               <TouchableOpacity style={styles.optionButton} onPress={handlePhoneCall}>
                 <View style={[styles.optionIcon, { backgroundColor: '#007bff' }]}>
-                  <Ionicons name="call" size={24} color="#fff" />
+                  <Ionicons name="call-outline" size={24} color="#fff" />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Phone Call</Text>
+                  <Text style={styles.optionTitle}>Direct Phone Call</Text>
                   <Text style={styles.optionSubtitle}>
-                    Call using your phone dialer
+                    {contactPhone}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#666" />
