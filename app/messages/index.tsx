@@ -10,24 +10,16 @@ import {
   Alert,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-interface Conversation {
-  id: string;
-  participantName: string;
-  participantRole: 'merchant' | 'driver' | 'support';
-  lastMessage: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  avatar?: string;
-  status: 'online' | 'offline' | 'away';
-}
+import { communicationService, Conversation } from '../../services/communicationService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function MessagesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -48,38 +40,19 @@ export default function MessagesScreen() {
     try {
       setLoading(true);
       
-      // Mock data - replace with actual API call
-      const mockConversations: Conversation[] = [
-        {
-          id: '1',
-          participantName: 'Shell Station',
-          participantRole: 'merchant',
-          lastMessage: 'Your fuel order is ready for pickup',
-          lastMessageTime: '2 min ago',
-          unreadCount: 2,
-          status: 'online'
-        },
-        {
-          id: '2',
-          participantName: 'John Driver',
-          participantRole: 'driver',
-          lastMessage: 'On my way to deliver your order',
-          lastMessageTime: '10 min ago',
-          unreadCount: 1,
-          status: 'online'
-        },
-        {
-          id: '3',
-          participantName: 'Support Team',
-          participantRole: 'support',
-          lastMessage: 'How can we help you today?',
-          lastMessageTime: '1 hour ago',
-          unreadCount: 0,
-          status: 'online'
-        }
-      ];
+      if (!user) {
+        Alert.alert('Error', 'Please sign in to view messages');
+        return;
+      }
 
-      setConversations(mockConversations);
+      const response = await communicationService.getConversations();
+      
+      if (response.success && Array.isArray(response.data)) {
+        setConversations(response.data);
+      } else {
+        console.warn('Failed to load conversations:', response.error);
+        setConversations([]);
+      }
     } catch (error) {
       console.error('Error loading conversations:', error);
       Alert.alert('Error', 'Failed to load conversations');
@@ -94,23 +67,20 @@ export default function MessagesScreen() {
     setRefreshing(false);
   };
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.participantName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter(conv => {
+    const otherParticipant = conv.participants.find(p => p.userId !== user?.id);
+    return otherParticipant?.name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handleConversationPress = (conversationId: string) => {
     router.push(`/chat/${conversationId}`);
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'online': return { name: 'radio-button-on', color: '#4CAF50' };
-      case 'away': return { name: 'radio-button-on', color: '#FF9800' };
-      default: return { name: 'radio-button-off', color: '#9E9E9E' };
-    }
+  const getOtherParticipant = (conversation: Conversation) => {
+    return conversation.participants.find(p => p.userId !== user?.id);
   };
 
-  const getRoleIcon = (role: string) => {
+  const getRoleIcon = (role?: string) => {
     switch (role) {
       case 'merchant': return 'storefront-outline';
       case 'driver': return 'car-outline';
@@ -119,8 +89,28 @@ export default function MessagesScreen() {
     }
   };
 
+  const getAvatarColor = (role?: string) => {
+    switch (role) {
+      case 'merchant': return '#4682B4';
+      case 'driver': return '#2196F3';
+      case 'support': return '#FF5722';
+      default: return '#9E9E9E';
+    }
+  };
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hour${Math.floor(diffInMinutes / 60) > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
   const renderConversation = ({ item }: { item: Conversation }) => {
-    const statusIcon = getStatusIcon(item.status);
+    const otherParticipant = getOtherParticipant(item);
     
     return (
       <TouchableOpacity
@@ -129,21 +119,26 @@ export default function MessagesScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: getAvatarColor(item.participantRole) }]}>
-            <Ionicons name={getRoleIcon(item.participantRole)} size={24} color="#fff" />
+          <View style={[styles.avatar, { backgroundColor: getAvatarColor(otherParticipant?.role) }]}>
+            <Ionicons name={getRoleIcon(otherParticipant?.role)} size={24} color="#fff" />
           </View>
-          <View style={[styles.statusIndicator, { backgroundColor: statusIcon.color }]} />
+          {otherParticipant?.online && (
+            <View style={styles.statusIndicator} />
+          )}
         </View>
 
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
             <Text style={styles.participantName} numberOfLines={1}>
-              {item.participantName}
+              {otherParticipant?.name || 'Unknown'}
             </Text>
-            <Text style={styles.timeText}>{item.lastMessageTime}</Text>
+            <Text style={styles.timeText}>
+              {item.lastMessage ? formatTime(item.lastMessage.timestamp) : ''}
+            </Text>
           </View>
+          <Text style={styles.orderNumber}>Order #{item.orderId}</Text>
           <Text style={styles.lastMessage} numberOfLines={2}>
-            {item.lastMessage}
+            {item.lastMessage?.message || 'No messages yet'}
           </Text>
         </View>
 
@@ -160,16 +155,16 @@ export default function MessagesScreen() {
     );
   };
 
-  const getAvatarColor = (role: string) => {
-    switch (role) {
-      case 'merchant': return '#4682B4';
-      case 'driver': return '#2196F3';
-      case 'support': return '#FF5722';
-      default: return '#9E9E9E';
-    }
-  };
-
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4682B4" />
+        <Text style={styles.loadingText}>Loading conversations...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -221,7 +216,7 @@ export default function MessagesScreen() {
             <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
             <Text style={styles.emptyTitle}>No conversations yet</Text>
             <Text style={styles.emptyDescription}>
-              Start chatting with merchants and drivers
+              Start chatting when you place orders with merchants
             </Text>
           </View>
         }
@@ -234,6 +229,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
   },
   header: {
     flexDirection: 'row',
@@ -309,6 +315,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
+    backgroundColor: '#4CAF50',
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -331,6 +338,12 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
     color: '#666',
+  },
+  orderNumber: {
+    fontSize: 12,
+    color: '#4682B4',
+    fontWeight: '500',
+    marginBottom: 2,
   },
   lastMessage: {
     fontSize: 14,
@@ -368,5 +381,6 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 8,
     textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });
