@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAlert } from '../../components/AlertProvider';
 import ErrorBoundary from '../../components/ErrorBoundary';
-import MapContainer, { Marker } from '../../components/Map';
+import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 
@@ -1073,11 +1073,12 @@ function ConsumerHomeContent() {
     <ErrorBoundary>
       <View style={styles.container}>
         {/* Map Container */}
-        <MapContainer
+        <Map
           ref={mapRef}
+          provider={PROVIDER_GOOGLE}
           style={styles.map}
           region={region}
-          onRegionChange={handleRegionChange}
+          onRegionChangeComplete={handleRegionChange}
           customMapStyle={blueMapStyle}
           showsUserLocation={isLiveTrackingEnabled}
           showsMyLocationButton={false}
@@ -1128,7 +1129,7 @@ function ConsumerHomeContent() {
               </View>
             </Marker>
           )}
-        </MapContainer>
+        </Map>
 
         {/* Header */}
         <View style={styles.header}>

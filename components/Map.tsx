@@ -1,31 +1,71 @@
-import React from 'react';
-import { Platform } from 'react-native';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { View, StyleSheet } from 'react-native';
+import MapView, { PROVIDER_GOOGLE, Marker as RNMarker, Region } from 'react-native-maps';
 
-let MapComponent: any;
-let ProviderGoogle: any;
-let MarkerComponent: any;
+export { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 
-if (Platform.OS === 'web') {
-  const WebMapModule = require('./Map.web');
-  MapComponent = WebMapModule.default || WebMapModule.MapWeb;
-  ProviderGoogle = WebMapModule.PROVIDER_GOOGLE || 'web';
-  MarkerComponent = WebMapModule.Marker;
-} else {
-  try {
-    const NativeMapModule = require('./Map.native');
-    MapComponent = NativeMapModule.default;
-    ProviderGoogle = NativeMapModule.PROVIDER_GOOGLE || 'google';
-    MarkerComponent = NativeMapModule.Marker;
-  } catch (error) {
-    console.warn('Native Map component failed to load, using web fallback:', error);
-    const WebMapModule = require('./Map.web');
-    MapComponent = WebMapModule.default || WebMapModule.MapWeb;
-    ProviderGoogle = 'web';
-    MarkerComponent = WebMapModule.Marker;
-  }
+interface MapProps {
+  provider?: typeof PROVIDER_GOOGLE;
+  style?: any;
+  region?: Region;
+  onRegionChange?: (region: Region) => void;
+  onRegionChangeComplete?: (region: Region) => void;
+  showsUserLocation?: boolean;
+  showsMyLocationButton?: boolean;
+  showsCompass?: boolean;
+  rotateEnabled?: boolean;
+  pitchEnabled?: boolean;
+  scrollEnabled?: boolean;
+  zoomEnabled?: boolean;
+  mapType?: 'standard' | 'satellite' | 'hybrid';
+  customMapStyle?: any[];
+  onMapReady?: () => void;
+  onError?: () => void;
+  children?: React.ReactNode;
 }
 
-export default MapComponent;
-export const PROVIDER_GOOGLE = ProviderGoogle;
-export const Marker = MarkerComponent;
-export const MapView = MapComponent;
+const Map = forwardRef<MapView, MapProps>((props, ref) => {
+  const mapRef = useRef<MapView>(null);
+
+  useImperativeHandle(ref, () => mapRef.current as MapView);
+
+  return (
+    <View style={[styles.container, props.style]}>
+      <MapView
+        ref={mapRef}
+        provider={props.provider || PROVIDER_GOOGLE}
+        style={styles.map}
+        region={props.region}
+        onRegionChange={props.onRegionChange}
+        onRegionChangeComplete={props.onRegionChangeComplete}
+        showsUserLocation={props.showsUserLocation}
+        showsMyLocationButton={props.showsMyLocationButton}
+        showsCompass={props.showsCompass}
+        rotateEnabled={props.rotateEnabled}
+        pitchEnabled={props.pitchEnabled}
+        scrollEnabled={props.scrollEnabled}
+        zoomEnabled={props.zoomEnabled}
+        mapType={props.mapType}
+        customMapStyle={props.customMapStyle}
+        onMapReady={props.onMapReady}
+        onError={props.onError}
+      >
+        {props.children}
+      </MapView>
+    </View>
+  );
+});
+
+Map.displayName = 'Map';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+});
+
+export default Map;

@@ -1,7 +1,7 @@
 import React, { useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Dimensions } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import Map, { PROVIDER_GOOGLE, Marker } from '../Map';
 import { Ionicons } from '@expo/vector-icons';
 import { MapErrorBoundary } from './MapErrorBoundary';
 
@@ -110,7 +110,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
   return (
     <MapErrorBoundary>
       <View style={styles.mapContainer}>
-        <MapView
+        <Map
           ref={mapRef}
           style={styles.map}
           provider={PROVIDER_GOOGLE}
@@ -169,7 +169,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
               ))}
             </>
           )}
-        </MapView>
+        </Map>
       </View>
     </MapErrorBoundary>
   );
