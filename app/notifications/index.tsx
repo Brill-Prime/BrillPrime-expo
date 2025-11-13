@@ -249,12 +249,26 @@ function NotificationsScreen() {
             </View>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.markAllButton}
-          onPress={markAllAsRead}
-        >
-          <Ionicons name="checkmark-done" size={24} color="white" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/notifications/history' as any)}
+          >
+            <Ionicons name="time-outline" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/notifications/preferences' as any)}
+          >
+            <Ionicons name="settings-outline" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={markAllAsRead}
+          >
+            <Ionicons name="checkmark-done" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -411,7 +425,11 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: 12,
       fontWeight: 'bold',
     },
-    markAllButton: {
+    headerActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    headerIconButton: {
       padding: Math.max(8, width * 0.02),
     },
     content: {

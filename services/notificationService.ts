@@ -24,6 +24,55 @@ export interface NotificationSettings {
   promotions: boolean;
   merchantUpdates?: boolean;
   systemNotifications?: boolean;
+  // Category-specific preferences
+  categories: {
+    order: {
+      push: boolean;
+      email: boolean;
+      inApp: boolean;
+    };
+    payment: {
+      push: boolean;
+      email: boolean;
+      inApp: boolean;
+    };
+    promo: {
+      push: boolean;
+      email: boolean;
+      inApp: boolean;
+    };
+    delivery: {
+      push: boolean;
+      email: boolean;
+      inApp: boolean;
+    };
+    system: {
+      push: boolean;
+      email: boolean;
+      inApp: boolean;
+    };
+    promotion: {
+      push: boolean;
+      email: boolean;
+      inApp: boolean;
+    };
+  };
+  // Scheduled notification preferences
+  quietHours: {
+    enabled: boolean;
+    startTime: string; // HH:mm format
+    endTime: string; // HH:mm format
+  };
+}
+
+export interface ScheduledNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  scheduledFor: string;
+  status: 'pending' | 'sent' | 'cancelled';
+  createdAt: string;
 }
 
 class NotificationService {
@@ -349,6 +398,176 @@ class NotificationService {
     } catch (error) {
       console.error('Error sending local notification:', error);
     }
+  }
+
+  /**
+   * Schedule a notification for future delivery
+   */
+  async scheduleNotification(
+    title: string,
+    message: string,
+    type: string,
+    scheduledFor: Date
+  ): Promise<ApiResponse<ScheduledNotification>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post('/api/notifications/schedule', {
+      title,
+      message,
+      type,
+      scheduledFor: scheduledFor.toISOString(),
+    }, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  /**
+   * Get scheduled notifications
+   */
+  async getScheduledNotifications(filters?: {
+    status?: 'pending' | 'sent' | 'cancelled';
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<ScheduledNotification[]>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    let endpoint = '/api/notifications/scheduled';
+    const queryParams = new URLSearchParams();
+
+    if (filters) {
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get<ScheduledNotification[]>(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  /**
+   * Cancel a scheduled notification
+   */
+  async cancelScheduledNotification(notificationId: string): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.delete(`/api/notifications/scheduled/${notificationId}`, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  /**
+   * Update notification preferences with category-specific settings
+   */
+  async updateCategoryPreferences(
+    category: keyof NotificationSettings['categories'],
+    preferences: { push: boolean; email: boolean; inApp: boolean }
+  ): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.put('/api/notifications/preferences/category', {
+      category,
+      preferences,
+    }, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  /**
+   * Set quiet hours for notifications
+   */
+  async setQuietHours(
+    enabled: boolean,
+    startTime: string,
+    endTime: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.put('/api/notifications/preferences/quiet-hours', {
+      enabled,
+      startTime,
+      endTime,
+    }, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  /**
+   * Get push notification history
+   */
+  async getPushHistory(filters?: {
+    fromDate?: string;
+    toDate?: string;
+    status?: 'delivered' | 'failed' | 'pending';
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<Notification[]>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    let endpoint = '/api/notifications/push-history';
+    const queryParams = new URLSearchParams();
+
+    if (filters) {
+      if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
+      if (filters.toDate) queryParams.append('toDate', filters.toDate);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.limit) queryParams.append('limit', filters.limit.toString());
+      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    }
+
+    if (queryParams.toString()) {
+      endpoint += `?${queryParams.toString()}`;
+    }
+
+    return apiClient.get<Notification[]>(endpoint, {
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  /**
+   * Send email notification
+   */
+  async sendEmailNotification(
+    to: string,
+    subject: string,
+    template: string,
+    data: Record<string, any>
+  ): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    return apiClient.post('/api/notifications/email', {
+      to,
+      subject,
+      template,
+      data,
+    }, {
+      Authorization: `Bearer ${token}`,
+    });
   }
 }
 
