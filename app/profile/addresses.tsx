@@ -29,6 +29,8 @@ export default function AddressesScreen() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [newAddress, setNewAddress] = useState({ label: '', address: '' });
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
   useEffect(() => {
     loadAddresses();
@@ -73,10 +75,57 @@ export default function AddressesScreen() {
     }
   };
 
-  const handleAddAddress = () => {
+  const handleAddressSuggestions = async (text: string) => {
+    setNewAddress(prev => ({ ...prev, address: text }));
+    
+    if (text.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      const { getAddressSuggestions } = await import('../../utils/addressValidation');
+      const suggestions = await getAddressSuggestions(text);
+      setAddressSuggestions(suggestions);
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = async (suggestion: any) => {
+    try {
+      const { getPlaceDetails } = await import('../../utils/addressValidation');
+      const placeDetails = await getPlaceDetails(suggestion.place_id);
+      
+      if (placeDetails.isValid && placeDetails.formattedAddress) {
+        setNewAddress(prev => ({ ...prev, address: placeDetails.formattedAddress! }));
+      }
+      setAddressSuggestions([]);
+    } catch (error) {
+      console.error('Error selecting suggestion:', error);
+    }
+  };
+
+  const handleAddAddress = async () => {
     if (!newAddress.label.trim() || !newAddress.address.trim()) {
       Alert.alert('Validation Error', 'Please fill in all fields');
       return;
+    }
+
+    // Validate address
+    try {
+      const { validateAddressWithGooglePlaces } = await import('../../utils/addressValidation');
+      const validation = await validateAddressWithGooglePlaces(newAddress.address);
+      
+      if (!validation.isValid) {
+        Alert.alert('Invalid Address', validation.error || 'Please enter a valid address');
+        return;
+      }
+    } catch (error) {
+      console.error('Address validation error:', error);
     }
 
     // Check for duplicate labels
@@ -282,14 +331,35 @@ export default function AddressesScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Address</Text>
               <TextInput
-                style={[styles.textInput, styles.textArea]}
+                style={styles.textInput}
                 value={newAddress.address}
-                onChangeText={(text) => setNewAddress(prev => ({ ...prev, address: text }))}
-                placeholder="Enter full address"
+                onChangeText={handleAddressSuggestions}
+                placeholder="Start typing your address..."
                 placeholderTextColor="#999"
-                multiline
-                numberOfLines={4}
               />
+              {isLoadingSuggestions && (
+                <Text style={styles.suggestionsLoading}>Loading suggestions...</Text>
+              )}
+              {addressSuggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <ScrollView style={styles.suggestionsList} nestedScrollEnabled>
+                    {addressSuggestions.map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => handleSelectSuggestion(suggestion)}
+                      >
+                        <Text style={styles.suggestionMain}>
+                          {suggestion.structured_formatting.main_text}
+                        </Text>
+                        <Text style={styles.suggestionSecondary}>
+                          {suggestion.structured_formatting.secondary_text}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -464,5 +534,36 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  suggestionsLoading: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    marginTop: 5,
+    maxHeight: 200,
+  },
+  suggestionsList: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionMain: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1b1b1b',
+    marginBottom: 2,
+  },
+  suggestionSecondary: {
+    fontSize: 12,
+    color: '#666',
   },
 });
