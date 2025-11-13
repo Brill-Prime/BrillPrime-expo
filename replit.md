@@ -45,3 +45,9 @@ The application uses a consistent design system with a primary color of `#4682B4
 - **Expo**: Development framework for React Native.
 - **`@tanstack/react-query`**: For state management and data fetching.
 - **`@react-native-community/netinfo`**: For network connectivity detection (offline mode).
+
+## Recent Changes (Migration Cleanup)
+- **Removed Neon Database Setup**: The project uses Supabase as the database backend, not Neon. Removed incorrect `server/db.ts` and `drizzle.config.ts` files.
+- **Cleaned up Dependencies**: Removed `@neondatabase/serverless`, `drizzle-kit`, and `drizzle-orm` packages.
+- **Workflow Configuration**: Configured Frontend workflow to run Expo web on port 5000.
+- **Project Structure**: Clarified that this is an Expo + Supabase + Firebase project without a separate Node.js backend server.
