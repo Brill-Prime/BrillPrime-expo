@@ -103,37 +103,61 @@ export default function ChatScreen() {
 
   const sendMessage = async () => {
     if (newMessage.trim() || attachments.length > 0) {
-      const message: ChatMessage = {
-        id: Date.now().toString(),
-        conversationId: conversationId!,
-        senderId: 'user1',
-        senderName: 'You',
-        senderRole: 'consumer',
-        message: newMessage.trim(),
-        messageType: 'text',
-        timestamp: new Date().toISOString(),
-        read: false,
-        attachments: attachments.length > 0 ? [...attachments] : undefined,
-      };
-
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
-      setAttachments([]);
-      setShowAttachmentUploader(false);
-
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-
-      // Send to backend
+      setSending(true);
+      
       try {
-        const response = await communicationService.sendMessage(conversationId as string, message.message);
+        // Determine message type based on attachments
+        let messageType: 'text' | 'image' | 'location' = 'text';
+        if (attachments.length > 0 && attachments[0].type === 'image') {
+          messageType = 'image';
+        }
+
+        // Create optimistic message for UI
+        const optimisticMessage: ChatMessage = {
+          id: Date.now().toString(),
+          conversationId: conversationId!,
+          senderId: 'user1',
+          senderName: 'You',
+          senderRole: 'consumer',
+          message: newMessage.trim(),
+          messageType,
+          timestamp: new Date().toISOString(),
+          read: false,
+          attachments: attachments.length > 0 ? [...attachments] : undefined,
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
+        const messageText = newMessage.trim();
+        const messageAttachments = [...attachments];
+        
+        setNewMessage('');
+        setAttachments([]);
+        setShowAttachmentUploader(false);
+
+        // Scroll to bottom
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+
+        // Send to backend with attachments
+        const response = await communicationService.sendMessage(
+          conversationId as string,
+          messageText || '📎 Attachment',
+          messageType,
+          messageAttachments
+        );
+        
         if (!response.success) {
           console.warn('Failed to send message to backend:', response.error);
+          Alert.alert('Error', 'Failed to send message. Please try again.');
+          // Remove optimistic message on failure
+          setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         }
       } catch (error) {
-        console.error('Error sending message to backend:', error);
+        console.error('Error sending message:', error);
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      } finally {
+        setSending(false);
       }
     }
   };

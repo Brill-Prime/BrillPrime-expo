@@ -128,6 +128,7 @@ class CommunicationService {
           messageType: messageData.message_type || 'text',
           timestamp: messageData.created_at,
           read: messageData.read || false,
+          attachments: messageData.attachments ? JSON.parse(messageData.attachments) : undefined,
         };
 
         // Notify all message callbacks
@@ -370,6 +371,7 @@ class CommunicationService {
           message_type,
           read,
           created_at,
+          attachments,
           users!messages_sender_id_fkey (
             full_name,
             role
@@ -394,6 +396,7 @@ class CommunicationService {
         messageType: msg.message_type || 'text',
         timestamp: msg.created_at,
         read: msg.read || false,
+        attachments: msg.attachments ? JSON.parse(msg.attachments) : undefined,
       }));
 
       return { success: true, data: formattedMessages };
@@ -406,11 +409,12 @@ class CommunicationService {
     }
   }
 
-  // Send a message
+  // Send a message with optional attachments
   async sendMessage(
     conversationId: string,
     message: string,
-    messageType: 'text' | 'image' | 'location' = 'text'
+    messageType: 'text' | 'image' | 'location' = 'text',
+    attachments?: Array<{ id: string; uri: string; name?: string; type?: 'image' | 'document' }>
   ): Promise<ApiResponse<ChatMessage>> {
     try {
       const user = await authService.getCurrentUser();
@@ -429,7 +433,65 @@ class CommunicationService {
         return { success: false, error: 'User not found' };
       }
 
-      // Insert message
+      // Upload attachments to storage if present
+      let uploadedAttachments: Array<{ id: string; uri: string; name?: string; type?: 'image' | 'document' }> = [];
+      
+      if (attachments && attachments.length > 0) {
+        for (const attachment of attachments) {
+          try {
+            // For web/base64 URIs, we need to upload to Supabase storage
+            if (attachment.uri.startsWith('data:') || attachment.uri.startsWith('http')) {
+              const fileName = `${conversationId}/${Date.now()}_${attachment.name || 'attachment'}`;
+              const fileExt = attachment.name?.split('.').pop() || 'jpg';
+              const filePath = `chat-attachments/${fileName}.${fileExt}`;
+
+              // Convert base64 to blob if needed
+              let fileData: Blob;
+              if (attachment.uri.startsWith('data:')) {
+                const base64Data = attachment.uri.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                fileData = new Blob([byteArray], { type: `image/${fileExt}` });
+              } else {
+                // Fetch the file from URL
+                const response = await fetch(attachment.uri);
+                fileData = await response.blob();
+              }
+
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('attachments')
+                .upload(filePath, fileData);
+
+              if (uploadError) {
+                console.error('Error uploading attachment:', uploadError);
+                continue;
+              }
+
+              const { data: publicUrlData } = supabase.storage
+                .from('attachments')
+                .getPublicUrl(filePath);
+
+              uploadedAttachments.push({
+                id: attachment.id,
+                uri: publicUrlData.publicUrl,
+                name: attachment.name,
+                type: attachment.type,
+              });
+            } else {
+              // Keep original URI for already uploaded files
+              uploadedAttachments.push(attachment);
+            }
+          } catch (uploadError) {
+            console.error('Error processing attachment:', uploadError);
+          }
+        }
+      }
+
+      // Insert message with attachments metadata
       const { data: newMessage, error } = await supabase
         .from('messages')
         .insert({
@@ -438,6 +500,7 @@ class CommunicationService {
           message,
           message_type: messageType,
           read: false,
+          attachments: uploadedAttachments.length > 0 ? JSON.stringify(uploadedAttachments) : null,
         })
         .select()
         .single();
@@ -448,10 +511,14 @@ class CommunicationService {
       }
 
       // Update conversation last_message
+      const displayMessage = uploadedAttachments.length > 0 
+        ? `📎 ${message || 'Sent an attachment'}` 
+        : message;
+        
       await supabase
         .from('conversations')
         .update({
-          last_message: message,
+          last_message: displayMessage,
           last_message_at: new Date().toISOString(),
         })
         .eq('id', conversationId);
@@ -466,6 +533,7 @@ class CommunicationService {
         messageType: newMessage.message_type || 'text',
         timestamp: newMessage.created_at,
         read: false,
+        attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       };
 
       return { success: true, data: chatMessage };
