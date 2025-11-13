@@ -1,50 +1,38 @@
 
 #!/bin/bash
 
-# Seed Database Script
+# Seed Database Script for Brill Prime
 # This script populates the Supabase database with comprehensive test data
 
-set -e
+set -e  # Exit on error
 
 echo "🌱 Starting database seeding..."
 
-# Check if Supabase CLI is installed
-if ! command -v supabase &> /dev/null; then
-    echo "❌ Supabase CLI is not installed"
-    echo "Installing Supabase CLI..."
-    npm install -g supabase
-fi
-
-# Check if SUPABASE_URL and SUPABASE_SERVICE_KEY are set
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
-    echo "❌ Missing required environment variables"
-    echo "Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in your .env file"
+# Check if SUPABASE_URL and SUPABASE_ANON_KEY are set
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+    echo "❌ Error: SUPABASE_URL and SUPABASE_ANON_KEY must be set"
+    echo "Please add them to your Replit Secrets"
     exit 1
 fi
 
-echo "📝 Loading environment variables..."
-source .env 2>/dev/null || true
+echo "✅ Environment variables found"
 
-echo "🔗 Connecting to Supabase..."
+# Run the seed SQL file
+echo "📊 Seeding database with comprehensive test data..."
 
-# Extract project ref from URL
-PROJECT_REF=$(echo $SUPABASE_URL | sed -n 's/.*\/\/\([^.]*\).*/\1/p')
+psql "$SUPABASE_URL" <<EOF
+$(cat supabase/seed-comprehensive-data.sql)
+EOF
 
-echo "📊 Executing seed script..."
-
-# Execute the seed file using psql connection string
-PGPASSWORD=$SUPABASE_DB_PASSWORD psql \
-  "postgresql://postgres:$SUPABASE_DB_PASSWORD@db.$PROJECT_REF.supabase.co:5432/postgres" \
-  -f supabase/seed-comprehensive-data.sql
-
-echo "✅ Database seeding completed successfully!"
+echo "✅ Database seeded successfully!"
 echo ""
-echo "📈 Summary:"
-echo "  • 3 test consumers created"
-echo "  • 10 merchants with locations across Nigeria"
-echo "  • 5 active drivers"
-echo "  • 30+ commodities across various categories"
-echo "  • 7 sample orders (pending, in-progress, delivered)"
-echo "  • Reviews, transactions, and notifications"
+echo "📋 Test Data Summary:"
+echo "  - 10 Consumers"
+echo "  - 5 Merchants (with real Abuja locations)"
+echo "  - 5 Drivers"
+echo "  - 50+ Commodities (fuel, groceries, food)"
+echo "  - 5 Sample Orders (various statuses)"
+echo "  - 5 Driver Locations (for real-time tracking)"
+echo "  - 4 Cart Items"
 echo ""
-echo "🎯 You can now test the app with realistic data!"
+echo "🎉 You can now test the app with real data!"
