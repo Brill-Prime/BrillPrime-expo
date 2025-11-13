@@ -1,9 +1,9 @@
 {
-  "name": "my-app",
+  "name": "brill-prime",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --web --port 5000",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web --port 5000",
@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@neondatabase/serverless": "^1.0.2",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^7.3.10",
@@ -34,8 +33,6 @@
     "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "drizzle-kit": "^0.31.6",
-    "drizzle-orm": "^0.44.7",
     "eslint-config-expo": "^10.0.0",
     "expo": "~53.0.23",
     "expo-blur": "~14.1.5",
