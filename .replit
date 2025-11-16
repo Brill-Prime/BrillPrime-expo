@@ -14,7 +14,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
 
 [workflows]
-runButton = "Project"
+runButton = "Mobile Dev (LAN)"
 
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
