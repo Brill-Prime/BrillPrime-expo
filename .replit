@@ -14,7 +14,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
 
 [workflows]
-runButton = "Mobile Dev (LAN)"
+runButton = "Start Application"
 
 [[workflows.workflow]]
 name = "Mobile Dev (LAN)"
@@ -61,6 +61,15 @@ outputType = "webview"
 task = "shell.exec"
 args = "npm run start"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Start Application"
+author = 49734567
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start"
 
 [[ports]]
 localPort = 3001
