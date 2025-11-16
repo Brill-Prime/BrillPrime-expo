@@ -1,7 +1,7 @@
 import React, { useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Dimensions } from 'react-native';
-import Map, { PROVIDER_GOOGLE, Marker } from '../Map';
+import Map, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import { Ionicons } from '@expo/vector-icons';
 import { MapErrorBoundary } from './MapErrorBoundary';
 
