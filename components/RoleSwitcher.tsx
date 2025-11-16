@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { roleManagementService } from '../services/roleManagementService';
 import { theme } from '../config/theme';
 
@@ -95,18 +96,20 @@ export default function RoleSwitcher({ visible, onClose, onRoleSwitch }: RoleSwi
         );
       } else if (response.requiresRedirect) {
         Alert.alert(
-          'Registration Required',
-          response.error || 'You need to register for this role first',
+          'Authentication Required',
+          `To become a ${role}, you need to sign up for this role first.`,
           [
             {
               text: 'Cancel',
               style: 'cancel',
             },
             {
-              text: 'Register Now',
-              onPress: () => {
+              text: 'Sign Up Now',
+              onPress: async () => {
                 onClose();
-                router.push(`/role-registration/${role}` as any);
+                await AsyncStorage.setItem('selectedRole', role);
+                await AsyncStorage.setItem('pendingRoleSwitch', role);
+                router.push('/auth/role-selection');
               },
             },
           ]
@@ -212,26 +215,30 @@ export default function RoleSwitcher({ visible, onClose, onRoleSwitch }: RoleSwi
                     {!availableRoles.some((r) => r.role === 'merchant') && (
                       <TouchableOpacity
                         style={styles.registerButton}
-                        onPress={() => {
+                        onPress={async () => {
                           onClose();
-                          router.push('/role-registration/merchant' as any);
+                          await AsyncStorage.setItem('selectedRole', 'merchant');
+                          await AsyncStorage.setItem('pendingRoleSwitch', 'merchant');
+                          router.push('/auth/role-selection');
                         }}
                       >
                         <Text style={styles.registerButtonText}>
-                          🏪 Register as Merchant
+                          🏪 Sign Up as Merchant
                         </Text>
                       </TouchableOpacity>
                     )}
                     {!availableRoles.some((r) => r.role === 'driver') && (
                       <TouchableOpacity
                         style={styles.registerButton}
-                        onPress={() => {
+                        onPress={async () => {
                           onClose();
-                          router.push('/role-registration/driver' as any);
+                          await AsyncStorage.setItem('selectedRole', 'driver');
+                          await AsyncStorage.setItem('pendingRoleSwitch', 'driver');
+                          router.push('/auth/role-selection');
                         }}
                       >
                         <Text style={styles.registerButtonText}>
-                          🚗 Register as Driver
+                          🚗 Sign Up as Driver
                         </Text>
                       </TouchableOpacity>
                     )}

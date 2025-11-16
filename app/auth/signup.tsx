@@ -43,9 +43,15 @@ export default function SignUp() {
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
+        await AsyncStorage.removeItem('pendingRoleSwitch');
+
         // Route based on user role
         if (result.data.user.role === "consumer") {
           router.replace("/home/consumer");
+        } else if (result.data.user.role === "merchant") {
+          router.replace("/home/merchant");
+        } else if (result.data.user.role === "driver") {
+          router.replace("/home/driver");
         } else {
           router.replace(`/dashboard/${result.data.user.role}`);
         }
@@ -220,9 +226,15 @@ export default function SignUp() {
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
+        await AsyncStorage.removeItem('pendingRoleSwitch');
+
         // Route based on user role from API
         if (response.data.user.role === "consumer") {
           router.replace("/home/consumer");
+        } else if (response.data.user.role === "merchant") {
+          router.replace("/home/merchant");
+        } else if (response.data.user.role === "driver") {
+          router.replace("/home/driver");
         } else {
           router.replace(`/dashboard/${response.data.user.role}`);
         }

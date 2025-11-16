@@ -26,16 +26,29 @@ export default function RoleSelection() {
     return () => subscription?.remove();
   }, []);
 
+  useEffect(() => {
+    checkPendingRoleSwitch();
+  }, []);
+
+  const checkPendingRoleSwitch = async () => {
+    try {
+      const pendingRole = await AsyncStorage.getItem('pendingRoleSwitch');
+      if (pendingRole) {
+        setSelectedRole(pendingRole as UserRole);
+        await handleSelect(pendingRole as UserRole);
+      }
+    } catch (error) {
+      console.error('Error checking pending role switch:', error);
+    }
+  };
+
   const proceedToAuth = async (role: UserRole) => {
     try {
-      // Check if user has account (stored email indicates previous registration)
       const storedEmail = await AsyncStorage.getItem("userEmail");
       
       if (storedEmail) {
-        // User has registered before → Sign in
         router.push("/auth/signin");
       } else {
-        // New user → Sign up
         router.push("/auth/signup");
       }
     } catch (error) {
@@ -48,10 +61,7 @@ export default function RoleSelection() {
     setSelectedRole(role);
     try {
       await AsyncStorage.setItem("selectedRole", role);
-      
-      // Always proceed to auth flow after selecting role
       await proceedToAuth(role);
-      
     } catch (error) {
       console.error("Error saving role:", error);
       Alert.alert("Error", "Failed to save role selection. Please try again.");
