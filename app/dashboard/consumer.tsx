@@ -131,6 +131,9 @@ export default function ConsumerDashboard() {
       case 'orders':
         router.push('/orders/consumer-orders');
         break;
+      case 'messages':
+        router.push('/messages');
+        break;
       case 'favorites':
         router.push('/favorites');
         break;
@@ -151,7 +154,7 @@ export default function ConsumerDashboard() {
   const features = [
     { id: 'browse', title: "Browse Products", description: "Discover amazing products", icon: "bag-handle", route: "/commodity/commodities" },
     { id: 'orders', title: "My Orders", description: "Track your orders", icon: "cube", route: "/orders/consumer-orders" },
-    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: "chatbubbles", route: "/messages" },
+    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: "chatbubbles", route: "/messages/index" },
     { id: 'favorites', title: "Favorites", description: "Your saved items", icon: "heart", route: "/favorites" },
     { id: 'support', title: "Support", description: "Get help anytime", icon: "headset", route: "/support" }
   ];
