@@ -451,19 +451,7 @@ const MapWeb: React.FC<MapProps> = ({
         </View>
       )}
 
-      {!hasGoogleMapsKey ? (
-        // Simple placeholder - no OpenStreetMap
-        <View style={{
-          width: '100%',
-          height: '100%',
-          backgroundColor: '#f0f8ff',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          {children}
-        </View>
-      ) : (
-        <MapContainer
+      <MapContainer
           center={center}
           zoom={zoom}
           style={{ width: '100%', height: '100%' }}
@@ -596,7 +584,6 @@ const MapWeb: React.FC<MapProps> = ({
 
           {children}
         </MapContainer>
-      )}
 
 
       {/* Selected marker info */}
