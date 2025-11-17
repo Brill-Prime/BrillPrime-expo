@@ -101,10 +101,35 @@ class LocationService {
   }
 
   private async getWebLocation(): Promise<Location | null> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error('Location request timed out after 30 seconds'));
-      }, 30000);
+        console.warn('Primary location request timed out, trying fallback...');
+        // Fallback with lower accuracy requirements
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('📍 Fallback location obtained:', {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: `±${position.coords.accuracy?.toFixed(0)}m`,
+            });
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              timestamp: position.timestamp,
+            });
+          },
+          (error) => {
+            console.error('Fallback location also failed:', error.message);
+            resolve(null);
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 60000, // Accept cached location up to 1 minute old
+          }
+        );
+      }, 15000);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -124,29 +149,28 @@ class LocationService {
           });
         },
         (error) => {
-          clearTimeout(timeoutId);
+          // Don't clear timeout - let fallback attempt run
           let errorMessage = 'Unknown location error';
           switch (error.code) {
             case error.PERMISSION_DENIED:
+              clearTimeout(timeoutId);
               errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+              console.error('Web geolocation error:', errorMessage);
+              resolve(null);
               break;
             case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location unavailable. Please ensure location services are enabled and you have a GPS signal.';
+              errorMessage = 'Location unavailable. Waiting for fallback...';
+              console.warn(errorMessage);
               break;
             case error.TIMEOUT:
-              errorMessage = 'Location request timed out. Please try again.';
+              errorMessage = 'Primary location request timed out. Waiting for fallback...';
+              console.warn(errorMessage);
               break;
           }
-          console.error('Web geolocation error:', { 
-            code: error.code, 
-            message: error.message,
-            detailedMessage: errorMessage 
-          });
-          resolve(null);
         },
         {
           enableHighAccuracy: true,
-          timeout: 25000,
+          timeout: 15000,
           maximumAge: 0,
         }
       );

@@ -54,20 +54,25 @@ interface MapContainerProps {
 const blueMapStyle = [
   {
     "elementType": "geometry",
-    "stylers": [{ "color": "#e8f4ff" }]
+    "stylers": [{ "color": "#f5f5f5" }]
   },
   {
     "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#333333" }]
+    "stylers": [{ "color": "#1a1a1a" }]
   },
   {
     "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#ffffff" }]
+    "stylers": [{ "color": "#ffffff" }, { "weight": 3 }]
   },
   {
     "featureType": "water",
     "elementType": "geometry",
-    "stylers": [{ "color": "#b3d9ff" }]
+    "stylers": [{ "color": "#64b5f6" }]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#1565c0" }]
   },
   {
     "featureType": "road",
@@ -75,19 +80,59 @@ const blueMapStyle = [
     "stylers": [{ "color": "#ffffff" }]
   },
   {
+    "featureType": "road",
+    "elementType": "geometry.stroke",
+    "stylers": [{ "color": "#bdbdbd" }, { "weight": 0.8 }]
+  },
+  {
     "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#cce5ff" }]
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#ffecb3" }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [{ "color": "#ffa726" }, { "weight": 1.5 }]
   },
   {
     "featureType": "poi",
     "elementType": "geometry",
-    "stylers": [{ "color": "#d6ebff" }]
+    "stylers": [{ "color": "#e8f5e9" }]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.icon",
+    "stylers": [{ "visibility": "on" }]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#a8e6a1" }]
+  },
+  {
+    "featureType": "poi.medical",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#ffebee" }]
+  },
+  {
+    "featureType": "poi.business",
+    "elementType": "labels.icon",
+    "stylers": [{ "visibility": "on" }]
   },
   {
     "featureType": "landscape",
     "elementType": "geometry",
-    "stylers": [{ "color": "#f0f8ff" }]
+    "stylers": [{ "color": "#fafafa" }]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#e3f2fd" }]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry.stroke",
+    "stylers": [{ "color": "#9e9e9e" }, { "weight": 0.5 }]
   }
 ];
 
