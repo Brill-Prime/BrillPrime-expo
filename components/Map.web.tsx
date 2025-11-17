@@ -71,7 +71,7 @@ const MapWeb: React.FC<MapProps> = ({
     longitudeDelta: 0.0421,
   };
 
-  // Initialize Google Maps
+  // Initialize Google Maps with caching
   useEffect(() => {
     const initGoogleMaps = async () => {
       if (typeof window === 'undefined') {
@@ -83,33 +83,42 @@ const MapWeb: React.FC<MapProps> = ({
       
       if (!apiKey) {
         console.error('❌ Google Maps API key not found in environment variables');
-        console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('MAP')));
         setHasGoogleMapsKey(false);
         setMapError(true);
         setIsLoading(false);
         return;
       }
       
-      console.log('✅ Google Maps API key found, loading script...');
-
       setHasGoogleMapsKey(true);
 
-      // Check if Google Maps is already loaded
+      // Check if Google Maps is already loaded (cached)
       if (window.google && window.google.maps) {
+        console.log('✅ Google Maps already loaded (cached)');
         initMap();
         return;
       }
 
-      // Load Google Maps script
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        console.log('⏳ Google Maps script already loading...');
+        existingScript.addEventListener('load', () => initMap());
+        return;
+      }
+
+      console.log('📥 Loading Google Maps API...');
+
+      // Load Google Maps script with optimizations
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&loading=async`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
+        console.log('✅ Google Maps loaded successfully');
         initMap();
       };
       script.onerror = () => {
-        console.error('Failed to load Google Maps');
+        console.error('❌ Failed to load Google Maps');
         setMapError(true);
         setIsLoading(false);
         if (onError) onError();
@@ -120,16 +129,11 @@ const MapWeb: React.FC<MapProps> = ({
     initGoogleMaps();
   }, []);
 
-  // Get user's current location if showsUserLocation is true
+  // Get user's current location if showsUserLocation is true (optimized)
   useEffect(() => {
     if (showsUserLocation && typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('📍 Map user location:', {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          });
           setUserLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -140,9 +144,9 @@ const MapWeb: React.FC<MapProps> = ({
           setUserLocation(null);
         },
         {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
+          enableHighAccuracy: false, // Use lower accuracy for faster response
+          timeout: 10000,
+          maximumAge: 30000 // Cache location for 30 seconds
         }
       );
     }

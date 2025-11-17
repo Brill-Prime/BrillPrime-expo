@@ -32,7 +32,13 @@ export default {
   web: {
     bundler: "metro",
     favicon: "./assets/images/logo.png",
-    output: "single"
+    // Performance optimization: preconnect to Google Maps
+    meta: {
+      preconnect: [
+        { href: 'https://maps.googleapis.com', crossorigin: true },
+        { href: 'https://maps.gstatic.com', crossorigin: true }
+      ]
+    }
   },
   plugins: [
     "expo-router",

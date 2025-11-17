@@ -170,8 +170,8 @@ class LocationService {
         },
         {
           enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0,
+          timeout: 10000,
+          maximumAge: 5000, // Cache location for 5 seconds to reduce load
         }
       );
     });
