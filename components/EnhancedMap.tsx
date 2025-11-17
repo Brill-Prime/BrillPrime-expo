@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import Map, { Marker, PROVIDER_GOOGLE } from './Map';
 import { Ionicons } from '@expo/vector-icons';
 import { placesService, Place, PlaceCategory } from '../services/placesService';
 import { routeService, Route } from '../services/routeService';
-import { Platform } from 'react-native';
 
 interface EnhancedMapProps {
   style?: any;
