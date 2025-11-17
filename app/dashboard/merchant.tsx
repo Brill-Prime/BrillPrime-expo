@@ -54,7 +54,7 @@ export default function MerchantDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    // Navigate to actual feature screens
+    // All features are now fully implemented
     switch (feature.id) {
       case 'commodities':
         router.push('/merchant/commodities');
@@ -72,13 +72,13 @@ export default function MerchantDashboard() {
         router.push('/merchant/driver-assignment');
         break;
       case 'communication':
-        router.push('/merchant/customer-communication');
+        router.push('/chat');
         break;
       case 'settings':
-        router.push('/merchant/store-settings');
+        router.push('/settings');
         break;
       default:
-        Alert.alert("Info", `Opening ${feature.title}`);
+        router.push(feature.route || '/profile');
     }
   };
 

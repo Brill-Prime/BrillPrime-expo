@@ -131,63 +131,47 @@ export default function AdminControlCenter() {
             'Send Announcement',
             'Enter your announcement message:',
             async (text) => {
-              if (text) {
+              if (text && text.trim()) {
                 try {
-                  const token = await AsyncStorage.getItem('adminToken');
-                  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/announcements`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                      title: 'Platform Announcement',
-                      message: text,
-                      targetAudience: 'all',
-                      priority: 'medium'
-                    })
+                  const result = await adminService.sendSystemAnnouncement({
+                    title: 'Platform Announcement',
+                    message: text.trim(),
+                    targetAudience: 'all',
+                    priority: 'medium'
                   });
 
-                  if (response.ok) {
-                    Alert.alert('Success', 'Announcement sent successfully');
+                  if (result.success) {
+                    Alert.alert('Success', 'Announcement sent successfully to all users');
                   } else {
-                    throw new Error('Failed to send announcement');
+                    Alert.alert('Error', result.error || 'Failed to send announcement');
                   }
                 } catch (error) {
                   console.error('Send announcement error:', error);
                   Alert.alert('Error', 'Failed to send announcement');
                 }
               }
-            }
+            },
+            'plain-text'
           );
           break;
         case 'maintenance':
           Alert.alert(
             'Maintenance Mode',
-            'Enable maintenance mode?',
+            'Enable maintenance mode? This will temporarily disable transactions.',
             [
               { text: 'Cancel', style: 'cancel' },
               {
                 text: 'Enable',
+                style: 'destructive',
                 onPress: async () => {
                   try {
-                    const token = await AsyncStorage.getItem('adminToken');
-                    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.brillprime.com'}/api/admin/maintenance`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      },
-                      body: JSON.stringify({
-                        enabled: true,
-                        message: 'System under maintenance'
-                      })
-                    });
-
-                    if (response.ok) {
-                      Alert.alert('Success', 'Maintenance mode enabled');
+                    const result = await adminService.toggleSystemMaintenance(true, 'System under maintenance. We will be back shortly.');
+                    
+                    if (result.success) {
+                      Alert.alert('Success', 'Maintenance mode enabled. Users will see a maintenance message.');
+                      await loadSystemMetrics();
                     } else {
-                      throw new Error('Failed to enable maintenance mode');
+                      Alert.alert('Error', result.error || 'Failed to enable maintenance mode');
                     }
                   } catch (error) {
                     console.error('Maintenance mode error:', error);

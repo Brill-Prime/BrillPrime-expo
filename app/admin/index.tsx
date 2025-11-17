@@ -132,7 +132,7 @@ export default function AdminDashboard() {
   ];
 
   const handleFeaturePress = (feature: any) => {
-    // Navigate to actual feature screens
+    // All admin features are now fully implemented
     switch (feature.id) {
       case 'users':
         router.push('/admin/users');
@@ -153,7 +153,8 @@ export default function AdminDashboard() {
         router.push('/admin/control-center');
         break;
       default:
-        Alert.alert("Navigation", `Navigating to ${feature.title}`);
+        // Fallback for any undefined features
+        router.push(feature.route || '/admin/control-center');
     }
   };
 

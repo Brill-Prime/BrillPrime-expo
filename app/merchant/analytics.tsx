@@ -25,7 +25,7 @@ function MerchantAnalytics() {
   const [customerInsights, setCustomerInsights] = useState<CustomerInsight | null>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesData[]>([]);
 
-  const merchantId = user?.uid || '';
+  const merchantId = user?.id || user?.uid || '';
 
   const getDateRange = () => {
     const end = new Date();

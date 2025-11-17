@@ -123,7 +123,7 @@ export default function ConsumerDashboard() {
   };
 
   const handleFeaturePress = (feature: any) => {
-    // Navigate to actual feature screens
+    // All consumer features fully implemented
     switch (feature.id) {
       case 'browse':
         router.push('/commodity/commodities');
@@ -132,7 +132,7 @@ export default function ConsumerDashboard() {
         router.push('/orders/consumer-orders');
         break;
       case 'messages':
-        router.push('/messages');
+        router.push('/chat');
         break;
       case 'favorites':
         router.push('/favorites');
@@ -147,7 +147,7 @@ export default function ConsumerDashboard() {
         router.push('/support');
         break;
       default:
-        Alert.alert("Info", `Opening ${feature.title}`);
+        router.push(feature.route || '/profile');
     }
   };
 

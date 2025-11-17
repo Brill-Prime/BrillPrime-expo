@@ -50,6 +50,7 @@ export const KycReviewModal: React.FC<KycReviewModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [imageLoading, setImageLoading] = useState(true);
 
   React.useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -57,6 +58,14 @@ export const KycReviewModal: React.FC<KycReviewModalProps> = ({
     });
     return () => subscription?.remove();
   }, []);
+
+  React.useEffect(() => {
+    if (!visible) {
+      setRejectionReason('');
+      setShowRejectInput(false);
+      setImageLoading(true);
+    }
+  }, [visible]);
 
   const handleApprove = async () => {
     if (!document) return;
@@ -73,6 +82,7 @@ export const KycReviewModal: React.FC<KycReviewModalProps> = ({
             setLoading(true);
             try {
               await onApprove(document.id);
+              Alert.alert('Success', 'Document approved successfully');
               onClose();
             } catch (error) {
               Alert.alert('Error', 'Failed to approve document');
@@ -96,6 +106,7 @@ export const KycReviewModal: React.FC<KycReviewModalProps> = ({
     setLoading(true);
     try {
       await onReject(document.id, rejectionReason);
+      Alert.alert('Success', 'Document rejected');
       setRejectionReason('');
       setShowRejectInput(false);
       onClose();

@@ -143,42 +143,21 @@ export default function OrderDetails() {
 
   const handleShareReceipt = async () => {
     try {
-      const { default: Share } = await import('react-native').then(m => ({ default: m.Share }));
-
       if (!order) return;
 
-      const receiptText = `
-Receipt - Order #${order.id}
-
-Items:
-${order.items?.map(item => `- ${item.name} x${item.quantity}: ₦${item.price * item.quantity}`).join('\n')}
-
-Subtotal: ₦${order.subtotal || 0}
-Delivery Fee: ₦${order.deliveryFee || 0}
-Total: ₦${order.total}
-
-Status: ${order.status}
-Date: ${new Date(order.createdAt).toLocaleDateString()}
-
-Thank you for shopping with Brill Prime!
-      `.trim();
-
-      await Share.share({
-        message: receiptText,
-        title: `Order Receipt #${order.id}`,
-      });
+      setShowReceiptModal(true);
     } catch (error) {
-      console.error('Error sharing receipt:', error);
-      Alert.alert('Error', 'Failed to share receipt');
+      console.error('Error opening receipt modal:', error);
+      Alert.alert('Error', 'Failed to open receipt sharing options');
     }
   };
 
   const handleModifyOrder = () => {
     if (!order) return;
 
-    // Only allow modification for pending orders
+    // Only allow modification for pending and confirmed orders
     if (order.status !== 'pending' && order.status !== 'confirmed') {
-      Alert.alert(
+      showWarning(
         'Cannot Modify',
         'Orders can only be modified while they are pending or confirmed.'
       );
@@ -190,17 +169,41 @@ Thank you for shopping with Brill Prime!
       'What would you like to modify?',
       [
         {
-          text: 'Change Address',
+          text: 'Change Delivery Address',
           onPress: () => router.push(`/orders/change-address?orderId=${order.id}`),
+        },
+        {
+          text: 'Add Delivery Notes',
+          onPress: () => {
+            Alert.prompt(
+              'Delivery Notes',
+              'Add special instructions for the driver:',
+              async (text) => {
+                if (text && text.trim()) {
+                  try {
+                    const result = await orderService.updateOrder(order.id, {
+                      orderNotes: text.trim()
+                    });
+                    if (result.success) {
+                      showSuccess('Success', 'Delivery notes updated');
+                      loadOrderDetails();
+                    } else {
+                      showError('Error', result.error || 'Failed to update notes');
+                    }
+                  } catch (error) {
+                    showError('Error', 'Failed to update delivery notes');
+                  }
+                }
+              },
+              'plain-text',
+              order.orderNotes || ''
+            );
+          },
         },
         {
           text: 'Cancel Order',
           style: 'destructive',
-          onPress: () => router.push(`/orders/cancel-order?orderId=${order.id}`),
-        },
-        {
-          text: 'Report Issue',
-          onPress: () => router.push(`/orders/report-issue?orderId=${order.id}`),
+          onPress: () => handleCancelOrder(),
         },
         {
           text: 'Close',

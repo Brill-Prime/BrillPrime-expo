@@ -14,9 +14,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { commodityService, Commodity } from '../../services/commodityService';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function MerchantCommodities() {
   const router = useRouter();
+  const { user } = useAuth();
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

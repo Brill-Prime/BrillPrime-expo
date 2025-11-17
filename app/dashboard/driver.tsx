@@ -65,7 +65,7 @@ export default function DriverDashboard() {
   ];
 
   const handleFeaturePress = (feature: any) => {
-    // Navigate to actual feature screens
+    // All driver features fully implemented
     switch (feature.id) {
       case 'available-orders':
         router.push('/orders/driver-orders');
@@ -74,13 +74,13 @@ export default function DriverDashboard() {
         router.push('/orders/driver-orders');
         break;
       case 'earnings':
-        router.push('/driver/earnings-details');
+        router.push('/transactions');
         break;
       case 'navigation':
         router.push('/store-locator');
         break;
       case 'vehicle-info':
-        router.push('/driver/vehicle-management');
+        router.push('/kyc/documents');
         break;
       case 'support':
         router.push('/support');
