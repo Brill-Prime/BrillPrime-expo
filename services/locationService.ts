@@ -96,12 +96,17 @@ class LocationService {
   private async getWebLocation(): Promise<Location | null> {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error('Location request timed out after 15 seconds'));
-      }, 15000);
+        reject(new Error('Location request timed out after 20 seconds'));
+      }, 20000);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           clearTimeout(timeoutId);
+          console.log('📍 Location obtained:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
           resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -131,9 +136,9 @@ class LocationService {
           resolve(null); // Resolve with null instead of rejecting to prevent crashes
         },
         {
-          enableHighAccuracy: false, // Use false for faster initial response
-          timeout: 12000,
-          maximumAge: 60000, // Accept cached location up to 1 minute old
+          enableHighAccuracy: true, // Enable high accuracy for precise location
+          timeout: 15000,
+          maximumAge: 0, // Don't use cached location, get fresh coordinates
         }
       );
     });
@@ -148,7 +153,13 @@ class LocationService {
 
     try {
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High, // Use high accuracy for precise location
+      });
+
+      console.log('📍 Native location obtained:', {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy
       });
 
       return {

@@ -104,8 +104,9 @@ const MapContainer: React.FC<MapContainerProps> = ({
   const mapRef = useRef<any>(null);
 
   const handleMapReady = useCallback(() => {
+    console.log('📍 Map ready with region:', region);
     onMapReady?.();
-  }, [onMapReady]);
+  }, [onMapReady, region]);
 
   return (
     <MapErrorBoundary>

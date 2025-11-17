@@ -956,8 +956,12 @@ function ConsumerHomeContent() {
         throw new Error("Unable to access location. Please check browser permissions.");
       }
 
-      const { latitude, longitude } = location;
-      console.log("Location obtained:", { latitude, longitude });
+      const { latitude, longitude, accuracy } = location;
+      console.log("📍 Precise location obtained:", { 
+        latitude, 
+        longitude, 
+        accuracy: accuracy ? `${accuracy.toFixed(2)}m` : 'unknown'
+      });
 
       const newRegion = {
         latitude,

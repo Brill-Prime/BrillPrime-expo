@@ -112,6 +112,11 @@ const MapWeb: React.FC<MapProps> = ({
     if (showsUserLocation && typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('📍 Map user location:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
           setUserLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -119,15 +124,17 @@ const MapWeb: React.FC<MapProps> = ({
         },
         (error) => {
           console.error('Error getting user location:', error);
-          // Use region/initialRegion as fallback
-          setUserLocation({
-            latitude: displayRegion.latitude,
-            longitude: displayRegion.longitude,
-          });
+          // Don't use fallback - let the map show without user marker if location unavailable
+          setUserLocation(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
         }
       );
     }
-  }, [showsUserLocation, displayRegion.latitude, displayRegion.longitude]);
+  }, [showsUserLocation]);
 
   // Convert latitudeDelta to zoom level
   const getZoomLevel = (latitudeDelta: number): number => {
