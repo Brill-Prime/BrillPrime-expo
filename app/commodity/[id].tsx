@@ -49,31 +49,59 @@ export default function CommodityDetailScreen() {
     if (!id) return;
 
     try {
-      const response = await merchantService.getCommodity(id as string);
-      if (response.success && response.data) {
-        // Response shape: { commodity, merchants, reviews }
-        const { commodity: commodityData, merchants } = response.data as any;
-        const merged = { ...commodityData, merchants };
-        setCommodity(merged);
-
-        // pick cheapest available merchant
-        const availableMerchants = (merchants || []).filter((m: any) => m.isOpen);
-        if (availableMerchants.length > 0) {
-          const cheapest = availableMerchants.sort((a: any, b: any) =>
-            parseInt(String(a.price).replace(/[^\d]/g, '')) - parseInt(String(b.price).replace(/[^\d]/g, ''))
-          )[0];
-          setSelectedMerchant(cheapest);
-        } else if ((merchants || []).length > 0) {
-          setSelectedMerchant(merchants[0]);
+      console.log('Loading commodity details for ID:', id);
+      
+      // Use commodityService to get commodity by ID
+      const { commodityService } = require('../../services/commodityService');
+      const response = await commodityService.getCommodityById(id as string);
+      
+      if (response.success && response.commodity) {
+        const commodityData = response.commodity;
+        
+        // Transform the commodity data to match expected format
+        const transformedCommodity = {
+          id: commodityData.id,
+          name: commodityData.name,
+          description: commodityData.description || 'No description available',
+          category: commodityData.category || 'General',
+          unit: commodityData.unit || 'piece',
+          price: commodityData.price,
+          image: commodityData.image_url || require('../../assets/images/generated-icon.png'),
+          availability: commodityData.is_available ? 'In Stock' : 'Out of Stock',
+          specifications: [
+            { label: 'Category', value: commodityData.category || 'General' },
+            { label: 'Unit', value: commodityData.unit || 'piece' },
+            { label: 'Stock', value: `${commodityData.stock_quantity || 0} available` },
+          ],
+          reviews: [],
+          merchants: commodityData.merchant ? [{
+            id: commodityData.merchant.id,
+            name: commodityData.merchant.business_name,
+            address: commodityData.merchant.address || 'Location not specified',
+            distance: '2.5 km',
+            rating: 4.5,
+            deliveryTime: '30-45 min',
+            price: `₦${commodityData.price.toLocaleString()}`,
+            originalPrice: `₦${commodityData.price.toLocaleString()}`,
+            isOpen: true,
+          }] : [],
+        };
+        
+        setCommodity(transformedCommodity);
+        
+        // Set the merchant if available
+        if (transformedCommodity.merchants.length > 0) {
+          setSelectedMerchant(transformedCommodity.merchants[0]);
         }
+        
+        console.log('Commodity loaded successfully:', transformedCommodity);
       } else {
-        // API failed - keep UI graceful
-        console.warn('Failed to load commodity from API, falling back to local placeholder');
-        setCommodity(null);
+        console.warn('Failed to load commodity from API');
+        Alert.alert('Error', 'Failed to load commodity details');
       }
     } catch (error) {
       console.error('Error loading commodity details:', error);
-      setCommodity(null);
+      Alert.alert('Error', 'Failed to load commodity details. Please try again.');
     }
   };
 
@@ -100,10 +128,10 @@ export default function CommodityDetailScreen() {
       commodityName: commodity.name,
       merchantId: selectedMerchant.id,
       merchantName: selectedMerchant.name,
-      price: parseFloat(selectedMerchant.price.replace('₦', '').replace(',', '')),
+      price: typeof commodity.price === 'number' ? commodity.price : parseFloat(String(commodity.price).replace(/[^\d.]/g, '')),
       quantity: quantity,
       unit: commodity.unit,
-      image: commodity.image,
+      image: typeof commodity.image === 'string' ? commodity.image : require('../../assets/images/generated-icon.png'),
       category: commodity.category,
     };
 
@@ -295,7 +323,12 @@ export default function CommodityDetailScreen() {
 
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Image source={commodity.image} style={styles.productImage} resizeMode="contain" />
+          <Image 
+            source={typeof commodity.image === 'string' ? { uri: commodity.image } : commodity.image} 
+            style={styles.productImage} 
+            resizeMode="contain"
+            defaultSource={require('../../assets/images/generated-icon.png')}
+          />
           <View style={styles.availabilityBadge}>
             <Text style={styles.availabilityText}>{commodity.availability}</Text>
           </View>

@@ -280,7 +280,15 @@ class CommodityService {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          merchant:merchants(
+            id,
+            business_name,
+            user_id,
+            address
+          )
+        `)
         .eq('id', commodityId)
         .single();
 
