@@ -65,10 +65,19 @@ const RealTimeMapComponent = React.memo(({
             longitude: currentLocation.longitude,
           }}
           title="Your Location"
-          description="Current driver position"
+          description={driverMovement.isMoving ? `Moving at ${(driverMovement.speed || 0).toFixed(1)} m/s` : "Stationary"}
         >
-          <View style={styles.driverLocationMarker}>
-            <Ionicons name="car-sport" size={24} color="#4682B4" />
+          <View style={[
+            styles.driverLocationMarker,
+            driverMovement.heading !== undefined && {
+              transform: [{ rotate: `${driverMovement.heading}deg` }]
+            }
+          ]}>
+            <Ionicons 
+              name={driverMovement.isMoving ? "navigate" : "car-sport"} 
+              size={24} 
+              color={driverMovement.isMoving ? "#00C853" : "#4682B4"} 
+            />
           </View>
         </Marker>
       )}
@@ -131,6 +140,7 @@ export default function DriverHome() {
   const [energyLevel, setEnergyLevel] = useState(75);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<any>(null);
+  const [driverMovement, setDriverMovement] = useState<{ heading?: number; isMoving?: boolean; speed?: number }>({});
   const [region, setRegion] = useState({
     latitude: 6.5244,
     longitude: 3.3792,
@@ -289,6 +299,13 @@ export default function DriverHome() {
           latitude: newLocation.latitude,
           longitude: newLocation.longitude,
         }));
+        
+        // Update movement data
+        setDriverMovement({
+          heading: newLocation.heading,
+          isMoving: newLocation.isMoving,
+          speed: newLocation.speed
+        });
       });
 
       return unsubscribe;

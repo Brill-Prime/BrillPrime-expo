@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS driver_locations (
   latitude DECIMAL(10, 8) NOT NULL,
   longitude DECIMAL(11, 8) NOT NULL,
   accuracy DECIMAL(10, 2),
+  heading DECIMAL(5, 2), -- Direction of movement (0-360 degrees)
+  speed DECIMAL(10, 2), -- Speed in m/s
+  is_moving BOOLEAN DEFAULT false,
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

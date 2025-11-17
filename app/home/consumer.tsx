@@ -218,6 +218,8 @@ function ConsumerHomeContent() {
   const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
   const [locationRetryCount, setLocationRetryCount] = useState(0);
   const MAX_LOCATION_RETRIES = 3;
+  const [userLocation, setUserLocation] = useState<any>(null);
+  const [userMovement, setUserMovement] = useState<{ heading?: number; isMoving?: boolean }>({});
 
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
@@ -554,6 +556,7 @@ function ConsumerHomeContent() {
       await locationService.startLiveTracking(5000); // Update every 5 seconds
       setIsLiveTrackingEnabled(true);
 
+      // Subscribe to location updates
       const unsubscribe = locationService.onLocationUpdate((location) => {
         if (isMountedRef.current) {
           // Update user's current region
@@ -564,8 +567,16 @@ function ConsumerHomeContent() {
             ...deltas,
           });
 
-          // Load nearby merchants based on the new location
-          loadNearbyMerchants(location.latitude, location.longitude);
+          // Update movement data
+          setUserMovement({
+            heading: location.heading,
+            isMoving: location.isMoving
+          });
+
+          // Load nearby merchants based on the new location if moving
+          if (location.isMoving) {
+            loadNearbyMerchants(location.latitude, location.longitude);
+          }
         }
       });
 
@@ -970,6 +981,7 @@ function ConsumerHomeContent() {
         longitudeDelta: 0.0421,
       };
       setRegion(newRegion);
+      setUserLocation(location); // Store the full location object
 
       // Try to get address
       try {
@@ -1123,8 +1135,8 @@ function ConsumerHomeContent() {
 
           {/* User Location Marker - 3D Pin Style */}
           {isLocationSet && (
-            <Marker coordinate={region}>
-              <View style={styles.userLocationPin}>
+            <Marker coordinate={region} rotation={userMovement.heading || 0}>
+              <View style={[styles.userLocationPin, userMovement.isMoving && { transform: [{ rotate: `${userMovement.heading || 0}deg` }] }]}>
                 <View style={styles.pinTop}>
                   <Ionicons name="person" size={16} color={theme.colors.white} />
                 </View>

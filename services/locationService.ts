@@ -22,11 +22,18 @@ interface LocationData {
   longitude: number;
   address?: string;
   timestamp: number;
-  accuracy?: number; // Added for Supabase broadcast
+  accuracy?: number;
+  heading?: number; // Direction of movement in degrees (0-360)
+  speed?: number; // Speed in m/s
+  isMoving?: boolean; // Whether user is currently moving
 }
 
 class LocationService {
   private currentLocation: LocationData | null = null;
+  private previousLocation: LocationData | null = null;
+  private movementHistory: LocationData[] = [];
+  private readonly MOVEMENT_THRESHOLD = 0.5; // meters - minimum distance to consider as movement
+  private readonly HISTORY_SIZE = 5; // Keep last 5 locations for smoothing
 
   // Request location permissions
   async requestLocationPermission(): Promise<boolean> {
@@ -105,7 +112,9 @@ class LocationService {
           console.log('📍 Location obtained:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            accuracy: position.coords.accuracy,
+            heading: position.coords.heading,
+            speed: position.coords.speed
           });
           resolve({
             latitude: position.coords.latitude,
@@ -261,6 +270,61 @@ class LocationService {
     return deg * (Math.PI/180);
   }
 
+  // Calculate bearing/heading between two points
+  private calculateBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const dLon = this.deg2rad(lon2 - lon1);
+    const y = Math.sin(dLon) * Math.cos(this.deg2rad(lat2));
+    const x = Math.cos(this.deg2rad(lat1)) * Math.sin(this.deg2rad(lat2)) -
+              Math.sin(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * Math.cos(dLon);
+    const bearing = Math.atan2(y, x);
+    // Convert from radians to degrees and normalize to 0-360
+    return (bearing * 180 / Math.PI + 360) % 360;
+  }
+
+  // Detect if user is moving based on location history
+  private detectMovement(newLocation: LocationData): { isMoving: boolean; heading?: number; speed?: number } {
+    if (!this.previousLocation) {
+      return { isMoving: false };
+    }
+
+    const distance = this.calculateDistance(
+      this.previousLocation.latitude,
+      this.previousLocation.longitude,
+      newLocation.latitude,
+      newLocation.longitude
+    ) * 1000; // Convert to meters
+
+    const timeDiff = (newLocation.timestamp - this.previousLocation.timestamp) / 1000; // Convert to seconds
+    const speed = timeDiff > 0 ? distance / timeDiff : 0;
+
+    const isMoving = distance > this.MOVEMENT_THRESHOLD;
+
+    let heading: number | undefined;
+    if (isMoving) {
+      heading = this.calculateBearing(
+        this.previousLocation.latitude,
+        this.previousLocation.longitude,
+        newLocation.latitude,
+        newLocation.longitude
+      );
+
+      // Smooth heading using movement history
+      if (this.movementHistory.length > 0) {
+        const recentHeadings = this.movementHistory
+          .slice(-3)
+          .filter(loc => loc.heading !== undefined)
+          .map(loc => loc.heading!);
+        
+        if (recentHeadings.length > 0) {
+          // Average recent headings for smoother direction changes
+          heading = recentHeadings.reduce((sum, h) => sum + h, heading) / (recentHeadings.length + 1);
+        }
+      }
+    }
+
+    return { isMoving, heading, speed };
+  }
+
   // Get cached location
   getCachedLocation(): LocationData | null {
     // Return cached location if it's less than 5 minutes old
@@ -315,8 +379,22 @@ class LocationService {
         try {
           const newLocation = await this.getCurrentLocation();
           if (newLocation) {
-            // Only update if location has changed significantly (>10 meters)
+            const locationData: LocationData = {
+              latitude: newLocation.latitude,
+              longitude: newLocation.longitude,
+              timestamp: newLocation.timestamp,
+              accuracy: newLocation.accuracy ?? undefined,
+            };
+
+            // Detect movement and calculate heading
+            const movement = this.detectMovement(locationData);
+            locationData.isMoving = movement.isMoving;
+            locationData.heading = movement.heading;
+            locationData.speed = movement.speed;
+
+            // Update if location changed or if user is moving
             const shouldUpdate = !this.currentLocation || 
+              movement.isMoving ||
               this.calculateDistance(
                 this.currentLocation.latitude,
                 this.currentLocation.longitude,
@@ -325,12 +403,21 @@ class LocationService {
               ) > 0.01; // ~10 meters
 
             if (shouldUpdate) {
-              const locationData: LocationData = {
-                latitude: newLocation.latitude,
-                longitude: newLocation.longitude,
-                timestamp: newLocation.timestamp,
-                accuracy: newLocation.accuracy ?? undefined,
-              };
+              // Update history
+              this.movementHistory.push({ ...locationData });
+              if (this.movementHistory.length > this.HISTORY_SIZE) {
+                this.movementHistory.shift();
+              }
+
+              // Update previous location
+              this.previousLocation = this.currentLocation ? { ...this.currentLocation } : null;
+
+              console.log('📍 Movement update:', {
+                isMoving: movement.isMoving,
+                heading: movement.heading?.toFixed(1),
+                speed: movement.speed ? `${movement.speed.toFixed(2)} m/s` : 'N/A'
+              });
+
               this.notifyLocationUpdate(locationData);
               await this.updateDriverLocationInDatabase(locationData);
               await this.broadcastLocationToSupabase(locationData);
@@ -364,6 +451,9 @@ class LocationService {
       clearInterval(this.trackingInterval);
       this.trackingInterval = null;
     }
+    // Clear movement history
+    this.movementHistory = [];
+    this.previousLocation = null;
     // Process any remaining queued locations
     this.processLocationQueue();
   }
@@ -483,6 +573,9 @@ class LocationService {
           longitude: location.longitude,
           timestamp: new Date().toISOString(),
           accuracy: location.accuracy,
+          heading: location.heading,
+          speed: location.speed,
+          is_moving: location.isMoving,
         }, {
           onConflict: 'driver_id'
         });
