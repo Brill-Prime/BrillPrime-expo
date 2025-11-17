@@ -9,6 +9,7 @@ import {
   Switch,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,12 +53,66 @@ export default function PrivacySettingsScreen() {
 
   const loadPrivacySettings = async () => {
     try {
+      setLoading(true);
+      
+      // Load from backend first
+      const { supabase } = await import('../../config/supabase');
+      const { authService } = await import('../../services/authService');
+      
+      const user = await authService.getStoredUser();
+      if (user?.id) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', user.id)
+          .single();
+
+        if (userData) {
+          const { data: privacySettings } = await supabase
+            .from('user_privacy_settings')
+            .select('*')
+            .eq('user_id', userData.id)
+            .single();
+
+          if (privacySettings) {
+            const loadedSettings: PrivacySettings = {
+              dataCollection: privacySettings.data_collection ?? true,
+              analytics: privacySettings.analytics ?? true,
+              marketingEmails: privacySettings.marketing_emails ?? false,
+              locationTracking: privacySettings.location_tracking ?? true,
+              profileVisibility: privacySettings.profile_visibility ?? true,
+              activityStatus: privacySettings.activity_status ?? true,
+              orderHistory: privacySettings.order_history ?? true,
+              shareWithPartners: privacySettings.share_with_partners ?? false,
+            };
+            
+            setSettings(loadedSettings);
+            // Save to local storage for offline access
+            await AsyncStorage.setItem('privacySettings', JSON.stringify(loadedSettings));
+            return;
+          }
+        }
+      }
+      
+      // Fallback to local storage if backend fails
       const savedSettings = await AsyncStorage.getItem('privacySettings');
       if (savedSettings) {
         setSettings(JSON.parse(savedSettings));
       }
     } catch (error) {
       console.error('Error loading privacy settings:', error);
+      
+      // Load from local storage as fallback
+      try {
+        const savedSettings = await AsyncStorage.getItem('privacySettings');
+        if (savedSettings) {
+          setSettings(JSON.parse(savedSettings));
+        }
+      } catch (localError) {
+        console.error('Error loading from local storage:', localError);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,17 +141,60 @@ export default function PrivacySettingsScreen() {
     setSettings(newSettings);
 
     try {
+      setLoading(true);
+      
+      // Save locally first
       await AsyncStorage.setItem('privacySettings', JSON.stringify(newSettings));
       
-      // In a real app, you would sync with the server
-      try {
-        const { userService } = await import('../../services/userService');
-        await userService.updatePrivacySettings(newSettings);
-      } catch (apiError) {
-        console.log('API call failed, but local settings updated:', apiError);
+      // Sync with backend
+      const { supabase } = await import('../../config/supabase');
+      const { authService } = await import('../../services/authService');
+      
+      const user = await authService.getStoredUser();
+      if (user?.id) {
+        // Get user from database
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', user.id)
+          .single();
+
+        if (userData) {
+          // Update or insert privacy settings
+          const { error } = await supabase
+            .from('user_privacy_settings')
+            .upsert({
+              user_id: userData.id,
+              data_collection: newSettings.dataCollection,
+              analytics: newSettings.analytics,
+              marketing_emails: newSettings.marketingEmails,
+              location_tracking: newSettings.locationTracking,
+              profile_visibility: newSettings.profileVisibility,
+              activity_status: newSettings.activityStatus,
+              order_history: newSettings.orderHistory,
+              share_with_partners: newSettings.shareWithPartners,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id'
+            });
+
+          if (error) {
+            console.error('Error updating privacy settings:', error);
+            Alert.alert('Error', 'Failed to update privacy settings. Please try again.');
+            // Revert local changes
+            loadPrivacySettings();
+          } else {
+            Alert.alert('Success', 'Privacy settings updated successfully');
+          }
+        }
       }
     } catch (error) {
       console.error('Error saving privacy settings:', error);
+      Alert.alert('Error', 'Failed to save privacy settings');
+      // Revert local changes
+      loadPrivacySettings();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -109,12 +207,53 @@ export default function PrivacySettingsScreen() {
         {
           text: 'Delete Data',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Data Deletion Requested',
-              'Your request has been submitted. You will receive an email confirmation within 24 hours, and your data will be deleted within 30 days as required by law.',
-              [{ text: 'OK' }]
-            );
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              const { supabase } = await import('../../config/supabase');
+              const { authService } = await import('../../services/authService');
+              
+              const user = await authService.getStoredUser();
+              if (!user?.id) {
+                Alert.alert('Error', 'User not found');
+                return;
+              }
+
+              const { data: userData } = await supabase
+                .from('users')
+                .select('id, email')
+                .eq('firebase_uid', user.id)
+                .single();
+
+              if (userData) {
+                // Create data deletion request
+                const { error } = await supabase
+                  .from('data_deletion_requests')
+                  .insert({
+                    user_id: userData.id,
+                    email: userData.email,
+                    status: 'pending',
+                    requested_at: new Date().toISOString()
+                  });
+
+                if (error) {
+                  console.error('Error creating deletion request:', error);
+                  Alert.alert('Error', 'Failed to submit deletion request');
+                } else {
+                  Alert.alert(
+                    'Data Deletion Requested',
+                    'Your request has been submitted. You will receive an email confirmation within 24 hours, and your data will be deleted within 30 days as required by law.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              }
+            } catch (error) {
+              console.error('Error requesting data deletion:', error);
+              Alert.alert('Error', 'Failed to submit deletion request');
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
@@ -129,8 +268,53 @@ export default function PrivacySettingsScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Request Export',
-          onPress: () => {
-            Alert.alert('Export Requested', 'You will receive an email with your data export link soon.');
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              const { supabase } = await import('../../config/supabase');
+              const { authService } = await import('../../services/authService');
+              
+              const user = await authService.getStoredUser();
+              if (!user?.id) {
+                Alert.alert('Error', 'User not found');
+                return;
+              }
+
+              const { data: userData } = await supabase
+                .from('users')
+                .select('id, email')
+                .eq('firebase_uid', user.id)
+                .single();
+
+              if (userData) {
+                // Create data export request
+                const { error } = await supabase
+                  .from('data_export_requests')
+                  .insert({
+                    user_id: userData.id,
+                    email: userData.email,
+                    status: 'pending',
+                    requested_at: new Date().toISOString()
+                  });
+
+                if (error) {
+                  console.error('Error creating export request:', error);
+                  Alert.alert('Error', 'Failed to submit export request');
+                } else {
+                  Alert.alert(
+                    'Export Requested',
+                    'You will receive an email with your data export link within 48 hours.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              }
+            } catch (error) {
+              console.error('Error requesting data export:', error);
+              Alert.alert('Error', 'Failed to submit export request');
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
@@ -177,6 +361,7 @@ export default function PrivacySettingsScreen() {
         onValueChange={onToggle}
         thumbColor={value ? '#4682B4' : '#f4f3f4'}
         trackColor={{ false: '#767577', true: '#4682B481' }}
+        disabled={loading}
       />
     </View>
   );
@@ -216,14 +401,18 @@ export default function PrivacySettingsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} disabled={loading}>
           <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Settings</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.placeholder}>
+          {loading && (
+            <ActivityIndicator size="small" color="#4682B4" />
+          )}
+        </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} scrollEnabled={!loading}>
         {/* Data Collection */}
         <PrivacySection title="Data Collection">
           <PrivacyItem

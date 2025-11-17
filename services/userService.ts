@@ -304,6 +304,60 @@ class UserService {
       Authorization: `Bearer ${token}`,
     });
   }
+
+  // Update privacy settings
+  async updatePrivacySettings(settings: any): Promise<ApiResponse<{ message: string }>> {
+    const token = await authService.getToken();
+    if (!token) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    try {
+      const user = await authService.getStoredUser();
+      if (!user || !user.id) {
+        return { success: false, error: 'User not found' };
+      }
+
+      const { supabase } = await import('../config/supabase');
+      
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', user.id)
+        .single();
+
+      if (!userData) {
+        return { success: false, error: 'User not found in database' };
+      }
+
+      const { error } = await supabase
+        .from('user_privacy_settings')
+        .upsert({
+          user_id: userData.id,
+          data_collection: settings.dataCollection,
+          analytics: settings.analytics,
+          marketing_emails: settings.marketingEmails,
+          location_tracking: settings.locationTracking,
+          profile_visibility: settings.profileVisibility,
+          activity_status: settings.activityStatus,
+          order_history: settings.orderHistory,
+          share_with_partners: settings.shareWithPartners,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        console.error('Privacy settings update error:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: { message: 'Privacy settings updated successfully' } };
+    } catch (error: any) {
+      console.error('Privacy settings update error:', error);
+      return { success: false, error: error.message || 'Failed to update privacy settings' };
+    }
+  }
 }
 
 export const userService = new UserService();
