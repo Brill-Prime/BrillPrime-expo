@@ -103,18 +103,18 @@ class LocationService {
   private async getWebLocation(): Promise<Location | null> {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error('Location request timed out after 20 seconds'));
-      }, 20000);
+        reject(new Error('Location request timed out after 30 seconds'));
+      }, 30000);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           clearTimeout(timeoutId);
-          console.log('📍 Location obtained:', {
+          console.log('📍 High-accuracy location obtained:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
+            accuracy: `±${position.coords.accuracy?.toFixed(0)}m`,
             heading: position.coords.heading,
-            speed: position.coords.speed
+            speed: position.coords.speed ? `${position.coords.speed.toFixed(1)}m/s` : 'N/A'
           });
           resolve({
             latitude: position.coords.latitude,
@@ -142,12 +142,12 @@ class LocationService {
             message: error.message,
             detailedMessage: errorMessage 
           });
-          resolve(null); // Resolve with null instead of rejecting to prevent crashes
+          resolve(null);
         },
         {
-          enableHighAccuracy: true, // Enable high accuracy for precise location
-          timeout: 15000,
-          maximumAge: 0, // Don't use cached location, get fresh coordinates
+          enableHighAccuracy: true,
+          timeout: 25000,
+          maximumAge: 0,
         }
       );
     });
@@ -162,20 +162,22 @@ class LocationService {
 
     try {
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High, // Use high accuracy for precise location
+        accuracy: Location.Accuracy.BestForNavigation,
       });
 
-      console.log('📍 Native location obtained:', {
+      console.log('📍 High-accuracy native location obtained:', {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy
+        accuracy: `±${location.coords.accuracy?.toFixed(0)}m`,
+        heading: location.coords.heading,
+        speed: location.coords.speed ? `${location.coords.speed.toFixed(1)}m/s` : 'N/A'
       });
 
       return {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         accuracy: location.coords.accuracy,
-        timestamp: Date.now(), // Use current time for consistency
+        timestamp: location.timestamp,
       };
     } catch (error) {
       console.error('Error getting native location:', error);
