@@ -82,12 +82,15 @@ const MapWeb: React.FC<MapProps> = ({
       const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
       
       if (!apiKey) {
-        console.warn('Google Maps API key not found');
+        console.error('❌ Google Maps API key not found in environment variables');
+        console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('MAP')));
         setHasGoogleMapsKey(false);
         setMapError(true);
         setIsLoading(false);
         return;
       }
+      
+      console.log('✅ Google Maps API key found, loading script...');
 
       setHasGoogleMapsKey(true);
 
