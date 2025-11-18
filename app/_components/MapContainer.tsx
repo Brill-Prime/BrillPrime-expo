@@ -150,8 +150,13 @@ const MapContainer: React.FC<MapContainerProps> = ({
 
   const handleMapReady = useCallback(() => {
     console.log('📍 Map ready with region:', region);
+    console.log('📊 Map ready callback fired successfully');
     onMapReady?.();
   }, [onMapReady, region]);
+
+  const handleMapError = useCallback(() => {
+    console.error('❌ Map error in MapContainer');
+  }, []);
 
   return (
     <MapErrorBoundary onRetry={() => console.log('Retrying map load...')}>
@@ -164,7 +169,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
           region={region}
           onRegionChangeComplete={onRegionChange}
           onMapReady={handleMapReady}
-          onError={() => console.error('Map component reported an error')}
+          onError={handleMapError}
           showsUserLocation={true}
         >
           {/* User marker - Only show when location is set with 3D pin style */}

@@ -152,9 +152,12 @@ const MapWeb: React.FC<MapProps> = ({
 
   // Retry initMap when mapRef becomes available
   useEffect(() => {
-    if (window.google && window.google.maps && mapRef.current && !googleMapRef.current) {
+    if (typeof window !== 'undefined' && window.google && window.google.maps && mapRef.current && !googleMapRef.current) {
       console.log('🔄 Retrying map initialization after DOM ready');
-      initMap();
+      const timer = setTimeout(() => {
+        initMap();
+      }, 200);
+      return () => clearTimeout(timer);
     }
   }, [initMap]);
 
@@ -183,6 +186,12 @@ const MapWeb: React.FC<MapProps> = ({
 
   // Initialize the map
   const initMap = useCallback(() => {
+    // Skip if already initialized
+    if (googleMapRef.current) {
+      console.log('ℹ️ Map already initialized');
+      return;
+    }
+
     if (!mapRef.current) {
       console.log('⏳ Map initialization delayed - waiting for DOM element');
       return;
@@ -193,14 +202,24 @@ const MapWeb: React.FC<MapProps> = ({
       return;
     }
 
+    // Validate region data before initialization
+    if (!displayRegion || isNaN(displayRegion.latitude) || isNaN(displayRegion.longitude)) {
+      console.error('❌ Invalid region data:', displayRegion);
+      setMapError(true);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       console.log('🗺️ Initializing Google Maps instance...');
       console.log('📍 Map center:', { lat: displayRegion.latitude, lng: displayRegion.longitude });
-      console.log('🔍 Map zoom:', getZoomFromDelta(displayRegion.latitudeDelta));
+      
+      const zoom = getZoomFromDelta(displayRegion.latitudeDelta);
+      console.log('🔍 Map zoom:', zoom);
       
       const mapOptions = {
         center: { lat: displayRegion.latitude, lng: displayRegion.longitude },
-        zoom: getZoomFromDelta(displayRegion.latitudeDelta),
+        zoom: zoom,
         mapTypeId: props.mapType || 'roadmap',
         styles: customMapStyle || [],
         disableDefaultUI: false,
@@ -212,11 +231,18 @@ const MapWeb: React.FC<MapProps> = ({
         fullscreenControl: true,
       };
 
-      console.log('⚙️ Map options:', mapOptions);
+      console.log('⚙️ Creating map with options:', JSON.stringify(mapOptions, null, 2));
       const map = new window.google.maps.Map(mapRef.current, mapOptions);
 
       googleMapRef.current = map;
       console.log('✅ Google Maps instance created successfully');
+
+      // Wait for map to be fully loaded before proceeding
+      window.google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
+        console.log('🎉 Map tiles loaded successfully');
+        setIsLoading(false);
+        if (onMapReady) onMapReady();
+      });
 
       // Add region change listener
       if (onRegionChangeComplete) {
@@ -236,13 +262,13 @@ const MapWeb: React.FC<MapProps> = ({
         });
       }
 
-      // Hide loading indicator after map is ready
+      // Fallback timeout in case tilesloaded doesn't fire
       setTimeout(() => {
-        setIsLoading(false);
-        console.log('🎉 Map fully initialized and ready');
-      }, 300);
-      
-      if (onMapReady) onMapReady();
+        if (isLoading) {
+          console.log('⚠️ Fallback: Setting loading to false after timeout');
+          setIsLoading(false);
+        }
+      }, 3000);
     } catch (error: any) {
       console.error('❌ Error initializing map:', error);
       console.error('❌ Error message:', error?.message);
