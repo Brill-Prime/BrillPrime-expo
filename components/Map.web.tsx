@@ -64,12 +64,30 @@ const MapWeb: React.FC<MapProps> = ({
   const [hasGoogleMapsKey, setHasGoogleMapsKey] = useState(false);
   const markersRef = useRef<any[]>([]);
 
-  const displayRegion = region || initialRegion || {
+  // Validate and set region with fallback
+  const defaultRegion = {
     latitude: 6.5244,
     longitude: 3.3792,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   };
+
+  const displayRegion = React.useMemo(() => {
+    const reg = region || initialRegion || defaultRegion;
+    
+    // Validate coordinates
+    if (isNaN(reg.latitude) || isNaN(reg.longitude)) {
+      console.warn('⚠️ Invalid coordinates detected, using default region');
+      return defaultRegion;
+    }
+    
+    if (reg.latitude < -90 || reg.latitude > 90 || reg.longitude < -180 || reg.longitude > 180) {
+      console.warn('⚠️ Coordinates out of bounds, using default region');
+      return defaultRegion;
+    }
+    
+    return reg;
+  }, [region, initialRegion]);
 
   // Initialize Google Maps with caching
   useEffect(() => {
@@ -165,14 +183,22 @@ const MapWeb: React.FC<MapProps> = ({
 
   // Initialize the map
   const initMap = useCallback(() => {
-    if (!mapRef.current || !window.google) {
-      console.log('⏳ Map initialization delayed - waiting for DOM element or Google Maps API');
+    if (!mapRef.current) {
+      console.log('⏳ Map initialization delayed - waiting for DOM element');
+      return;
+    }
+
+    if (!window.google || !window.google.maps) {
+      console.log('⏳ Map initialization delayed - waiting for Google Maps API');
       return;
     }
 
     try {
       console.log('🗺️ Initializing Google Maps instance...');
-      const map = new window.google.maps.Map(mapRef.current, {
+      console.log('📍 Map center:', { lat: displayRegion.latitude, lng: displayRegion.longitude });
+      console.log('🔍 Map zoom:', getZoomFromDelta(displayRegion.latitudeDelta));
+      
+      const mapOptions = {
         center: { lat: displayRegion.latitude, lng: displayRegion.longitude },
         zoom: getZoomFromDelta(displayRegion.latitudeDelta),
         mapTypeId: props.mapType || 'roadmap',
@@ -184,7 +210,10 @@ const MapWeb: React.FC<MapProps> = ({
         mapTypeControl: true,
         streetViewControl: true,
         fullscreenControl: true,
-      });
+      };
+
+      console.log('⚙️ Map options:', mapOptions);
+      const map = new window.google.maps.Map(mapRef.current, mapOptions);
 
       googleMapRef.current = map;
       console.log('✅ Google Maps instance created successfully');
@@ -214,8 +243,12 @@ const MapWeb: React.FC<MapProps> = ({
       }, 300);
       
       if (onMapReady) onMapReady();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error initializing map:', error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error stack:', error?.stack);
+      console.error('❌ Map container element:', mapRef.current);
+      console.error('❌ Google Maps available:', !!window.google?.maps);
       setMapError(true);
       setIsLoading(false);
       if (onError) onError();
@@ -329,6 +362,11 @@ const MapWeb: React.FC<MapProps> = ({
           <Text style={styles.errorText}>
             {!hasGoogleMapsKey ? 'Google Maps API key not configured' : 'Map failed to load'}
           </Text>
+          <Text style={styles.errorDetails}>
+            {!hasGoogleMapsKey 
+              ? 'Please configure EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in environment variables'
+              : 'Check console for details. The map may have encountered an initialization error.'}
+          </Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => window.location.reload()}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -388,6 +426,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  errorDetails: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   retryButton: {
     marginTop: 20,
