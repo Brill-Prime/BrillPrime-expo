@@ -29,11 +29,12 @@ const Map = forwardRef<MapView, MapProps>((props, ref) => {
 
   useImperativeHandle(ref, () => mapRef.current as MapView);
 
+  // Native platforms (iOS/Android) use Google Maps via react-native-maps
   return (
     <View style={[styles.container, props.style]}>
       <MapView
         ref={mapRef}
-        provider={props.provider || PROVIDER_GOOGLE}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={props.region}
         onRegionChange={props.onRegionChange}

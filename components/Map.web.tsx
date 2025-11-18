@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ViewStyle,
   TouchableOpacity,
   ActivityIndicator,
-  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -59,10 +58,9 @@ const MapWeb: React.FC<MapProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<any>(null);
   const mapRef = useRef<any>(null);
-  const googleMapRef = useRef<any>(null);
-  const [selectedMarker, setSelectedMarker] = useState<any>(null);
-  const [hasGoogleMapsKey, setHasGoogleMapsKey] = useState(false);
+  const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const userMarkerRef = useRef<any>(null);
 
   // Validate and set region with fallback
   const defaultRegion = {
@@ -74,94 +72,78 @@ const MapWeb: React.FC<MapProps> = ({
 
   const displayRegion = React.useMemo(() => {
     const reg = region || initialRegion || defaultRegion;
-    
-    // Validate coordinates
+
     if (isNaN(reg.latitude) || isNaN(reg.longitude)) {
       console.warn('⚠️ Invalid coordinates detected, using default region');
       return defaultRegion;
     }
-    
+
     if (reg.latitude < -90 || reg.latitude > 90 || reg.longitude < -180 || reg.longitude > 180) {
       console.warn('⚠️ Coordinates out of bounds, using default region');
       return defaultRegion;
     }
-    
+
     return reg;
   }, [region, initialRegion]);
 
-  // Initialize Google Maps with caching
+  // Load Leaflet library
   useEffect(() => {
-    const initGoogleMaps = async () => {
+    const loadLeaflet = async () => {
       if (typeof window === 'undefined') {
         setIsLoading(false);
         return;
       }
 
-      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
-      
-      if (!apiKey) {
-        console.error('❌ Google Maps API key not found in environment variables');
-        setHasGoogleMapsKey(false);
-        setMapError(true);
-        setIsLoading(false);
-        return;
-      }
-      
-      setHasGoogleMapsKey(true);
-
-      // Check if Google Maps is already loaded (cached)
-      if (window.google && window.google.maps) {
-        console.log('✅ Google Maps already loaded (cached)');
-        initMap();
-        return;
-      }
-
-      // Check if script is already being loaded
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        console.log('⏳ Google Maps script already loading...');
-        existingScript.addEventListener('load', () => initMap());
-        return;
-      }
-
-      console.log('📥 Loading Google Maps API...');
-
-      // Load Google Maps script with optimizations
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&loading=async`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        console.log('✅ Google Maps loaded successfully');
-        // Add small delay to ensure DOM is ready
-        setTimeout(() => {
+      try {
+        // Check if Leaflet is already loaded
+        if (window.L) {
+          console.log('✅ Leaflet already loaded');
           initMap();
-        }, 100);
-      };
-      script.onerror = () => {
-        console.error('❌ Failed to load Google Maps');
+          return;
+        }
+
+        console.log('📥 Loading Leaflet...');
+
+        // Load Leaflet CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+        link.crossOrigin = '';
+        document.head.appendChild(link);
+
+        // Load Leaflet JS
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        script.crossOrigin = '';
+        script.async = true;
+
+        script.onload = () => {
+          console.log('✅ Leaflet loaded successfully');
+          setTimeout(() => initMap(), 100);
+        };
+
+        script.onerror = () => {
+          console.error('❌ Failed to load Leaflet');
+          setMapError(true);
+          setIsLoading(false);
+          if (onError) onError();
+        };
+
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error('❌ Error loading Leaflet:', error);
         setMapError(true);
         setIsLoading(false);
         if (onError) onError();
-      };
-      document.head.appendChild(script);
+      }
     };
 
-    initGoogleMaps();
+    loadLeaflet();
   }, []);
 
-  // Retry initMap when mapRef becomes available
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.google && window.google.maps && mapRef.current && !googleMapRef.current) {
-      console.log('🔄 Retrying map initialization after DOM ready');
-      const timer = setTimeout(() => {
-        initMap();
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [mapRef.current, displayRegion]);
-
-  // Get user's current location if showsUserLocation is true (optimized)
+  // Get user's current location if showsUserLocation is true
   useEffect(() => {
     if (showsUserLocation && typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -176,33 +158,26 @@ const MapWeb: React.FC<MapProps> = ({
           setUserLocation(null);
         },
         {
-          enableHighAccuracy: false, // Use lower accuracy for faster response
+          enableHighAccuracy: false,
           timeout: 10000,
-          maximumAge: 30000 // Cache location for 30 seconds
+          maximumAge: 30000,
         }
       );
     }
   }, [showsUserLocation]);
 
-  // Initialize the map
-  const initMap = useCallback(() => {
-    // Skip if already initialized
-    if (googleMapRef.current) {
+  // Initialize Leaflet map
+  const initMap = () => {
+    if (leafletMapRef.current) {
       console.log('ℹ️ Map already initialized');
       return;
     }
 
-    if (!mapRef.current) {
-      console.log('⏳ Map initialization delayed - waiting for DOM element');
+    if (!mapRef.current || !window.L) {
+      console.log('⏳ Map initialization delayed - waiting for DOM/Leaflet');
       return;
     }
 
-    if (!window.google || !window.google.maps) {
-      console.log('⏳ Map initialization delayed - waiting for Google Maps API');
-      return;
-    }
-
-    // Validate region data before initialization
     if (!displayRegion || isNaN(displayRegion.latitude) || isNaN(displayRegion.longitude)) {
       console.error('❌ Invalid region data:', displayRegion);
       setMapError(true);
@@ -211,75 +186,61 @@ const MapWeb: React.FC<MapProps> = ({
     }
 
     try {
-      console.log('🗺️ Initializing Google Maps instance...');
+      console.log('🗺️ Initializing Leaflet map...');
       console.log('📍 Map center:', { lat: displayRegion.latitude, lng: displayRegion.longitude });
-      
+
       const zoom = getZoomFromDelta(displayRegion.latitudeDelta);
       console.log('🔍 Map zoom:', zoom);
-      
-      const mapOptions = {
-        center: { lat: displayRegion.latitude, lng: displayRegion.longitude },
+
+      // Create map
+      const map = window.L.map(mapRef.current, {
+        center: [displayRegion.latitude, displayRegion.longitude],
         zoom: zoom,
-        mapTypeId: props.mapType || 'roadmap',
-        styles: customMapStyle || [],
-        disableDefaultUI: false,
         zoomControl: props.zoomEnabled !== false,
-        scrollwheel: props.scrollEnabled !== false,
-        gestureHandling: props.scrollEnabled !== false ? 'auto' : 'none',
-        mapTypeControl: true,
-        streetViewControl: true,
-        fullscreenControl: true,
-      };
-
-      console.log('⚙️ Creating map with options:', JSON.stringify(mapOptions, null, 2));
-      const map = new window.google.maps.Map(mapRef.current, mapOptions);
-
-      googleMapRef.current = map;
-      console.log('✅ Google Maps instance created successfully');
-
-      // Wait for map to be fully loaded before proceeding
-      window.google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
-        console.log('🎉 Map tiles loaded successfully');
-        setIsLoading(false);
-        if (onMapReady) onMapReady();
+        scrollWheelZoom: props.scrollEnabled !== false,
+        dragging: props.scrollEnabled !== false,
+        touchZoom: props.zoomEnabled !== false,
       });
 
-      // Add region change listener
+      // Add tile layer (OpenStreetMap)
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      leafletMapRef.current = map;
+      console.log('✅ Leaflet map created successfully');
+
+      // Map is ready
+      setTimeout(() => {
+        setIsLoading(false);
+        if (onMapReady) onMapReady();
+        console.log('🎉 Map ready');
+      }, 500);
+
+      // Add move end listener for region changes
       if (onRegionChangeComplete) {
-        map.addListener('idle', () => {
+        map.on('moveend', () => {
           const center = map.getCenter();
           const bounds = map.getBounds();
-          if (center && bounds) {
-            const ne = bounds.getNorthEast();
-            const sw = bounds.getSouthWest();
-            onRegionChangeComplete({
-              latitude: center.lat(),
-              longitude: center.lng(),
-              latitudeDelta: Math.abs(ne.lat() - sw.lat()),
-              longitudeDelta: Math.abs(ne.lng() - sw.lng()),
-            });
-          }
+          const ne = bounds.getNorthEast();
+          const sw = bounds.getSouthWest();
+
+          onRegionChangeComplete({
+            latitude: center.lat,
+            longitude: center.lng,
+            latitudeDelta: Math.abs(ne.lat - sw.lat),
+            longitudeDelta: Math.abs(ne.lng - sw.lng),
+          });
         });
       }
-
-      // Fallback timeout in case tilesloaded doesn't fire
-      setTimeout(() => {
-        if (isLoading) {
-          console.log('⚠️ Fallback: Setting loading to false after timeout');
-          setIsLoading(false);
-        }
-      }, 3000);
     } catch (error: any) {
       console.error('❌ Error initializing map:', error);
-      console.error('❌ Error message:', error?.message);
-      console.error('❌ Error stack:', error?.stack);
-      console.error('❌ Map container element:', mapRef.current);
-      console.error('❌ Google Maps available:', !!window.google?.maps);
       setMapError(true);
       setIsLoading(false);
       if (onError) onError();
     }
-  }, [displayRegion.latitude, displayRegion.longitude, displayRegion.latitudeDelta, displayRegion.longitudeDelta, customMapStyle, onRegionChangeComplete, onMapReady, onError, props.mapType, props.zoomEnabled, props.scrollEnabled, isLoading]);
+  };
 
   // Convert latitudeDelta to zoom level
   const getZoomFromDelta = (latitudeDelta: number): number => {
@@ -288,84 +249,90 @@ const MapWeb: React.FC<MapProps> = ({
 
   // Update markers when they change
   useEffect(() => {
-    if (!googleMapRef.current || !window.google) return;
+    if (!leafletMapRef.current || !window.L) return;
 
     // Clear existing markers
-    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
     // Add user location marker
     if (showsUserLocation && userLocation) {
-      const userMarker = new window.google.maps.Marker({
-        position: { lat: userLocation.latitude, lng: userLocation.longitude },
-        map: googleMapRef.current,
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: '#4682B4',
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 3,
-        },
-        title: 'Your Location',
+      const userIcon = window.L.divIcon({
+        html: `
+          <div style="
+            width: 36px;
+            height: 36px;
+            background-color: #4682B4;
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          ">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+        `,
+        className: '',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
       });
 
-      // Add accuracy circle
-      new window.google.maps.Circle({
-        strokeColor: '#4682B4',
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: '#4682B4',
-        fillOpacity: 0.2,
-        map: googleMapRef.current,
-        center: { lat: userLocation.latitude, lng: userLocation.longitude },
-        radius: 50,
-      });
+      const marker = window.L.marker([userLocation.latitude, userLocation.longitude], {
+        icon: userIcon,
+      }).addTo(leafletMapRef.current);
 
-      markersRef.current.push(userMarker);
+      marker.bindPopup('<b>Your Location</b>');
+      markersRef.current.push(marker);
+      userMarkerRef.current = marker;
     }
 
     // Add custom markers
-    markers.forEach((marker, index) => {
-      const googleMarker = new window.google.maps.Marker({
-        position: { lat: marker.coordinate.latitude, lng: marker.coordinate.longitude },
-        map: googleMapRef.current,
-        title: marker.title,
-        icon: marker.pinColor ? {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: marker.pinColor,
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 2,
-        } : undefined,
+    markers.forEach((markerData) => {
+      const markerIcon = window.L.divIcon({
+        html: `
+          <div style="
+            width: 30px;
+            height: 30px;
+            background-color: ${markerData.pinColor || '#FF6B6B'};
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          "></div>
+        `,
+        className: '',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
       });
 
-      if (marker.title || marker.description) {
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div style="padding: 8px;">
-              ${marker.title ? `<strong>${marker.title}</strong>` : ''}
-              ${marker.description ? `<p style="margin: 4px 0 0 0;">${marker.description}</p>` : ''}
-            </div>
-          `,
-        });
+      const marker = window.L.marker(
+        [markerData.coordinate.latitude, markerData.coordinate.longitude],
+        { icon: markerIcon }
+      ).addTo(leafletMapRef.current);
 
-        googleMarker.addListener('click', () => {
-          infoWindow.open(googleMapRef.current, googleMarker);
-          setSelectedMarker(marker);
-        });
+      if (markerData.title || markerData.description) {
+        const popupContent = `
+          <div style="padding: 8px;">
+            ${markerData.title ? `<strong>${markerData.title}</strong>` : ''}
+            ${markerData.description ? `<p style="margin: 4px 0 0 0;">${markerData.description}</p>` : ''}
+          </div>
+        `;
+        marker.bindPopup(popupContent);
       }
 
-      markersRef.current.push(googleMarker);
+      markersRef.current.push(marker);
     });
   }, [markers, userLocation, showsUserLocation]);
 
-  // Update map when region changes
+  // Update map center when region changes
   useEffect(() => {
-    if (googleMapRef.current && region) {
-      googleMapRef.current.setCenter({ lat: region.latitude, lng: region.longitude });
-      googleMapRef.current.setZoom(getZoomFromDelta(region.latitudeDelta));
+    if (leafletMapRef.current && region) {
+      leafletMapRef.current.setView(
+        [region.latitude, region.longitude],
+        getZoomFromDelta(region.latitudeDelta)
+      );
     }
   }, [region]);
 
@@ -374,24 +341,20 @@ const MapWeb: React.FC<MapProps> = ({
       <View style={[styles.container, style]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4682B4" />
-          <Text style={styles.loadingText}>Loading Google Maps...</Text>
+          <Text style={styles.loadingText}>Loading Map...</Text>
         </View>
       </View>
     );
   }
 
-  if (mapError || !hasGoogleMapsKey) {
+  if (mapError) {
     return (
       <View style={[styles.container, style]}>
         <View style={styles.errorContainer}>
           <Ionicons name="warning" size={32} color="#e74c3c" />
-          <Text style={styles.errorText}>
-            {!hasGoogleMapsKey ? 'Google Maps API key not configured' : 'Map failed to load'}
-          </Text>
+          <Text style={styles.errorText}>Map failed to load</Text>
           <Text style={styles.errorDetails}>
-            {!hasGoogleMapsKey 
-              ? 'Please configure EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in environment variables'
-              : 'Check console for details. The map may have encountered an initialization error.'}
+            Please check your internet connection and try again.
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => window.location.reload()}>
             <Text style={styles.retryButtonText}>Retry</Text>
@@ -411,23 +374,6 @@ const MapWeb: React.FC<MapProps> = ({
           borderRadius: 0,
         }}
       />
-
-
-      {/* Selected marker info */}
-      {selectedMarker && (
-        <View style={styles.markerInfo}>
-          <Text style={styles.markerTitle}>{selectedMarker.title}</Text>
-          {selectedMarker.address && (
-            <Text style={styles.markerAddress}>{selectedMarker.address}</Text>
-          )}
-          <TouchableOpacity
-            style={styles.closeInfo}
-            onPress={() => setSelectedMarker(null)}
-          >
-            <Ionicons name="close" size={16} color="#666" />
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
@@ -487,10 +433,10 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export Marker component for compatibility (handled internally in Google Maps)
+// Export Marker component for compatibility (handled internally in Leaflet)
 export const Marker: React.FC<any> = () => null;
 
-// Provider constant for web (Google Maps)
+// Provider constant for web (Leaflet)
 export const PROVIDER_GOOGLE = 'google';
 
 export default MapWeb;
