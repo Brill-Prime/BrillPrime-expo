@@ -23,7 +23,10 @@ export class MapErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('MapErrorBoundary caught an error:', error, errorInfo);
+    console.error('❌ MapErrorBoundary caught an error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error info:', errorInfo);
+    console.error('❌ Component stack:', errorInfo.componentStack);
   }
 
   handleRetry = () => {

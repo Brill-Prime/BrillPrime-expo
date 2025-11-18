@@ -159,7 +159,7 @@ const MapWeb: React.FC<MapProps> = ({
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [initMap]);
+  }, [mapRef.current, displayRegion]);
 
   // Get user's current location if showsUserLocation is true (optimized)
   useEffect(() => {
@@ -279,7 +279,7 @@ const MapWeb: React.FC<MapProps> = ({
       setIsLoading(false);
       if (onError) onError();
     }
-  }, [displayRegion, customMapStyle, onRegionChangeComplete, onMapReady, onError, props.mapType, props.zoomEnabled, props.scrollEnabled]);
+  }, [displayRegion.latitude, displayRegion.longitude, displayRegion.latitudeDelta, displayRegion.longitudeDelta, customMapStyle, onRegionChangeComplete, onMapReady, onError, props.mapType, props.zoomEnabled, props.scrollEnabled, isLoading]);
 
   // Convert latitudeDelta to zoom level
   const getZoomFromDelta = (latitudeDelta: number): number => {
