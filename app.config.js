@@ -10,6 +10,7 @@ export default {
   icon: "./assets/images/logo.png",
   userInterfaceStyle: "light",
   scheme: "brillprime",
+  newArchEnabled: false,
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
@@ -18,16 +19,16 @@ export default {
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.brillprime.app",
-    googleServicesFile: "./ios/GoogleService-Info.plist"
+    bundleIdentifier: "com.brillprime.app"
+    // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/images/logo.png",
       backgroundColor: "#ffffff"
     },
-    package: "com.brillprime.app",
-    googleServicesFile: "./android/app/google-services.json"
+    package: "com.brillprime.app"
+    // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
   web: {
     bundler: "metro",
@@ -48,10 +49,12 @@ export default {
         android: {
           compileSdkVersion: 34,
           targetSdkVersion: 34,
-          buildToolsVersion: "34.0.0"
+          buildToolsVersion: "34.0.0",
+          newArchEnabled: false
         },
         ios: {
-          deploymentTarget: "15.1"
+          deploymentTarget: "15.1",
+          newArchEnabled: false
         }
       }
     ]

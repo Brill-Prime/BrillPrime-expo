@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 interface CacheItem {
   data: any;
   timestamp: number;
@@ -71,9 +73,9 @@ class PerformanceOptimizerClass {
     func: T,
     wait: number
   ): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     return (...args: Parameters<T>) => {
-      clearTimeout(timeout);
+      clearTimeout(timeout as any);
       timeout = setTimeout(() => func.apply(this, args), wait);
     };
   }
@@ -175,9 +177,7 @@ class PerformanceOptimizerClass {
   createMemoizedComponent<P extends object>(
     Component: React.ComponentType<P>
   ): React.ComponentType<P> {
-    return React.memo(Component, (prevProps, nextProps) => {
-      return JSON.stringify(prevProps) === JSON.stringify(nextProps);
-    });
+    return React.memo(Component);
   }
 
   // Performance monitoring
@@ -233,8 +233,7 @@ class PerformanceOptimizerClass {
 
 export const PerformanceOptimizer = new PerformanceOptimizerClass();
 
-// Initialize on module load
-PerformanceOptimizer.initialize();
-
-// React import for memoization
-import React from 'react';
+// Initialize only in browser environments to avoid side effects in SSR
+if (typeof window !== 'undefined') {
+  PerformanceOptimizer.initialize();
+}

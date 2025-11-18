@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 // Map Performance Optimization Utilities
 
 interface LocationPoint {
@@ -10,10 +12,10 @@ interface LocationPoint {
 export class MapOptimizer {
   // Debounce map region changes to reduce API calls
   static debounceRegionChange(callback: Function, delay: number = 300) {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
     
     return function(this: any, ...args: any[]) {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId as any);
       timeoutId = setTimeout(() => callback.apply(this, args), delay);
     };
   }

@@ -497,29 +497,3 @@ export const validateExpiryDate = (expiry: string): { isValid: boolean; error?: 
 
   return { isValid: true };
 };
-
-// Export all validation functions
-export {
-  validateEmail,
-  validatePassword,
-  validatePhone,
-  validateName,
-  validateAddress,
-  validateBusinessName,
-  validateNumber,
-  validateDate,
-  validateAge,
-  validateAccountNumber,
-  validateBVN,
-  validateLicenseNumber,
-  validatePlateNumber,
-  validateOrderQuantity,
-  validatePrice,
-  validateDescription,
-  validateURL,
-  validateForm,
-  showValidationErrors,
-  validateCardNumber,
-  validateCVV,
-  validateExpiryDate
-};
