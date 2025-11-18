@@ -115,7 +115,10 @@ const MapWeb: React.FC<MapProps> = ({
       script.defer = true;
       script.onload = () => {
         console.log('✅ Google Maps loaded successfully');
-        initMap();
+        // Add small delay to ensure DOM is ready
+        setTimeout(() => {
+          initMap();
+        }, 100);
       };
       script.onerror = () => {
         console.error('❌ Failed to load Google Maps');
@@ -128,6 +131,14 @@ const MapWeb: React.FC<MapProps> = ({
 
     initGoogleMaps();
   }, []);
+
+  // Retry initMap when mapRef becomes available
+  useEffect(() => {
+    if (window.google && window.google.maps && mapRef.current && !googleMapRef.current) {
+      console.log('🔄 Retrying map initialization after DOM ready');
+      initMap();
+    }
+  }, [initMap]);
 
   // Get user's current location if showsUserLocation is true (optimized)
   useEffect(() => {
@@ -154,9 +165,13 @@ const MapWeb: React.FC<MapProps> = ({
 
   // Initialize the map
   const initMap = useCallback(() => {
-    if (!mapRef.current || !window.google) return;
+    if (!mapRef.current || !window.google) {
+      console.log('⏳ Map initialization delayed - waiting for DOM element or Google Maps API');
+      return;
+    }
 
     try {
+      console.log('🗺️ Initializing Google Maps instance...');
       const map = new window.google.maps.Map(mapRef.current, {
         center: { lat: displayRegion.latitude, lng: displayRegion.longitude },
         zoom: getZoomFromDelta(displayRegion.latitudeDelta),
@@ -172,6 +187,7 @@ const MapWeb: React.FC<MapProps> = ({
       });
 
       googleMapRef.current = map;
+      console.log('✅ Google Maps instance created successfully');
 
       // Add region change listener
       if (onRegionChangeComplete) {
@@ -191,10 +207,15 @@ const MapWeb: React.FC<MapProps> = ({
         });
       }
 
-      setIsLoading(false);
+      // Hide loading indicator after map is ready
+      setTimeout(() => {
+        setIsLoading(false);
+        console.log('🎉 Map fully initialized and ready');
+      }, 300);
+      
       if (onMapReady) onMapReady();
     } catch (error) {
-      console.error('Error initializing map:', error);
+      console.error('❌ Error initializing map:', error);
       setMapError(true);
       setIsLoading(false);
       if (onError) onError();
