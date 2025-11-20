@@ -385,16 +385,48 @@ class NotificationService {
    */
   async sendLocalNotification(title: string, message: string, data?: any): Promise<void> {
     try {
-      // This would integrate with Expo Notifications
-      // For now, we'll just log it
-      console.log('Local notification:', { title, message, data });
+      // Check if running on native platform
+      const { Platform } = await import('react-native');
       
-      // TODO: Integrate with Expo Notifications when ready
-      // const { default: * as Notifications } = await import('expo-notifications');
-      // await Notifications.scheduleNotificationAsync({
-      //   content: { title, body: message, data },
-      //   trigger: null,
-      // });
+      if (Platform.OS === 'web') {
+        // For web, use browser notifications if available
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(title, {
+            body: message,
+            icon: '/icon.png',
+            data: data,
+          });
+        } else {
+          console.log('Web notification:', { title, message, data });
+        }
+      } else {
+        // For native platforms, use Expo Notifications
+        try {
+          const Notifications = await import('expo-notifications');
+          
+          // Configure notification handler
+          Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+              shouldShowAlert: true,
+              shouldPlaySound: true,
+              shouldSetBadge: true,
+            }),
+          });
+          
+          // Schedule immediate notification
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title,
+              body: message,
+              data: data || {},
+              sound: true,
+            },
+            trigger: null, // Show immediately
+          });
+        } catch (expoError) {
+          console.log('Expo Notifications not available, logging:', { title, message, data });
+        }
+      }
     } catch (error) {
       console.error('Error sending local notification:', error);
     }
