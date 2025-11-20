@@ -176,7 +176,7 @@ export default function MessagesScreen() {
         <Text style={styles.headerTitle}>Messages</Text>
         <TouchableOpacity 
           style={styles.newChatButton}
-          onPress={() => Alert.alert('Coming Soon', 'New chat feature will be available soon')}
+          onPress={() => router.push('/messages/new-chat')}
         >
           <Ionicons name="add" size={24} color="#4682B4" />
         </TouchableOpacity>

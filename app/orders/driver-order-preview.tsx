@@ -117,9 +117,35 @@ export default function DriverOrderPreview({
                 </Text>
               </TouchableOpacity>
 
-              {showMap && (
+              {showMap && order?.pickupCoordinates && order?.deliveryCoordinates && (
                 <View style={styles.mapContainer}>
-                  <Text style={styles.mapPlaceholder}>Map View Coming Soon</Text>
+                  <MapView
+                    style={styles.map}
+                    initialRegion={{
+                      latitude: (order.pickupCoordinates.latitude + order.deliveryCoordinates.latitude) / 2,
+                      longitude: (order.pickupCoordinates.longitude + order.deliveryCoordinates.longitude) / 2,
+                      latitudeDelta: Math.abs(order.pickupCoordinates.latitude - order.deliveryCoordinates.latitude) * 2 || 0.05,
+                      longitudeDelta: Math.abs(order.pickupCoordinates.longitude - order.deliveryCoordinates.longitude) * 2 || 0.05,
+                    }}
+                  >
+                    <Marker
+                      coordinate={order.pickupCoordinates}
+                      title="Pickup Location"
+                      description={order.pickupAddress}
+                      pinColor="#28a745"
+                    />
+                    <Marker
+                      coordinate={order.deliveryCoordinates}
+                      title="Delivery Location"
+                      description={order.deliveryAddress}
+                      pinColor="#dc3545"
+                    />
+                    <Polyline
+                      coordinates={[order.pickupCoordinates, order.deliveryCoordinates]}
+                      strokeColor="#4682B4"
+                      strokeWidth={3}
+                    />
+                  </MapView>
                 </View>
               )}
             </View>
@@ -311,14 +337,13 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     height: 200,
-    backgroundColor: '#f0f0f0',
     borderRadius: 12,
     marginTop: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  mapPlaceholder: {
-    color: '#999',
+  map: {
+    width: '100%',
+    height: '100%',
   },
   actions: {
     flexDirection: 'row',

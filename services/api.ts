@@ -15,13 +15,17 @@ class ApiClient {
   private authToken: string = '';
 
   constructor() {
-    // Use local Express server for backend operations
-    // Firebase is used for authentication
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-    this.baseURL = apiUrl;
+    // Serverless architecture: Firebase for Auth, Supabase for all backend logic
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not set');
+      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
+    } else {
+      this.baseURL = supabaseUrl;
+    }
 
-    console.log('🔷 API URL:', this.baseURL);
-    console.log('✅ Architecture: Firebase Auth + Express Backend + PostgreSQL');
+    console.log('🔷 Supabase URL:', this.baseURL);
+    console.log('✅ Architecture: Firebase Auth + Supabase Serverless Backend');
   }
 
   setAuthToken(token: string) {

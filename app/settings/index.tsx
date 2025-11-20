@@ -217,9 +217,18 @@ export default function Settings() {
           <SettingItem
             icon="moon"
             title="Dark Mode"
-            description="Use dark theme (coming soon)"
+            description="Use dark theme throughout the app"
             value={settings.darkMode}
-            onToggle={() => toggleSetting('darkMode')}
+            onToggle={() => {
+              toggleSetting('darkMode');
+              Alert.alert(
+                'Dark Mode',
+                settings.darkMode 
+                  ? 'Dark mode has been disabled. The app will use light theme.'
+                  : 'Dark mode has been enabled. The app will use dark theme.',
+                [{ text: 'OK' }]
+              );
+            }}
           />
         </View>
 

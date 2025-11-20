@@ -14,39 +14,69 @@ export default function FeaturePage() {
       'browse-commodities': {
         icon: 'bag-handle',
         title: 'Browse Products',
-        description: 'Discover amazing products from various merchants',
+        description: 'Discover amazing products from various merchants in your area',
         route: '/commodity/commodities',
       },
       'my-orders': {
         icon: 'cube',
         title: 'My Orders',
-        description: 'Track and manage your orders',
+        description: 'Track and manage all your orders in real-time',
         route: '/orders/consumer-orders',
       },
       'messages': {
         icon: 'chatbubbles',
         title: 'Messages',
-        description: 'Chat with merchants and drivers',
-        route: '/chat',
+        description: 'Chat with merchants and drivers about your orders',
+        route: '/messages',
       },
       'favorites': {
         icon: 'heart',
         title: 'Favorites',
-        description: 'Your saved items',
+        description: 'Quick access to your favorite products and merchants',
         route: '/favorites',
       },
       'support': {
         icon: 'headset',
-        title: 'Support',
-        description: 'Get help anytime',
+        title: 'Customer Support',
+        description: 'Get help from our support team 24/7',
         route: '/support',
+      },
+      'notifications': {
+        icon: 'notifications',
+        title: 'Notifications',
+        description: 'Stay updated with order status and promotions',
+        route: '/notifications',
+      },
+      'wallet': {
+        icon: 'wallet',
+        title: 'Wallet',
+        description: 'Manage your payment methods and transaction history',
+        route: '/payment',
+      },
+      'profile': {
+        icon: 'person',
+        title: 'Profile',
+        description: 'Manage your account settings and preferences',
+        route: '/profile',
+      },
+      'analytics': {
+        icon: 'stats-chart',
+        title: 'Analytics',
+        description: 'View detailed insights and performance metrics',
+        route: '/merchant/analytics',
+      },
+      'inventory': {
+        icon: 'cube-outline',
+        title: 'Inventory',
+        description: 'Manage your products and stock levels',
+        route: '/merchant/commodities',
       },
     };
 
     return features[featureId] || {
       icon: 'information-circle',
-      title: 'Feature',
-      description: 'Feature coming soon',
+      title: 'Feature Details',
+      description: 'Explore this feature to enhance your experience',
       route: null,
     };
   };
