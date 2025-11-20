@@ -23,6 +23,7 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
   const [estimatedTime, setEstimatedTime] = useState<string>('');
   const [showCommunicationModal, setShowCommunicationModal] = useState(false);
   const router = useRouter();
+  const trackingCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     loadOrderDetails();
@@ -51,13 +52,20 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
     } else {
       // Consumer tracks driver location
       setIsTracking(true);
-      trackDriverLocation();
+      const cleanup = trackDriverLocation();
+      trackingCleanupRef.current = cleanup;
     }
   };
 
   const stopTracking = () => {
     locationService.stopLiveTracking();
     setIsTracking(false);
+    
+    // Clean up tracking subscriptions and intervals
+    if (trackingCleanupRef.current) {
+      trackingCleanupRef.current();
+      trackingCleanupRef.current = null;
+    }
   };
 
   const trackDriverLocation = () => {
