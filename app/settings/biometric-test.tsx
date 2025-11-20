@@ -86,6 +86,18 @@ export default function BiometricTest() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Biometric Status</Text>
             <View style={styles.infoRow}>
+              <Text style={styles.label}>Hardware:</Text>
+              <Text style={[styles.value, testResults.hardware ? styles.success : styles.error]}>
+                {testResults.hardware ? '✅ Yes' : '❌ No'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Enrolled:</Text>
+              <Text style={[styles.value, testResults.enrolled ? styles.success : styles.error]}>
+                {testResults.enrolled ? '✅ Yes' : '❌ No'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
               <Text style={styles.label}>Available:</Text>
               <Text style={[styles.value, testResults.available ? styles.success : styles.error]}>
                 {testResults.available ? '✅ Yes' : '❌ No'}

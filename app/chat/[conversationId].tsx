@@ -17,6 +17,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AttachmentUploader, { Attachment } from '../../components/AttachmentUploader';
 import { communicationService, ChatMessage, Conversation } from '../../services/communicationService';
+import { typingIndicatorService, TypingIndicator } from '../../services/typingIndicatorService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -30,6 +32,10 @@ export default function ChatScreen() {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [showAttachmentUploader, setShowAttachmentUploader] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+  const [isTyping, setIsTyping] = useState(false);
+  const { user } = useAuth();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -85,7 +91,7 @@ export default function ChatScreen() {
       await communicationService.initializeConnection();
 
       // Subscribe to new messages
-      const unsubscribe = communicationService.onMessage((message) => {
+      const unsubscribeMessages = communicationService.onMessage((message) => {
         if (message.conversationId === conversationId) {
           setMessages(prev => [...prev, message]);
           // Auto-scroll to bottom
@@ -95,7 +101,28 @@ export default function ChatScreen() {
         }
       });
 
-      return unsubscribe;
+      // Initialize typing indicators
+      await typingIndicatorService.initialize(conversationId as string);
+      
+      const unsubscribeTyping = typingIndicatorService.onTypingIndicator((indicator: TypingIndicator) => {
+        if (indicator.userId !== user?.id) {
+          setTypingUsers(prev => {
+            const updated = new Map(prev);
+            if (indicator.isTyping) {
+              updated.set(indicator.userId, indicator.userName);
+            } else {
+              updated.delete(indicator.userId);
+            }
+            return updated;
+          });
+        }
+      });
+
+      return () => {
+        unsubscribeMessages();
+        unsubscribeTyping();
+        typingIndicatorService.cleanup();
+      };
     } catch (error) {
       console.error('Error initializing communication:', error);
     }
@@ -201,6 +228,45 @@ export default function ChatScreen() {
     }
   };
 
+  const handleTyping = (text: string) => {
+    if (!user) return;
+
+    if (text.trim() && !isTyping) {
+      setIsTyping(true);
+      typingIndicatorService.sendTypingIndicator(
+        conversationId as string,
+        user.id,
+        user.firstName || user.email,
+        true
+      );
+    } else if (!text.trim() && isTyping) {
+      setIsTyping(false);
+      typingIndicatorService.sendTypingIndicator(
+        conversationId as string,
+        user.id,
+        user.firstName || user.email,
+        false
+      );
+    }
+
+    // Reset typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTyping) {
+        setIsTyping(false);
+        typingIndicatorService.sendTypingIndicator(
+          conversationId as string,
+          user.id,
+          user.firstName || user.email,
+          false
+        );
+      }
+    }, 2000);
+  };
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -304,6 +370,22 @@ export default function ChatScreen() {
         style={styles.messagesList}
         contentContainerStyle={styles.messagesContent}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        ListFooterComponent={
+          typingUsers.size > 0 ? (
+            <View style={styles.typingIndicatorContainer}>
+              <View style={styles.typingBubble}>
+                <Text style={styles.typingText}>
+                  {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing
+                </Text>
+                <View style={styles.typingDots}>
+                  <View style={[styles.dot, styles.dot1]} />
+                  <View style={[styles.dot, styles.dot2]} />
+                  <View style={[styles.dot, styles.dot3]} />
+                </View>
+              </View>
+            </View>
+          ) : null
+        }
       />
 
       {/* Attachment Uploader */}
@@ -338,7 +420,10 @@ export default function ChatScreen() {
           <TextInput
             style={styles.textInput}
             value={newMessage}
-            onChangeText={setNewMessage}
+            onChangeText={(text) => {
+              setNewMessage(text);
+              handleTyping(text);
+            }}
             placeholder="Type a message..."
             placeholderTextColor="#999"
             multiline
@@ -541,6 +626,45 @@ const getResponsiveStyles = (screenData: any) => {
       color: '#4682B4',
       flex: 1,
       fontFamily: 'Montserrat-Regular',
+    },
+    typingIndicatorContainer: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    typingBubble: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f0f0f0',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      alignSelf: 'flex-start',
+    },
+    typingText: {
+      fontSize: 13,
+      color: '#666',
+      marginRight: 8,
+      fontFamily: 'Montserrat-Regular',
+    },
+    typingDots: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#999',
+    },
+    dot1: {
+      animationDelay: '0s',
+    },
+    dot2: {
+      animationDelay: '0.2s',
+    },
+    dot3: {
+      animationDelay: '0.4s',
     },
   });
 };
