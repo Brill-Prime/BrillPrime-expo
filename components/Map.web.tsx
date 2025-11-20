@@ -86,6 +86,9 @@ const MapWeb: React.FC<MapProps> = ({
     return reg;
   }, [region, initialRegion]);
 
+  // Track if Leaflet is loaded
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
+
   // Load Leaflet library
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -98,7 +101,7 @@ const MapWeb: React.FC<MapProps> = ({
         // Check if Leaflet is already loaded
         if (window.L) {
           console.log('✅ Leaflet already loaded');
-          initMap();
+          setLeafletLoaded(true);
           return;
         }
 
@@ -121,7 +124,7 @@ const MapWeb: React.FC<MapProps> = ({
 
         script.onload = () => {
           console.log('✅ Leaflet loaded successfully');
-          setTimeout(() => initMap(), 100);
+          setLeafletLoaded(true);
         };
 
         script.onerror = () => {
@@ -142,6 +145,14 @@ const MapWeb: React.FC<MapProps> = ({
 
     loadLeaflet();
   }, []);
+
+  // Initialize map when both Leaflet and DOM are ready
+  useEffect(() => {
+    if (leafletLoaded && mapRef.current && !leafletMapRef.current) {
+      console.log('🚀 DOM and Leaflet ready, initializing map...');
+      setTimeout(() => initMap(), 100);
+    }
+  }, [leafletLoaded]);
 
   // Get user's current location if showsUserLocation is true
   useEffect(() => {

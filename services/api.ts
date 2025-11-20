@@ -170,6 +170,17 @@ class ApiClient {
       signal 
     });
   }
+
+  // Helper method to call Supabase Edge Functions
+  async callFunction<T>(functionName: string, params?: Record<string, any>, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.get<T>(`/functions/v1/${functionName}${queryString}`, headers);
+  }
+
+  // Helper method to post to Supabase Edge Functions
+  async callFunctionPost<T>(functionName: string, data?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+    return this.post<T>(`/functions/v1/${functionName}`, data, headers);
+  }
 }
 
 export const apiClient = new ApiClient();

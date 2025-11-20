@@ -322,10 +322,10 @@ function ConsumerHomeContent() {
       const { authService } = await import('../../services/authService');
       const token = await authService.getToken();
 
-      // Make API call to get nearby merchants using apiClient
+      // Make API call to get nearby merchants using Supabase function
       const { apiClient } = await import('../../services/api');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await apiClient.get<any>(`/api/merchants/nearby?lat=${latitude}&lng=${longitude}`, headers);
+      const response = await apiClient.callFunction<any>('merchants-nearby', { lat: latitude.toString(), lng: longitude.toString() }, headers);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || 'Failed to load nearby merchants');
@@ -410,10 +410,10 @@ function ConsumerHomeContent() {
       const { authService } = await import('../../services/authService');
       const token = await authService.getToken();
 
-      // Make API call to get all merchants using apiClient
+      // Make API call to get all merchants using Supabase function
       const { apiClient } = await import('../../services/api');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await apiClient.get<any>('/api/merchants', headers);
+      const response = await apiClient.callFunction<any>('merchants-list', {}, headers);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || 'Failed to load merchants');
@@ -770,8 +770,10 @@ function ConsumerHomeContent() {
         setIsLocationSet(true);
         setUserAddress(savedAddress || "Your Location");
 
-        // Load nearby merchants near the saved location
-        await loadNearbyMerchants(location.latitude, location.longitude);
+        // Load nearby merchants near the saved location (non-blocking)
+        loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
+          console.log("Merchant loading failed, map will display without merchant data:", err);
+        });
       } else {
         // Explicitly set to false if no saved location
         setIsLocationSet(false);
