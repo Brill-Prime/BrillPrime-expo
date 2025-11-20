@@ -1,12 +1,21 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { Platform } from 'react-native';
+
+// Conditionally import expo-local-authentication only on native platforms
+let LocalAuthentication: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    LocalAuthentication = require('expo-local-authentication');
+  } catch (error) {
+    console.warn('expo-local-authentication not available:', error);
+  }
+}
 
 class BiometricService {
   async isBiometricAvailable(): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      console.log('Biometric not available on web platform');
+    if (Platform.OS === 'web' || !LocalAuthentication) {
+      console.log('Biometric not available on web platform or LocalAuthentication not loaded');
       return false;
     }
 
@@ -21,7 +30,7 @@ class BiometricService {
   }
 
   async getBiometricType(): Promise<string> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !LocalAuthentication) {
       return 'Not Available';
     }
 
@@ -44,8 +53,8 @@ class BiometricService {
   }
 
   async authenticate(reason: string = 'Authenticate to continue'): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      console.log('Biometric authentication skipped on web platform');
+    if (Platform.OS === 'web' || !LocalAuthentication) {
+      console.log('Biometric authentication skipped on web platform or LocalAuthentication not available');
       return true;
     }
 
@@ -77,7 +86,7 @@ class BiometricService {
   }
 
   async isBiometricEnabled(): Promise<boolean> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !LocalAuthentication) {
       return false;
     }
 
@@ -91,8 +100,8 @@ class BiometricService {
   }
 
   async enableBiometric(): Promise<void> {
-    if (Platform.OS === 'web') {
-      console.log('Cannot enable biometric on web platform');
+    if (Platform.OS === 'web' || !LocalAuthentication) {
+      console.log('Cannot enable biometric on web platform or LocalAuthentication not available');
       return;
     }
 
@@ -135,14 +144,14 @@ class BiometricService {
     error?: string;
   }> {
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === 'web' || !LocalAuthentication) {
         return {
           available: false,
           type: 'Not Available',
           enabled: false,
           hardware: false,
           enrolled: false,
-          error: 'Biometric authentication is not supported on web browsers',
+          error: 'Biometric authentication is not supported on web browsers or LocalAuthentication module is not available',
         };
       }
 

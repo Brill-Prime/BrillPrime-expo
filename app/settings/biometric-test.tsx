@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { biometricService } from '../../services/biometricService';
@@ -82,25 +82,18 @@ export default function BiometricTest() {
           </View>
         </View>
 
-        {testResults && (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4682B4" />
+            <Text style={styles.loadingText}>Testing biometric...</Text>
+          </View>
+        ) : testResults ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Biometric Status</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Hardware:</Text>
-              <Text style={[styles.value, testResults.hardware ? styles.success : styles.error]}>
-                {testResults.hardware ? '✅ Yes' : '❌ No'}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Enrolled:</Text>
-              <Text style={[styles.value, testResults.enrolled ? styles.success : styles.error]}>
-                {testResults.enrolled ? '✅ Yes' : '❌ No'}
-              </Text>
-            </View>
+            <Text style={styles.sectionTitle}>Test Results</Text>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Available:</Text>
               <Text style={[styles.value, testResults.available ? styles.success : styles.error]}>
-                {testResults.available ? '✅ Yes' : '❌ No'}
+                {testResults.available ? 'Yes ✓' : 'No ✗'}
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -110,22 +103,35 @@ export default function BiometricTest() {
             <View style={styles.infoRow}>
               <Text style={styles.label}>Enabled:</Text>
               <Text style={[styles.value, testResults.enabled ? styles.success : styles.error]}>
-                {testResults.enabled ? '✅ Yes' : '❌ No'}
+                {testResults.enabled ? 'Yes ✓' : 'No ✗'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Hardware:</Text>
+              <Text style={[styles.value, testResults.hardware ? styles.success : styles.error]}>
+                {testResults.hardware ? 'Yes ✓' : 'No ✗'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Enrolled:</Text>
+              <Text style={[styles.value, testResults.enrolled ? styles.success : styles.error]}>
+                {testResults.enrolled ? 'Yes ✓' : 'No ✗'}
               </Text>
             </View>
             {testResults.error && (
-              <View style={styles.errorBox}>
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorLabel}>Error:</Text>
                 <Text style={styles.errorText}>{testResults.error}</Text>
               </View>
             )}
           </View>
-        )}
+        ) : null}
 
         <View style={styles.buttonGroup}>
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={testAuthentication}
-            disabled={isLoading}
+            disabled={isLoading || Platform.OS === 'web'}
           >
             <Ionicons name="finger-print" size={24} color="#fff" />
             <Text style={styles.buttonText}>Test Authentication</Text>
@@ -180,50 +186,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   backButton: {
-    padding: 8,
+    padding: 5,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1b1b1b',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   section: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1b1b1b',
-    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 15,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
   },
   value: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1b1b1b',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
   },
   success: {
     color: '#27ae60',
@@ -231,23 +238,27 @@ const styles = StyleSheet.create({
   error: {
     color: '#e74c3c',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
   buttonGroup: {
-    gap: 12,
-    marginBottom: 16,
+    marginVertical: 20,
   },
   button: {
-    backgroundColor: '#4682B4',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#4682B4',
+    backgroundColor: '#4682B4',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -256,47 +267,58 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 10,
+  },
+  secondaryButton: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#4682B4',
   },
   secondaryButtonText: {
     color: '#4682B4',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 10,
   },
   resultBox: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    alignItems: 'center',
+    backgroundColor: '#e8f4f8',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
   },
   resultText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#1b1b1b',
+    color: '#1a1a1a',
     textAlign: 'center',
   },
-  errorBox: {
-    backgroundColor: '#ffe6e6',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 14,
-  },
   infoBox: {
-    backgroundColor: '#e3f2fd',
-    borderRadius: 12,
-    padding: 16,
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    backgroundColor: '#fff3cd',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
   },
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1976d2',
+    color: '#856404',
+    marginLeft: 10,
     lineHeight: 20,
+  },
+  errorContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#fee',
+    borderRadius: 5,
+  },
+  errorLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#e74c3c',
+    marginBottom: 5,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#c0392b',
   },
 });
