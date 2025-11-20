@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import MapView, { PROVIDER_GOOGLE } from './Map';
+import MapView, { PROVIDER_GOOGLE, Marker } from './Map';
 import CommunicationModal from './CommunicationModal';
 import { locationService } from '../services/locationService';
 import { orderService } from '../services/orderService';
@@ -182,43 +182,63 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       </View>
 
       {/* Map */}
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={region}
-        showsUserLocation={userRole === 'driver'}
-        enableLiveTracking={userRole === 'consumer'}
-        trackingUserId={userRole === 'consumer' ? order?.driverId : undefined}
-        onLiveLocationUpdate={(location) => {
-          if (userRole === 'consumer') {
-            setDriverLocation(location);
-          }
-        }}
-      >
-        {/* Driver Marker */}
-        {driverLocation && (
-          <MapView.Marker
-            coordinate={{
-              latitude: driverLocation.latitude,
-              longitude: driverLocation.longitude,
-            }}
-            title="Driver"
-            pinColor="#ff4444"
-          />
-        )}
+      {Platform.OS === 'web' ? (
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={region}
+          showsUserLocation={userRole === 'driver'}
+          markers={[
+            ...(driverLocation ? [{
+              coordinate: {
+                latitude: driverLocation.latitude,
+                longitude: driverLocation.longitude,
+              },
+              title: 'Driver',
+              pinColor: '#ff4444',
+            }] : []),
+            ...(consumerLocation && userRole === 'driver' ? [{
+              coordinate: {
+                latitude: consumerLocation.latitude,
+                longitude: consumerLocation.longitude,
+              },
+              title: 'Delivery Location',
+              pinColor: '#28a745',
+            }] : []),
+          ]}
+        />
+      ) : (
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={region}
+          showsUserLocation={userRole === 'driver'}
+        >
+          {/* Driver Marker */}
+          {driverLocation && (
+            <Marker
+              coordinate={{
+                latitude: driverLocation.latitude,
+                longitude: driverLocation.longitude,
+              }}
+              title="Driver"
+              pinColor="#ff4444"
+            />
+          )}
 
-        {/* Consumer Marker */}
-        {consumerLocation && userRole === 'driver' && (
-          <MapView.Marker
-            coordinate={{
-              latitude: consumerLocation.latitude,
-              longitude: consumerLocation.longitude,
-            }}
-            title="Delivery Location"
-            pinColor="#28a745"
-          />
-        )}
-      </MapView>
+          {/* Consumer Marker */}
+          {consumerLocation && userRole === 'driver' && (
+            <Marker
+              coordinate={{
+                latitude: consumerLocation.latitude,
+                longitude: consumerLocation.longitude,
+              }}
+              title="Delivery Location"
+              pinColor="#28a745"
+            />
+          )}
+        </MapView>
+      )}
 
       {/* Actions */}
       <View style={styles.actions}>

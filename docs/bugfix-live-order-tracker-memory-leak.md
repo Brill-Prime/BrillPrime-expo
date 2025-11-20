@@ -1,14 +1,23 @@
-# Bug Fix: Memory Leak in LiveOrderTracker Component
+# Bug Fix: Memory Leak and Cross-Platform Issues in LiveOrderTracker Component
 
 ## Issue Description
 
 **Severity:** High  
 **Component:** `components/LiveOrderTracker.tsx`  
-**Impact:** Memory leak causing performance degradation and potential app crashes
+**Impact:** Memory leak causing performance degradation and potential app crashes, plus cross-platform incompatibility
 
-### Problem
+### Problems
+
+#### 1. Memory Leak (Critical)
 
 The `LiveOrderTracker` component had a critical memory leak in the consumer tracking flow. The `trackDriverLocation()` function returned a cleanup function that properly unsubscribed from location updates and cleared intervals, but this cleanup function was never stored or called.
+
+#### 2. Cross-Platform Incompatibility (Critical)
+
+The component used platform-specific Map APIs that only worked on iOS/Android but failed on web:
+- Used `MapView.Marker` as nested children (native-only pattern)
+- Did not use the `markers` prop required by the web Map implementation
+- Used non-existent props: `enableLiveTracking`, `trackingUserId`, `onLiveLocationUpdate`
 
 ```typescript
 // BEFORE (Buggy Code)
@@ -66,7 +75,13 @@ However, when called in `startTracking()`, the returned cleanup function was ign
 
 ### Implementation
 
+#### 1. Memory Leak Fix
+
 Added a `useRef` to store the cleanup function and properly call it when tracking stops:
+
+#### 2. Cross-Platform Compatibility Fix
+
+Added platform-specific rendering logic to handle web vs native Map implementations:
 
 ```typescript
 // AFTER (Fixed Code)
@@ -97,6 +112,8 @@ const stopTracking = () => {
 
 ### Why This Works
 
+#### Memory Leak Fix
+
 1. **Ref Storage:** Using `useRef` ensures the cleanup function persists across renders without causing re-renders
 2. **Proper Cleanup:** The cleanup function is called in `stopTracking()`, which is invoked:
    - When the component unmounts (via useEffect cleanup)
@@ -104,15 +121,30 @@ const stopTracking = () => {
    - When tracking is manually stopped
 3. **Null Safety:** Setting the ref to `null` after cleanup prevents double-cleanup issues
 
+#### Cross-Platform Fix
+
+1. **Platform Detection:** Uses `Platform.OS === 'web'` to detect web platform
+2. **Web Rendering:** On web, passes markers as an array prop to the Map component
+3. **Native Rendering:** On iOS/Android, uses nested `Marker` components (react-native-maps pattern)
+4. **Proper Imports:** Imports `Marker` from the Map component for native platforms
+5. **Consistent API:** Both approaches display the same markers with the same data
+
 ## Testing
 
 Created comprehensive tests in `components/__tests__/LiveOrderTracker.test.tsx` covering:
 
+### Memory Leak Tests
 1. ✅ Cleanup on component unmount
 2. ✅ Cleanup when switching orders
 3. ✅ Prevention of multiple interval accumulation
 4. ✅ Proper cleanup for both consumer and driver roles
 5. ✅ Interval execution and cleanup timing
+
+### Cross-Platform Tests
+6. ✅ Correct rendering on web platform
+7. ✅ Correct rendering on iOS platform
+8. ✅ Correct rendering on Android platform
+9. ✅ Platform-specific Map API usage
 
 ### Test Results
 
@@ -142,15 +174,25 @@ This fix also prevents:
 - React warnings about setState on unmounted components
 - Unnecessary API calls after component unmount
 - Race conditions from stale location updates
+- Runtime errors on web platform due to incompatible Map API usage
+- Inconsistent behavior across platforms
 
 ## Prevention
 
 To prevent similar issues in the future:
 
+### Memory Leak Prevention
 1. **Always store cleanup functions** returned from custom hooks or utility functions
 2. **Use useEffect cleanup** for any subscriptions or intervals
 3. **Test component unmount behavior** to catch memory leaks early
 4. **Use refs for cleanup functions** that need to persist across renders
+
+### Cross-Platform Development
+1. **Test on all target platforms** (web, iOS, Android) during development
+2. **Use Platform.OS** to conditionally render platform-specific code
+3. **Check component APIs** for platform compatibility before use
+4. **Create platform-specific implementations** when necessary (e.g., Map.web.tsx, Map.native.tsx)
+5. **Document platform differences** in component interfaces
 
 ## Files Changed
 

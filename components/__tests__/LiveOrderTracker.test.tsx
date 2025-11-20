@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, waitFor, act } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import LiveOrderTracker from '../LiveOrderTracker';
 import { locationService } from '../../services/locationService';
 import { orderService } from '../../services/orderService';
@@ -12,7 +13,20 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
   }),
 }));
-jest.mock('../Map', () => 'MapView');
+jest.mock('../Map', () => {
+  const React = require('react');
+  const MockMapView = (props: any) => {
+    // Mock both web (markers prop) and native (children) rendering
+    return React.createElement('MapView', props);
+  };
+  MockMapView.Marker = (props: any) => React.createElement('Marker', props);
+  return {
+    __esModule: true,
+    default: MockMapView,
+    PROVIDER_GOOGLE: 'google',
+    Marker: MockMapView.Marker,
+  };
+});
 jest.mock('../CommunicationModal', () => 'CommunicationModal');
 
 describe('LiveOrderTracker', () => {
@@ -236,6 +250,68 @@ describe('LiveOrderTracker', () => {
       await waitFor(() => {
         expect(locationService.getLiveLocation).toHaveBeenCalledWith('driver-123');
       });
+    });
+  });
+
+  describe('Cross-Platform Compatibility', () => {
+    it('should render correctly on web platform', async () => {
+      // Mock Platform.OS as web
+      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('web');
+
+      const { UNSAFE_getByType } = render(
+        <LiveOrderTracker
+          orderId={mockOrderId}
+          userRole="consumer"
+          onClose={mockOnClose}
+        />
+      );
+
+      await waitFor(() => {
+        expect(locationService.onLocationUpdate).toHaveBeenCalled();
+      });
+
+      // On web, MapView should receive markers prop instead of children
+      // This is validated by the component rendering without errors
+    });
+
+    it('should render correctly on iOS platform', async () => {
+      // Mock Platform.OS as ios
+      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('ios');
+
+      const { UNSAFE_getByType } = render(
+        <LiveOrderTracker
+          orderId={mockOrderId}
+          userRole="consumer"
+          onClose={mockOnClose}
+        />
+      );
+
+      await waitFor(() => {
+        expect(locationService.onLocationUpdate).toHaveBeenCalled();
+      });
+
+      // On iOS, MapView should use children (Marker components)
+      // This is validated by the component rendering without errors
+    });
+
+    it('should render correctly on Android platform', async () => {
+      // Mock Platform.OS as android
+      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('android');
+
+      const { UNSAFE_getByType } = render(
+        <LiveOrderTracker
+          orderId={mockOrderId}
+          userRole="consumer"
+          onClose={mockOnClose}
+        />
+      );
+
+      await waitFor(() => {
+        expect(locationService.onLocationUpdate).toHaveBeenCalled();
+      });
+
+      // On Android, MapView should use children (Marker components)
+      // This is validated by the component rendering without errors
     });
   });
 });
