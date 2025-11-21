@@ -3,6 +3,14 @@
 
 import { ENV } from '../config/environment';
 
+// Default headers for all requests
+const DEFAULT_HEADERS = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+  'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+};
+
 interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -44,14 +52,27 @@ class ApiClient {
       console.log(`🌐 API Request: ${this.baseURL}${endpoint}`);
       const startTime = Date.now();
 
+      // Merge default headers with any custom headers and auth token
+      const headers = new Headers({
+        ...DEFAULT_HEADERS,
+        ...(options.headers || {}),
+        'x-firebase-uid': this.authToken
+      });
+
+      // Handle preflight requests
+      if (options.method === 'OPTIONS') {
+        return {
+          success: true,
+          message: 'Preflight request successful'
+        } as ApiResponse<T>;
+      }
+
       const response = await fetch(`${this.baseURL}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-firebase-uid': this.authToken,
-          ...options.headers,
-        },
-        signal: controller.signal,
         ...options,
+        headers,
+        mode: 'cors',
+        credentials: 'include',
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
@@ -134,8 +155,8 @@ class ApiClient {
 
   async get<T>(endpoint: string, headers?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, { 
-      method: 'GET', 
-      headers: headers ? { ...headers } : undefined,
+      method: 'GET',
+      headers: headers ? { ...DEFAULT_HEADERS, ...headers } : DEFAULT_HEADERS,
       signal 
     });
   }
@@ -148,7 +169,11 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'POST',
-      headers: headers ? { 'Content-Type': 'application/json', ...headers } : undefined,
+      headers: { 
+        ...DEFAULT_HEADERS,
+        'Content-Type': 'application/json',
+        ...(headers || {}) 
+      },
       body: data ? JSON.stringify(data) : undefined,
       signal,
     });
@@ -157,7 +182,11 @@ class ApiClient {
   async put<T>(endpoint: string, data?: any, headers?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
-      headers: headers ? { ...headers } : undefined,
+      headers: { 
+        ...DEFAULT_HEADERS,
+        'Content-Type': 'application/json',
+        ...(headers || {}) 
+      },
       body: data ? JSON.stringify(data) : undefined,
       signal,
     });
@@ -165,8 +194,11 @@ class ApiClient {
 
   async delete<T>(endpoint: string, headers?: Record<string, string>, signal?: AbortSignal): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, { 
-      method: 'DELETE', 
-      headers: headers ? { ...headers } : undefined,
+      method: 'DELETE',
+      headers: { 
+        ...DEFAULT_HEADERS,
+        ...(headers || {}) 
+      },
       signal 
     });
   }

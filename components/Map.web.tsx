@@ -1,390 +1,243 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 interface MapProps {
-  style?: ViewStyle;
-  region?: any;
-  onRegionChangeComplete?: (region: any) => void;
-  showsUserLocation?: boolean;
-  showsMyLocationButton?: boolean;
-  showsCompass?: boolean;
-  toolbarEnabled?: boolean;
-  mapType?: string;
-  pitchEnabled?: boolean;
-  rotateEnabled?: boolean;
-  scrollEnabled?: boolean;
-  zoomEnabled?: boolean;
-  children?: React.ReactNode;
-  provider?: any;
-  initialRegion?: {
+  style?: any;
+  region?: {
     latitude: number;
     longitude: number;
-    latitudeDelta: number;
-    longitudeDelta: number;
+    latitudeDelta?: number;
+    longitudeDelta?: number;
   };
+  onRegionChangeComplete?: (region: any) => void;
+  showsUserLocation?: boolean;
+  children?: React.ReactNode;
+  onMapReady?: () => void;
+  onError?: (error: any) => void;
   markers?: Array<{
     coordinate: { latitude: number; longitude: number };
     title?: string;
     description?: string;
     pinColor?: string;
   }>;
-  customMapStyle?: any[];
-  onMapReady?: () => void;
-  onError?: () => void;
 }
 
 const MapWeb: React.FC<MapProps> = ({
   style,
-  children,
-  region,
-  initialRegion,
-  onRegionChangeComplete,
-  markers = [],
-  showsUserLocation = false,
-  customMapStyle,
-  onMapReady,
-  onError,
-  ...props
-}) => {
-  const [mapError, setMapError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<any>(null);
-  const mapRef = useRef<any>(null);
-  const leafletMapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const userMarkerRef = useRef<any>(null);
-
-  // Validate and set region with fallback
-  const defaultRegion = {
+  region = {
     latitude: 6.5244,
     longitude: 3.3792,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
-  };
+  },
+  onRegionChangeComplete,
+  showsUserLocation = false,
+  children,
+  onMapReady,
+  onError,
+  markers = [],
+  ...props
+}) => {
+  const webViewRef = useRef(null);
+  const mapInitialized = useRef(false);
 
-  const displayRegion = React.useMemo(() => {
-    const reg = region || initialRegion || defaultRegion;
-
-    if (isNaN(reg.latitude) || isNaN(reg.longitude)) {
-      console.warn('⚠️ Invalid coordinates detected, using default region');
-      return defaultRegion;
-    }
-
-    if (reg.latitude < -90 || reg.latitude > 90 || reg.longitude < -180 || reg.longitude > 180) {
-      console.warn('⚠️ Coordinates out of bounds, using default region');
-      return defaultRegion;
-    }
-
-    return reg;
-  }, [region, initialRegion]);
-
-  // Track if Leaflet is loaded
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
-
-  // Load Leaflet library
-  useEffect(() => {
-    const loadLeaflet = async () => {
-      if (typeof window === 'undefined') {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Check if Leaflet is already loaded
-        if (window.L) {
-          console.log('✅ Leaflet already loaded');
-          setLeafletLoaded(true);
-          return;
-        }
-
-        console.log('📥 Loading Leaflet...');
-
-        // Load Leaflet CSS
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-        link.crossOrigin = '';
-        document.head.appendChild(link);
-
-        // Load Leaflet JS
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-        script.crossOrigin = '';
-        script.async = true;
-
-        script.onload = () => {
-          console.log('✅ Leaflet loaded successfully');
-          setLeafletLoaded(true);
-        };
-
-        script.onerror = () => {
-          console.error('❌ Failed to load Leaflet');
-          setMapError(true);
-          setIsLoading(false);
-          if (onError) onError();
-        };
-
-        document.head.appendChild(script);
-      } catch (error) {
-        console.error('❌ Error loading Leaflet:', error);
-        setMapError(true);
-        setIsLoading(false);
-        if (onError) onError();
-      }
-    };
-
-    loadLeaflet();
-  }, []);
-
-  // Initialize map when both Leaflet and DOM are ready
-  useEffect(() => {
-    if (leafletLoaded && mapRef.current && !leafletMapRef.current) {
-      console.log('🚀 DOM and Leaflet ready, initializing map...');
-      setTimeout(() => initMap(), 100);
-    }
-  }, [leafletLoaded]);
-
-  // Get user's current location if showsUserLocation is true
-  useEffect(() => {
-    if (showsUserLocation && typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+  // Generate HTML for the map
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+      <link 
+        rel="stylesheet" 
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
+      />
+      <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100%; height: 100%; }
+        .leaflet-control-zoom { margin-top: 10px; margin-right: 10px; }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+      <script>
+        let map;
+        let markers = [];
+        let userMarker;
+        
+        function initMap() {
+          const center = [${region?.latitude || 6.5244}, ${region?.longitude || 3.3792}];
+          const zoom = ${region?.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13};
+          
+          // Initialize map
+          map = L.map('map').setView(center, zoom);
+          
+          // Add tile layer
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }).addTo(map);
+          
+          // Add user location if enabled
+          ${showsUserLocation ? `
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                const userPos = [pos.coords.latitude, pos.coords.longitude];
+                userMarker = L.marker(userPos, {
+                  icon: L.divIcon({
+                    html: '<div style="background-color: #4285F4; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+                    className: '',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                  })
+                }).addTo(map);
+                
+                // Notify parent about user location
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'userLocation',
+                  location: {
+                    latitude: userPos[0],
+                    longitude: userPos[1]
+                  }
+                }));
+              },
+              (err) => {
+                console.error('Error getting location:', err);
+              },
+              { enableHighAccuracy: true }
+            );
+          }
+          ` : ''}
+          
+          // Handle map move events
+          map.on('moveend', function() {
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            const bounds = map.getBounds();
+            
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'regionChange',
+              region: {
+                latitude: center.lat,
+                longitude: center.lng,
+                latitudeDelta: (bounds.getNorthEast().lat - bounds.getSouthWest().lat) / 2,
+                longitudeDelta: (bounds.getNorthEast().lng - bounds.getSouthWest().lng) / 2
+              }
+            }));
           });
-        },
-        (error) => {
-          console.error('Error getting user location:', error);
-          setUserLocation(null);
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 30000,
+          
+          // Notify React Native that map is ready
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapReady'
+          }));
+          
+          // Add markers if any
+          updateMarkers(${JSON.stringify(markers || [])});
         }
-      );
-    }
-  }, [showsUserLocation]);
+        
+        // Function to update markers
+        function updateMarkers(markersData) {
+          // Clear existing markers
+          markers = [];
+          
+          // Add new markers
+          markersData.forEach((mData) => {
+            if (mData.coordinate) {
+              const marker = L.marker([
+                mData.coordinate.latitude, 
+                mData.coordinate.longitude
+              ], {
+                icon: L.divIcon({
+                  html: \`<div style="background-color: ${mData.pinColor || '#FF6B6B'}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>\`,
+                  className: '',
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10]
+                })
+              }).addTo(map);
+              
+              if (mData.title || mData.description) {
+                let popupContent = '';
+                if (mData.title) popupContent += \`<b>${mData.title}</b><br/>\`;
+                if (mData.description) popupContent += mData.description;
+                marker.bindPopup(popupContent);
+              }
+              
+              markers.push(marker);
+            }
+          });
+        }
+        
+        // Handle messages from React Native
+        window.updateMarkers = updateMarkers;
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initMap);
+        } else {
+          initMap();
+        }
+      </script>
+    </body>
+    </html>
+  `;
 
-  // Initialize Leaflet map
-  const initMap = () => {
-    if (leafletMapRef.current) {
-      console.log('ℹ️ Map already initialized');
-      return;
-    }
-
-    if (!mapRef.current || !window.L) {
-      console.log('⏳ Map initialization delayed - waiting for DOM/Leaflet');
-      return;
-    }
-
-    if (!displayRegion || isNaN(displayRegion.latitude) || isNaN(displayRegion.longitude)) {
-      console.error('❌ Invalid region data:', displayRegion);
-      setMapError(true);
-      setIsLoading(false);
-      return;
-    }
-
+  const handleMessage = (event) => {
     try {
-      console.log('🗺️ Initializing Leaflet map...');
-      console.log('📍 Map center:', { lat: displayRegion.latitude, lng: displayRegion.longitude });
-
-      const zoom = getZoomFromDelta(displayRegion.latitudeDelta);
-      console.log('🔍 Map zoom:', zoom);
-
-      // Create map
-      const map = window.L.map(mapRef.current, {
-        center: [displayRegion.latitude, displayRegion.longitude],
-        zoom: zoom,
-        zoomControl: props.zoomEnabled !== false,
-        scrollWheelZoom: props.scrollEnabled !== false,
-        dragging: props.scrollEnabled !== false,
-        touchZoom: props.zoomEnabled !== false,
-      });
-
-      // Add tile layer (OpenStreetMap)
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
-
-      leafletMapRef.current = map;
-      console.log('✅ Leaflet map created successfully');
-
-      // Map is ready
-      setTimeout(() => {
-        setIsLoading(false);
-        if (onMapReady) onMapReady();
-        console.log('🎉 Map ready');
-      }, 500);
-
-      // Add move end listener for region changes
-      if (onRegionChangeComplete) {
-        map.on('moveend', () => {
-          const center = map.getCenter();
-          const bounds = map.getBounds();
-          const ne = bounds.getNorthEast();
-          const sw = bounds.getSouthWest();
-
-          onRegionChangeComplete({
-            latitude: center.lat,
-            longitude: center.lng,
-            latitudeDelta: Math.abs(ne.lat - sw.lat),
-            longitudeDelta: Math.abs(ne.lng - sw.lng),
-          });
-        });
+      const data = JSON.parse(event.nativeEvent.data);
+      
+      switch (data.type) {
+        case 'regionChange':
+          if (onRegionChangeComplete) {
+            onRegionChangeComplete(data.region);
+          }
+          break;
+        case 'mapReady':
+          if (onMapReady) onMapReady();
+          break;
+        case 'userLocation':
+          // Handle user location if needed
+          break;
       }
-    } catch (error: any) {
-      console.error('❌ Error initializing map:', error);
-      setMapError(true);
-      setIsLoading(false);
-      if (onError) onError();
+    } catch (error) {
+      console.error('Error handling message:', error);
     }
-  };
-
-  // Convert latitudeDelta to zoom level
-  const getZoomFromDelta = (latitudeDelta: number): number => {
-    return Math.round(Math.log(360 / latitudeDelta) / Math.LN2);
   };
 
   // Update markers when they change
   useEffect(() => {
-    if (!leafletMapRef.current || !window.L) return;
-
-    // Clear existing markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-
-    // Add user location marker
-    if (showsUserLocation && userLocation) {
-      const userIcon = window.L.divIcon({
-        html: `
-          <div style="
-            width: 36px;
-            height: 36px;
-            background-color: #4682B4;
-            border: 3px solid white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          ">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
-          </div>
-        `,
-        className: '',
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-      });
-
-      const marker = window.L.marker([userLocation.latitude, userLocation.longitude], {
-        icon: userIcon,
-      }).addTo(leafletMapRef.current);
-
-      marker.bindPopup('<b>Your Location</b>');
-      markersRef.current.push(marker);
-      userMarkerRef.current = marker;
+    if (webViewRef.current && markers) {
+      webViewRef.current.injectJavaScript(`
+        if (window.updateMarkers) {
+          window.updateMarkers(${JSON.stringify(markers)});
+        }
+        true;
+      `);
     }
-
-    // Add custom markers
-    markers.forEach((markerData) => {
-      const markerIcon = window.L.divIcon({
-        html: `
-          <div style="
-            width: 30px;
-            height: 30px;
-            background-color: ${markerData.pinColor || '#FF6B6B'};
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          "></div>
-        `,
-        className: '',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
-      });
-
-      const marker = window.L.marker(
-        [markerData.coordinate.latitude, markerData.coordinate.longitude],
-        { icon: markerIcon }
-      ).addTo(leafletMapRef.current);
-
-      if (markerData.title || markerData.description) {
-        const popupContent = `
-          <div style="padding: 8px;">
-            ${markerData.title ? `<strong>${markerData.title}</strong>` : ''}
-            ${markerData.description ? `<p style="margin: 4px 0 0 0;">${markerData.description}</p>` : ''}
-          </div>
-        `;
-        marker.bindPopup(popupContent);
-      }
-
-      markersRef.current.push(marker);
-    });
-  }, [markers, userLocation, showsUserLocation]);
-
-  // Update map center when region changes
-  useEffect(() => {
-    if (leafletMapRef.current && region) {
-      leafletMapRef.current.setView(
-        [region.latitude, region.longitude],
-        getZoomFromDelta(region.latitudeDelta)
-      );
-    }
-  }, [region]);
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, style]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4682B4" />
-          <Text style={styles.loadingText}>Loading Map...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (mapError) {
-    return (
-      <View style={[styles.container, style]}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="warning" size={32} color="#e74c3c" />
-          <Text style={styles.errorText}>Map failed to load</Text>
-          <Text style={styles.errorDetails}>
-            Please check your internet connection and try again.
-          </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => window.location.reload()}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  }, [markers]);
 
   return (
     <View style={[styles.container, style]}>
-      <div
-        ref={mapRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          borderRadius: 0,
-        }}
+      <WebView
+        ref={webViewRef}
+        source={{ html }}
+        style={styles.webview}
+        onMessage={handleMessage}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        scalesPageToFit={false}
+        originWhitelist={['*']}
+        mixedContentMode="always"
+        allowFileAccess={true}
+        allowUniversalAccessFromFileURLs={true}
+        allowFileAccessFromFileURLs={true}
       />
+      {children}
     </View>
   );
 };
@@ -392,22 +245,18 @@ const MapWeb: React.FC<MapProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    position: 'relative',
-    overflow: 'hidden',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
   },
-  errorContainer: {
+  webview: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
     backgroundColor: '#f0f8ff',
   },
   errorText: {
     fontSize: 16,
     color: '#e74c3c',
     marginTop: 12,
-    fontWeight: '600',
     textAlign: 'center',
   },
   errorDetails: {
