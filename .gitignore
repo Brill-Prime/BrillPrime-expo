@@ -1,7 +1,15 @@
+# Environment variables
+.env
+
+# Dependencies
 node_modules/
+
+# Expo
 .expo/
 .expo-shared/
 dist/
+
+# Build and debug files
 npm-debug.*
 *.jks
 *.p8

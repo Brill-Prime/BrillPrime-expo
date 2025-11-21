@@ -4,6 +4,9 @@ import { Text, View, StyleSheet, Animated, Image, ActivityIndicator, Platform } 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
+// remove static import, we'll use expo-asset for robust web handling
+// import logoImage from '../assets/images/logo.png';
+import { Asset } from 'expo-asset';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,34 +17,45 @@ export default function SplashScreenComponent() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const [logoUri, setLogoUri] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const useNativeDriver = Platform.OS !== 'web';
 
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver,
-      }),
-    ]).start();
+    // Preload logo for web and get a reliable URI
+    (async () => {
+      try {
+        const asset = Asset.fromModule(require('../assets/images/logo.png'));
+        await asset.downloadAsync();
+        if (isMounted) {
+          setLogoUri(asset.localUri ?? asset.uri);
+        }
+      } catch (e) {
+        console.warn('Logo asset preload failed:', e);
+        if (isMounted) setLogoFailed(true);
+      }
+    })();
 
+    // Fade in animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver,
+    }).start();
+
+    // Continuous pulse animation
     const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 800,
+          toValue: 1.1,
+          duration: 1000,
           useNativeDriver,
         }),
         Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
+          toValue: 0.95,
+          duration: 1000,
           useNativeDriver,
         }),
       ])
@@ -149,13 +163,16 @@ export default function SplashScreenComponent() {
   if (error) {
     return (
       <View style={styles.container}>
-        <View style={styles.content}>
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
           <Text style={styles.errorText}>Error: {error}</Text>
-          <Text style={styles.retryText} onPress={() => {
-            setError(null);
-            setIsLoading(true);
-            router.replace('/onboarding/screen1');
-          }}>
+          <Text 
+            style={styles.retryText} 
+            onPress={() => {
+              setError(null);
+              setIsLoading(true);
+              router.replace('/onboarding/screen1');
+            }}
+          >
             Tap to continue
           </Text>
         </View>
@@ -166,28 +183,41 @@ export default function SplashScreenComponent() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.content}>
-          <Animated.View
-            style={[
-              styles.logoContainer,
-              {
-                opacity: fadeAnim,
-                transform: [
-                  { scale: Animated.multiply(scaleAnim, pulseAnim) }
-                ],
-              },
-            ]}
-          >
-            <Image
-              source={require('../assets/images/logo.png')}
-              style={styles.logoImage as any}
-              resizeMode="contain"
-            />
-          </Animated.View>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#3b82f6" />
-          </View>
-        </View>
+        <Animated.View
+          style={[
+            styles.logoContainer,
+            {
+              opacity: fadeAnim,
+              transform: [
+                { scale: pulseAnim }
+              ],
+            },
+          ]}
+        >
+          {logoFailed ? (
+            <Text style={{ color: '#2563eb', fontSize: 48, fontWeight: 'bold' }}>BP</Text>
+          ) : (
+            Platform.OS === 'web' ? (
+              logoUri && (
+                <Image
+                  source={{ uri: logoUri }}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                  onError={() => setLogoFailed(true)}
+                  accessibilityLabel="BrillPrime Logo"
+                />
+              )
+            ) : (
+              <Image
+                source={require('../assets/images/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+                onError={() => setLogoFailed(true)}
+                accessibilityLabel="BrillPrime Logo"
+              />
+            )
+          )}
+        </Animated.View>
       </View>
     );
   }
@@ -202,25 +232,24 @@ export default function SplashScreenComponent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
-    minHeight: '100%',
-    width: '100%',
-  },
-  content: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   logoContainer: {
-    marginBottom: 32,
     alignItems: "center",
     justifyContent: "center",
+    width: '100%',
+    height: '100%',
   },
   logoImage: {
-    width: 128,
-    height: 104,
+    width: 200,
+    height: 200,
   },
   loadingContainer: {
     marginTop: 32,

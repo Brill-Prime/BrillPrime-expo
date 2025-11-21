@@ -43,6 +43,8 @@ export default {
   },
   plugins: [
     "expo-router",
+    "expo-font",
+    "expo-web-browser",
     [
       "expo-build-properties",
       {
@@ -70,19 +72,23 @@ export default {
     eas: {
       projectId: "your-project-id"
     },
-    // Firebase configuration with proper environment variable access
-    firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBAe9x-nOCzn8VA1oAP23y2Sv2sIiVyP0s",
-    firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "brillprimefirebase.firebaseapp.com",
-    firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "brillprimefirebase",
-    firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "brillprimefirebase.firebasestorage.app",
-    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "655201684400",
-    firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:655201684400:web:ec3ac485a4f98a82fb2475",
-    firebaseDatabaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://brillprimefirebase-default-rtdb.firebaseio.com",
-    firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
-    // API configuration - Using Supabase
-    apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "30000", 10),
-    // Supabase configuration
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "",
-    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ""
+    // Firebase configuration pulled strictly from environment variables
+    firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
+    firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+    firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
+    firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+    firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
+    firebaseDatabaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || '',
+    firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
+    // Database / Supabase configuration (client-safe only)
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
+    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+    supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+    // API configuration
+    apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000', 10),
+    // Mapping / location services
+    googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
+    mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
   }
 };

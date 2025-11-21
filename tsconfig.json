@@ -1,27 +1,36 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "jsx": "react-jsx",
-    "types": [
-      "node"
-    ],
+    "outDir": "./build",
+    "skipLibCheck": true,
+    "baseUrl": "./",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "skipLibCheck": true
+      "@/*": ["./*"]
+    }
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
+    "app",
+    "components",
+    "contexts",
+    "hooks",
+    "services",
+    "utils",
+    "scripts",
+    "types",
+    "config",
+    "supabase",
+    "metro.config.js",
+    "app.config.js",
+    "eslint.config.js",
+    "eas.json",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ],
   "exclude": [
-    "supabase/functions/**"
+    "**/__mocks__/*",
+    "**/__tests__/*",
+    "node_modules",
+    "android",
+    "ios"
   ]
 }

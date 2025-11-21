@@ -15,7 +15,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../contexts/AuthContext";
 import { PerformanceOptimizer } from "../../utils/performance";
 import { locationService } from "../../services/locationService";
 import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
@@ -128,7 +128,7 @@ const formatNaira = (amount: number): string => {
 export default function DriverHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
-  const { isAuthenticated, isLoading: authLoading, checkAuth } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, refreshUser, signOut } = useAuth();
 
   // State management
   const [isLoading, setIsLoading] = useState(true);
@@ -325,7 +325,13 @@ export default function DriverHome() {
   const initializeData = useCallback(async () => {
     setIsLoading(true);
     try {
-      await Promise.all([loadUserData(), loadDriverStats(), checkAuth()]);
+      // Guard drivers-only view
+      if (!authLoading && role !== 'driver') {
+        router.replace('/auth/role-selection');
+        return;
+      }
+
+      await Promise.all([loadUserData(), loadDriverStats(), refreshUser()]);
       // Start location tracking after data loads
       await startLocationTracking();
     } catch (error) {

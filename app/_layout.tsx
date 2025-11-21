@@ -3,7 +3,8 @@ import { Stack } from "expo-router";
 import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text, ActivityIndicator, Platform } from "react-native";
-import * as SplashScreen from 'expo-splash-screen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { ErrorBoundary } from 'react-error-boundary';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,8 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { useDeepLinking } from '../hooks/useDeepLinking';
 import { analyticsService } from '../services/analyticsService';
 import RealtimeNotificationBanner from '../components/RealtimeNotificationBanner';
+import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 // Import Leaflet CSS for web
 if (Platform.OS === 'web') {
@@ -43,19 +46,17 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, setFontsLoaded] = useState(false);
+  // Render immediately; let fonts load in background so the animated splash at app/index.tsx is visible
+  const [fontsLoaded, setFontsLoaded] = useState(true);
   useDeepLinking();
 
   useEffect(() => {
-    async function prepare() {
+    (async () => {
       try {
-        // Keep the splash screen visible while we fetch resources
-        await SplashScreen.preventAutoHideAsync();
-
         // Initialize analytics
         await analyticsService.initialize();
 
-        // Load fonts
+        // Load fonts in background
         console.log('Loading fonts...');
         try {
           await Font.loadAsync({
@@ -70,41 +71,29 @@ export default function RootLayout() {
             'Montserrat-ExtraLight': require('../assets/fonts/Montserrat-ExtraLight.ttf'),
           });
           console.log('Fonts loaded successfully');
+          setFontsLoaded(true);
         } catch (fontError) {
           console.warn('Font loading failed, using system fonts:', fontError);
-          // Continue anyway - app will use fallback system fonts
         }
-
       } catch (e) {
-        console.error('Error loading fonts:', e);
-      } finally {
-        // Tell the application to render the child components
-        setFontsLoaded(true);
-        await SplashScreen.hideAsync();
+        console.error('Initialization error:', e);
       }
-    }
-
-    prepare();
+    })();
   }, []);
 
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
+  // removed initial ActivityIndicator gate so splash animation can be shown for 5 seconds
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AuthProvider>
-        <AppProvider>
-          <NotificationProvider>
+      <AppProvider>
+        <NotificationProvider>
+          <AuthProvider>
             <MerchantProvider>
               <AlertProvider>
                 <View style={styles.container}>
                   <OfflineBanner />
                   <RealtimeNotificationBanner />
+                  <AuthStateHandler />
                   <Stack
                     screenOptions={{
                       headerShown: false,
@@ -112,16 +101,85 @@ export default function RootLayout() {
                       animation: 'fade',
                     }}
                   >
-                    <Stack.Screen name="index" />
+                    <Stack.Screen name="index" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="merchant" options={{ headerShown: false }} />
+                    <Stack.Screen name="home" options={{ headerShown: false }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                   </Stack>
                 </View>
               </AlertProvider>
             </MerchantProvider>
-          </NotificationProvider>
-        </AppProvider>
-      </AuthProvider>
+          </AuthProvider>
+        </NotificationProvider>
+      </AppProvider>
     </ErrorBoundary>
   );
+}
+
+// Component to handle auth state and redirects
+function AuthStateHandler() {
+  const { isAuthenticated, isLoading, role } = useAuth();
+  const router = useRouter();
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if onboarding is completed
+    const checkOnboardingStatus = async () => {
+      const onboardingCompleted = await AsyncStorage.getItem('hasCompletedOnboarding');
+      setHasCompletedOnboarding(onboardingCompleted === 'true');
+    };
+    checkOnboardingStatus();
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || hasCompletedOnboarding === null) return;
+
+    if (!hasCompletedOnboarding) {
+      // Redirect to first onboarding screen
+      router.replace('/onboarding/screen1');
+      return;
+    }
+
+    // Check if user has selected a role
+    const checkRoleSelection = async () => {
+      const selectedRole = await AsyncStorage.getItem('userRole');
+      
+      if (selectedRole) {
+        // If role is selected, check authentication
+        if (isAuthenticated) {
+          // Redirect to appropriate home screen based on role
+          if (selectedRole === 'merchant') {
+            router.replace('/merchant/home');
+          } else if (selectedRole === 'driver') {
+            router.replace('/home/driver');
+          } else if (selectedRole === 'consumer') {
+            router.replace('/home/consumer');
+          }
+        } else {
+          // If not authenticated, go to sign-in
+          router.replace('/auth/signin');
+        }
+      } else {
+        // If no role selected, go to role selection first
+        router.replace('/auth/role-selection');
+      }
+    };
+    
+    checkRoleSelection();
+  }, [isAuthenticated, isLoading, role, hasCompletedOnboarding]);
+
+  // Show loading indicator while checking auth state or onboarding status
+  if (isLoading || hasCompletedOnboarding === null) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({

@@ -11,6 +11,7 @@ interface User {
   lastName?: string;
   merchantId?: string;
   driverId?: string;
+  phone?: string;
 }
 
 interface AuthContextType {
@@ -42,13 +43,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authService.getStoredUser()
       ]);
 
-      if (storedToken && storedRole) {
+      if (storedToken) {
         setToken(storedToken);
-        setRole(storedRole);
-        setIsAuthenticated(true);
         
-        if (userData) {
-          setUser(userData as User);
+        // Only set as authenticated if we have both token and role
+        if (storedRole) {
+          setRole(storedRole);
+          setIsAuthenticated(true);
+          
+          if (userData) {
+            setUser(userData as User);
+          }
+        } else {
+          // If we have a token but no role, force role selection
+          setIsAuthenticated(false);
+          setUser(null);
+          setRole(null);
+          // This will trigger the auth flow to show role selection
         }
       } else {
         setIsAuthenticated(false);

@@ -59,24 +59,6 @@ try {
 }
 
 // Icon fallback configuration for web
-if (typeof window !== 'undefined') {
-  // Add Ionicons CSS fallback
-  const ioniconsLink = document.createElement('link');
-  ioniconsLink.rel = 'stylesheet';
-  ioniconsLink.href = 'https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/collection/components/ion-icon/ion-icon.css';
-  document.head.appendChild(ioniconsLink);
-
-  // Add Ionicons script
-  const ioniconsScript = document.createElement('script');
-  ioniconsScript.type = 'module';
-  ioniconsScript.src = 'https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js';
-  document.head.appendChild(ioniconsScript);
-
-  const ioniconsNoModule = document.createElement('script');
-  ioniconsNoModule.setAttribute('nomodule', '');
-  ioniconsNoModule.src = 'https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.js';
-  document.head.appendChild(ioniconsNoModule);
-}
-
+// Using @expo/vector-icons for icons; no CDN injection required to avoid ORB errors on web.
 export { auth, db, storage };
 export default app;
