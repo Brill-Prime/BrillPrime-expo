@@ -7,42 +7,52 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import Constants from 'expo-constants';
 
-// Get Firebase configuration from environment variables
-const firebaseConfig = {
-  apiKey: Constants.expoConfig?.extra?.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: Constants.expoConfig?.extra?.firebaseAuthDomain || process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: Constants.expoConfig?.extra?.firebaseProjectId || process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket || process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: Constants.expoConfig?.extra?.firebaseMessagingSenderId || process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: Constants.expoConfig?.extra?.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-  databaseURL: Constants.expoConfig?.extra?.firebaseDatabaseURL || process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
-  measurementId: Constants.expoConfig?.extra?.firebaseMeasurementId || process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
+const getEnvValue = (key: string) => {
+  const extraKey = key
+    .replace('EXPO_PUBLIC_', '')
+    .toLowerCase()
+    .replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+
+  const extras = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
+
+  return extras[extraKey] || process.env[key] || '';
 };
 
-console.log('Firebase Config Status:', {
-  hasApiKey: !!firebaseConfig.apiKey,
-  hasAuthDomain: !!firebaseConfig.authDomain,
-  hasProjectId: !!firebaseConfig.projectId,
-  hasStorageBucket: !!firebaseConfig.storageBucket,
-  hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
-  hasAppId: !!firebaseConfig.appId,
-  projectId: firebaseConfig.projectId,
-});
+// Get Firebase configuration from environment variables
+const firebaseConfig = {
+  apiKey: getEnvValue('EXPO_PUBLIC_FIREBASE_API_KEY'),
+  authDomain: getEnvValue('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnvValue('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnvValue('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnvValue('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnvValue('EXPO_PUBLIC_FIREBASE_APP_ID'),
+  databaseURL: getEnvValue('EXPO_PUBLIC_FIREBASE_DATABASE_URL'),
+  measurementId: getEnvValue('EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID'),
+};
 
-// Validate that we have the required config
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.error('❌ Missing required Firebase configuration');
-  console.error('Firebase config:', firebaseConfig);
-  throw new Error('Firebase configuration is incomplete. Please check your environment variables.');
+const missingFields = Object.entries(firebaseConfig)
+  .filter(([key, value]) => !value && key !== 'measurementId' && key !== 'databaseURL')
+  .map(([key]) => key);
+
+export const isFirebaseConfigured = missingFields.length === 0;
+
+if (!isFirebaseConfigured) {
+  console.warn('⚠️ Firebase configuration incomplete. Some features may be disabled. Missing:', missingFields);
+} else {
+  console.log('✅ Firebase environment variables resolved successfully');
 }
 
 // Initialize Firebase with error handling
-let app;
-let auth: Auth;
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
 let db;
 let storage;
 
 try {
+  if (!isFirebaseConfigured) {
+    throw new Error('Firebase configuration incomplete');
+  }
+
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
   db = getFirestore(app);
@@ -52,13 +62,14 @@ try {
 } catch (error) {
   console.error('❌ Firebase initialization error:', error);
   // Create fallback empty objects to prevent crashes
-  app = null as any;
-  auth = null as any;
+  app = null;
+  auth = null;
   db = null as any;
   storage = null as any;
 }
 
 // Icon fallback configuration for web
 // Using @expo/vector-icons for icons; no CDN injection required to avoid ORB errors on web.
-export { auth, db, storage };
+export { app, auth, db, storage };
+
 export default app;

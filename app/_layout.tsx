@@ -172,11 +172,8 @@ function AuthStateHandler() {
 
   // Show loading indicator while checking auth state or onboarding status
   if (isLoading || hasCompletedOnboarding === null) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
+    // Allow the dedicated splash screen (app/index.tsx) to remain visible instead of covering it here
+    return null;
   }
 
   return null;

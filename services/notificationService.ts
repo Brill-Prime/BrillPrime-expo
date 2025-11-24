@@ -276,58 +276,102 @@ class NotificationService {
     });
   }
 
-  // Get unread count
+  // Helper function for retry logic
+  private async withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries === 0) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return this.withRetry(fn, retries - 1, delay * 2);
+    }
+  }
+
+  // Check network connectivity
+  private async checkNetworkConnectivity(): Promise<boolean> {
+    try {
+      const { NetInfo } = await import('@react-native-community/netinfo');
+      const state = await NetInfo.fetch();
+      return state.isConnected ?? false;
+    } catch (error) {
+      console.warn('Network check failed:', error);
+      return false;
+    }
+  }
+
+  // Get unread count with enhanced error handling and retry logic
   async getUnreadCount(role?: string): Promise<ApiResponse<{ count: number }>> {
     try {
-      const token = await authService.getToken();
-      if (!token) {
-        return { success: false, error: 'Authentication required' };
+      // Check network connectivity first
+      const isConnected = await this.checkNetworkConnectivity();
+      if (!isConnected) {
+        console.log('No network connection, using cached notification count');
+        return { success: false, error: 'No network connection', data: { count: 0 } };
       }
 
-      // Get user data
-      const userData = await authService.getStoredUser();
-      if (!userData?.id) {
-        return { success: false, error: 'User not found' };
-      }
+      // Use retry logic for the main operation
+      return await this.withRetry(async () => {
+        const token = await authService.getToken();
+        if (!token) {
+          console.warn('No auth token available for notification fetch');
+          return { success: false, error: 'Authentication required', data: { count: 0 } };
+        }
 
-      // Get user role if not provided
-      let userRole = role;
-      if (!userRole) {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        userRole = await AsyncStorage.getItem('userRole') || 'consumer';
-      }
+        // Get user data
+        const userData = await authService.getStoredUser();
+        if (!userData?.id) {
+          console.warn('No user data available for notification fetch');
+          return { success: false, error: 'User not found', data: { count: 0 } };
+        }
 
-      // Use Supabase client directly
-      const { supabase } = await import('../config/supabase');
-      
-      // Get user ID from Supabase
-      const { data: users } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', userData.id)
-        .single();
+        // Get user role if not provided
+        let userRole = role;
+        if (!userRole) {
+          const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+          userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+        }
 
-      if (!users) {
-        return { success: false, error: 'User not found in database' };
-      }
+        // Use Supabase client directly
+        const { supabase } = await import('../config/supabase');
+        
+        // Get user ID from Supabase with error handling
+        const { data: users, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', userData.id)
+          .single();
 
-      // Count unread notifications
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', users.id)
-        .eq('read', false)
-        .eq('role', userRole);
+        if (userError || !users) {
+          console.warn('User not found in database:', userError?.message || 'No user data');
+          return { success: false, error: 'User not found in database', data: { count: 0 } };
+        }
 
-      if (error) {
-        console.error('Error getting unread count:', error);
-        return { success: false, error: error.message };
-      }
+        // Count unread notifications with timeout
+        const countPromise = supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', users.id)
+          .eq('read', false)
+          .eq('role', userRole);
 
-      return {
-        success: true,
-        data: { count: count || 0 }
-      };
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
+        );
+
+        const { count, error } = await Promise.race([countPromise, timeoutPromise])
+          .catch(error => ({ count: 0, error }));
+
+        if (error) {
+          console.warn('Error getting unread count:', error.message || error);
+          return { success: false, error: 'Failed to get notifications', data: { count: 0 } };
+        }
+
+        return {
+          success: true,
+          data: { count: count || 0 }
+        };
+      });
     } catch (error) {
       console.error('Error in getUnreadCount:', error);
       return {

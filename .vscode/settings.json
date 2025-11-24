@@ -1,0 +1,20 @@
+{
+    "sqltools.connections": [
+        {
+            "pgOptions": {
+                "ssl": {
+                    "rejectUnauthorized": true,
+                    "ca": "",
+                    "requestCert": true
+                }
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "driver": "PostgreSQL",
+            "connectString": "postgresql://postgres.lkfprjjlqmtpamukoatl:brillprimeapp@aws-1-us-east-1.pooler.supabase.com:5432/postgres",
+            "group": "postgres",
+            "name": "brillprimeapp"
+        }
+    ]
+}
