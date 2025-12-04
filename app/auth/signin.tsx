@@ -10,7 +10,6 @@ import {
   Platform,
   ScrollView,
   Dimensions,
-  Alert, // Import Alert
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,7 +23,7 @@ import { authService } from '../../services/authService';
 
 export default function SignIn() {
   const router = useRouter();
-  const { showError, showConfirmDialog, showInfo } = useAlert();
+  const { showError, showConfirmDialog } = useAlert();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
@@ -41,18 +40,12 @@ export default function SignIn() {
 
   // Placeholder for checkAuthStatus if it exists in the original code,
   // otherwise, it might be an artifact from the thought process.
-  // Assuming it's meant to check current session or similar.
   const checkAuthStatus = async () => {
     // Placeholder for actual auth status check logic
     // For now, we'll just assume it's handled by the redirect check or sign-in process
   };
 
-  useEffect(() => {
-    checkAuthStatus();
-    checkRedirectAuth();
-  }, []);
-
-  const checkRedirectAuth = async () => {
+  const checkRedirectAuth = React.useCallback(async () => {
     try {
       const result = await authService.checkRedirectResult();
       if (result?.success && result.data) {
@@ -76,7 +69,8 @@ export default function SignIn() {
         } else if (result.data.user.role === "driver") {
           router.replace("/home/driver");
         } else {
-          router.replace(`/dashboard/${result.data.user.role}`);
+          // Default to consumer home for unknown roles
+          router.replace('/home/consumer');
         }
       } else if (result?.error) {
         showError('Authentication Error', result.error);
@@ -84,8 +78,15 @@ export default function SignIn() {
     } catch (error) {
       console.error('Redirect auth check error:', error);
     }
-  };
+  }, [router, showError]);
 
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      await checkAuthStatus();
+      await checkRedirectAuth();
+    };
+    checkAuthAndRedirect();
+  }, [router, checkRedirectAuth]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -108,7 +109,7 @@ export default function SignIn() {
     }
 
     // Check if user has selected a role first
-    const selectedRole = await AsyncStorage.getItem("selectedRole");
+    const selectedRole = await AsyncStorage.getItem("selectedRole") as 'consumer' | 'merchant' | 'driver' | null;
     if (!selectedRole) {
       showConfirmDialog(
         "Role Required",
@@ -120,76 +121,56 @@ export default function SignIn() {
     }
 
     try {
-      const response = await authService.signIn({
+      const authResponse = await authService.signInWithEmail({
         email: formData.email,
-        password: formData.password,
-        role: selectedRole // Include selected role
+        password: formData.password
       });
 
-      if (response.success && response.data) {
-        // Validate that the user's role matches selected role
-        if (response.data.user.role !== selectedRole) {
-          showConfirmDialog(
-            "Role Mismatch",
-            `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
-            () => router.replace("/auth/role-selection")
-          );
-          setLoading(false); // Reset loading state
-          return;
-        }
-
-        // Store user data from API response
-        await AsyncStorage.multiSet([
-          ["userToken", response.data.token],
-          ["userEmail", response.data.user.email],
-          ["userRole", response.data.user.role],
-          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
-        ]);
-
-        await AsyncStorage.removeItem('pendingRoleSwitch');
-
-        // Route based on user role from API
-        if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else if (response.data.user.role === "merchant") {
-          router.replace("/home/merchant");
-        } else if (response.data.user.role === "driver") {
-          router.replace("/home/driver");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
-        }
-      } else {
-        // Handle specific error cases
-        const errorMessage = response.error || "Invalid credentials";
-        if (errorMessage.includes("Invalid credentials") || errorMessage.includes("authentication")) {
-          showError("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
-        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
-          showError("Network Error", "Please check your internet connection and try again.");
-          setError('Unable to connect to server. Trying offline mode...');
-        } else if (errorMessage.includes("account not found")) {
-          showConfirmDialog(
-            "Account Not Found",
-            "No account found with this email. Would you like to sign up?",
-            () => router.push("/auth/signup")
-          );
-        } else {
-          showError("Sign In Failed", errorMessage);
-          setError(errorMessage);
-        }
+      if (!authResponse.success || !authResponse.data) {
+        throw new Error(authResponse.error || 'Authentication failed');
       }
-    } catch (error) {
-      console.error("Error signing in:", error);
 
-      // Handle network errors specifically
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        showError(
-          "Connection Error",
-          "Unable to connect to server. Please check your internet connection and try again."
-        );
-        setError('Unable to connect to server. Trying offline mode...');
+      // Store user data from auth response
+      await AsyncStorage.multiSet([
+        ["userToken", authResponse.data.token],
+        ["userEmail", authResponse.data.user.email],
+        ["userRole", authResponse.data.user.role],
+        ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
+      ]);
+
+      await AsyncStorage.removeItem('pendingRoleSwitch');
+
+      // Route based on user role from auth response
+      if (authResponse.data.user.role === "consumer") {
+        router.replace("/home/consumer");
+      } else if (authResponse.data.user.role === "merchant") {
+        router.replace("/home/merchant");
+      } else if (authResponse.data.user.role === "driver") {
+        router.replace("/home/driver");
       } else {
-        showError("Error", "Sign in failed. Please try again.");
-        setError("Sign in failed. Please try again.");
+        // Default to consumer home for unknown roles
+        router.replace('/home/consumer');
+      }
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      
+      // Handle specific error cases
+      const errorMessage = error?.message || "An unknown error occurred";
+      
+      if (errorMessage.includes("user-not-found") || errorMessage.includes("wrong-password")) {
+        showError("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
+      } else if (errorMessage.includes("network") || errorMessage.includes("connection") || errorMessage.includes("fetch")) {
+        showError("Network Error", "Please check your internet connection and try again.");
+        setError('Unable to connect to server. Trying offline mode...');
+      } else if (errorMessage.includes("account not found")) {
+        showConfirmDialog(
+          "Account Not Found",
+          "No account found with this email. Would you like to sign up?",
+          () => router.push("/auth/signup")
+        );
+      } else {
+        showError("Sign In Failed", errorMessage);
+        setError(errorMessage);
       }
     } finally {
       setLoading(false); // Reset loading state in finally block
@@ -264,7 +245,8 @@ export default function SignIn() {
         } else if (response.data.user.role === "driver") {
           router.replace("/home/driver");
         } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          // Default to consumer home for unknown roles
+          router.replace('/home/consumer');
         }
       } else if (response?.error && response.error !== 'Sign-in cancelled') {
         console.error(`${provider} sign-in failed:`, response.error);
@@ -388,7 +370,7 @@ export default function SignIn() {
 
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Don't have an account? </Text>
+            <Text style={styles.signUpText}>Don&apos;t have an account? </Text>
             <TouchableOpacity onPress={() => router.push("/auth/signup")}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>

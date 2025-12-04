@@ -45,8 +45,14 @@ class AuthService {
   private authToken: string | null = null;
 
   constructor() {
+    // Check if Firebase auth is available
+    if (!auth) {
+      console.error('Firebase Auth is not initialized. Please check your Firebase configuration.');
+      return;
+    }
+
     // Listen to Firebase auth state changes
-    onAuthStateChanged(auth as Auth, (user: FirebaseUser | null) => {
+    onAuthStateChanged(auth, (user: FirebaseUser | null) => {
       if (user) {
         this.currentUser = user;
         user.getIdToken().then(token => {
@@ -60,17 +66,21 @@ class AuthService {
   }
 
   // Sign up new user
-  async signUp(data: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
+  async signUp({ email, password, firstName, lastName, phoneNumber, role }: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
+    if (!auth) {
+      throw new Error('Firebase Auth is not initialized');
+    }
+
     try {
-      console.log('Starting signup process for:', data.email);
+      console.log('Starting signup process for:', email);
 
       // Create user in Firebase
-      const firebaseUserCredential = await createUserWithEmailAndPassword(auth as Auth, data.email, data.password);
+      const firebaseUserCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = firebaseUserCredential.user;
       console.log('Firebase user created:', firebaseUser.uid);
 
       // Update Firebase profile with display name
-      const displayName = `${data.firstName} ${data.lastName}`.trim();
+      const displayName = `${firstName} ${lastName}`.trim();
       await updateProfile(firebaseUser, { displayName });
 
       // Get Firebase ID token
@@ -83,8 +93,8 @@ class AuthService {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
           name: displayName,
-          role: data.role,
-          phone: data.phoneNumber || '',
+          role: role,
+          phone: phoneNumber || '',
           isVerified: firebaseUser.emailVerified,
           profileImageUrl: firebaseUser.photoURL || undefined,
           createdAt: new Date().toISOString(),
@@ -95,7 +105,7 @@ class AuthService {
       await this.storeAuthData(authData);
 
       // Initialize role status for the user
-      await roleManagementService.initializeRoleStatus(data.role);
+      await roleManagementService.initializeRoleStatus(role);
 
       // Sync with Supabase backend asynchronously (non-blocking)
       // This stores additional user data in Supabase
@@ -104,8 +114,8 @@ class AuthService {
         {
           firebase_uid: firebaseUser.uid,
           email: firebaseUser.email,
-          role: data.role,
-          phone_number: data.phoneNumber,
+          role: role,
+          phone_number: phoneNumber,
           full_name: displayName,
         },
         {
@@ -146,17 +156,21 @@ class AuthService {
   }
 
   // Sign in user
-  async signIn(data: SignInRequest & { role?: string }): Promise<ApiResponse<AuthResponse>> {
+  async signInWithEmail({ email, password }: SignInRequest): Promise<ApiResponse<AuthResponse>> {
+    if (!auth) {
+      throw new Error('Firebase Auth is not initialized');
+    }
+
     try {
       // Sign in with Firebase
-      const firebaseUserCredential = await signInWithEmailAndPassword(auth as Auth, data.email, data.password);
+      const firebaseUserCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = firebaseUserCredential.user;
 
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
 
-      // Use role from local storage or provided role
-      const userRole: 'consumer' | 'merchant' | 'driver' = (data.role || 'consumer') as 'consumer' | 'merchant' | 'driver';
+      // Use role from user data or default to 'consumer'
+      const userRole: 'consumer' | 'merchant' | 'driver' = 'consumer';
 
       // Create auth response immediately with Firebase data
       const authData: AuthResponse = {
@@ -206,22 +220,28 @@ class AuthService {
     } catch (error: any) {
       console.error('SignIn error:', error);
 
+      let errorMessage = 'An unknown error occurred';
       if (error.code) {
         switch (error.code) {
           case 'auth/user-not-found':
-            return { success: false, error: 'No user found with that email.' };
+            errorMessage = 'No user found with that email.';
+            break;
           case 'auth/wrong-password':
-            return { success: false, error: 'Incorrect password provided.' };
+            errorMessage = 'Incorrect password provided.';
+            break;
           case 'auth/invalid-credential':
-            return { success: false, error: 'Invalid email or password.' };
+            errorMessage = 'Invalid email or password.';
+            break;
           default:
-            return { success: false, error: `Firebase authentication error: ${error.message}` };
+            errorMessage = `Firebase authentication error: ${error.message}`;
         }
+      } else {
+        errorMessage = error instanceof Error ? error.message : 'Network error occurred';
       }
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error occurred',
+        error: errorMessage,
       };
     }
   }
