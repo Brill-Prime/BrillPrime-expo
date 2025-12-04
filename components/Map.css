@@ -1,0 +1,37 @@
+/* Map Component Styles */
+.map-container {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+.map-error {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.map-error-text {
+  color: #d32f2f;
+  text-align: center;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 80%;
+}
+
+/* For React Native Web compatibility */
+@media (max-width: 768px) {
+  .map-container {
+    min-height: 300px;
+  }
+  
+  .map-error-text {
+    font-size: 14px;
+  }
+}

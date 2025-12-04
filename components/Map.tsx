@@ -1,6 +1,7 @@
-import React, { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 'react';
-import { Platform, View, StyleSheet } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Region, EdgePadding } from 'react-native-maps';
+import React, { forwardRef, useImperativeHandle, useRef, useEffect, useState, useCallback } from 'react';
+import { Platform, View, StyleSheet, Text, ActivityIndicator, ViewStyle } from 'react-native';
+import MapView, { PROVIDER_GOOGLE, Region, EdgePadding, MapViewProps } from 'react-native-maps';
+import './Map.css';
 
 export { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 
@@ -12,44 +13,89 @@ declare global {
   }
 }
 
-interface MapProps {
+// Ensure the API key is available
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+if (!GOOGLE_MAPS_API_KEY) {
+  console.warn('Google Maps API key is missing. Please set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in your .env file');
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  webMap: {
+    width: '100%',
+    height: '100%',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    padding: 20,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+  },
+});
+
+interface MapProps extends Omit<MapViewProps, 'provider' | 'region' | 'onRegionChange' | 'onRegionChangeComplete'> {
   provider?: typeof PROVIDER_GOOGLE;
-  style?: any;
   region?: Region;
   onRegionChange?: (region: Region) => void;
   onRegionChangeComplete?: (region: Region) => void;
-  showsUserLocation?: boolean;
-  showsMyLocationButton?: boolean;
-  showsCompass?: boolean;
-  rotateEnabled?: boolean;
-  pitchEnabled?: boolean;
-  scrollEnabled?: boolean;
-  zoomEnabled?: boolean;
-  mapType?: 'standard' | 'satellite' | 'hybrid';
-  customMapStyle?: any[];
-  onMapReady?: () => void;
-  children?: React.ReactNode;
+  style?: ViewStyle;
+  webStyle?: React.CSSProperties;
 }
 
-const Map = forwardRef<any, MapProps>((props, ref) => {
+const Map = forwardRef<any, MapProps>(({
+  provider = PROVIDER_GOOGLE,
+  style,
+  webStyle,
+  region,
+  onRegionChange,
+  onRegionChangeComplete,
+  showsMyLocationButton,
+  zoomEnabled,
+  mapType,
+  customMapStyle,
+  onMapReady,
+  children,
+  ...restProps
+}, ref) => {
   const mapRef = useRef<MapView | null>(null);
   const webMapRef = useRef<HTMLDivElement | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Web-specific Google Maps initialization
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !webMapRef.current || map) return;
+  // Show error if API key is missing
+  const hasApiKey = !!GOOGLE_MAPS_API_KEY;
 
-    const initMap = () => {
-      if (!webMapRef.current) return;
+  const initMap = useCallback(() => {
+    if (!webMapRef.current) return;
 
+    try {
       const mapOptions: google.maps.MapOptions = {
-        center: props.region || { lat: 0, lng: 0 },
+        center: region ? { 
+          lat: region.latitude, 
+          lng: region.longitude 
+        } : { lat: 0, lng: 0 },
         zoom: 12,
-        disableDefaultUI: !props.showsMyLocationButton,
-        zoomControl: props.zoomEnabled,
-        mapTypeId: props.mapType || 'roadmap',
-        styles: props.customMapStyle,
+        disableDefaultUI: !showsMyLocationButton,
+        zoomControl: zoomEnabled,
+        mapTypeId: mapType || 'roadmap',
+        styles: customMapStyle,
         streetViewControl: false,
         mapTypeControl: false,
         fullscreenControl: false,
@@ -57,48 +103,70 @@ const Map = forwardRef<any, MapProps>((props, ref) => {
 
       const newMap = new google.maps.Map(webMapRef.current, mapOptions);
       setMap(newMap);
-
-      if (props.onMapReady) {
-        props.onMapReady();
-      }
+      onMapReady?.();
 
       // Set up event listeners
-      if (props.onRegionChange || props.onRegionChangeComplete) {
+      if (onRegionChange || onRegionChangeComplete) {
         newMap.addListener('drag', () => {
           const center = newMap.getCenter();
-          const zoom = newMap.getZoom();
-          const region = {
-            latitude: center?.lat() || 0,
-            longitude: center?.lng() || 0,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          };
-          props.onRegionChange?.(region);
+          if (onRegionChange && center) {
+            onRegionChange({
+              latitude: center.lat(),
+              longitude: center.lng(),
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            });
+          }
         });
 
         newMap.addListener('idle', () => {
           const center = newMap.getCenter();
-          const zoom = newMap.getZoom();
-          const region = {
-            latitude: center?.lat() || 0,
-            longitude: center?.lng() || 0,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          };
-          props.onRegionChangeComplete?.(region);
+          if (onRegionChangeComplete && center) {
+            onRegionChangeComplete({
+              latitude: center.lat(),
+              longitude: center.lng(),
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            });
+          }
         });
       }
-    };
+      
+      setIsLoaded(true);
+    } catch (err) {
+      const errorMsg = 'Failed to initialize map';
+      console.error(errorMsg, err);
+      setError(errorMsg);
+    }
+  }, [
+    region,
+    showsMyLocationButton,
+    zoomEnabled,
+    mapType,
+    customMapStyle,
+    onMapReady,
+    onRegionChange,
+    onRegionChangeComplete
+  ]);
+
+  // Web-specific Google Maps initialization
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !webMapRef.current || map || isLoaded || error) {
+      return;
+    }
 
     // Load Google Maps script if not already loaded
     if (!window.google?.maps) {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.defer = true;
       script.onload = initMap;
       script.onerror = (error) => {
-        console.error('Error loading Google Maps:', error);
+        const errorMsg = 'Failed to load Google Maps API';
+        console.error(errorMsg, error);
+        setError(errorMsg);
+        setIsLoaded(false);
       };
       document.head.appendChild(script);
 
@@ -110,128 +178,117 @@ const Map = forwardRef<any, MapProps>((props, ref) => {
     } else {
       initMap();
     }
-  }, [
-    map,
-    props.region,
-    props.mapType,
-    props.customMapStyle,
-    props.showsMyLocationButton,
-    props.zoomEnabled,
-    props.onMapReady,
-    props.onRegionChange,
-    props.onRegionChangeComplete
-  ]);
+  }, [initMap, map, isLoaded, error]);
+
+  const fitToCoordinates = useCallback((
+    coordinates: { latitude: number; longitude: number }[] = [],
+    options?: { edgePadding?: Partial<EdgePadding>; animated?: boolean }
+  ) => {
+    if (Platform.OS === 'web') {
+      if (!map || !coordinates.length) return;
+
+      const bounds = new google.maps.LatLngBounds();
+      coordinates.forEach((coord) => {
+        bounds.extend(new google.maps.LatLng(coord.latitude, coord.longitude));
+      });
+
+      map.fitBounds(bounds, options?.edgePadding);
+      return;
+    }
+
+    const normalizedPadding: EdgePadding | undefined = options?.edgePadding
+      ? {
+          top: options.edgePadding.top ?? 0,
+          right: options.edgePadding.right ?? 0,
+          bottom: options.edgePadding.bottom ?? 0,
+          left: options.edgePadding.left ?? 0,
+        }
+      : undefined;
+    mapRef.current?.fitToCoordinates?.(coordinates, {
+      edgePadding: normalizedPadding,
+      animated: options?.animated,
+    });
+  }, [map]);
+
+  const animateToRegion = useCallback((region: Region, duration?: number) => {
+    if (Platform.OS === 'web') {
+      if (!map) return;
+      map.panTo({ lat: region.latitude, lng: region.longitude });
+      map.setZoom(region.longitudeDelta ? 15 : 12);
+      return;
+    }
+    mapRef.current?.animateToRegion?.(region, duration);
+  }, [map]);
 
   useImperativeHandle(ref, () => ({
-    fitToCoordinates: (
-      coordinates: { latitude: number; longitude: number }[] = [],
-      options?: { edgePadding?: Partial<EdgePadding>; animated?: boolean }
-    ) => {
-      if (Platform.OS === 'web') {
-        if (!map || !coordinates.length) return;
-        
-        const bounds = new google.maps.LatLngBounds();
-        coordinates.forEach(coord => {
-          bounds.extend(new google.maps.LatLng(coord.latitude, coord.longitude));
-        });
-        
-        map.fitBounds(bounds, options?.edgePadding);
-        return;
-      }
-      
-      const normalizedPadding: EdgePadding | undefined = options?.edgePadding
-        ? {
-            top: options.edgePadding.top ?? 0,
-            right: options.edgePadding.right ?? 0,
-            bottom: options.edgePadding.bottom ?? 0,
-            left: options.edgePadding.left ?? 0,
-          }
-        : undefined;
-      mapRef.current?.fitToCoordinates?.(coordinates, {
-        edgePadding: normalizedPadding,
-        animated: options?.animated,
-      });
-    },
-    animateToRegion: (region: Region, duration?: number) => {
-      if (Platform.OS === 'web') {
-        if (!map) return;
-        map.panTo({ lat: region.latitude, lng: region.longitude });
-        map.setZoom(region.longitudeDelta ? 15 : 12);
-        return;
-      }
-      mapRef.current?.animateToRegion?.(region, duration);
-    },
-  }));
+    fitToCoordinates,
+    animateToRegion,
+  }), [fitToCoordinates, animateToRegion]);
 
-  if (Platform.OS === 'web') {
+  // Early return for missing API key
+  if (!hasApiKey) {
     return (
-      <div 
-        ref={webMapRef} 
-        style={{ 
-          width: '100%', 
-          height: '100%',
-          minHeight: '400px',
-          ...props.style 
-        }} 
+      <View className="map-error" style={style}>
+        <Text className="map-error-text">
+          Error: Google Maps API key is missing. Please check your .env file.
+        </Text>
+      </View>
+    );
+  }
+
+  // Web rendering
+  if (Platform.OS === 'web') {
+    if (error) {
+      return (
+        <View style={[styles.container, style]}>
+          <Text style={styles.errorText}>
+            {error || 'Failed to load map'}
+          </Text>
+        </View>
+      );
+    }
+
+    if (!isLoaded) {
+      return (
+        <View style={[styles.container, style, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={styles.loadingText}>Loading map...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <div
+        ref={webMapRef}
+        className={`map-container ${webStyle}`}
+        data-testid="web-map"
       />
     );
   }
 
+  // Native rendering
   return (
-    <View style={[styles.container, props.style]}>
+    <View style={[styles.container, style]}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={props.region}
-        onRegionChange={props.onRegionChange}
-        onRegionChangeComplete={props.onRegionChangeComplete}
-        showsUserLocation={props.showsUserLocation}
-        showsMyLocationButton={props.showsMyLocationButton}
-        showsCompass={props.showsCompass}
-        rotateEnabled={props.rotateEnabled}
-        pitchEnabled={props.pitchEnabled}
-        scrollEnabled={props.scrollEnabled}
-        zoomEnabled={props.zoomEnabled}
-        mapType={props.mapType}
-        customMapStyle={props.customMapStyle}
-        onMapReady={props.onMapReady}
+        provider={provider}
+        style={StyleSheet.absoluteFillObject}
+        region={region}
+        onRegionChange={onRegionChange}
+        onRegionChangeComplete={onRegionChangeComplete}
+        showsMyLocationButton={showsMyLocationButton}
+        zoomEnabled={zoomEnabled}
+        mapType={mapType}
+        customMapStyle={customMapStyle}
+        onMapReady={onMapReady}
+        {...restProps}
       >
-        {props.children}
+        {children}
       </MapView>
     </View>
   );
 });
 
 Map.displayName = 'Map';
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#c3d4ff',
-  },
-  webPlaceholder: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#c3d4ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  webPlaceholderText: {
-    color: '#0B1A51',
-    textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 22,
-  },
-});
 
 export default Map;

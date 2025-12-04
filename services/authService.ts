@@ -11,9 +11,6 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
-  confirmPasswordReset,
-  applyActionCode,
-  verifyPasswordResetCode,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
@@ -21,7 +18,6 @@ import {
   OAuthProvider,
   FacebookAuthProvider,
   updateProfile,
-  sendEmailVerification,
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
@@ -35,7 +31,6 @@ import {
   ConfirmPasswordResetRequest,
   ApiResponse
 } from './types';
-import { roleManagementService } from './roleManagementService';
 
 class AuthService {
   private readonly TOKEN_KEY = 'userToken';
@@ -105,7 +100,7 @@ class AuthService {
       await this.storeAuthData(authData);
 
       // Initialize role status for the user
-      await roleManagementService.initializeRoleStatus(role);
+      // await roleManagementService.initializeRoleStatus(role);
 
       // Sync with Supabase backend asynchronously (non-blocking)
       // This stores additional user data in Supabase
@@ -191,7 +186,7 @@ class AuthService {
       await this.storeAuthData(authData);
 
       // Initialize role status for the user
-      await roleManagementService.initializeRoleStatus(userRole);
+      // await roleManagementService.initializeRoleStatus(userRole);
 
       // Fetch user data from Supabase asynchronously (non-blocking)
       apiClient.get<any>(
@@ -693,15 +688,30 @@ class AuthService {
   // Sign out
   async signOut(): Promise<void> {
     try {
-      // Call API to invalidate token
-      const token = await this.getToken();
-      if (token) {
-        await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {}, {
-          Authorization: `Bearer ${token}`,
-        });
+      // Sign out from Firebase first
+      if (auth) {
+        await firebaseSignOut(auth);
       }
-      // Sign out from Firebase as well
-      await firebaseSignOut(auth as Auth);
+      
+      // Clear all local storage
+      await this.clearAuthData();
+      
+      // Reset current user state
+      this.currentUser = null;
+      this.authToken = null;
+      
+      // Optional: Call your backend to invalidate the token if needed
+      try {
+        const token = await this.getToken();
+        if (token) {
+          await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {}, {
+            Authorization: `Bearer ${token}`,
+          });
+        }
+      } catch (apiError) {
+        console.warn('Failed to invalidate token on server:', apiError);
+        // Continue with logout even if server logout fails
+      }
     } catch (error: any) {
       console.error('Error during API signout:', error);
     } finally {
