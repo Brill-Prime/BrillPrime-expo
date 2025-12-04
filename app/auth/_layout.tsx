@@ -22,17 +22,31 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen 
-        name="sign-in" 
+        name="signin" 
         options={{ 
           title: 'Sign In',
           headerShown: false,
         }} 
       />
       <Stack.Screen 
-        name="sign-up" 
+        name="signup" 
         options={{ 
           title: 'Create Account',
-          headerBackTitle: 'Back',
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="role-selection" 
+        options={{ 
+          title: 'Select Role',
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="otp-verification" 
+        options={{ 
+          title: 'Verify OTP',
+          headerShown: false,
         }} 
       />
       <Stack.Screen 
