@@ -17,6 +17,7 @@ import { analyticsService } from '../services/analyticsService';
 import RealtimeNotificationBanner from '../components/RealtimeNotificationBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import { ThemeProvider } from '../contexts/ThemeContext';
 
 // Import Leaflet CSS for web
 if (Platform.OS === 'web') {
@@ -85,35 +86,37 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AppProvider>
-        <NotificationProvider>
-          <AuthProvider>
-            <MerchantProvider>
-              <AlertProvider>
-                <View style={styles.container}>
-                  <OfflineBanner />
-                  <RealtimeNotificationBanner />
-                  <AuthStateHandler />
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: '#fff' },
-                      animation: 'fade',
-                    }}
-                  >
-                    <Stack.Screen name="index" options={{ headerShown: false }} />
-                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="merchant" options={{ headerShown: false }} />
-                    <Stack.Screen name="home" options={{ headerShown: false }} />
-                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                  </Stack>
-                </View>
-              </AlertProvider>
-            </MerchantProvider>
-          </AuthProvider>
-        </NotificationProvider>
-      </AppProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <NotificationProvider>
+            <AuthProvider>
+              <MerchantProvider>
+                <AlertProvider>
+                  <View style={styles.container}>
+                    <OfflineBanner />
+                    <RealtimeNotificationBanner />
+                    <AuthStateHandler />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: 'transparent' },
+                        animation: 'fade',
+                      }}
+                    >
+                      <Stack.Screen name="index" options={{ headerShown: false }} />
+                      <Stack.Screen name="auth" options={{ headerShown: false }} />
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen name="merchant" options={{ headerShown: false }} />
+                      <Stack.Screen name="home" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                    </Stack>
+                  </View>
+                </AlertProvider>
+              </MerchantProvider>
+            </AuthProvider>
+          </NotificationProvider>
+        </AppProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
