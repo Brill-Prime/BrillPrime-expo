@@ -24,7 +24,31 @@ import {
   COMMODITY_UNITS,
 } from '../../utils/commodityUtils';
 import { commodityService, type CommodityFormData } from '../../services/commodityService';
-import webOnlyStyles from './add-commodity.module.css';
+
+// Web-only styles for hidden inputs (replaces CSS module)
+const webOnlyStyles = Platform.OS === 'web' ? {
+  visuallyHidden: {
+    position: 'absolute' as const,
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap' as const,
+    border: 0,
+  },
+  hiddenFileInput: {
+    position: 'absolute' as const,
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    border: 0,
+  },
+} : {};
 
 // Define style types for better type checking
 interface Styles {
@@ -484,7 +508,7 @@ export default function AddCommodityScreen() {
         <>
           <label 
             htmlFor="commodity-image-upload" 
-            className={webOnlyStyles.visuallyHidden}
+            style={webOnlyStyles.visuallyHidden}
           >
             Upload commodity image
           </label>
@@ -493,7 +517,7 @@ export default function AddCommodityScreen() {
             ref={imageInputRef}
             type="file"
             accept="image/*"
-            className={webOnlyStyles.hiddenFileInput}
+            style={webOnlyStyles.hiddenFileInput}
             onChange={handleWebImageChange}
             aria-label="Select an image for the commodity"
             title="Select an image file"
