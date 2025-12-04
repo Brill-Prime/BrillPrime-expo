@@ -1,0 +1,28 @@
+            - name: Expo GitHub Action
+  # You may pin to the exact commit or the version.
+  # uses: expo/expo-github-action@6a82be3e3ed85d15c05f90d869db8dc95382aef3
+  uses: expo/expo-github-action@8.1.0
+  with:
+    # Expo CLI version to install
+    expo-version: # optional
+    # If Expo CLI should be cached to speed up installation
+    expo-cache: # optional, default is true
+    # EAS CLI version to install
+    eas-version: # optional
+    # If EAS CLI should be cached to speed up installation
+    eas-cache: # optional, default is true
+    # The package manager used to install the CLIs
+    packager: # optional, default is yarn
+    # If the action should patch the ENOSPC errors
+    patch-watchers: # optional, default is true
+    # Your Expo token, for authentication. (use with secrets)
+    token: # optional
+    # A custom remote cache key to use for EAS CLI.
+    eas-cache-key: # optional
+    # A custom remote cache key to use for Expo CLI.
+    expo-cache-key: # optional
+    # Your Expo username, for authentication.
+    username: # optional
+    # Your Expo password, for authentication. (use with secrets)
+    password: # optional
+          
