@@ -11,6 +11,8 @@ import { formatNaira } from "../../utils/currency";
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
 export default function ConsumerDashboard() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
@@ -77,17 +79,18 @@ export default function ConsumerDashboard() {
   const loadUserStats = async () => {
     try {
       // Load user orders
-      const orders = await orderService.getConsumerOrders();
-      const totalOrders = orders?.length || 0;
+      const ordersResponse = await orderService.getUserOrders();
+      const orders = ordersResponse.success && ordersResponse.data ? ordersResponse.data.orders : [];
+      const totalOrders = orders.length;
 
       // Calculate total spent from completed orders
       const totalSpent = orders
-        ?.filter((order: any) => order.status === 'delivered' || order.status === 'completed')
-        ?.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0) || 0;
+        .filter((order: any) => order.status === 'delivered' || order.status === 'completed')
+        .reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
 
       // Load favorites count
-      const favorites = await favoritesService.getFavorites();
-      const favoriteCount = favorites?.length || 0;
+      const favoritesResponse = await favoritesService.getFavorites();
+      const favoriteCount = favoritesResponse.success && favoritesResponse.data ? favoritesResponse.data.length : 0;
 
       setUserStats({
         totalOrders,
@@ -151,12 +154,18 @@ export default function ConsumerDashboard() {
     }
   };
 
-  const features = [
-    { id: 'browse', title: "Browse Products", description: "Discover amazing products", icon: "bag-handle", route: "/commodity/commodities" },
-    { id: 'orders', title: "My Orders", description: "Track your orders", icon: "cube", route: "/orders/consumer-orders" },
-    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: "chatbubbles", route: "/messages/index" },
-    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: "heart", route: "/favorites" },
-    { id: 'support', title: "Support", description: "Get help anytime", icon: "headset", route: "/support" }
+  const features: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: IoniconsName;
+    route: string;
+  }> = [
+    { id: 'browse', title: "Browse Products", description: "Discover amazing products", icon: "bag-handle" as IoniconsName, route: "/commodity/commodities" },
+    { id: 'orders', title: "My Orders", description: "Track your orders", icon: "cube" as IoniconsName, route: "/orders/consumer-orders" },
+    { id: 'messages', title: "Messages", description: "Chat with merchants & drivers", icon: "chatbubbles" as IoniconsName, route: "/messages/index" },
+    { id: 'favorites', title: "Favorites", description: "Your saved items", icon: "heart" as IoniconsName, route: "/favorites" },
+    { id: 'support', title: "Support", description: "Get help anytime", icon: "headset" as IoniconsName, route: "/support" }
   ];
 
   const styles = getResponsiveStyles(screenData);
