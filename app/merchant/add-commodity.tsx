@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,31 +6,236 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Dimensions,
   Image,
   Alert,
   ActivityIndicator,
   Platform,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAlert } from '../../components/AlertProvider';
 import * as ImagePicker from 'expo-image-picker';
-import { 
-  validateCommodityForm, 
-  COMMODITY_CATEGORIES, 
+import {
+  validateCommodityForm,
+  COMMODITY_CATEGORIES,
   COMMODITY_UNITS,
 } from '../../utils/commodityUtils';
 import { commodityService, type CommodityFormData } from '../../services/commodityService';
+import webOnlyStyles from './add-commodity.module.css';
 
-const { width } = Dimensions.get('window');
+// Define style types for better type checking
+interface Styles {
+  container: ViewStyle;
+  loadingContainer: ViewStyle;
+  loadingText: TextStyle;
+  header: ViewStyle;
+  backButton: ViewStyle;
+  backButtonCircle: ViewStyle;
+  headerTitle: TextStyle;
+  content: ViewStyle;
+  formContainer: ViewStyle;
+  categoriesContainer: ViewStyle;
+  categoryButton: ViewStyle;
+  selectedCategoryButton: ViewStyle;
+  categoryButtonText: TextStyle;
+  selectedCategoryButtonText: TextStyle;
+  imagePickerContainer: ViewStyle;
+  imagePickerPlaceholder: ViewStyle;
+  imagePickerText: TextStyle;
+  imagePickerSubtext: TextStyle;
+  selectedImage: ImageStyle;
+  imageEditOverlay: ViewStyle;
+  inputContainer: ViewStyle;
+  textInput: TextStyle;
+  textAreaInput: TextStyle;
+  inputError: TextStyle;
+  errorText: TextStyle;
+  charCount: TextStyle;
+  pickerButton: ViewStyle;
+  saveButton: ViewStyle;
+  saveButtonDisabled: ViewStyle;
+  saveButtonText: TextStyle;
+}
+
+const styles = StyleSheet.create<Styles>({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'Montserrat-Regular',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 15,
+    backgroundColor: '#fff',
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  backButtonCircle: {
+    width: 24,
+    height: 24,
+    backgroundColor: '#D9D9D9',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#000',
+    fontFamily: 'Montserrat-ExtraBold',
+  },
+  content: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  formContainer: {
+    paddingBottom: 40,
+  },
+  categoriesContainer: {
+    marginBottom: 30,
+  },
+  categoryButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    marginRight: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCategoryButton: {
+    backgroundColor: '#4682B4',
+  },
+  categoryButtonText: {
+    fontSize: 12,
+    color: '#131313',
+    fontFamily: 'Montserrat-Regular',
+  },
+  selectedCategoryButtonText: {
+    color: 'white',
+  },
+  imagePickerContainer: {
+    width: 250,
+    height: 250,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#4682B4',
+    borderStyle: 'dashed',
+    alignSelf: 'center',
+    marginBottom: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  imagePickerPlaceholder: {
+    alignItems: 'center',
+  },
+  imagePickerText: {
+    fontSize: 16,
+    color: '#4682B4',
+    marginTop: 10,
+    fontFamily: 'Montserrat-Medium',
+  },
+  imagePickerSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5,
+    textAlign: 'center',
+    fontFamily: 'Montserrat-Regular',
+  },
+  selectedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageEditOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 5,
+    borderRadius: 15,
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  textInput: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 16,
+    fontFamily: 'Montserrat-Regular',
+  },
+  textAreaInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  errorText: {
+    fontSize: 12,
+    color: 'red',
+    marginBottom: 10,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+  },
+  saveButton: {
+    backgroundColor: '#4682B4',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#999',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    color: 'white',
+    fontFamily: 'Montserrat-Medium',
+  },
+});
+
 
 export default function AddCommodityScreen() {
   const router = useRouter();
   const { commodityId } = useLocalSearchParams<{ commodityId?: string }>();
   const { showError, showSuccess } = useAlert();
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>();
@@ -54,20 +259,7 @@ export default function AddCommodityScreen() {
     price: '',
   });
 
-  useEffect(() => {
-    if (commodityId) {
-      setIsEditing(true);
-      loadCommodityForEdit();
-    }
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
-    });
-
-    return () => subscription?.remove();
-  }, [commodityId]);
-
-  const loadCommodityForEdit = async () => {
+  const loadCommodityForEdit = useCallback(async () => {
     try {
       setLoading(true);
       if (!commodityId) return;
@@ -98,7 +290,15 @@ export default function AddCommodityScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [commodityId, showError]);
+
+  useEffect(() => {
+    if (commodityId) {
+      setIsEditing(true);
+      loadCommodityForEdit();
+    }
+  }, [commodityId, loadCommodityForEdit]);
+
 
   const validateForm = () => {
     const validation = validateCommodityForm(formData);
@@ -313,10 +513,10 @@ export default function AddCommodityScreen() {
         </Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.formContainer, { paddingHorizontal: responsivePadding }]}>
+      <ScrollView style={styles.content}>
+        <View style={styles.formContainer}>
           <View style={styles.categoriesContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal>
               {COMMODITY_CATEGORIES.map((category) => (
                 <TouchableOpacity
                   key={category.value}
@@ -364,7 +564,10 @@ export default function AddCommodityScreen() {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.textInput, errors.name && styles.inputError]}
+              style={[
+                styles.textInput, 
+                errors.name ? styles.inputError : null
+              ]}
               placeholder="Name of Item *"
               value={formData.name}
               onChangeText={(text) => {
@@ -379,7 +582,11 @@ export default function AddCommodityScreen() {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.textInput, styles.textAreaInput, errors.description && styles.inputError]}
+              style={[
+                styles.textInput, 
+                styles.textAreaInput, 
+                errors.description ? styles.inputError : null
+              ]}
               placeholder="Description *"
               value={formData.description}
               onChangeText={(text) => {
@@ -418,7 +625,10 @@ export default function AddCommodityScreen() {
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.textInput, errors.price && styles.inputError]}
+              style={[
+                styles.textInput, 
+                errors.price ? styles.inputError : null
+              ]}
               placeholder="Price per Item (₦) *"
               value={formData.price}
               onChangeText={(text) => {
@@ -461,7 +671,10 @@ export default function AddCommodityScreen() {
           </View>
 
           <TouchableOpacity 
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+            style={[
+              styles.saveButton, 
+              loading ? styles.saveButtonDisabled : null
+            ]} 
             onPress={handleSave}
             disabled={loading}
           >
@@ -479,192 +692,3 @@ export default function AddCommodityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#666',
-    fontFamily: 'Montserrat-Regular',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  backButtonCircle: {
-    width: 24,
-    height: 24,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#000',
-    fontFamily: 'Montserrat-ExtraBold',
-  },
-  content: {
-    flex: 1,
-    paddingTop: 20,
-  },
-  formContainer: {
-    paddingBottom: 40,
-  },
-  categoriesContainer: {
-    marginBottom: 30,
-  },
-  categoryButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedCategoryButton: {
-    backgroundColor: '#4682B4',
-  },
-  categoryButtonText: {
-    fontSize: 12,
-    color: '#131313',
-    fontFamily: 'Montserrat-Regular',
-  },
-  selectedCategoryButtonText: {
-    color: 'white',
-  },
-  imagePickerContainer: {
-    width: 250,
-    height: 250,
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: '#4682B4',
-    borderStyle: 'dashed',
-    alignSelf: 'center',
-    marginBottom: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  imagePickerPlaceholder: {
-    alignItems: 'center',
-  },
-  imagePickerText: {
-    fontSize: 16,
-    color: '#4682B4',
-    marginTop: 10,
-    fontFamily: 'Montserrat-Medium',
-  },
-  imagePickerSubtext: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 5,
-    textAlign: 'center',
-    fontFamily: 'Montserrat-Regular',
-  },
-  selectedImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageEditOverlay: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    width: 30,
-    height: 30,
-    backgroundColor: 'rgba(70, 130, 180, 0.8)',
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Montserrat-Regular',
-    color: '#131313',
-    minHeight: 50,
-    backgroundColor: 'white',
-  },
-  textAreaInput: {
-    borderRadius: 15,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    paddingTop: 15,
-  },
-  inputError: {
-    borderColor: '#e74c3c',
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 12,
-    marginTop: 5,
-    marginLeft: 16,
-    fontFamily: 'Montserrat-Regular',
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-    marginTop: 5,
-    fontFamily: 'Montserrat-Regular',
-  },
-  pickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#4682B4',
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 50,
-    backgroundColor: 'white',
-  },
-  saveButton: {
-    backgroundColor: '#0B1A51',
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: '#0B1A51',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#999',
-  },
-  saveButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-SemiBold',
-  },
-});
