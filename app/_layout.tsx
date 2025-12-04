@@ -130,7 +130,7 @@ function AuthStateHandler() {
   useEffect(() => {
     // Check if onboarding is completed
     const checkOnboardingStatus = async () => {
-      const onboardingCompleted = await AsyncStorage.getItem('hasCompletedOnboarding');
+      const onboardingCompleted = await AsyncStorage.getItem('hasSeenOnboarding');
       setHasCompletedOnboarding(onboardingCompleted === 'true');
     };
     checkOnboardingStatus();
