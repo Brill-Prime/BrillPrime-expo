@@ -466,7 +466,6 @@ export default function AddCommodityScreen() {
     router.back();
   };
 
-  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
 
   if (loading && isEditing) {
     return (
