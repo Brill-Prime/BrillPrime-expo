@@ -287,12 +287,43 @@ class NotificationService {
     }
   }
 
-  // Check network connectivity
+  // Check network connectivity with fallback to fetch
   private async checkNetworkConnectivity(): Promise<boolean> {
     try {
-      const { NetInfo } = await import('@react-native-community/netinfo');
-      const state = await NetInfo.fetch();
-      return state.isConnected ?? false;
+      // First try using NetInfo if available
+      try {
+        const { NetInfo } = await import('@react-native-community/netinfo');
+        const state = await NetInfo.fetch();
+        if (state.isConnected !== null) {
+          return state.isConnected;
+        }
+      } catch (netInfoError) {
+        console.warn('NetInfo check failed, falling back to fetch:', netInfoError);
+      }
+      
+      // Fallback to fetch if NetInfo is not available or fails
+      if (typeof fetch !== 'undefined') {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+          const response = await fetch('https://www.google.com', { 
+            method: 'HEAD',
+            cache: 'no-store',
+            mode: 'no-cors',
+            signal: controller.signal
+          });
+          clearTimeout(timeout);
+          return true;
+        } catch (fetchError) {
+          clearTimeout(timeout);
+          console.warn('Fetch-based network check failed:', fetchError);
+          return false;
+        }
+      }
+      
+      // If we can't check connectivity, assume we're online
+      return true;
     } catch (error) {
       console.warn('Network check failed:', error);
       return false;

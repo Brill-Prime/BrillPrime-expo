@@ -48,28 +48,35 @@ let auth: Auth | null = null;
 let db;
 let storage;
 
-try {
-  if (!isFirebaseConfigured) {
-    throw new Error('Firebase configuration incomplete');
+// Initialize Firebase only if config is complete
+if (isFirebaseConfigured) {
+  try {
+    // Initialize Firebase if not already initialized
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApps()[0];
+    }
+    
+    // Initialize services
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+    
+    console.log('✅ Firebase initialized successfully');
+  } catch (error) {
+    console.error('❌ Firebase initialization error:', error);
   }
-
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-
-  console.log('✅ Firebase initialized successfully');
-} catch (error) {
-  console.error('❌ Firebase initialization error:', error);
-  // Create fallback empty objects to prevent crashes
-  app = null;
-  auth = null;
-  db = null as any;
-  storage = null as any;
+} else {
+  console.warn('⚠️ Firebase not initialized due to missing configuration');
 }
 
-// Icon fallback configuration for web
-// Using @expo/vector-icons for icons; no CDN injection required to avoid ORB errors on web.
+// Export initialized services
 export { app, auth, db, storage };
+
+// Export initialization check
+export const isFirebaseInitialized = () => {
+  return !!app && !!auth;
+};
 
 export default app;
