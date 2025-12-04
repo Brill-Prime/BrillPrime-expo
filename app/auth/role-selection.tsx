@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,30 @@ import {
   Image,
   Alert,
   Dimensions,
+  Platform,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
+  ScaledSize,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type UserRole = "consumer" | "merchant" | "driver";
 
+interface Styles {
+  container: ViewStyle;
+  logoContainer: ViewStyle;
+  logo: ImageStyle;
+  buttonsContainer: ViewStyle;
+  roleButton: ViewStyle;
+  roleButtonText: TextStyle;
+  infoText: TextStyle;
+}
+
 export default function RoleSelection() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [screenData, setScreenData] = useState<ScaledSize>(Dimensions.get('window'));
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -26,21 +40,20 @@ export default function RoleSelection() {
     return () => subscription?.remove();
   }, []);
 
-  useEffect(() => {
-    checkPendingRoleSwitch();
-  }, []);
-
-  const checkPendingRoleSwitch = async () => {
+  const checkPendingRoleSwitch = useCallback(async () => {
     try {
       const pendingRole = await AsyncStorage.getItem('pendingRoleSwitch');
       if (pendingRole) {
-        setSelectedRole(pendingRole as UserRole);
         await handleSelect(pendingRole as UserRole);
       }
     } catch (error) {
       console.error('Error checking pending role switch:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkPendingRoleSwitch();
+  }, [checkPendingRoleSwitch]);
 
   const proceedToAuth = async (role: UserRole) => {
     try {
@@ -58,7 +71,6 @@ export default function RoleSelection() {
   };
 
   const handleSelect = async (role: UserRole) => {
-    setSelectedRole(role);
     try {
       await AsyncStorage.setItem("selectedRole", role);
       await proceedToAuth(role);
@@ -118,16 +130,32 @@ export default function RoleSelection() {
 
 const PRIMARY_COLOR = "rgb(11, 26, 81)";
 
-const getResponsiveStyles = (screenData: any) => {
+const getResponsiveStyles = (screenData: ScaledSize): Styles => {
   const { width, height } = screenData;
   const isTablet = width >= 768;
   const isSmallScreen = width < 350;
+  const isWeb = Platform.OS === 'web';
   
-  return StyleSheet.create({
+  // Web-specific styles
+  const webContainer: ViewStyle = isWeb ? {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+  } : {};
+  
+  const webButtons: ViewStyle = isWeb ? {
+    boxSizing: 'border-box' as const,
+  } : {};
+  
+  return StyleSheet.create<Styles>({
     container: {
       flex: 1,
       backgroundColor: "#fff",
       justifyContent: "space-between",
+      margin: 0,
+      padding: 0,
+      borderWidth: 0,
+      ...webContainer,
     },
     logoContainer: {
       flex: 1,
@@ -145,6 +173,7 @@ const getResponsiveStyles = (screenData: any) => {
       maxWidth: Math.min(width, 400),
       alignSelf: "center",
       width: "100%",
+      ...webButtons,
     },
     roleButton: {
       backgroundColor: PRIMARY_COLOR,
