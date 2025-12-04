@@ -318,13 +318,21 @@ export default function ConsumerEditProfileScreen() {
     <View style={styles.container}>
       {/* Hidden file input for web */}
       {Platform.OS === 'web' && (
-        <input
-          ref={imageInputRef as any}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleWebImageChange}
-        />
+        <>
+          <label htmlFor="consumer-profile-image-upload" style={styles.visuallyHidden}>
+            Upload profile image
+          </label>
+          <input
+            id="consumer-profile-image-upload"
+            ref={imageInputRef as any}
+            type="file"
+            accept="image/*"
+            style={styles.hiddenInput}
+            onChange={handleWebImageChange}
+            aria-label="Select a profile image"
+            title="Select profile image"
+          />
+        </>
       )}
 
       {/* Header */}
@@ -492,6 +500,26 @@ export default function ConsumerEditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    borderWidth: 0,
+  },
+  visuallyHidden: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    borderWidth: 0,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',

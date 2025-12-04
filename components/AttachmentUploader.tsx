@@ -342,32 +342,44 @@ export default function AttachmentUploader({
   };
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[componentStyles.container, style]}>
       {/* Hidden file inputs for web */}
       {Platform.OS === 'web' && (
         <>
+          <label htmlFor="image-upload" className={styles.visuallyHidden}>
+            Upload images
+          </label>
           <input
+            id="image-upload"
             ref={imageInputRef as any}
             type="file"
             accept="image/*"
             multiple
-            style={{ display: 'none' }}
+            className={styles.hiddenInput}
             onChange={handleWebImageChange}
+            aria-label="Select images to upload"
+            title="Select images"
           />
+          <label htmlFor="file-upload" className={styles.visuallyHidden}>
+            Upload files
+          </label>
           <input
+            id="file-upload"
             ref={fileInputRef as any}
             type="file"
             accept="*/*"
             multiple
-            style={{ display: 'none' }}
+            className={styles.hiddenInput}
             onChange={handleWebFileChange}
+            aria-label="Select files to upload"
+            title="Select files"
           />
         </>
       )}
 
       {/* Upload Button */}
       <TouchableOpacity
-        style={styles.uploadButton}
+        style={componentStyles.uploadButton}
         onPress={showUploadOptions}
         disabled={uploading || attachments.length >= maxAttachments}
       >

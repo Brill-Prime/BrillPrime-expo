@@ -282,16 +282,27 @@ export default function AddCommodityScreen() {
   return (
     <View style={styles.container}>
       {Platform.OS === 'web' && (
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleWebImageChange}
-        />
+        <>
+          <label 
+            htmlFor="commodity-image-upload" 
+            className={webOnlyStyles.visuallyHidden}
+          >
+            Upload commodity image
+          </label>
+          <input
+            id="commodity-image-upload"
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className={webOnlyStyles.hiddenFileInput}
+            onChange={handleWebImageChange}
+            aria-label="Select an image for the commodity"
+            title="Select an image file"
+          />
+        </>
       )}
 
-      <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <View style={styles.backButtonCircle}>
             <Ionicons name="chevron-back" size={24} color="#1C1B1F" />
