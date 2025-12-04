@@ -41,12 +41,10 @@ export default {
   web: {
     bundler: "metro",
     favicon: "./assets/images/logo.png",
-    // Performance optimization: preconnect to Google Maps
-    meta: {
-      preconnect: [
-        { href: 'https://maps.googleapis.com', crossorigin: true },
-        { href: 'https://maps.gstatic.com', crossorigin: true }
-      ]
+    config: {
+      googleMaps: {
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+      }
     }
   },
   plugins: [
@@ -95,8 +93,7 @@ export default {
     supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
     // API configuration
     apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000', 10),
-    // Mapping / location services
-    googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
-    mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
+    // Google Maps configuration
+    googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
   }
 };

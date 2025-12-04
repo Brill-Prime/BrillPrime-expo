@@ -1,8 +1,16 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { Platform, View, StyleSheet, Text } from 'react-native';
+import React, { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 'react';
+import { Platform, View, StyleSheet } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Region, EdgePadding } from 'react-native-maps';
 
 export { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+
+// Add Google Maps types for web
+declare global {
+  interface Window {
+    initMap: () => void;
+    google: any;
+  }
+}
 
 interface MapProps {
   provider?: typeof PROVIDER_GOOGLE;
@@ -25,13 +33,112 @@ interface MapProps {
 
 const Map = forwardRef<any, MapProps>((props, ref) => {
   const mapRef = useRef<MapView | null>(null);
+  const webMapRef = useRef<HTMLDivElement | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+
+  // Web-specific Google Maps initialization
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !webMapRef.current || map) return;
+
+    const initMap = () => {
+      if (!webMapRef.current) return;
+
+      const mapOptions: google.maps.MapOptions = {
+        center: props.region || { lat: 0, lng: 0 },
+        zoom: 12,
+        disableDefaultUI: !props.showsMyLocationButton,
+        zoomControl: props.zoomEnabled,
+        mapTypeId: props.mapType || 'roadmap',
+        styles: props.customMapStyle,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: false,
+      };
+
+      const newMap = new google.maps.Map(webMapRef.current, mapOptions);
+      setMap(newMap);
+
+      if (props.onMapReady) {
+        props.onMapReady();
+      }
+
+      // Set up event listeners
+      if (props.onRegionChange || props.onRegionChangeComplete) {
+        newMap.addListener('drag', () => {
+          const center = newMap.getCenter();
+          const zoom = newMap.getZoom();
+          const region = {
+            latitude: center?.lat() || 0,
+            longitude: center?.lng() || 0,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          };
+          props.onRegionChange?.(region);
+        });
+
+        newMap.addListener('idle', () => {
+          const center = newMap.getCenter();
+          const zoom = newMap.getZoom();
+          const region = {
+            latitude: center?.lat() || 0,
+            longitude: center?.lng() || 0,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          };
+          props.onRegionChangeComplete?.(region);
+        });
+      }
+    };
+
+    // Load Google Maps script if not already loaded
+    if (!window.google?.maps) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = initMap;
+      script.onerror = (error) => {
+        console.error('Error loading Google Maps:', error);
+      };
+      document.head.appendChild(script);
+
+      return () => {
+        if (script.parentNode) {
+          document.head.removeChild(script);
+        }
+      };
+    } else {
+      initMap();
+    }
+  }, [
+    map,
+    props.region,
+    props.mapType,
+    props.customMapStyle,
+    props.showsMyLocationButton,
+    props.zoomEnabled,
+    props.onMapReady,
+    props.onRegionChange,
+    props.onRegionChangeComplete
+  ]);
 
   useImperativeHandle(ref, () => ({
     fitToCoordinates: (
       coordinates: { latitude: number; longitude: number }[] = [],
       options?: { edgePadding?: Partial<EdgePadding>; animated?: boolean }
     ) => {
-      if (Platform.OS === 'web') return;
+      if (Platform.OS === 'web') {
+        if (!map || !coordinates.length) return;
+        
+        const bounds = new google.maps.LatLngBounds();
+        coordinates.forEach(coord => {
+          bounds.extend(new google.maps.LatLng(coord.latitude, coord.longitude));
+        });
+        
+        map.fitBounds(bounds, options?.edgePadding);
+        return;
+      }
+      
       const normalizedPadding: EdgePadding | undefined = options?.edgePadding
         ? {
             top: options.edgePadding.top ?? 0,
@@ -46,24 +153,30 @@ const Map = forwardRef<any, MapProps>((props, ref) => {
       });
     },
     animateToRegion: (region: Region, duration?: number) => {
-      if (Platform.OS === 'web') return;
+      if (Platform.OS === 'web') {
+        if (!map) return;
+        map.panTo({ lat: region.latitude, lng: region.longitude });
+        map.setZoom(region.longitudeDelta ? 15 : 12);
+        return;
+      }
       mapRef.current?.animateToRegion?.(region, duration);
     },
   }));
 
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.container, props.style]}>
-        <View style={styles.webPlaceholder}>
-          <Text style={styles.webPlaceholderText}>
-            Map view is unavailable in the web preview. Please use the mobile app or native preview to see the live map.
-          </Text>
-        </View>
-      </View>
+      <div 
+        ref={webMapRef} 
+        style={{ 
+          width: '100%', 
+          height: '100%',
+          minHeight: '400px',
+          ...props.style 
+        }} 
+      />
     );
   }
 
-  // Native platforms (iOS/Android) use Google Maps via react-native-maps
   return (
     <View style={[styles.container, props.style]}>
       <MapView
@@ -99,10 +212,13 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#c3d4ff',
   },
   webPlaceholder: {
     flex: 1,
-    backgroundColor: '#e6f0ff',
+    backgroundColor: '#f5f5f5',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#c3d4ff',
