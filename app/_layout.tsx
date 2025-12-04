@@ -19,11 +19,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { ThemeProvider } from '../contexts/ThemeContext';
 
-// Import Leaflet CSS for web
-if (Platform.OS === 'web') {
-  require('leaflet/dist/leaflet.css');
-}
-
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#fff' }}>

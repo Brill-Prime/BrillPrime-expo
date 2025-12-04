@@ -19,7 +19,10 @@ export default {
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.brillprime.app"
+    bundleIdentifier: "com.brillprime.app",
+    config: {
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+    }
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
   android: {
@@ -27,7 +30,12 @@ export default {
       foregroundImage: "./assets/images/logo.png",
       backgroundColor: "#ffffff"
     },
-    package: "com.brillprime.app"
+    package: "com.brillprime.app",
+    config: {
+      googleMaps: {
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+      }
+    }
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
   web: {

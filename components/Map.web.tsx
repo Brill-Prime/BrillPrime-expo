@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Platform, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 interface MapProps {
@@ -21,7 +21,12 @@ interface MapProps {
     description?: string;
     pinColor?: string;
   }>;
+  customMapStyle?: any[];
+  provider?: string;
 }
+
+// Get Google Maps API key from environment
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 const MapWeb: React.FC<MapProps> = ({
   style,
@@ -37,72 +42,69 @@ const MapWeb: React.FC<MapProps> = ({
   onMapReady,
   onError,
   markers = [],
+  customMapStyle = [],
   ...props
 }) => {
   const webViewRef = useRef(null);
-  const mapInitialized = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Generate HTML for the map
+  // Generate HTML for Google Maps
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-      <link 
-        rel="stylesheet" 
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin=""
-      />
       <style>
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100%; }
-        .leaflet-control-zoom { margin-top: 10px; margin-right: 10px; }
       </style>
     </head>
     <body>
       <div id="map"></div>
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-        crossorigin=""></script>
       <script>
         let map;
         let markers = [];
         let userMarker;
         
         function initMap() {
-          const center = [${region?.latitude || 6.5244}, ${region?.longitude || 3.3792}];
-          const zoom = ${region?.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13};
+          const center = { lat: ${region?.latitude || 6.5244}, lng: ${region?.longitude || 3.3792} };
           
-          // Initialize map
-          map = L.map('map').setView(center, zoom);
-          
-          // Add tile layer
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          }).addTo(map);
+          map = new google.maps.Map(document.getElementById('map'), {
+            center: center,
+            zoom: ${region?.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13},
+            styles: ${JSON.stringify(customMapStyle)},
+            disableDefaultUI: false,
+            zoomControl: true,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
           
           // Add user location if enabled
           ${showsUserLocation ? `
           if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
               (pos) => {
-                const userPos = [pos.coords.latitude, pos.coords.longitude];
-                userMarker = L.marker(userPos, {
-                  icon: L.divIcon({
-                    html: '<div style="background-color: #4285F4; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
-                    className: '',
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                  })
-                }).addTo(map);
+                const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                userMarker = new google.maps.Marker({
+                  position: userPos,
+                  map: map,
+                  icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: '#4285F4',
+                    fillOpacity: 1,
+                    strokeColor: '#FFFFFF',
+                    strokeWeight: 3,
+                  },
+                  title: 'Your Location'
+                });
                 
-                // Notify parent about user location
-                window.ReactNativeWebView.postMessage(JSON.stringify({
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
                   type: 'userLocation',
                   location: {
-                    latitude: userPos[0],
-                    longitude: userPos[1]
+                    latitude: userPos.lat,
+                    longitude: userPos.lng
                   }
                 }));
               },
@@ -114,25 +116,26 @@ const MapWeb: React.FC<MapProps> = ({
           }
           ` : ''}
           
-          // Handle map move events
-          map.on('moveend', function() {
+          // Handle map idle events (similar to region change)
+          map.addListener('idle', function() {
             const center = map.getCenter();
-            const zoom = map.getZoom();
             const bounds = map.getBounds();
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
             
-            window.ReactNativeWebView.postMessage(JSON.stringify({
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
               type: 'regionChange',
               region: {
-                latitude: center.lat,
-                longitude: center.lng,
-                latitudeDelta: (bounds.getNorthEast().lat - bounds.getSouthWest().lat) / 2,
-                longitudeDelta: (bounds.getNorthEast().lng - bounds.getSouthWest().lng) / 2
+                latitude: center.lat(),
+                longitude: center.lng(),
+                latitudeDelta: Math.abs(ne.lat() - sw.lat()),
+                longitudeDelta: Math.abs(ne.lng() - sw.lng())
               }
             }));
           });
           
           // Notify React Native that map is ready
-          window.ReactNativeWebView.postMessage(JSON.stringify({
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
             type: 'mapReady'
           }));
           
@@ -143,28 +146,39 @@ const MapWeb: React.FC<MapProps> = ({
         // Function to update markers
         function updateMarkers(markersData) {
           // Clear existing markers
+          markers.forEach(m => m.setMap(null));
           markers = [];
           
           // Add new markers
           markersData.forEach((mData) => {
             if (mData.coordinate) {
-              const marker = L.marker([
-                mData.coordinate.latitude, 
-                mData.coordinate.longitude
-              ], {
-                icon: L.divIcon({
-                  html: \`<div style="background-color: ${mData.pinColor || '#FF6B6B'}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>\`,
-                  className: '',
-                  iconSize: [20, 20],
-                  iconAnchor: [10, 10]
-                })
-              }).addTo(map);
+              const marker = new google.maps.Marker({
+                position: { lat: mData.coordinate.latitude, lng: mData.coordinate.longitude },
+                map: map,
+                title: mData.title || '',
+                icon: mData.pinColor ? {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: mData.pinColor,
+                  fillOpacity: 1,
+                  strokeColor: '#FFFFFF',
+                  strokeWeight: 2,
+                } : undefined
+              });
               
               if (mData.title || mData.description) {
-                let popupContent = '';
-                if (mData.title) popupContent += \`<b>${mData.title}</b><br/>\`;
-                if (mData.description) popupContent += mData.description;
-                marker.bindPopup(popupContent);
+                const infoWindow = new google.maps.InfoWindow({
+                  content: \`
+                    <div style="padding: 8px;">
+                      \${mData.title ? \`<strong>\${mData.title}</strong><br/>\` : ''}
+                      \${mData.description || ''}
+                    </div>
+                  \`
+                });
+                
+                marker.addListener('click', () => {
+                  infoWindow.open(map, marker);
+                });
               }
               
               markers.push(marker);
@@ -172,16 +186,9 @@ const MapWeb: React.FC<MapProps> = ({
           });
         }
         
-        // Handle messages from React Native
         window.updateMarkers = updateMarkers;
-        
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', initMap);
-        } else {
-          initMap();
-        }
       </script>
+      <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap" async defer></script>
     </body>
     </html>
   `;
@@ -197,6 +204,7 @@ const MapWeb: React.FC<MapProps> = ({
           }
           break;
         case 'mapReady':
+          setIsLoading(false);
           if (onMapReady) onMapReady();
           break;
         case 'userLocation':
@@ -220,8 +228,25 @@ const MapWeb: React.FC<MapProps> = ({
     }
   }, [markers]);
 
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <View style={[styles.container, style, styles.errorContainer]}>
+        <Text style={styles.errorText}>Google Maps API key not configured</Text>
+        <Text style={styles.errorDetails}>
+          Please add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, style]}>
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4682B4" />
+          <Text style={styles.loadingText}>Loading map...</Text>
+        </View>
+      )}
       <WebView
         ref={webViewRef}
         source={{ html }}
@@ -229,13 +254,18 @@ const MapWeb: React.FC<MapProps> = ({
         onMessage={handleMessage}
         javaScriptEnabled={true}
         domStorageEnabled={true}
-        startInLoadingState={true}
+        startInLoadingState={false}
         scalesPageToFit={false}
         originWhitelist={['*']}
         mixedContentMode="always"
         allowFileAccess={true}
         allowUniversalAccessFromFileURLs={true}
         allowFileAccessFromFileURLs={true}
+        onError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('WebView error:', nativeEvent);
+          if (onError) onError(nativeEvent);
+        }}
       />
       {children}
     </View>
@@ -253,11 +283,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f8ff',
   },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   errorText: {
     fontSize: 16,
     color: '#e74c3c',
     marginTop: 12,
     textAlign: 'center',
+    fontWeight: '600',
   },
   errorDetails: {
     fontSize: 12,
@@ -266,24 +302,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
-  retryButton: {
-    marginTop: 20,
-    backgroundColor: '#4682B4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 15,
-  },
   loadingContainer: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
     backgroundColor: '#f0f8ff',
+    zIndex: 1000,
   },
   loadingText: {
     fontSize: 16,
@@ -293,10 +321,10 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export Marker component for compatibility (handled internally in Leaflet)
+// Export Marker component for compatibility (handled internally in Google Maps)
 export const Marker: React.FC<any> = () => null;
 
-// Provider constant for web (Leaflet)
+// Provider constant for web (Google Maps)
 export const PROVIDER_GOOGLE = 'google';
 
 export default MapWeb;
