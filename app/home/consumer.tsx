@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert, ScrollView, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from 'expo-location';
 import { debounce } from 'lodash';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useAlert } from '../../components/AlertProvider';
+import { AlertProvider, useAlert } from '../../components/AlertProvider';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 import MerchantDetailsModal from '../_components/MerchantDetailsModal';
@@ -54,6 +54,8 @@ interface StoreLocation {
   title: string;
   address: string;
   coords: { lat: number; lng: number };
+  lat: number;
+  lng: number;
   distance?: number;
   rating?: number;
   isOpen?: boolean;
@@ -67,6 +69,14 @@ interface ActiveDelivery {
   merchantLocation: { latitude: number; longitude: number };
   status: 'picking_up' | 'delivering';
   driverLocation: { latitude: number; longitude: number };
+}
+
+interface MerchantDetailsModalProps {
+  visible: boolean;
+  merchant: StoreLocation;
+  onClose: () => void;
+  onOrderNow: () => void;
+  onGetDirections: () => void;
 }
 
 import { Dimensions } from 'react-native';
@@ -277,7 +287,7 @@ function ConsumerHomeContent() {
           latitude: driver.latitude,
           longitude: driver.longitude,
         })),
-        ...storeLocations.map(store => store.coords)
+        ...storeLocations.map(store => ({ latitude: store.coords.lat, longitude: store.coords.lng }))
       ];
       mapRef.current.fitToCoordinates(
         locationsToShow,
@@ -656,7 +666,9 @@ function ConsumerHomeContent() {
                 distanceToMerchant: activeDelivery.status === 'picking_up' 
                   ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
                   : 0,
-                distanceToConsumer: locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude),
+                distanceToConsumer: activeDelivery.status === 'delivering' 
+                  ? locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude)
+                  : 0,
                 eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
               }
             : d
@@ -1080,8 +1092,7 @@ function ConsumerHomeContent() {
     if (selectedMerchant) {
       const { lat, lng } = selectedMerchant.coords;
       const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      // In a real app, you'd use Linking.openURL(url) for native apps
-      console.log('Open directions:', url);
+      Linking.openURL(url);
       showInfo("Directions", "Opening Google Maps for directions");
     }
     handleMerchantDetailsClose();
@@ -1109,7 +1120,10 @@ function ConsumerHomeContent() {
           {storeLocations.map((merchant) => (
             <Marker
               key={merchant.id}
-              coordinate={merchant.coords}
+              coordinate={{
+                latitude: merchant.coords.lat,
+                longitude: merchant.coords.lng
+              }}
               onPress={() => handleMerchantPress(merchant)}
             >
               <View style={styles.merchantMarker}>
@@ -1367,9 +1381,14 @@ function ConsumerHomeContent() {
           <MerchantDetailsModal
             visible={showMerchantDetails}
             merchant={selectedMerchant}
-            onClose={handleMerchantDetailsClose}
-            onOrderNow={handleOrderNow}
-            onGetDirections={handleGetDirections}
+            onClose={() => setShowMerchantDetails(false)}
+            onOrderNow={() => {
+              router.push(`/merchant/${selectedMerchant.id}/menu`);
+            }}
+            onGetDirections={() => {
+              const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedMerchant.coords.lat},${selectedMerchant.coords.lng}`;
+              Linking.openURL(url);
+            }}
           />
         )}
       </View>
@@ -2015,6 +2034,11 @@ const styles = StyleSheet.create({
     quickActions: {
       marginBottom: 20,
     },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1,
+  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -2159,4 +2183,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.medium,
   },
 });
-export default ConsumerHomeContent;
+
+export default function ConsumerHomeScreen() {
+  return (
+    <ErrorBoundary>
+      <AlertProvider>
+        <ConsumerHomeContent />
+      </AlertProvider>
+    </ErrorBoundary>
+  );
+}
