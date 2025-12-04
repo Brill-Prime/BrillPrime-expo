@@ -8,7 +8,6 @@ import {
   Alert,
   Image,
   ScrollView,
-  Dimensions,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -16,8 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAlert } from './AlertProvider';
+import styles from './attachment-uploader.module.css';
 
-const { width } = Dimensions.get('window');
 
 export interface Attachment {
   id: string;
@@ -388,40 +387,40 @@ export default function AttachmentUploader({
         ) : (
           <Ionicons name="add" size={24} color="#4682B4" />
         )}
-        <Text style={styles.uploadButtonText}>
+        <Text style={componentStyles.uploadButtonText}>
           {uploading ? 'Uploading...' : placeholder}
         </Text>
-        <Text style={styles.uploadLimitText}>
+        <Text style={componentStyles.uploadLimitText}>
           {attachments.length}/{maxAttachments}
         </Text>
       </TouchableOpacity>
 
       {/* Attachments List */}
       {attachments.length > 0 && (
-        <ScrollView style={styles.attachmentsList} showsVerticalScrollIndicator={false}>
+        <ScrollView style={componentStyles.attachmentsList} showsVerticalScrollIndicator={false}>
           {attachments.map((attachment) => (
-            <View key={attachment.id} style={styles.attachmentItem}>
+            <View key={attachment.id} style={componentStyles.attachmentItem}>
               {attachment.type === 'image' ? (
-                <Image source={{ uri: attachment.uri }} style={styles.thumbnailImage} />
+                <Image source={{ uri: attachment.uri }} style={componentStyles.thumbnailImage} />
               ) : (
-                <View style={styles.documentIcon}>
+                <View style={componentStyles.documentIcon}>
                   <Ionicons name={getFileIcon(attachment)} size={24} color="#4682B4" />
                 </View>
               )}
               
-              <View style={styles.attachmentInfo}>
-                <Text style={styles.attachmentName} numberOfLines={1}>
+              <View style={componentStyles.attachmentInfo}>
+                <Text style={componentStyles.attachmentName} numberOfLines={1}>
                   {attachment.name}
                 </Text>
                 {attachment.size && (
-                  <Text style={styles.attachmentSize}>
+                  <Text style={componentStyles.attachmentSize}>
                     {formatFileSize(attachment.size)}
                   </Text>
                 )}
               </View>
               
               <TouchableOpacity
-                style={styles.removeButton}
+                style={componentStyles.removeButton}
                 onPress={() => removeAttachment(attachment.id)}
               >
                 <Ionicons name="close-circle" size={20} color="#e74c3c" />
@@ -434,7 +433,7 @@ export default function AttachmentUploader({
   );
 }
 
-const styles = StyleSheet.create({
+const componentStyles = StyleSheet.create({
   container: {
     marginVertical: 10,
   },

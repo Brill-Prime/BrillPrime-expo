@@ -382,8 +382,6 @@ export default function SignIn() {
 }
 
 const PRIMARY_COLOR = "rgb(11, 26, 81)";
-const GRAY_400 = "#9CA3AF";
-const GRAY_600 = "#6B7280";
 
 const getResponsiveStyles = (screenData: any) => {
   const { width, height } = screenData;
