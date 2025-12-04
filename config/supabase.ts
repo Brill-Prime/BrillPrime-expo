@@ -57,7 +57,7 @@ if (!urlValidation.isValid || !keyValidation.isValid) {
   }
 
   console.error('\n📋 To fix this:');
-  console.error('  1. Go to your Replit Secrets (Tools > Secrets)');
+  console.error('  1. Copy .env.example to .env');
   console.error('  2. Add EXPO_PUBLIC_SUPABASE_URL with your Supabase project URL');
   console.error('  3. Add EXPO_PUBLIC_SUPABASE_ANON_KEY with your Supabase anon/public key');
   console.error('  4. Find these values in your Supabase project settings');

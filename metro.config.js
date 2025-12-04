@@ -9,13 +9,13 @@ config.resolver.assetExts.push('ttf', 'otf', 'woff', 'woff2');
 // Configure platform-specific extensions
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'jsx', 'js', 'ts', 'tsx', 'json', 'css'];
 
-// Configure for Replit environment - bind to 0.0.0.0 and allow all origins
+// Configure server with CORS support for development
 config.server = {
   ...config.server,
   port: 5000,
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
-      // Allow requests from Replit webview and any origin
+      // Allow CORS for development
       const origin = req.headers.origin || '*';
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

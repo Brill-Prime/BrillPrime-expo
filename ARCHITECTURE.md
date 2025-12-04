@@ -127,5 +127,5 @@ This architecture is **completely serverless**:
 
 1. Set up Firebase project and get credentials
 2. Set up Supabase project and get credentials
-3. Add credentials to Replit Secrets
+3. Add credentials to `.env` file (copy from `.env.example`)
 4. Run the app with `npm run dev`

@@ -224,7 +224,7 @@ react-native-svg@15.13.0 → 15.11.2
 - **Frontend Issues**: See `docs/frontend-missing-implementations-report.md`
 - **Backend Gaps**: See `docs/missing-api-endpoints-analysis.md`
 - **API Testing**: See `docs/api-test-report.md`
-- **Project Status**: See `replit.md`
+- **Project Status**: See `ARCHITECTURE.md` and `WORK_SUMMARY.md`
 
 ---
 

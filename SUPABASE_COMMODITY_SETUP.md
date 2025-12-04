@@ -6,7 +6,7 @@ This guide will help you set up the commodity management feature with Supabase s
 
 Before you begin, make sure you have:
 1. A Supabase account and project created
-2. Your Supabase project URL and anon key configured in Replit Secrets
+2. Your Supabase project URL and anon key configured in `.env` file
 3. Firebase authentication already set up (for user auth)
 
 ## 🚀 Setup Steps

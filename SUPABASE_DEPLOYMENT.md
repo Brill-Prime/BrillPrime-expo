@@ -48,7 +48,7 @@ In your Supabase dashboard, go to Settings > Edge Functions and add:
 4. Verify realtime is working in the Realtime Inspector
 
 ## Step 7: Update Frontend Environment Variables
-Make sure your `.env` or Replit Secrets has:
+Make sure your `.env` file has:
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
