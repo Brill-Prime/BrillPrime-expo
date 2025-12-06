@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,16 +22,30 @@ import { useAuth } from "../../contexts/AuthContext";
 import { PerformanceOptimizer } from "../../utils/performance";
 import { locationService } from "../../services/locationService";
 import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
+import { calculateETA as calculateETAGoogle } from "../../utils/googleMaps";
 
 // Real-time Map component
-const RealTimeMapComponent = React.memo(({
-  region,
+const RealTimeMapComponent = React.memo(({ region,
   currentLocation,
-  mapRef
+  mapRef,
+  driverMovement,
+  // Route directions props
+  showRoute,
+  origin,
+  destination,
+  waypoints,
+  eta
 }: {
   region: any;
   currentLocation: any;
   mapRef: any;
+  driverMovement: any;
+  // Route directions props
+  showRoute?: boolean;
+  origin?: { latitude: number; longitude: number };
+  destination?: { latitude: number; longitude: number };
+  waypoints?: Array<{ latitude: number; longitude: number }>;
+  eta?: string;
 }) => {
   const [mapError, setMapError] = useState(false);
 
@@ -44,19 +61,58 @@ const RealTimeMapComponent = React.memo(({
     );
   }
 
+  // Add pickup and delivery markers when showing route
+  const additionalMarkers = [];
+  if (showRoute && destination) {
+    // Add pickup point marker (first waypoint or destination if no waypoints)
+    const pickupPoint = waypoints && waypoints.length > 0 ? waypoints[0] : destination;
+    additionalMarkers.push(
+      <Marker
+        key="pickup"
+        coordinate={pickupPoint}
+        title="Pickup Point"
+        description="Customer pickup location"
+      >
+        <View style={styles.pickupMarker}>
+          <Ionicons name="person" size={20} color="#fff" />
+        </View>
+      </Marker>
+    );
+
+    // Add delivery point marker (destination)
+    additionalMarkers.push(
+      <Marker
+        key="delivery"
+        coordinate={destination}
+        title="Delivery Destination"
+        description="Final delivery location"
+      >
+        <View style={styles.deliveryMarker}>
+          <Ionicons name="home" size={20} color="#fff" />
+        </View>
+      </Marker>
+    );
+  }
+
   return (
     <Map
       ref={mapRef}
       style={styles.map}
       provider={PROVIDER_GOOGLE}
       region={region}
-      showsUserLocation={true}
+      showsUserLocation={false}
       showsMyLocationButton={false}
       showsCompass={true}
       rotateEnabled={true}
       pitchEnabled={true}
       mapType="standard"
-      onError={() => setMapError(true)}
+      userType="driver"
+      // Route directions props
+      showRoute={showRoute}
+      origin={origin}
+      destination={destination}
+      waypoints={waypoints}
+      eta={eta}
     >
       {currentLocation && (
         <Marker
@@ -65,22 +121,31 @@ const RealTimeMapComponent = React.memo(({
             longitude: currentLocation.longitude,
           }}
           title="Your Location"
-          description={driverMovement.isMoving ? `Moving at ${(driverMovement.speed || 0).toFixed(1)} m/s` : "Stationary"}
+          description={driverMovement?.isMoving ? `Moving at ${(driverMovement.speed || 0).toFixed(1)} m/s` : "Stationary"}
+          rotation={driverMovement?.heading || 0}
         >
           <View style={[
             styles.driverLocationMarker,
-            driverMovement.heading !== undefined && {
+            driverMovement?.heading !== undefined && {
               transform: [{ rotate: `${driverMovement.heading}deg` }]
             }
           ]}>
-            <Ionicons 
-              name={driverMovement.isMoving ? "navigate" : "car-sport"} 
-              size={24} 
-              color={driverMovement.isMoving ? "#00C853" : "#4682B4"} 
-            />
+            <View style={styles.driverMarkerInner}>
+              <Ionicons
+                name={driverMovement?.isMoving ? "navigate" : "car-sport"}
+                size={24}
+                color="#fff"
+              />
+            </View>
+            {driverMovement?.isMoving && (
+              <View style={styles.movingIndicator}>
+                <Ionicons name="ellipse" size={8} color="#00C853" />
+              </View>
+            )}
           </View>
         </Marker>
       )}
+      {additionalMarkers}
     </Map>
   );
 });
@@ -148,6 +213,12 @@ export default function DriverHome() {
     longitudeDelta: 0.0421,
   });
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  // Route directions state
+  const [showRoute, setShowRoute] = useState(false);
+  const [routeOrigin, setRouteOrigin] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [routeDestination, setRouteDestination] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [routeWaypoints, setRouteWaypoints] = useState<Array<{ latitude: number; longitude: number }>>([]);
+  const [eta, setEta] = useState<string>("");
   const mapRef = useRef<any>(null);
 
   const sidebarWidth = useMemo(() => Math.min(350, width * 0.9), []);
@@ -299,7 +370,7 @@ export default function DriverHome() {
           latitude: newLocation.latitude,
           longitude: newLocation.longitude,
         }));
-        
+
         // Update movement data
         setDriverMovement({
           heading: newLocation.heading,
@@ -339,7 +410,7 @@ export default function DriverHome() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserData, loadDriverStats, checkAuth, startLocationTracking]);
+  }, [loadUserData, loadDriverStats, refreshUser, startLocationTracking]);
 
   useEffect(() => {
     initializeData();
@@ -426,6 +497,69 @@ export default function DriverHome() {
     showInfo("Status Update", `Switched to ${tab} mode`);
   }, [showInfo]);
 
+  // Calculate ETA based on current location and destination
+  const calculateETA = useCallback(async (origin: { latitude: number; longitude: number }, destination: { latitude: number; longitude: number }) => {
+    try {
+      const result = await calculateETAGoogle(origin, destination);
+      setEta(result.duration);
+      console.log('[DriverHome] ETA calculated:', result.duration);
+    } catch (error) {
+      console.error('[DriverHome] Error calculating ETA:', error);
+      setEta("Unavailable");
+    }
+  }, []);
+
+  // Simulate getting a delivery assignment
+  const simulateDeliveryAssignment = useCallback(() => {
+    if (!currentLocation) return;
+
+    // For demo purposes, create a destination 2km away from current location
+    const destination = {
+      latitude: currentLocation.latitude + 0.01, // ~1km north
+      longitude: currentLocation.longitude + 0.01, // ~1km east
+    };
+
+    // Set route data
+    setRouteOrigin({
+      latitude: currentLocation.latitude,
+      longitude: currentLocation.longitude,
+    });
+    setRouteDestination(destination);
+    setRouteWaypoints([]); // No waypoints for simple route
+    setShowRoute(true);
+
+    // Calculate ETA
+    calculateETA(currentLocation, destination);
+
+    // Switch to "On delivery" tab
+    setActiveTab("On delivery");
+
+    console.log('[DriverHome] Delivery assignment simulated');
+  }, [currentLocation, calculateETA]);
+
+  // Update ETA periodically when on delivery route
+  useEffect(() => {
+    let etaInterval: NodeJS.Timeout | null = null;
+
+    if (activeTab === "On delivery" && showRoute && routeOrigin && routeDestination) {
+      // Update ETA every 30 seconds
+      etaInterval = setInterval(() => {
+        if (currentLocation) {
+          calculateETA(currentLocation, routeDestination);
+        }
+      }, 30000); // 30 seconds
+
+      // Initial ETA calculation
+      calculateETA(currentLocation || routeOrigin, routeDestination);
+    }
+
+    return () => {
+      if (etaInterval) {
+        clearInterval(etaInterval);
+      }
+    };
+  }, [activeTab, showRoute, routeOrigin, routeDestination, currentLocation, calculateETA]);
+
   if (authLoading || isLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -454,11 +588,18 @@ export default function DriverHome() {
     <View style={styles.container}>
       <StatusBar backgroundColor="transparent" translucent />
 
-      {/* Full Screen Real-time Map */}
+      {/* Full Screen Real-time Map with Route Directions */}
       <RealTimeMapComponent
         region={region}
         currentLocation={currentLocation}
         mapRef={mapRef}
+        driverMovement={driverMovement}
+        // Route directions props
+        showRoute={showRoute}
+        origin={routeOrigin}
+        destination={routeDestination}
+        waypoints={routeWaypoints}
+        eta={eta}
       />
 
       {/* Overlay for UI elements */}
@@ -504,6 +645,14 @@ export default function DriverHome() {
           </View>
         )}
 
+        {/* ETA Display when on delivery */}
+        {activeTab === "On delivery" && showRoute && eta && (
+          <View style={styles.etaContainer}>
+            <Ionicons name="time" size={20} color="#4682B4" />
+            <Text style={styles.etaText}>ETA: {eta}</Text>
+          </View>
+        )}
+
         {/* Circular Progress Rings */}
         <View style={styles.progressContainer}>
           <Animated.View
@@ -534,7 +683,7 @@ export default function DriverHome() {
           {Math.round(energyLevel)}%
         </Text>
 
-        {/* Truck Icon */}
+        {/* Truck Icon Container */}
         <View style={styles.truckIconContainer}>
           <Ionicons name="car-sport" size={width * 0.08} color="#4682B4" />
         </View>
@@ -542,17 +691,30 @@ export default function DriverHome() {
         {/* Total Energy Text */}
         <Text style={styles.totalEnergy}>Total energy</Text>
 
-        {/* Divider Line */}
+        {/* Divider */}
         <View style={styles.divider} />
 
-        {/* Bottom Button */}
-        <TouchableOpacity
-          style={styles.bottomButton}
-          onPress={handleManageTrips}
-        >
-          <Ionicons name="cube" size={20} color="white" style={styles.packageIcon} />
-          <Text style={styles.bottomButtonText}>View orders</Text>
-        </TouchableOpacity>
+        {/* Bottom Button - Simulate Delivery Assignment when Available */}
+        {activeTab === "Available" && (
+          <TouchableOpacity
+            style={styles.bottomButton}
+            onPress={simulateDeliveryAssignment}
+          >
+            <Ionicons name="cube" size={20} color="white" style={styles.packageIcon} />
+            <Text style={styles.bottomButtonText}>Simulate Delivery</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Bottom Button - View Orders when On delivery */}
+        {activeTab === "On delivery" && (
+          <TouchableOpacity
+            style={styles.bottomButton}
+            onPress={handleManageTrips}
+          >
+            <Ionicons name="cube" size={20} color="white" style={styles.packageIcon} />
+            <Text style={styles.bottomButtonText}>View Orders</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {isMenuOpen && (
@@ -639,7 +801,89 @@ export default function DriverHome() {
   );
 }
 
-const styles = StyleSheet.create({
+// Define style types for better type checking
+interface Styles {
+  container: ViewStyle;
+  centerContent: ViewStyle;
+  loadingText: TextStyle;
+  errorText: TextStyle;
+  retryButton: ViewStyle;
+  retryText: TextStyle;
+  map: ViewStyle;
+  mapPlaceholder: ViewStyle;
+  mapPlaceholderText: TextStyle;
+  driverLocationMarker: ViewStyle;
+  driverMarkerInner: ViewStyle;
+  movingIndicator: ViewStyle;
+  trackingIndicator: ViewStyle;
+  trackingPulse: ViewStyle;
+  trackingText: TextStyle;
+  overlay: ViewStyle;
+  backButton: ViewStyle;
+  menuButton: ViewStyle;
+  tabs: ViewStyle;
+  tab: ViewStyle;
+  activeTab: ViewStyle;
+  tabText: TextStyle;
+  activeTabText: TextStyle;
+  progressContainer: ViewStyle;
+  progressRing: ViewStyle;
+  progressRingOuter: ViewStyle;
+  progressRingMiddle: ViewStyle;
+  progressRingInner: ViewStyle;
+  sidebar: ViewStyle;
+  sidebarHeader: ViewStyle;
+  profileSection: ViewStyle;
+  profileImage: ViewStyle;
+  profileInfo: ViewStyle;
+  userName: TextStyle;
+  userEmail: TextStyle;
+  statsContainer: ViewStyle;
+  statItem: ViewStyle;
+  statValue: TextStyle;
+  statLabel: TextStyle;
+  energyContainer: ViewStyle;
+  energyBar: ViewStyle;
+  energyFill: ViewStyle;
+  energyText: TextStyle;
+  energyLevel: TextStyle;
+  pickupMarker: ViewStyle;
+  deliveryMarker: ViewStyle;
+  etaContainer: ViewStyle;
+  etaText: TextStyle;
+  energyPercentage: TextStyle;
+  truckIconContainer: ViewStyle;
+  totalEnergy: TextStyle;
+  divider: ViewStyle;
+  bottomButton: ViewStyle;
+  packageIcon: TextStyle;
+  bottomButtonText: TextStyle;
+  closeButton: ViewStyle;
+  avatarContainer: ViewStyle;
+  sidebarScrollView: ViewStyle;
+  sidebarScrollContent: ViewStyle;
+  menuList: ViewStyle;
+  menuItem: ViewStyle;
+  menuItemText: TextStyle;
+  notificationBadge: ViewStyle;
+  notificationBadgeText: TextStyle;
+  sidebarFooter: ViewStyle;
+  switchRoleButton: ViewStyle;
+  switchRoleText: TextStyle;
+  signOutButton: ViewStyle;
+  signOutText: TextStyle;
+  menuOverlay: ViewStyle;
+  notificationsContainer: ViewStyle;
+  notificationItem: ViewStyle;
+  notificationText: TextStyle;
+  notificationTime: TextStyle;
+  logoutButton: ViewStyle;
+  logoutText: TextStyle;
+  closeSidebarButton: ViewStyle;
+  sidebarOverlay: ViewStyle;
+}
+
+const styles = StyleSheet.create<Styles>({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
@@ -698,18 +942,6 @@ const styles = StyleSheet.create({
     color: "#4682B4",
     fontFamily: "Montserrat-Medium",
   },
-  retryMapButton: {
-    marginTop: 15,
-    backgroundColor: "#4682B4",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  retryMapText: {
-    color: "white",
-    fontFamily: "Montserrat-Medium",
-    fontSize: 14,
-  },
   driverLocationMarker: {
     backgroundColor: "white",
     borderRadius: 25,
@@ -721,6 +953,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  driverMarkerInner: {
+    backgroundColor: "#f97316", // Orange for driver
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  movingIndicator: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
   trackingIndicator: {
     position: "absolute",
@@ -1068,5 +1330,156 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.3)",
     zIndex: 15,
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#D9D9D9',
+    marginBottom: 15,
+  },
+  profileInfo: {
+    alignItems: 'center',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  energyContainer: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  energyBar: {
+    height: 10,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  energyFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 5,
+  },
+  energyText: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  energyLevel: {
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  notificationsContainer: {
+    padding: 20,
+  },
+  notificationItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  notificationText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  logoutText: {
+    color: '#e74c3c',
+    fontSize: 16,
+    fontFamily: 'Montserrat-Medium',
+  },
+  closeSidebarButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 4,
+    zIndex: 10,
+  },
+  sidebarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 15,
+  },
+  pickupMarker: {
+    backgroundColor: '#4682B4', // Blue for pickup
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  deliveryMarker: {
+    backgroundColor: '#00C853', // Green for delivery
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  etaContainer: {
+    position: 'absolute',
+    top: 180,
+    left: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  etaText: {
+    fontSize: 12,
+    color: '#4682B4',
+    fontFamily: 'Montserrat-SemiBold',
   },
 });

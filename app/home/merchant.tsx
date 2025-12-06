@@ -18,6 +18,7 @@ import Map, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import * as Location from 'expo-location';
 import QRScannerIcon from '../../components/QRScannerIcon';
 import SimpleArrowIcon from '../../components/SimpleArrowIcon';
+import { locationService } from '../../services/locationService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -59,8 +60,8 @@ export default function MerchantHome() {
   const [region, setRegion] = useState({
     latitude: 9.0765, // Abuja, Nigeria
     longitude: 7.3986,
-    latitudeDelta: 0.1,
-    longitudeDelta: 0.1,
+    latitudeDelta: 5.0, // Start with wider view
+    longitudeDelta: 5.0,
   });
   const [recentOrders] = useState([
     { id: "ORD1234", customer: "John Doe", items: 2, status: "Processing" },
@@ -70,14 +71,21 @@ export default function MerchantHome() {
     { id: "ORD1230", customer: "Mike Brown", items: 4, status: "Delivered" },
   ]);
   const isMountedRef = useRef(true);
+  const mapRef = useRef<any>(null);
+  const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
+  const [merchantLocation, setMerchantLocation] = useState<any>(null);
+  const [merchantMovement, setMerchantMovement] = useState<{ heading?: number; isMoving?: boolean }>({});
 
   useEffect(() => {
     isMountedRef.current = true;
     loadUserData();
     loadCurrentLocation();
+    initializeLiveTracking();
 
     return () => {
       isMountedRef.current = false;
+      locationService.stopLiveTracking();
     };
   }, []);
 
@@ -126,6 +134,83 @@ export default function MerchantHome() {
       }
     } catch (error) {
       console.error("Error loading saved location:", error);
+    }
+  };
+
+  const calculateDelta = (latitude: number) => {
+    // Calculate appropriate zoom level based on latitude
+    const latitudeDelta = 0.0122;
+    const longitudeDelta = 0.0121;
+    return { latitudeDelta, longitudeDelta };
+  };
+
+  const initializeLiveTracking = async () => {
+    try {
+      console.log('[MerchantTracking] Starting live tracking...');
+      await locationService.startLiveTracking(5000); // Update every 5 seconds
+      setIsLiveTrackingEnabled(true);
+
+      // Subscribe to location updates
+      const unsubscribe = locationService.onLocationUpdate((location) => {
+        if (isMountedRef.current) {
+          console.log('[MerchantTracking] Location update received:', {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+            isMoving: location.isMoving,
+          });
+
+          // Only update if location has changed significantly (more than ~50 meters)
+          // BUT always allow the first location update
+          const SIGNIFICANT_MOVEMENT_THRESHOLD = 0.0005; // ~55 meters
+          const lastLocation = lastLocationRef.current;
+
+          if (lastLocation) {
+            const latDiff = Math.abs(location.latitude - lastLocation.latitude);
+            const lngDiff = Math.abs(location.longitude - lastLocation.longitude);
+
+            // Skip update if movement is insignificant
+            if (latDiff < SIGNIFICANT_MOVEMENT_THRESHOLD && lngDiff < SIGNIFICANT_MOVEMENT_THRESHOLD) {
+              console.log('[MerchantTracking] Movement too small, skipping update');
+              return;
+            }
+          } else {
+            // First location - always process it
+            console.log('[MerchantTracking] First location detected, initializing map position');
+          }
+
+          console.log('[MerchantTracking] Updating region to live location');
+
+          // Store the new location
+          lastLocationRef.current = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+          };
+
+          // Update merchant's current region
+          const deltas = calculateDelta(location.latitude);
+          const newRegion = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            ...deltas,
+          };
+
+          console.log('[MerchantTracking] Setting region to:', newRegion);
+          setRegion(newRegion);
+          setMerchantLocation(location); // Store full location object
+
+          // Update movement data
+          setMerchantMovement({
+            heading: location.heading,
+            isMoving: location.isMoving
+          });
+        }
+      });
+
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Failed to initialize live tracking:', error);
+      setIsLiveTrackingEnabled(false);
     }
   };
 
@@ -228,11 +313,12 @@ export default function MerchantHome() {
       {/* Map Background */}
       <View style={styles.mapContainer}>
         <Map
+          ref={mapRef}
           provider={PROVIDER_GOOGLE}
           style={styles.map}
           region={region}
           onRegionChangeComplete={setRegion}
-          showsUserLocation={true}
+          showsUserLocation={isLiveTrackingEnabled}
           showsMyLocationButton={false}
           showsCompass={false}
           mapType="standard"
@@ -240,15 +326,38 @@ export default function MerchantHome() {
           rotateEnabled={false}
           scrollEnabled={true}
           zoomEnabled={true}
+          userType="merchant"
         >
-          <Marker
-            coordinate={{
-              latitude: region.latitude,
-              longitude: region.longitude,
-            }}
-            title={merchantData.businessName}
-            description="Your business location"
-          />
+          {/* Merchant Location Marker - Distinct Green Storefront */}
+          {merchantLocation && (
+            <Marker
+              coordinate={{
+                latitude: merchantLocation.latitude,
+                longitude: merchantLocation.longitude,
+              }}
+              title={merchantData.businessName}
+              description="Your business location"
+              rotation={merchantMovement.heading || 0}
+            >
+              <View style={[
+                styles.merchantLocationMarker,
+                merchantMovement.isMoving && { transform: [{ rotate: `${merchantMovement.heading || 0}deg` }] }
+              ]}>
+                <View style={styles.merchantMarkerInner}>
+                  <Ionicons
+                    name="storefront"
+                    size={24}
+                    color="#fff"
+                  />
+                </View>
+                {merchantMovement.isMoving && (
+                  <View style={styles.movingIndicator}>
+                    <Ionicons name="ellipse" size={8} color="#00C853" />
+                  </View>
+                )}
+              </View>
+            </Marker>
+          )}
         </Map>
       </View>
 
@@ -776,5 +885,38 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 15,
+  },
+  // Merchant location marker styles
+  merchantLocationMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  merchantMarkerInner: {
+    backgroundColor: '#10b981', // Green for merchant
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  movingIndicator: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });

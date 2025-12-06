@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, Text, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 
 interface MapProps {
   style?: any;
@@ -15,26 +14,46 @@ interface MapProps {
   children?: React.ReactNode;
   onMapReady?: () => void;
   onError?: (error: any) => void;
-  markers?: Array<{
+  markers?: {
     coordinate: { latitude: number; longitude: number };
     title?: string;
     description?: string;
     pinColor?: string;
-  }>;
+  }[];
   customMapStyle?: any[];
   provider?: string;
+  zoomEnabled?: boolean;
+  scrollEnabled?: boolean;
+  rotateEnabled?: boolean;
+  pitchEnabled?: boolean;
+  showsMyLocationButton?: boolean;
+  userType?: 'consumer' | 'merchant' | 'driver'; // User role for distinct markers
+  // Route directions props
+  origin?: { latitude: number; longitude: number };
+  destination?: { latitude: number; longitude: number };
+  waypoints?: Array<{ latitude: number; longitude: number }>;
+  showRoute?: boolean;
+  eta?: string;
 }
 
 // Get Google Maps API key from environment
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
-const MapWeb: React.FC<MapProps> = ({
+// Declare global window interface
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+const MapWeb = forwardRef<any, MapProps>(({
   style,
   region = {
-    latitude: 6.5244,
-    longitude: 3.3792,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
+    // Default to Nigeria (Lagos) - will be overridden by live location when available
+    latitude: 9.0765,  // Abuja, Nigeria
+    longitude: 7.3986,
+    latitudeDelta: 5.0, // Wider view to show Nigeria
+    longitudeDelta: 5.0,
   },
   onRegionChangeComplete,
   showsUserLocation = false,
@@ -43,190 +62,469 @@ const MapWeb: React.FC<MapProps> = ({
   onError,
   markers = [],
   customMapStyle = [],
+  zoomEnabled = true,
+  origin,
+  destination,
+  waypoints = [],
+  showRoute = false,
+  eta,
   ...props
-}) => {
-  const webViewRef = useRef(null);
+}, ref) => {
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const googleMapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const isInitializedRef = useRef<boolean>(false);
+  const scriptLoadingRef = useRef<boolean>(false);
+  const initAttemptedRef = useRef<boolean>(false);
+  const lastRegionRef = useRef<any>(null);
+  const isUpdatingFromProp = useRef<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
-  // Generate HTML for Google Maps
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-      <style>
-        body { margin: 0; padding: 0; }
-        #map { width: 100%; height: 100%; }
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
-      <script>
-        let map;
-        let markers = [];
-        let userMarker;
-        
-        function initMap() {
-          const center = { lat: ${region?.latitude || 6.5244}, lng: ${region?.longitude || 3.3792} };
-          
-          map = new google.maps.Map(document.getElementById('map'), {
-            center: center,
-            zoom: ${region?.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13},
-            styles: ${JSON.stringify(customMapStyle)},
-            disableDefaultUI: false,
-            zoomControl: true,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setMap(null);
+        directionsRendererRef.current = null;
+      }
+    };
+  }, []);
+
+  // Extract markers from children if provided as React components
+  const extractedMarkers = React.useMemo(() => {
+    if (markers.length > 0) return markers;
+
+    const childMarkers: any[] = [];
+    React.Children.forEach(children, (child: any) => {
+      if (React.isValidElement(child)) {
+        const props = child.props as any;
+        if (props?.coordinate) {
+          childMarkers.push({
+            coordinate: props.coordinate,
+            title: props.title,
+            description: props.description,
+            pinColor: props.pinColor || '#FF0000',
           });
-          
-          // Add user location if enabled
-          ${showsUserLocation ? `
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => {
-                const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                userMarker = new google.maps.Marker({
-                  position: userPos,
-                  map: map,
-                  icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 8,
-                    fillColor: '#4285F4',
-                    fillOpacity: 1,
-                    strokeColor: '#FFFFFF',
-                    strokeWeight: 3,
-                  },
-                  title: 'Your Location'
-                });
-                
-                window.ReactNativeWebView?.postMessage(JSON.stringify({
-                  type: 'userLocation',
-                  location: {
-                    latitude: userPos.lat,
-                    longitude: userPos.lng
-                  }
-                }));
-              },
-              (err) => {
-                console.error('Error getting location:', err);
-              },
-              { enableHighAccuracy: true }
-            );
-          }
-          ` : ''}
-          
-          // Handle map idle events (similar to region change)
-          map.addListener('idle', function() {
-            const center = map.getCenter();
+        }
+      }
+    });
+    return childMarkers;
+  }, [children, markers]);
+
+  // Initialize map (stable - no dependencies that change)
+  const initMap = useCallback(() => {
+    // Prevent multiple initializations
+    if (isInitializedRef.current) {
+      console.log('[Map.web] Map already initialized, skipping');
+      return;
+    }
+
+    if (!mapRef.current) {
+      console.error('[Map.web] Map container ref not available');
+      return;
+    }
+
+    if (!window.google?.maps) {
+      console.error('[Map.web] Google Maps API not loaded');
+      return;
+    }
+
+    try {
+      console.log('[Map.web] Creating Google Maps instance with config:', {
+        center: { lat: region.latitude, lng: region.longitude },
+        zoom: region.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13,
+        hasCustomStyle: customMapStyle && customMapStyle.length > 0,
+      });
+
+      const map = new window.google.maps.Map(mapRef.current, {
+        center: { lat: region.latitude, lng: region.longitude },
+        zoom: region.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13,
+        styles: customMapStyle,
+        disableDefaultUI: !showsUserLocation,
+        zoomControl: zoomEnabled,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+
+      googleMapRef.current = map;
+      isInitializedRef.current = true;
+
+      // Store initial region
+      lastRegionRef.current = {
+        latitude: region.latitude,
+        longitude: region.longitude,
+        latitudeDelta: region.latitudeDelta,
+        longitudeDelta: region.longitudeDelta,
+      };
+
+      // Add event listeners - only call onRegionChangeComplete for user interactions
+      // Don't trigger on programmatic updates to prevent feedback loops
+      let userInteracting = false;
+
+      map.addListener('dragstart', () => {
+        userInteracting = true;
+      });
+
+      map.addListener('zoom_changed', () => {
+        if (!isUpdatingFromProp.current) {
+          userInteracting = true;
+        }
+      });
+
+      map.addListener('idle', () => {
+        // Only notify parent of region changes from user interaction
+        if (userInteracting && onRegionChangeComplete) {
+          const center = map.getCenter();
+          if (center) {
             const bounds = map.getBounds();
-            const ne = bounds.getNorthEast();
-            const sw = bounds.getSouthWest();
-            
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              type: 'regionChange',
-              region: {
+            if (bounds) {
+              const ne = bounds.getNorthEast();
+              const sw = bounds.getSouthWest();
+              const newRegion = {
                 latitude: center.lat(),
                 longitude: center.lng(),
                 latitudeDelta: Math.abs(ne.lat() - sw.lat()),
                 longitudeDelta: Math.abs(ne.lng() - sw.lng())
-              }
-            }));
-          });
-          
-          // Notify React Native that map is ready
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            type: 'mapReady'
-          }));
-          
-          // Add markers if any
-          updateMarkers(${JSON.stringify(markers || [])});
-        }
-        
-        // Function to update markers
-        function updateMarkers(markersData) {
-          // Clear existing markers
-          markers.forEach(m => m.setMap(null));
-          markers = [];
-          
-          // Add new markers
-          markersData.forEach((mData) => {
-            if (mData.coordinate) {
-              const marker = new google.maps.Marker({
-                position: { lat: mData.coordinate.latitude, lng: mData.coordinate.longitude },
-                map: map,
-                title: mData.title || '',
-                icon: mData.pinColor ? {
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: mData.pinColor,
-                  fillOpacity: 1,
-                  strokeColor: '#FFFFFF',
-                  strokeWeight: 2,
-                } : undefined
-              });
-              
-              if (mData.title || mData.description) {
-                const infoWindow = new google.maps.InfoWindow({
-                  content: \`
-                    <div style="padding: 8px;">
-                      \${mData.title ? \`<strong>\${mData.title}</strong><br/>\` : ''}
-                      \${mData.description || ''}
-                    </div>
-                  \`
-                });
-                
-                marker.addListener('click', () => {
-                  infoWindow.open(map, marker);
-                });
-              }
-              
-              markers.push(marker);
+              };
+
+              // Store the new region
+              lastRegionRef.current = newRegion;
+              onRegionChangeComplete(newRegion);
             }
-          });
-        }
-        
-        window.updateMarkers = updateMarkers;
-      </script>
-      <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap" async defer></script>
-    </body>
-    </html>
-  `;
-
-  const handleMessage = (event) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      
-      switch (data.type) {
-        case 'regionChange':
-          if (onRegionChangeComplete) {
-            onRegionChangeComplete(data.region);
           }
-          break;
-        case 'mapReady':
-          setIsLoading(false);
-          if (onMapReady) onMapReady();
-          break;
-        case 'userLocation':
-          // Handle user location if needed
-          break;
-      }
-    } catch (error) {
-      console.error('Error handling message:', error);
-    }
-  };
-
-  // Update markers when they change
-  useEffect(() => {
-    if (webViewRef.current && markers) {
-      webViewRef.current.injectJavaScript(`
-        if (window.updateMarkers) {
-          window.updateMarkers(${JSON.stringify(markers)});
+          userInteracting = false;
         }
-        true;
-      `);
+      });
+
+      // Wait for map to be fully idle before marking as ready
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        setIsLoading(false);
+        setMapReady(true);
+        console.log('[Map.web] ✅ Map fully initialized and ready!');
+        if (onMapReady) {
+          console.log('[Map.web] Calling onMapReady callback');
+          onMapReady();
+        }
+      });
+
+      console.log('[Map.web] ✅ Map instance created successfully');
+    } catch (err) {
+      const errorMsg = `Failed to initialize map: ${err.message || 'Unknown error'}`;
+      console.error('[Map.web] ❌ Error initializing map:', err);
+      setError(errorMsg);
+      setIsLoading(false);
+      isInitializedRef.current = false;
+      if (onError) onError(err);
     }
-  }, [markers]);
+  }, []);
+
+  // Load Google Maps script (runs once)
+  useEffect(() => {
+    if (initAttemptedRef.current) {
+      console.log('[Map.web] Script load already attempted, skipping');
+      return;
+    }
+
+    initAttemptedRef.current = true;
+
+    if (!GOOGLE_MAPS_API_KEY) {
+      const errorMsg = 'Google Maps API key not configured. Please add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file';
+      console.error('[Map.web]', errorMsg);
+      setError(errorMsg);
+      setIsLoading(false);
+      if (onError) onError(new Error(errorMsg));
+      return;
+    }
+
+    console.log('[Map.web] Initializing map with API key:', GOOGLE_MAPS_API_KEY.substring(0, 10) + '...');
+
+    if (window.google?.maps) {
+      // Google Maps already loaded
+      console.log('[Map.web] Google Maps already loaded, initializing map');
+      // Small delay to ensure DOM is ready
+      setTimeout(() => initMap(), 100);
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
+    if (existingScript) {
+      console.log('[Map.web] Google Maps script already exists');
+
+      if (scriptLoadingRef.current) {
+        console.log('[Map.web] Script already being loaded by this component');
+        return;
+      }
+
+      // Check if script has already loaded
+      if (window.google?.maps) {
+        console.log('[Map.web] Existing script already loaded');
+        setTimeout(() => initMap(), 100);
+        return;
+      }
+
+      // Wait for existing script to load
+      console.log('[Map.web] Waiting for existing script to load...');
+      const loadHandler = () => {
+        console.log('[Map.web] Existing script loaded');
+        setTimeout(() => initMap(), 100);
+      };
+
+      existingScript.addEventListener('load', loadHandler);
+
+      // Cleanup
+      return () => {
+        existingScript.removeEventListener('load', loadHandler);
+      };
+    }
+
+    // Load Google Maps script
+    if (scriptLoadingRef.current) {
+      console.log('[Map.web] Script loading already in progress');
+      return;
+    }
+
+    scriptLoadingRef.current = true;
+    console.log('[Map.web] Loading Google Maps script...');
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.id = 'google-maps-script';
+
+    script.onload = () => {
+      console.log('[Map.web] ✅ Google Maps script loaded successfully');
+      scriptLoadingRef.current = false;
+      // Small delay to ensure Google Maps API is fully initialized
+      setTimeout(() => initMap(), 100);
+    };
+
+    script.onerror = (err) => {
+      const errorMsg = 'Failed to load Google Maps script. Check your API key and internet connection.';
+      console.error('[Map.web] ❌', errorMsg, err);
+      setError(errorMsg);
+      setIsLoading(false);
+      scriptLoadingRef.current = false;
+      if (onError) onError(err);
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      // Don't remove script on unmount as it might be used by other components
+      scriptLoadingRef.current = false;
+    };
+  }, []);
+
+  // Update markers when they change (only after map is ready)
+  useEffect(() => {
+    if (!mapReady || !googleMapRef.current || !extractedMarkers || !window.google?.maps) {
+      if (!mapReady) {
+        console.log('[Map.web] Map not ready yet, skipping marker update');
+      }
+      return;
+    }
+
+    console.log('[Map.web] Updating markers, count:', extractedMarkers.length);
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => {
+      try {
+        marker.setMap(null);
+      } catch (err) {
+        console.warn('[Map.web] Error removing marker:', err);
+      }
+    });
+    markersRef.current = [];
+
+    // Add new markers
+    extractedMarkers.forEach((markerData: any, index: number) => {
+      if (markerData.coordinate && window.google?.maps) {
+        try {
+          const marker = new window.google.maps.Marker({
+            position: {
+              lat: markerData.coordinate.latitude,
+              lng: markerData.coordinate.longitude
+            },
+            map: googleMapRef.current,
+            title: markerData.title || '',
+            animation: google.maps.Animation.DROP,
+          });
+
+          markersRef.current.push(marker);
+        } catch (err) {
+          console.error(`[Map.web] Error creating marker ${index}:`, err);
+        }
+      }
+    });
+
+    console.log('[Map.web] ✅ Markers updated successfully, total:', markersRef.current.length);
+  }, [extractedMarkers, mapReady]);
+
+  // Update region when prop changes (only if map is initialized)
+  // Only update if there's a significant change to prevent feedback loops
+  useEffect(() => {
+    if (!mapReady || !googleMapRef.current || !region) return;
+
+    // Check if region has changed significantly (more than ~10 meters)
+    const SIGNIFICANT_CHANGE_THRESHOLD = 0.0001; // ~11 meters
+    const lastRegion = lastRegionRef.current;
+
+    if (lastRegion) {
+      const latDiff = Math.abs(region.latitude - lastRegion.latitude);
+      const lngDiff = Math.abs(region.longitude - lastRegion.longitude);
+      const deltaDiff = Math.abs((region.latitudeDelta || 0) - (lastRegion.latitudeDelta || 0));
+
+      // Only update if there's a significant change
+      if (
+        latDiff < SIGNIFICANT_CHANGE_THRESHOLD &&
+        lngDiff < SIGNIFICANT_CHANGE_THRESHOLD &&
+        deltaDiff < 0.1
+      ) {
+        // No significant change, skip update
+        return;
+      }
+    }
+
+    console.log('[Map.web] Updating map region (significant change detected):', region);
+
+    try {
+      // Set flag to prevent triggering user interaction events
+      isUpdatingFromProp.current = true;
+
+      googleMapRef.current.setCenter({
+        lat: region.latitude,
+        lng: region.longitude
+      });
+
+      if (region.latitudeDelta) {
+        const zoom = Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2);
+        googleMapRef.current.setZoom(zoom);
+      }
+
+      // Store the updated region
+      lastRegionRef.current = {
+        latitude: region.latitude,
+        longitude: region.longitude,
+        latitudeDelta: region.latitudeDelta,
+        longitudeDelta: region.longitudeDelta,
+      };
+
+      // Reset flag after a short delay to allow map to settle
+      setTimeout(() => {
+        isUpdatingFromProp.current = false;
+      }, 500);
+    } catch (err) {
+      console.error('[Map.web] Error updating region:', err);
+      isUpdatingFromProp.current = false;
+    }
+  }, [region.latitude, region.longitude, region.latitudeDelta, mapReady]);
+
+  // Update route when origin/destination change
+  useEffect(() => {
+    if (!mapReady || !googleMapRef.current || !showRoute || !origin || !destination) {
+      // Clear existing route if it should not be shown
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setMap(null);
+        directionsRendererRef.current = null;
+      }
+      return;
+    }
+
+    // Load Google Maps Directions service
+    if (!window.google?.maps?.DirectionsService) {
+      console.warn('[Map.web] Google Maps Directions Service not available');
+      return;
+    }
+
+    try {
+      const directionsService = new window.google.maps.DirectionsService();
+      const directionsRenderer = directionsRendererRef.current || new window.google.maps.DirectionsRenderer({
+        suppressMarkers: true, // Use our custom markers
+        polylineOptions: {
+          strokeColor: '#4682B4',
+          strokeOpacity: 0.8,
+          strokeWeight: 6,
+        }
+      });
+
+      directionsRenderer.setMap(googleMapRef.current);
+      directionsRendererRef.current = directionsRenderer;
+
+      const waypointsFormatted = waypoints.map(point => ({
+        location: new window.google.maps.LatLng(point.latitude, point.longitude),
+        stopover: true
+      }));
+
+      directionsService.route({
+        origin: new window.google.maps.LatLng(origin.latitude, origin.longitude),
+        destination: new window.google.maps.LatLng(destination.latitude, destination.longitude),
+        waypoints: waypointsFormatted,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK' && result) {
+          directionsRenderer.setDirections(result);
+
+          // Add ETA overlay if provided
+          if (eta) {
+            // Create or update ETA display
+            console.log('[Map.web] Route calculated with ETA:', eta);
+          }
+        } else {
+          console.error('[Map.web] Directions request failed:', status);
+        }
+      });
+    } catch (err) {
+      console.error('[Map.web] Error calculating route:', err);
+    }
+  }, [mapReady, origin, destination, waypoints, showRoute, eta]);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    animateToRegion: (region: any, duration?: number) => {
+      if (!googleMapRef.current || !mapReady) {
+        console.warn('[Map.web] Cannot animate - map not ready');
+        return;
+      }
+
+      console.log('[Map.web] Animating to region:', region);
+      googleMapRef.current.panTo({ lat: region.latitude, lng: region.longitude });
+
+      if (region.latitudeDelta) {
+        const zoom = Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2);
+        googleMapRef.current.setZoom(zoom);
+      }
+    },
+    fitToCoordinates: (coordinates: any[], options?: any) => {
+      if (!googleMapRef.current || !mapReady) {
+        console.warn('[Map.web] Cannot fit coordinates - map not ready');
+        return;
+      }
+
+      if (!coordinates || coordinates.length === 0) {
+        console.warn('[Map.web] No coordinates to fit');
+        return;
+      }
+
+      console.log('[Map.web] Fitting to coordinates, count:', coordinates.length);
+
+      try {
+        const bounds = new window.google.maps.LatLngBounds();
+        coordinates.forEach(coord => {
+          bounds.extend(new window.google.maps.LatLng(coord.latitude, coord.longitude));
+        });
+        googleMapRef.current.fitBounds(bounds, options?.edgePadding);
+      } catch (err) {
+        console.error('[Map.web] Error fitting coordinates:', err);
+      }
+    },
+  }), [mapReady]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
@@ -234,6 +532,17 @@ const MapWeb: React.FC<MapProps> = ({
         <Text style={styles.errorText}>Google Maps API key not configured</Text>
         <Text style={styles.errorDetails}>
           Please add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file
+        </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, style, styles.errorContainer]}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorDetails}>
+          Check console for details
         </Text>
       </View>
     );
@@ -247,30 +556,21 @@ const MapWeb: React.FC<MapProps> = ({
           <Text style={styles.loadingText}>Loading map...</Text>
         </View>
       )}
-      <WebView
-        ref={webViewRef}
-        source={{ html }}
-        style={styles.webview}
-        onMessage={handleMessage}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={false}
-        scalesPageToFit={false}
-        originWhitelist={['*']}
-        mixedContentMode="always"
-        allowFileAccess={true}
-        allowUniversalAccessFromFileURLs={true}
-        allowFileAccessFromFileURLs={true}
-        onError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.error('WebView error:', nativeEvent);
-          if (onError) onError(nativeEvent);
+      <div
+        ref={mapRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'absolute',
+          top: 0,
+          left: 0
         }}
       />
-      {children}
     </View>
   );
-};
+});
+
+MapWeb.displayName = 'MapWeb';
 
 const styles = StyleSheet.create({
   container: {

@@ -8,8 +8,7 @@ const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
   'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
-  'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-  'Access-Control-Allow-Credentials': 'true'
+  'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
 };
 
 interface ApiResponse<T = any> {
@@ -72,7 +71,6 @@ class ApiClient {
         ...options,
         headers,
         mode: 'cors',
-        credentials: 'include',
         signal: controller.signal,
       });
 

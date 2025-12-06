@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { notificationService, Notification } from '../services/notificationService';
 import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native'; // Add Platform import
 
 interface NotificationContextType {
   unreadCount: number;
@@ -22,6 +22,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const refreshNotifications = useCallback(async () => {
     try {
+      // Check if user is authenticated before trying to fetch notifications
+      const token = await authService.getToken();
+      if (!token) {
+        // User not authenticated, set count to 0
+        setUnreadCount(0);
+        return;
+      }
+
       const userRole = await AsyncStorage.getItem('userRole');
       const response = await notificationService.getUnreadCount(userRole || 'consumer');
       if (response.success && response.data) {
@@ -68,11 +76,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     const setupRealtimeSubscription = async () => {
       try {
+        // Only set up subscription if user is authenticated
+        const token = await authService.getToken();
+        if (!token) {
+          console.log('User not authenticated, skipping notification subscription');
+          return;
+        }
+
         const userData = await authService.getStoredUser();
         if (!userData?.id) return;
 
         const { supabase } = await import('../config/supabase');
-        
+
         // Get user ID from Supabase
         const { data: users } = await supabase
           .from('users')
@@ -87,13 +102,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           users.id,
           async (notification) => {
             console.log('📬 New notification received:', notification);
-            
+
             // Update unread count
             await refreshNotifications();
-            
+
             // Show latest notification
             setLatestNotification(notification);
-            
+
             // Send local push notification
             await notificationService.sendLocalNotification(
               notification.title,
@@ -116,23 +131,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     setupRealtimeSubscription();
     refreshNotifications();
-    
+
     // Fallback polling every 30 seconds
     const interval = setInterval(refreshNotifications, 30000);
-    
-    // Refresh when window regains focus
+
+    // Refresh when app regains focus (only on web)
     const handleFocus = () => {
       refreshNotifications();
     };
 
-    if (typeof window !== 'undefined') {
+    // Only add event listeners on web platform
+    if (Platform.OS === 'web') {
       window.addEventListener('focus', handleFocus);
     }
-    
+
     return () => {
       subscription?.unsubscribe();
       clearInterval(interval);
-      if (typeof window !== 'undefined') {
+      // Only remove event listeners on web platform
+      if (Platform.OS === 'web') {
         window.removeEventListener('focus', handleFocus);
       }
     };

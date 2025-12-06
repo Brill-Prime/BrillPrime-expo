@@ -209,12 +209,12 @@ function ConsumerHomeContent() {
   const [selectedMerchant, setSelectedMerchant] = useState<StoreLocation | null>(null);
   const [showMerchantDetails, setShowMerchantDetails] = useState(false);
   const [region, setRegion] = useState({
-    latitude: 9.0765,
+    // Default view: Nigeria (Abuja) - will update to user's live location when available
+    latitude: 9.0765,  // Abuja, Nigeria (geographic center)
     longitude: 7.3986,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
+    latitudeDelta: 5.0, // Wider view to show entire Nigeria
+    longitudeDelta: 5.0,
   });
-  const [isMapLoading, setIsMapLoading] = useState(true);
   const [mapError, setMapError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -234,6 +234,7 @@ function ConsumerHomeContent() {
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
+  const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Error handling utilities
@@ -302,12 +303,13 @@ function ConsumerHomeContent() {
     }
   }, [region, nearbyDrivers, storeLocations, isLocationSet]);
 
-  // Debounced region change handler
+  // Debounced region change handler - disabled to prevent feedback loops
+  // Map updates are now controlled programmatically only
   const handleRegionChange = useCallback(
     debounce((newRegion: any) => {
-      if (isMountedRef.current) {
-        setRegion(newRegion);
-      }
+      // Only log user-initiated changes, don't update state to prevent loops
+      console.log('[Consumer] User panned/zoomed map:', newRegion);
+      // Intentionally NOT calling setRegion here to prevent feedback loop
     }, 500),
     []
   );
@@ -548,9 +550,15 @@ function ConsumerHomeContent() {
     setRefreshing(false);
   }, [fetchNearbyMerchants]);
 
+  // Handle map ready callback
+  const handleMapReady = useCallback(() => {
+    console.log('Map is ready!');
+    setMapError(false);
+  }, []);
+
   useEffect(() => {
     isMountedRef.current = true;
-    setIsMapLoading(false); // Map loads in background
+    // Map will set loading to false when ready via onMapReady callback
     checkSavedLocation();
     loadUserData();
     initializeLiveTracking();
@@ -563,19 +571,58 @@ function ConsumerHomeContent() {
 
   const initializeLiveTracking = async () => {
     try {
+      console.log('[LiveTracking] Starting live tracking...');
       await locationService.startLiveTracking(5000); // Update every 5 seconds
       setIsLiveTrackingEnabled(true);
 
       // Subscribe to location updates
       const unsubscribe = locationService.onLocationUpdate((location) => {
         if (isMountedRef.current) {
+          console.log('[LiveTracking] Location update received:', {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+            isMoving: location.isMoving,
+          });
+
+          // Only update if location has changed significantly (more than ~50 meters)
+          // BUT always allow the first location update
+          const SIGNIFICANT_MOVEMENT_THRESHOLD = 0.0005; // ~55 meters
+          const lastLocation = lastLocationRef.current;
+
+          if (lastLocation) {
+            const latDiff = Math.abs(location.latitude - lastLocation.latitude);
+            const lngDiff = Math.abs(location.longitude - lastLocation.longitude);
+
+            // Skip update if movement is insignificant
+            if (latDiff < SIGNIFICANT_MOVEMENT_THRESHOLD && lngDiff < SIGNIFICANT_MOVEMENT_THRESHOLD) {
+              console.log('[LiveTracking] Movement too small, skipping update');
+              return;
+            }
+          } else {
+            // First location - always process it
+            console.log('[LiveTracking] First location detected, initializing map position');
+          }
+
+          console.log('[LiveTracking] Updating region to live location');
+
+          // Store the new location
+          lastLocationRef.current = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+          };
+
           // Update user's current region
           const deltas = calculateDelta(location.latitude);
-          setRegion({
+          const newRegion = {
             latitude: location.latitude,
             longitude: location.longitude,
             ...deltas,
-          });
+          };
+
+          console.log('[LiveTracking] Setting region to:', newRegion);
+          setRegion(newRegion);
+          setUserLocation(location); // Store full location object
 
           // Update movement data
           setUserMovement({
@@ -583,8 +630,14 @@ function ConsumerHomeContent() {
             isMoving: location.isMoving
           });
 
-          // Load nearby merchants based on the new location if moving
-          if (location.isMoving) {
+          // Mark location as set if this is the first update
+          if (!lastLocation) {
+            setIsLocationSet(true);
+            console.log('[LiveTracking] Location set to true (first GPS fix)');
+          }
+
+          // Load nearby merchants based on the new location if moving or first time
+          if (location.isMoving || !lastLocation) {
             loadNearbyMerchants(location.latitude, location.longitude);
           }
         }
@@ -593,8 +646,9 @@ function ConsumerHomeContent() {
       return () => unsubscribe();
     } catch (error) {
       console.error('Failed to initialize live tracking:', error);
-      // Don't show error for live tracking - it's a background feature
-      // User will be prompted when they try to set location manually
+      // Show user-friendly error message
+      setNotificationMessage('⚠️ Location tracking failed. Please enable location permissions in your browser.');
+      setTimeout(() => setNotificationMessage(null), 5000);
       setIsLiveTrackingEnabled(false);
     }
   };
@@ -657,20 +711,20 @@ function ConsumerHomeContent() {
         }
 
         // Update driver location
-        setNearbyDrivers(prev => prev.map(d => 
-          d.id === activeDelivery.driverId 
-            ? { 
-                ...d, 
-                latitude: newLat, 
-                longitude: newLng,
-                distanceToMerchant: activeDelivery.status === 'picking_up' 
-                  ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
-                  : 0,
-                distanceToConsumer: activeDelivery.status === 'delivering' 
-                  ? locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude)
-                  : 0,
-                eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
-              }
+        setNearbyDrivers(prev => prev.map(d =>
+          d.id === activeDelivery.driverId
+            ? {
+              ...d,
+              latitude: newLat,
+              longitude: newLng,
+              distanceToMerchant: activeDelivery.status === 'picking_up'
+                ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
+                : 0,
+              distanceToConsumer: activeDelivery.status === 'delivering'
+                ? locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude)
+                : 0,
+              eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
+            }
             : d
         ));
 
@@ -982,9 +1036,9 @@ function ConsumerHomeContent() {
       }
 
       const { latitude, longitude, accuracy } = location;
-      console.log("📍 Precise location obtained:", { 
-        latitude, 
-        longitude, 
+      console.log("📍 Precise location obtained:", {
+        latitude,
+        longitude,
         accuracy: accuracy ? `${accuracy.toFixed(2)}m` : 'unknown'
       });
 
@@ -1108,6 +1162,7 @@ function ConsumerHomeContent() {
           style={styles.map}
           region={region}
           onRegionChangeComplete={handleRegionChange}
+          onMapReady={handleMapReady}
           customMapStyle={blueMapStyle}
           showsUserLocation={isLiveTrackingEnabled}
           showsMyLocationButton={false}
@@ -1348,17 +1403,6 @@ function ConsumerHomeContent() {
               </ScrollView>
             </Animated.View>
           </>
-        )}
-
-        {/* Loading Overlay */}
-        {isMapLoading && (
-          <View style={styles.loadingOverlay}>
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={styles.loadingText}>Loading Map</Text>
-              <Text style={styles.loadingSubtext}>Please wait while we load your location</Text>
-            </View>
-          </View>
         )}
 
         {/* Error Overlay */}
@@ -1674,39 +1718,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.overlay,
     zIndex: 999,
   },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 30,
-  },
-  loadingContainer: {
-    backgroundColor: theme.colors.white,
-    padding: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    maxWidth: 280,
-    marginHorizontal: 20,
-  },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-    fontFamily: theme.typography.semiBold,
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-    fontFamily: theme.typography.regular,
-  },
   errorContainer: {
     position: 'absolute',
     top: 0,
@@ -1996,44 +2007,44 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.semiBold,
   },
   activeOrderWidget: {
-      backgroundColor: '#e3f2fd',
-      borderRadius: 15,
-      padding: 15,
-      marginBottom: 20,
-      borderLeftWidth: 4,
-      borderLeftColor: '#4682B4',
-    },
-    activeOrderHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 8,
-      gap: 8,
-    },
-    activeOrderTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: '#0c1a2a',
-    },
-    activeOrderStatus: {
-      fontSize: 14,
-      color: '#555',
-      marginBottom: 10,
-    },
-    trackButton: {
-      backgroundColor: '#4682B4',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      alignSelf: 'flex-start',
-    },
-    trackButtonText: {
-      color: '#fff',
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    quickActions: {
-      marginBottom: 20,
-    },
+    backgroundColor: '#e3f2fd',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4682B4',
+  },
+  activeOrderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  activeOrderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0c1a2a',
+  },
+  activeOrderStatus: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 10,
+  },
+  trackButton: {
+    backgroundColor: '#4682B4',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  trackButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickActions: {
+    marginBottom: 20,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

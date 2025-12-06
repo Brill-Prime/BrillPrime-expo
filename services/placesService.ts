@@ -44,10 +44,12 @@ class PlacesService {
     }
 
     try {
-      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+      // Use Platform.OS to determine the platform correctly
+      if (Platform.OS === 'web') {
         return await this.getPlacesFromOverpass(latitude, longitude, category, radius);
       }
       
+      // For native platforms, we might want to use a different approach or return empty array
       return await this.getPlacesFromOverpass(latitude, longitude, category, radius);
     } catch (error) {
       console.error('Error fetching nearby places:', error);

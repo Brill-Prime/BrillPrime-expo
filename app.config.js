@@ -10,7 +10,7 @@ export default {
   icon: "./assets/images/logo.png",
   userInterfaceStyle: "light",
   scheme: "brillprime",
-  newArchEnabled: false,
+  // Removed newArchEnabled: false to resolve warning about React Native's New Architecture
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
@@ -57,12 +57,12 @@ export default {
         android: {
           compileSdkVersion: 34,
           targetSdkVersion: 34,
-          buildToolsVersion: "34.0.0",
-          newArchEnabled: false
+          buildToolsVersion: "34.0.0"
+          // Removed newArchEnabled: false to resolve warning
         },
         ios: {
-          deploymentTarget: "15.1",
-          newArchEnabled: false
+          deploymentTarget: "15.1"
+          // Removed newArchEnabled: false to resolve warning
         }
       }
     ]

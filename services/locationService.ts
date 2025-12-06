@@ -26,6 +26,7 @@ interface LocationData {
   heading?: number; // Direction of movement in degrees (0-360)
   speed?: number; // Speed in m/s
   isMoving?: boolean; // Whether user is currently moving
+  isStale?: boolean; // For cached data during errors
 }
 
 class LocationService {
@@ -39,10 +40,10 @@ class LocationService {
   async requestLocationPermission(): Promise<boolean> {
     try {
       // For web platform, check if geolocation is available
-      if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      if (Platform.OS === 'web') {
         // Browser will prompt for permission when getCurrentPosition is called
         // However, we can attempt to pre-check permission status if the Permissions API is available
-        if ('permissions' in navigator) {
+        if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
           try {
             const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
             if (permissionStatus.state === 'denied') {
@@ -71,13 +72,13 @@ class LocationService {
     try {
       if (Platform.OS === 'web') {
         // First check if geolocation is available
-        if (!navigator.geolocation) {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
           console.error('Geolocation not supported');
           return null;
         }
 
         // Check permission state before requesting location
-        if ('permissions' in navigator) {
+        if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
           try {
             const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
             if (permission.state === 'denied') {
@@ -101,6 +102,11 @@ class LocationService {
   }
 
   private async getWebLocation(): Promise<Location | null> {
+    // Only run on web platform
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !navigator.geolocation) {
+      return null;
+    }
+    
     return new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
         console.warn('Primary location request timed out, trying fallback...');
@@ -213,7 +219,7 @@ class LocationService {
   async reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
     try {
       // For web platform, use browser Geocoding API or fallback to a simple address
-      if (typeof window !== 'undefined') {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
         // Use a geocoding service API (OpenStreetMap Nominatim)
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
@@ -232,11 +238,13 @@ class LocationService {
       }
 
       // For native platforms, use Expo Location
-      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (Platform.OS !== 'web') {
+        const results = await Location.reverseGeocodeAsync({ latitude, longitude });
 
-      if (results.length > 0) {
-        const address = results[0];
-        return `${address.street || ''} ${address.city || ''}, ${address.region || ''} ${address.country || ''}`.trim();
+        if (results.length > 0) {
+          const address = results[0];
+          return `${address.street || ''} ${address.city || ''}, ${address.region || ''} ${address.country || ''}`.trim();
+        }
       }
 
       return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
@@ -377,17 +385,25 @@ class LocationService {
   // Start live tracking
   async startLiveTracking(updateInterval: number = 5000): Promise<void> {
     if (this.isTracking) {
-      console.log('Live tracking already active');
+      console.log('[LocationService] Live tracking already active');
       return;
     }
 
     try {
+      console.log('[LocationService] Starting live tracking with interval:', updateInterval, 'ms');
       this.isTracking = true;
       this.trackingErrorCount = 0;
 
       // Get initial location
+      console.log('[LocationService] Requesting initial location...');
       const location = await this.getCurrentLocation();
       if (location) {
+        console.log('[LocationService] ✅ Initial location obtained:', {
+          latitude: location.latitude.toFixed(6),
+          longitude: location.longitude.toFixed(6),
+          accuracy: location.accuracy ? `±${location.accuracy.toFixed(0)}m` : 'N/A',
+        });
+        
         // Cast location to LocationData for consistency, assuming accuracy is compatible
         const locationData: LocationData = {
           latitude: location.latitude,
@@ -398,9 +414,13 @@ class LocationService {
         this.notifyLocationUpdate(locationData);
         await this.updateDriverLocationInDatabase(locationData);
         await this.broadcastLocationToSupabase(locationData);
+      } else {
+        console.error('[LocationService] ❌ Failed to get initial location');
+        throw new Error('Unable to get initial location. Please check location permissions.');
       }
 
       // Set up tracking interval
+      console.log('[LocationService] Setting up tracking interval...');
       this.trackingInterval = setInterval(async () => {
         try {
           const newLocation = await this.getCurrentLocation();
@@ -438,7 +458,9 @@ class LocationService {
               // Update previous location
               this.previousLocation = this.currentLocation ? { ...this.currentLocation } : null;
 
-              console.log('📍 Movement update:', {
+              console.log('[LocationService] 📍 Location update:', {
+                lat: locationData.latitude.toFixed(6),
+                lng: locationData.longitude.toFixed(6),
                 isMoving: movement.isMoving,
                 heading: movement.heading?.toFixed(1),
                 speed: movement.speed ? `${movement.speed.toFixed(2)} m/s` : 'N/A'
@@ -449,22 +471,26 @@ class LocationService {
               await this.broadcastLocationToSupabase(locationData);
               this.lastLocationUpdate = Date.now();
               this.trackingErrorCount = 0;
+            } else {
+              console.log('[LocationService] No significant change, skipping update');
             }
+          } else {
+            console.warn('[LocationService] Failed to get location in tracking interval');
           }
         } catch (error) {
-          console.error('Error in tracking interval:', error);
+          console.error('[LocationService] Error in tracking interval:', error);
           this.trackingErrorCount++;
 
           if (this.trackingErrorCount >= this.maxTrackingErrors) {
-            console.error('Too many tracking errors, stopping live tracking');
+            console.error('[LocationService] Too many tracking errors, stopping live tracking');
             this.stopLiveTracking();
           }
         }
       }, updateInterval);
 
-      console.log('Live tracking started');
+      console.log('[LocationService] ✅ Live tracking started successfully');
     } catch (error) {
-      console.error('Error starting live tracking:', error);
+      console.error('[LocationService] ❌ Error starting live tracking:', error);
       this.isTracking = false;
       throw error;
     }

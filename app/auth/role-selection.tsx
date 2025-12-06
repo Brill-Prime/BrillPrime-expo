@@ -25,6 +25,7 @@ interface Styles {
   buttonsContainer: ViewStyle;
   roleButton: ViewStyle;
   roleButtonText: TextStyle;
+  infoTextContainer: ViewStyle;
   infoText: TextStyle;
 }
 
@@ -58,7 +59,7 @@ export default function RoleSelection() {
   const proceedToAuth = async (role: UserRole) => {
     try {
       const storedEmail = await AsyncStorage.getItem("userEmail");
-      
+
       if (storedEmail) {
         router.push("/auth/signin");
       } else {
@@ -120,7 +121,7 @@ export default function RoleSelection() {
         </TouchableOpacity>
 
         {/* Info text */}
-        <View style={{ marginTop: 20 }}>
+        <View style={styles.infoTextContainer}>
           <Text style={styles.infoText}>Make a selection to get started</Text>
         </View>
       </View>
@@ -135,18 +136,18 @@ const getResponsiveStyles = (screenData: ScaledSize): Styles => {
   const isTablet = width >= 768;
   const isSmallScreen = width < 350;
   const isWeb = Platform.OS === 'web';
-  
+
   // Web-specific styles
   const webContainer: ViewStyle = isWeb ? {
     width: '100%',
     height: '100%',
     overflow: 'hidden',
   } : {};
-  
+
   const webButtons: ViewStyle = isWeb ? {
     boxSizing: 'border-box' as const,
   } : {};
-  
+
   return StyleSheet.create<Styles>({
     container: {
       flex: 1,
@@ -189,12 +190,14 @@ const getResponsiveStyles = (screenData: ScaledSize): Styles => {
       fontSize: isTablet ? 20 : isSmallScreen ? 14 : 16,
       fontWeight: "600",
     },
+    infoTextContainer: {
+      marginTop: 20,
+    },
     infoText: {
       color: "rgb(19, 19, 19)",
       fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
       textAlign: "center",
       fontWeight: "300",
-      marginTop: Math.max(15, height * 0.025),
     },
   });
 };
