@@ -96,37 +96,7 @@ export default function CommoditiesScreen() {
     { id: 19, name: 'Vehicle Service', icon: 'build-outline', description: 'Auto repair & maintenance' },
   ];
 
-  useFocusEffect(
-    useCallback(() => {
-      loadCommodities();
-      loadCartCount();
-      loadCartItems();
-      loadFavorites();
-    }, [])
-  );
-
-  // Add real-time auto-refresh
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadCommodities();
-      loadCartCount();
-    }, 60000); // Refresh every minute
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([
-      loadCommodities(),
-      loadCartCount(),
-      loadCartItems(),
-      loadFavorites()
-    ]);
-    setRefreshing(false);
-  }, []);
-
-  const loadCommodities = async () => {
+  const loadCommodities = useCallback(async () => {
     try {
       setLoading(true);
       const response = await merchantService.getCommodities();
@@ -192,9 +162,9 @@ export default function CommoditiesScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadCartCount = async () => {
+  const loadCartCount = useCallback(async () => {
     try {
       const savedCart = await AsyncStorage.getItem('cartItems');
       const cart = savedCart ? JSON.parse(savedCart) : [];
@@ -202,9 +172,9 @@ export default function CommoditiesScreen() {
     } catch (error) {
       console.error('Error loading cart count:', error);
     }
-  };
+  }, []);
 
-  const loadCartItems = async () => {
+  const loadCartItems = useCallback(async () => {
     try {
       const savedCart = await AsyncStorage.getItem('commoditiesCart');
       if (savedCart) {
@@ -213,18 +183,18 @@ export default function CommoditiesScreen() {
     } catch (error) {
       console.error('Error loading cart items:', error);
     }
-  };
+  }, []);
 
-  const saveCartItems = async (items: CartItem[]) => {
+  const saveCartItems = useCallback(async (items: CartItem[]) => {
     try {
       await AsyncStorage.setItem('commoditiesCart', JSON.stringify(items));
       setCartItems(items);
     } catch (error) {
       console.error('Error saving cart items:', error);
     }
-  };
+  }, []);
 
-  const loadFavorites = async () => {
+  const loadFavorites = useCallback(async () => {
     try {
       const savedFavorites = await AsyncStorage.getItem('favoriteItemIds');
       if (savedFavorites) {
@@ -233,7 +203,7 @@ export default function CommoditiesScreen() {
     } catch (error) {
       console.error('Error loading favorites:', error);
     }
-  };
+  }, []);
 
   const toggleFavorite = async (product: Product) => {
     try {
@@ -400,6 +370,38 @@ export default function CommoditiesScreen() {
   });
 
   const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+
+  // Load data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadCommodities();
+      loadCartCount();
+      loadCartItems();
+      loadFavorites();
+    }, [loadCommodities, loadCartCount, loadCartItems, loadFavorites])
+  );
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadCommodities(),
+      loadCartCount(),
+      loadCartItems(),
+      loadFavorites()
+    ]);
+    setRefreshing(false);
+  }, [loadCommodities, loadCartCount, loadCartItems, loadFavorites]);
+
+  // Auto-refresh every minute with proper cleanup
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadCommodities();
+      loadCartCount();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [loadCommodities, loadCartCount]);
 
   return (
     <FormErrorBoundary fallbackMessage="Failed to load products. Please try again.">
