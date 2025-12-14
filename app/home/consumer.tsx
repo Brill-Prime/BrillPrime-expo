@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, RefreshControl, TextInput, Alert, ScrollView, Linking } from "react-native";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, TextInput, ScrollView, Linking, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from 'expo-location';
+
 import { debounce } from 'lodash';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,17 +13,6 @@ import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 
 // Define missing types
-interface Merchant {
-  id: string;
-  name: string;
-  location: {
-    latitude: number;
-    longitude: number;
-  };
-  address: string;
-  // Add other merchant properties as needed
-}
-
 interface Driver {
   id: string;
   name: string;
@@ -40,12 +29,6 @@ interface Driver {
   // Add other driver properties as needed
 }
 
-interface MenuItem {
-  id: string;
-  name: string;
-  // Add other menu item properties as needed
-}
-
 // Define menu items as strings for navigation
 type MenuItemString = string;
 
@@ -54,8 +37,6 @@ interface StoreLocation {
   title: string;
   address: string;
   coords: { lat: number; lng: number };
-  lat: number;
-  lng: number;
   distance?: number;
   rating?: number;
   isOpen?: boolean;
@@ -71,16 +52,6 @@ interface ActiveDelivery {
   driverLocation: { latitude: number; longitude: number };
 }
 
-interface MerchantDetailsModalProps {
-  visible: boolean;
-  merchant: StoreLocation;
-  onClose: () => void;
-  onOrderNow: () => void;
-  onGetDirections: () => void;
-}
-
-import { Dimensions } from 'react-native';
-
 const { width, height } = Dimensions.get('window');
 const sidebarWidth = Math.min(300, width * 0.85);
 
@@ -91,14 +62,6 @@ const getResponsiveSize = (baseSize: number) => {
 };
 
 const getResponsivePadding = () => Math.max(15, width * 0.04);
-const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
-  const sizes = {
-    small: getResponsiveSize(12),
-    medium: getResponsiveSize(16),
-    large: getResponsiveSize(20),
-  };
-  return sizes[size];
-};
 
 // Blue map style (Bolt-inspired) for Google Maps
 const blueMapStyle = [
@@ -183,23 +146,10 @@ function ConsumerHomeContent() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [isLocationSet, setIsLocationSet] = useState<boolean | null>(null);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [liveDrivers, setLiveDrivers] = useState<Driver[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItemString[]>([
-    "Dashboard",
-    "Profile",
-    "Notifications",
-    "Settings",
-    "Support",
-    "Switch to Merchant",
-    "Switch to Driver"
-  ]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [hasShownLocationPrompt, setHasShownLocationPrompt] = useState(false);
-  const [userAddress, setUserAddress] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("Consumer");
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
   const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
@@ -217,18 +167,9 @@ function ConsumerHomeContent() {
   });
   const [mapError, setMapError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [filteredMerchants, setFilteredMerchants] = useState<Merchant[]>([]);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [selectedDestination, setSelectedDestination] = useState<StoreLocation | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedDistance, setSelectedDistance] = useState<string>('Any');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedRating, setSelectedRating] = useState<number>(0);
-  const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
+
   const [locationRetryCount, setLocationRetryCount] = useState(0);
   const MAX_LOCATION_RETRIES = 3;
-  const [userLocation, setUserLocation] = useState<any>(null);
   const [userMovement, setUserMovement] = useState<{ heading?: number; isMoving?: boolean }>({});
 
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
@@ -236,40 +177,12 @@ function ConsumerHomeContent() {
   const isMountedRef = useRef(true);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [hasShownNoMerchantsMessage, setHasShownNoMerchantsMessage] = useState(false);
 
   // Error handling utilities
-  const checkNetworkConnectivity = async (): Promise<boolean> => {
-    try {
-      // Simple network check - in a real app, you'd use expo-network or similar
-      return true; // Assume network is available for now
-    } catch (error) {
-      console.error('Network check failed:', error);
-      return false;
-    }
-  };
-
-  const handleRetryWithBackoff = async (operation: () => Promise<void>, operationKey: string, maxRetries: number = 3) => {
-    const currentRetry = retryCount[operationKey] || 0;
-    if (currentRetry >= maxRetries) {
-      showError("Operation Failed", `Failed to complete operation after ${maxRetries} attempts. Please try again later.`);
-      return;
-    }
-
-    try {
-      await operation();
-      // Reset retry count on success
-      setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
-    } catch (error) {
-      console.error(`Operation ${operationKey} failed (attempt ${currentRetry + 1}):`, error);
-      setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
-
-      // Exponential backoff: wait 1s, 2s, 4s...
-      const delay = Math.pow(2, currentRetry) * 1000;
-      setTimeout(() => {
-        handleRetryWithBackoff(operation, operationKey, maxRetries);
-      }, delay);
-    }
-  };
+  const checkNetworkConnectivity = useCallback(async (): Promise<boolean> => {
+    return true; // Assume network is available for now
+  }, []);
 
   // Calculate delta based on screen dimensions
   const calculateDelta = (latitude: number) => {
@@ -279,141 +192,39 @@ function ConsumerHomeContent() {
     return { latitudeDelta, longitudeDelta };
   };
 
-  // Fit map to show user location and nearby points
-  const fitToUserLocation = useCallback(() => {
-    if (mapRef.current && (nearbyDrivers.length > 0 || storeLocations.length > 0)) {
-      const locationsToShow = [
-        { latitude: region.latitude, longitude: region.longitude },
-        ...nearbyDrivers.map(driver => ({
-          latitude: driver.latitude,
-          longitude: driver.longitude,
-        })),
-        ...storeLocations.map(store => ({ latitude: store.coords.lat, longitude: store.coords.lng }))
-      ];
-      mapRef.current.fitToCoordinates(
-        locationsToShow,
-        {
-          edgePadding: { top: 100, right: 20, bottom: isLocationSet ? 150 : 400, left: 20 },
-          animated: true
-        }
-      );
-    } else if (mapRef.current) {
-      // If no nearby points, just center on user location
-      mapRef.current.animateToRegion(region, 1000);
-    }
-  }, [region, nearbyDrivers, storeLocations, isLocationSet]);
-
   // Debounced region change handler - disabled to prevent feedback loops
   // Map updates are now controlled programmatically only
   const handleRegionChange = useCallback(
-    debounce((newRegion: any) => {
+    (newRegion: any) => {
       // Only log user-initiated changes, don't update state to prevent loops
       console.log('[Consumer] User panned/zoomed map:', newRegion);
       // Intentionally NOT calling setRegion here to prevent feedback loop
-    }, 500),
+    },
     []
   );
 
-  const loadNearbyMerchants = async (latitude: number, longitude: number, retryCount = 0) => {
-    const MAX_RETRIES = 2;
+  const debouncedHandleRegionChange = useMemo(() => debounce(handleRegionChange, 500), [handleRegionChange]);
 
-    try {
-      const isConnected = await checkNetworkConnectivity();
-      if (!isConnected) {
-        console.log("No internet connection, falling back to cached data");
-        await loadAllMerchants(); // Fallback to cached/all merchants
-        return;
+  // Define loadFallbackMerchants before loadAllMerchants to avoid hoisting issues
+  const loadFallbackMerchants = useCallback(() => {
+    console.log("No registered merchants available in the system yet.");
+    setStoreLocations(prevLocations => {
+      // Only show message if we don't have any locations and haven't shown the message yet
+      if (isMountedRef.current && prevLocations.length === 0 && !hasShownNoMerchantsMessage) {
+        showInfo("No Merchants Found", "No merchants are currently registered in your area. Please check back later.");
+        setHasShownNoMerchantsMessage(true);
       }
+      return [];
+    });
+  }, [showInfo, hasShownNoMerchantsMessage]);
 
-      // Log loading status silently (no popup)
-      if (retryCount === 0) {
-        console.log("Loading nearby merchants...");
-      }
-
-      // Get authentication token
-      const { authService } = await import('../../services/authService');
-      const token = await authService.getToken();
-
-      // Make API call to get nearby merchants using Supabase function
-      const { apiClient } = await import('../../services/api');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await apiClient.callFunction<any>('merchants-nearby', { lat: latitude.toString(), lng: longitude.toString() }, headers);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || 'Failed to load nearby merchants');
-      }
-
-      const data = response.data;
-
-      if (data.success && data.data) {
-        // Transform API response to StoreLocation format with enhanced data
-        const stores: StoreLocation[] = data.data.map((merchant: any) => {
-          const distance = locationService.calculateDistance(
-            latitude, longitude,
-            merchant.latitude || merchant.coords?.lat,
-            merchant.longitude || merchant.coords?.lng
-          );
-
-          return {
-            id: merchant.id,
-            title: merchant.name || merchant.title,
-            address: merchant.address,
-            coords: {
-              lat: merchant.latitude || merchant.coords?.lat,
-              lng: merchant.longitude || merchant.coords?.lng
-            },
-            distance: distance,
-            rating: merchant.rating || 0,
-            isOpen: merchant.isOpen !== undefined ? merchant.isOpen : true,
-            category: merchant.category || 'General',
-            phone: merchant.phone,
-            description: merchant.description
-          };
-        });
-
-        // Sort by distance (closest first)
-        stores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-
-        setStoreLocations(stores);
-      } else {
-        throw new Error(data.message || 'Failed to load merchants');
-      }
-    } catch (error) {
-      console.error('Error loading nearby merchants:', {
-        errorName: error?.name,
-        errorMessage: error?.message,
-        errorStack: error?.stack,
-        errorType: typeof error,
-        fullError: error
-      });
-
-      // Check error type and handle appropriately with retry
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        if (retryCount < MAX_RETRIES) {
-          console.log(`Retrying... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
-          // Wait 3 seconds before retrying (Render cold start can take 50+ seconds)
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          return loadNearbyMerchants(latitude, longitude, retryCount + 1);
-        } else {
-          console.log("Unable to connect to backend server after multiple attempts. Using cached data.");
-        }
-      } else {
-        console.log("Failed to load nearby merchants. Using cached data.");
-      }
-
-      // Fallback to loading all merchants
-      await loadAllMerchants();
-    }
-  };
-
-  const loadAllMerchants = async (retryCount = 0) => {
+  const loadAllMerchants = useCallback(async (retryCount = 0) => {
     const MAX_RETRIES = 2;
 
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
         console.log("No internet connection. Using cached merchant data.");
-        // Load fallback data
         loadFallbackMerchants();
         return;
       }
@@ -440,7 +251,8 @@ function ConsumerHomeContent() {
           let distance: number | undefined;
           if (isLocationSet && region) {
             distance = locationService.calculateDistance(
-              region.latitude, region.longitude,
+              region.latitude, 
+              region.longitude,
               merchant.latitude || merchant.coords?.lat,
               merchant.longitude || merchant.coords?.lng
             );
@@ -472,17 +284,17 @@ function ConsumerHomeContent() {
       } else {
         throw new Error(data.message || 'Failed to load merchants');
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Error loading all merchants:', {
-        errorName: error?.name,
-        errorMessage: error?.message,
-        errorStack: error?.stack,
-        errorType: typeof error,
-        fullError: error
+        errorName: _error?.name,
+        errorMessage: _error?.message,
+        errorStack: _error?.stack,
+        errorType: typeof _error,
+        fullError: _error
       });
 
       // Retry on network errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
+      if (_error instanceof TypeError && _error.message.includes('fetch')) {
         if (retryCount < MAX_RETRIES) {
           console.log(`Retrying loadAllMerchants... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
           await new Promise(resolve => setTimeout(resolve, 3000));
@@ -493,27 +305,110 @@ function ConsumerHomeContent() {
       // Load fallback data after all retries exhausted
       loadFallbackMerchants();
 
-      if (error instanceof TypeError && error.message.includes('fetch')) {
+      if (_error instanceof TypeError && _error.message.includes('fetch')) {
         console.log("Cannot reach the backend server. Using cached data.");
       } else {
         console.log("Failed to load merchants. Using cached data.");
       }
     }
-  };
+  }, [isLocationSet, region, loadFallbackMerchants, checkNetworkConnectivity]);
 
-  const [hasShownNoMerchantsMessage, setHasShownNoMerchantsMessage] = useState(false);
+  const loadNearbyMerchants = useCallback(async (latitude: number, longitude: number, retryCount = 0) => {
+    const MAX_RETRIES = 2;
 
-  const loadFallbackMerchants = () => {
-    // Log informative message silently
-    console.log("No registered merchants available in the system yet.");
-    setStoreLocations([]);
+    try {
+      const isConnected = await checkNetworkConnectivity();
+      if (!isConnected) {
+        console.log("No internet connection, falling back to cached data");
+        await loadAllMerchants(); // Fallback to cached/all merchants
+        return;
+      }
 
-    // Show user-friendly message only once per session
-    if (isMountedRef.current && storeLocations.length === 0 && !hasShownNoMerchantsMessage) {
-      showInfo("No Merchants Found", "No merchants are currently registered in your area. Please check back later.");
-      setHasShownNoMerchantsMessage(true);
+      // Log loading status silently (no popup)
+      if (retryCount === 0) {
+        console.log("Loading nearby merchants...");
+      }
+
+      // Get authentication token
+      const { authService } = await import('../../services/authService');
+      const token = await authService.getToken();
+
+      // Make API call to get nearby merchants using Supabase function
+      const { apiClient } = await import('../../services/api');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.callFunction<any>(
+        'merchants-nearby', 
+        { lat: latitude.toString(), lng: longitude.toString() }, 
+        headers
+      );
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to load nearby merchants');
+      }
+
+      const data = response.data;
+
+      if (data.success && data.data) {
+        // Transform API response to StoreLocation format with enhanced data
+        const stores: StoreLocation[] = data.data.map((merchant: any) => {
+          const distance = locationService.calculateDistance(
+            latitude, 
+            longitude,
+            merchant.latitude || merchant.coords?.lat,
+            merchant.longitude || merchant.coords?.lng
+          );
+
+          return {
+            id: merchant.id,
+            title: merchant.name || merchant.title,
+            address: merchant.address,
+            coords: {
+              lat: merchant.latitude || merchant.coords?.lat,
+              lng: merchant.longitude || merchant.coords?.lng
+            },
+            distance: distance,
+            rating: merchant.rating || 0,
+            isOpen: merchant.isOpen !== undefined ? merchant.isOpen : true,
+            category: merchant.category || 'General',
+            phone: merchant.phone,
+            description: merchant.description
+          };
+        });
+
+        // Sort by distance (closest first)
+        stores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+        setStoreLocations(stores);
+      } else {
+        throw new Error(data.message || 'Failed to load merchants');
+      }
+    } catch (_error: any) {
+      console.error('Error loading nearby merchants:', {
+        errorName: _error?.name,
+        errorMessage: _error?.message,
+        errorStack: _error?.stack,
+        errorType: typeof _error,
+        fullError: _error
+      });
+
+      // Check error type and handle appropriately with retry
+      if (_error instanceof TypeError && _error.message.includes('fetch')) {
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+          // Wait 3 seconds before retrying (Render cold start can take 50+ seconds)
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return loadNearbyMerchants(latitude, longitude, retryCount + 1);
+        } else {
+          console.log("Unable to connect to backend server after multiple attempts. Using cached data.");
+        }
+      } else {
+        console.log("Failed to load nearby merchants. Using cached data.");
+      }
+
+      // Fallback to loading all merchants
+      await loadAllMerchants();
     }
-  };
+  }, [loadAllMerchants, checkNetworkConnectivity]);
 
   const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
     const distance = locationService.calculateDistance(lat1, lon1, lat2, lon2);
@@ -522,53 +417,8 @@ function ConsumerHomeContent() {
     return `${timeInMinutes} mins`;
   };
 
-
-
-  const fetchNearbyMerchants = useCallback(async () => {
-    const operationKey = 'fetchNearbyMerchants';
-    const operation = async () => {
-      const isConnected = await checkNetworkConnectivity();
-      if (!isConnected) {
-        throw new Error('Network unavailable');
-      }
-
-      const location = await locationService.getCurrentLocation();
-      if (!location) {
-        throw new Error('Unable to get current location');
-      }
-
-      // Load merchants near the location
-      await loadNearbyMerchants(location.latitude, location.longitude);
-    };
-
-    await handleRetryWithBackoff(operation, operationKey);
-  }, [showError]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchNearbyMerchants();
-    setRefreshing(false);
-  }, [fetchNearbyMerchants]);
-
-  // Handle map ready callback
-  const handleMapReady = useCallback(() => {
-    console.log('Map is ready!');
-    setMapError(false);
-  }, []);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    // Map will set loading to false when ready via onMapReady callback
-    checkSavedLocation();
-    loadUserData();
-    initializeLiveTracking();
-
-    return () => {
-      isMountedRef.current = false;
-      locationService.stopLiveTracking();
-    };
-  }, []);
-
+const handleMapReady = useCallback(() => {
+  console.log('Map is ready!');
   const initializeLiveTracking = async () => {
     try {
       console.log('[LiveTracking] Starting live tracking...');
@@ -622,7 +472,6 @@ function ConsumerHomeContent() {
 
           console.log('[LiveTracking] Setting region to:', newRegion);
           setRegion(newRegion);
-          setUserLocation(location); // Store full location object
 
           // Update movement data
           setUserMovement({
@@ -653,11 +502,37 @@ function ConsumerHomeContent() {
     }
   };
 
-  // Real-time driver tracking
-  useEffect(() => {
-    if (!activeDelivery) return;
+  initializeLiveTracking();
+}, [locationService, loadNearbyMerchants, calculateDelta, setRegion, setIsLocationSet, setUserMovement]);
 
-    const trackingInterval = setInterval(async () => {
+const fitMapToActiveDelivery = useCallback(() => {
+  if (!mapRef.current || !activeDelivery) return;
+
+  const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
+  if (!driver) return;
+
+  const locationsToFit = [
+    { latitude: driver.latitude, longitude: driver.longitude },
+    { latitude: region.latitude, longitude: region.longitude },
+  ];
+
+  if (activeDelivery.status === 'picking_up') {
+    locationsToFit.push(activeDelivery.merchantLocation);
+  }
+
+  mapRef.current.fitToCoordinates(locationsToFit, {
+    edgePadding: { top: 100, right: 50, bottom: showDriverCard ? 250 : 150, left: 50 },
+    animated: true
+  });
+}, [activeDelivery, nearbyDrivers, region, showDriverCard, mapRef]);
+
+// Real-time driver tracking
+useEffect(() => {
+  if (!activeDelivery) return;
+
+  const trackingInterval = setInterval(() => {
+    // Wrap async operations in an IIFE to avoid async setInterval issues
+    (async () => {
       try {
         // In real app, fetch from backend: const driverData = await orderService.getDriverLocation(activeDelivery.driverId);
         // Simulate driver movement
@@ -735,95 +610,74 @@ function ConsumerHomeContent() {
       } catch (error) {
         console.error('Error tracking driver:', error);
       }
-    }, 5000);
+    })();
+  }, 5000);
 
-    return () => clearInterval(trackingInterval);
-  }, [activeDelivery, nearbyDrivers, region]);
+  return () => clearInterval(trackingInterval);
+}, [activeDelivery, nearbyDrivers, region, fitMapToActiveDelivery]);
 
-  const fitMapToActiveDelivery = useCallback(() => {
-    if (!mapRef.current || !activeDelivery) return;
+// Simulate starting a delivery
+const simulateDelivery = () => {
+  if (storeLocations.length === 0) return;
 
-    const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
-    if (!driver) return;
-
-    const locationsToFit = [
-      { latitude: driver.latitude, longitude: driver.longitude },
-      { latitude: region.latitude, longitude: region.longitude },
-    ];
-
-    if (activeDelivery.status === 'picking_up') {
-      locationsToFit.push(activeDelivery.merchantLocation);
-    }
-
-    mapRef.current.fitToCoordinates(locationsToFit, {
-      edgePadding: { top: 100, right: 50, bottom: showDriverCard ? 250 : 150, left: 50 },
-      animated: true
-    });
-  }, [activeDelivery, nearbyDrivers, region, showDriverCard]);
-
-  // Simulate starting a delivery
-  const simulateDelivery = () => {
-    if (storeLocations.length === 0) return;
-
-    const merchant = storeLocations[0];
-    const driver: Driver = {
-      id: 'driver-1',
+  const merchant = storeLocations[0];
+  const driver: Driver = {
+    id: 'driver-1',
+    latitude: merchant.coords.lat - 0.01,
+    longitude: merchant.coords.lng - 0.01,
+    name: 'John Doe',
+    eta: '15 mins',
+    status: 'picking_up',
+    location: {
       latitude: merchant.coords.lat - 0.01,
       longitude: merchant.coords.lng - 0.01,
-      name: 'John Doe',
-      eta: '15 mins',
-      status: 'picking_up',
-      location: {
-        latitude: merchant.coords.lat - 0.01,
-        longitude: merchant.coords.lng - 0.01,
-      },
-    };
-
-    setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
-    setActiveDelivery({
-      driverId: driver.id,
-      merchantLocation: { latitude: merchant.coords.lat, longitude: merchant.coords.lng },
-      status: 'picking_up',
-      driverLocation: { latitude: driver.latitude, longitude: driver.longitude },
-    });
-    setShowDriverCard(true);
+    },
   };
 
-  const loadUserData = useCallback(async () => {
-    try {
-      const [email, name] = await Promise.all([
-        AsyncStorage.getItem("userEmail"),
-        AsyncStorage.getItem("userName")
-      ]);
+  setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
+  setActiveDelivery({
+    driverId: driver.id,
+    merchantLocation: { latitude: merchant.coords.lat, longitude: merchant.coords.lng },
+    status: 'picking_up',
+    driverLocation: { latitude: driver.latitude, longitude: driver.longitude },
+  });
+  setShowDriverCard(true);
+};
 
-      setUserEmail(email || "consumer@brillprime.com");
-      setUserName(name || "Consumer");
-
-      // Load notification count
-      await loadNotificationCount();
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      setUserEmail("consumer@brillprime.com");
-      setUserName("Consumer");
+const loadNotificationCount = useCallback(async () => {
+  try {
+    const { notificationService } = await import("../../services/notificationService");
+    const response = await notificationService.getUnreadCount();
+    if (response.success && response.data) {
+      // Notification count is handled elsewhere
     }
-  }, []);
+  } catch (error) {
+    console.error("Error loading notification count:", error);
+  }
+}, []);
 
-  const loadNotificationCount = useCallback(async () => {
-    try {
-      const { notificationService } = await import("../../services/notificationService");
-      const response = await notificationService.getUnreadCount();
+const loadUserData = useCallback(async () => {
+  try {
+    const [email, name] = await Promise.all([
+      AsyncStorage.getItem("userEmail"),
+      AsyncStorage.getItem("userName")
+    ]);
       if (response.success && response.data) {
-        setUnreadNotifications(response.data.count);
+        // Notification count is handled elsewhere
       }
     } catch (error) {
       console.error("Error loading notification count:", error);
     }
   }, []);
 
+  const memoizedLoadNotificationCount = useCallback(() => {
+    loadNotificationCount();
+  }, [loadNotificationCount]);
+
   const checkSavedLocation = async () => {
     try {
       const savedLocation = await AsyncStorage.getItem("userLocation");
-      const savedAddress = await AsyncStorage.getItem("userAddress");
+      await AsyncStorage.getItem("userAddress");
 
       if (savedLocation && isMountedRef.current) {
         const location = JSON.parse(savedLocation);
@@ -834,7 +688,6 @@ function ConsumerHomeContent() {
           ...deltas,
         });
         setIsLocationSet(true);
-        setUserAddress(savedAddress || "Your Location");
 
         // Load nearby merchants near the saved location (non-blocking)
         loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
@@ -859,7 +712,7 @@ function ConsumerHomeContent() {
       useNativeDriver: false, // Disable for web compatibility
     }).start();
     setIsSidebarOpen(!isSidebarOpen);
-  }, [isSidebarOpen, slideAnim, sidebarWidth]);
+  }, [isSidebarOpen, slideAnim]);
 
   // Close sidebar when clicking outside
   const closeSidebar = useCallback(() => {
@@ -871,7 +724,7 @@ function ConsumerHomeContent() {
       }).start();
       setIsSidebarOpen(false);
     }
-  }, [isSidebarOpen, slideAnim, sidebarWidth]);
+  }, [isSidebarOpen, slideAnim]);
 
   const handleGoBack = () => {
     router.push('/dashboard/consumer');
@@ -902,7 +755,7 @@ function ConsumerHomeContent() {
           try {
             const { notificationService } = await import('../../services/notificationService');
             await notificationService.getUnreadCount();
-          } catch (error) {
+          } catch {
             console.log('Failed to load notifications, navigating anyway');
           }
           router.push("/notifications");
@@ -946,23 +799,26 @@ function ConsumerHomeContent() {
       try {
         const { notificationService } = await import('../../services/notificationService');
 
+        // Initial load
+        await notificationService.getUnreadCount();
+        
         // Poll for notifications every 30 seconds
         const interval = setInterval(async () => {
           try {
             await notificationService.getUnreadCount();
           } catch (error) {
-            console.log('Failed to refresh notification count');
+            console.log('Failed to refresh notification count:', error);
           }
         }, 30000);
 
         return () => clearInterval(interval);
       } catch (error) {
-        console.log('Failed to setup notification listener');
+        console.error('Failed to setup notification listener:', error);
       }
     };
 
     setupNotificationListener();
-  }, []);
+  }, [memoizedLoadNotificationCount]);
 
   // Add real-time merchant updates
   useEffect(() => {
@@ -970,7 +826,7 @@ function ConsumerHomeContent() {
       // Refresh merchants when location changes
       loadNearbyMerchants(region.latitude, region.longitude);
     }
-  }, [region.latitude, region.longitude, isLocationSet]);
+  }, [region, region.latitude, region.longitude, isLocationSet, loadNearbyMerchants]);
 
   const handleSignOut = async () => {
     showConfirmDialog(
@@ -1035,7 +891,7 @@ function ConsumerHomeContent() {
         throw new Error("Unable to access location. Please check browser permissions.");
       }
 
-      const { latitude, longitude, accuracy } = location;
+      const { latitude, longitude, accuracy } = location.coords;
       console.log("📍 Precise location obtained:", {
         latitude,
         longitude,
@@ -1049,20 +905,15 @@ function ConsumerHomeContent() {
         longitudeDelta: 0.0421,
       };
       setRegion(newRegion);
-      setUserLocation(location); // Store the full location object
 
       // Try to get address
       try {
         const addressText = await locationService.reverseGeocode(latitude, longitude);
         if (addressText) {
-          setUserAddress(addressText);
           await AsyncStorage.setItem("userAddress", addressText);
-        } else {
-          setUserAddress("Your Location");
         }
       } catch (addressError) {
         console.error("Error getting address:", addressError);
-        setUserAddress("Your Location");
       }
 
       // Save location to AsyncStorage
@@ -1101,14 +952,6 @@ function ConsumerHomeContent() {
     }
   };
 
-  const handleNavigationGuard = (route: string) => {
-    if (!isLocationSet) {
-      alert("Please set your location first");
-      return;
-    }
-    router.push(route as any);
-  };
-
   const handleSearchNavigation = () => {
     try {
       if (isLocationSet) {
@@ -1116,8 +959,8 @@ function ConsumerHomeContent() {
       } else {
         showError("No Location Set", "Please set your location first to find nearby merchants.");
       }
-    } catch (error) {
-      console.error("Navigation error:", error);
+    } catch (_error) {
+      console.error("Navigation error:", _error);
       showError("Navigation Error", "Could not navigate to search. Please try again.");
     }
   };
@@ -1125,32 +968,10 @@ function ConsumerHomeContent() {
   const handleMerchantPress = useCallback((merchant: StoreLocation) => {
     setSelectedMerchant(merchant);
     setShowMerchantDetails(true);
-  }, []);
+  }, [setSelectedMerchant, setShowMerchantDetails]);
 
-  const handleMerchantDetailsClose = useCallback(() => {
-    setShowMerchantDetails(false);
-    setSelectedMerchant(null);
-  }, []);
 
-  const handleOrderNow = useCallback(() => {
-    if (selectedMerchant?.id) {
-      router.push({
-        pathname: "/merchant/[id]",
-        params: { id: selectedMerchant.id }
-      });
-    }
-    handleMerchantDetailsClose();
-  }, [selectedMerchant, router]);
 
-  const handleGetDirections = useCallback(() => {
-    if (selectedMerchant) {
-      const { lat, lng } = selectedMerchant.coords;
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      Linking.openURL(url);
-      showInfo("Directions", "Opening Google Maps for directions");
-    }
-    handleMerchantDetailsClose();
-  }, [selectedMerchant]);
 
   return (
     <ErrorBoundary>
@@ -1161,7 +982,7 @@ function ConsumerHomeContent() {
           provider={PROVIDER_GOOGLE}
           style={styles.map}
           region={region}
-          onRegionChangeComplete={handleRegionChange}
+          onRegionChangeComplete={debouncedHandleRegionChange}
           onMapReady={handleMapReady}
           customMapStyle={blueMapStyle}
           showsUserLocation={isLiveTrackingEnabled}
@@ -1176,8 +997,8 @@ function ConsumerHomeContent() {
             <Marker
               key={merchant.id}
               coordinate={{
-                latitude: merchant.coords.lat,
-                longitude: merchant.coords.lng
+                latitude: isFinite(merchant.coords.lat) ? merchant.coords.lat : 0,
+                longitude: isFinite(merchant.coords.lng) ? merchant.coords.lng : 0
               }}
               onPress={() => handleMerchantPress(merchant)}
             >
@@ -1193,7 +1014,10 @@ function ConsumerHomeContent() {
           {nearbyDrivers.map((driver) => (
             <Marker
               key={driver.id}
-              coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
+              coordinate={{
+                latitude: isFinite(driver.latitude) ? driver.latitude : 0,
+                longitude: isFinite(driver.longitude) ? driver.longitude : 0
+              }}
             >
               <View style={styles.driverMarker}>
                 <View style={styles.driverMarkerIcon}>
@@ -1206,7 +1030,13 @@ function ConsumerHomeContent() {
 
           {/* User Location Marker - 3D Pin Style */}
           {isLocationSet && (
-            <Marker coordinate={region} rotation={userMovement.heading || 0}>
+            <Marker
+              coordinate={{
+                latitude: isFinite(region.latitude) ? region.latitude : 0,
+                longitude: isFinite(region.longitude) ? region.longitude : 0
+              }}
+              rotation={userMovement.heading || 0}
+            >
               <View style={[styles.userLocationPin, userMovement.isMoving && { transform: [{ rotate: `${userMovement.heading || 0}deg` }] }]}>
                 <View style={styles.pinTop}>
                   <Ionicons name="person" size={16} color={theme.colors.white} />
@@ -1241,9 +1071,7 @@ function ConsumerHomeContent() {
                 onChangeText={setSearchQuery}
                 onFocus={handleSearchNavigation}
               />
-              <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
-                <Ionicons name="options" size={20} color={theme.colors.primary} />
-              </TouchableOpacity>
+
             </View>
           </View>
         )}
