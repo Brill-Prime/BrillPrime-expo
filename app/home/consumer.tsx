@@ -11,6 +11,7 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
+import { UserMarker, MerchantMarker, DriverMarker } from '../../components/MapMarkers';
 
 // Define missing types
 interface Driver {
@@ -792,6 +793,67 @@ const toggleMenu = useCallback(() => {
     }
   }, [router, toggleMenu, showError, showInfo, isLocationSet]);
 
+  // Auto-request location permission and set user location on mount
+  useEffect(() => {
+    const initializeLocation = async () => {
+      try {
+        // Check if we already have a saved location
+        const savedLocation = await AsyncStorage.getItem("userLocation");
+        
+        if (!savedLocation && !hasShownLocationPrompt) {
+          // No saved location - request permission automatically
+          console.log('[Consumer] No saved location, requesting permission automatically');
+          
+          const hasPermission = await locationService.requestLocationPermission();
+          
+          if (hasPermission) {
+            // Permission granted - get current location
+            const location = await locationService.getCurrentLocation();
+            
+            if (location) {
+              const { latitude, longitude } = location.coords;
+              console.log('📍 Auto-detected user location:', { latitude, longitude });
+              
+              const deltas = calculateDelta(latitude);
+              const newRegion = {
+                latitude,
+                longitude,
+                ...deltas,
+              };
+              
+              setRegion(newRegion);
+              setIsLocationSet(true);
+              setHasShownLocationPrompt(true);
+              
+              // Save location
+              await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
+              
+              // Load nearby merchants
+              await loadNearbyMerchants(latitude, longitude);
+              
+              // Animate map to location
+              if (mapRef.current) {
+                mapRef.current.animateToRegion(newRegion, 1000);
+              }
+            } else {
+              // Location not available - show prompt
+              setIsLocationSet(false);
+            }
+          } else {
+            // Permission denied - show prompt
+            console.log('[Consumer] Location permission denied');
+            setIsLocationSet(false);
+          }
+        }
+      } catch (error) {
+        console.error('[Consumer] Error initializing location:', error);
+        setIsLocationSet(false);
+      }
+    };
+
+    initializeLocation();
+  }, []); // Run once on mount
+
   // Load user data on component mount
   useEffect(() => {
     loadUserData();
@@ -1007,11 +1069,7 @@ const toggleMenu = useCallback(() => {
               }}
               onPress={() => handleMerchantPress(merchant)}
             >
-              <View style={styles.merchantMarker}>
-                <View style={styles.merchantMarkerIcon}>
-                  <Ionicons name="storefront" size={20} color={theme.colors.white} />
-                </View>
-              </View>
+              <MerchantMarker category={merchant.category} />
             </Marker>
           ))}
 
@@ -1024,12 +1082,7 @@ const toggleMenu = useCallback(() => {
                 longitude: isFinite(driver.longitude) ? driver.longitude : 0
               }}
             >
-              <View style={styles.driverMarker}>
-                <View style={styles.driverMarkerIcon}>
-                  <Ionicons name="car" size={18} color={theme.colors.white} />
-                </View>
-                <View style={[styles.statusIndicator, { backgroundColor: driver.status === 'available' ? theme.colors.success : theme.colors.error }]} />
-              </View>
+              <DriverMarker status={driver.status as 'available' | 'busy' | 'offline'} />
             </Marker>
           ))}
 
@@ -1042,13 +1095,10 @@ const toggleMenu = useCallback(() => {
               }}
               rotation={userMovement.heading || 0}
             >
-              <View style={[styles.userLocationPin, userMovement.isMoving && { transform: [{ rotate: `${userMovement.heading || 0}deg` }] }]}>
-                <View style={styles.pinTop}>
-                  <Ionicons name="person" size={16} color={theme.colors.white} />
-                </View>
-                <View style={styles.pinPoint} />
-                <View style={styles.pinShadow} />
-              </View>
+              <UserMarker 
+                isMoving={userMovement.isMoving} 
+                heading={userMovement.heading} 
+              />
             </Marker>
           )}
         </Map>
@@ -1752,6 +1802,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 8,
     ...theme.shadows.small,
+    zIndex: 100,
+    position: 'relative',
   },
   driverMarkerIcon: {
     width: 24,
@@ -1762,6 +1814,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     width: 50,
     height: 60,
+    zIndex: 200, // User marker on top
+    position: 'relative',
   },
   pinTop: {
     width: 36,
@@ -1802,6 +1856,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 8,
     ...theme.shadows.small,
+    zIndex: 50, // Merchants below drivers and user
+    position: 'relative',
   },
   merchantMarkerIcon: {
     width: 24,
