@@ -185,12 +185,12 @@ function ConsumerHomeContent() {
   }, []);
 
   // Calculate delta based on screen dimensions
-  const calculateDelta = (latitude: number) => {
+  const calculateDelta = useCallback((latitude: number) => {
     const latitudeDelta = 0.0922 * (height / 800);
     const aspectRatio = width / height;
     const longitudeDelta = latitudeDelta * aspectRatio;
     return { latitudeDelta, longitudeDelta };
-  };
+  }, []);
 
   // Debounced region change handler - disabled to prevent feedback loops
   // Map updates are now controlled programmatically only
@@ -503,7 +503,7 @@ const handleMapReady = useCallback(() => {
   };
 
   initializeLiveTracking();
-}, [locationService, loadNearbyMerchants, calculateDelta, setRegion, setIsLocationSet, setUserMovement]);
+  }, [loadNearbyMerchants, calculateDelta, setRegion, setIsLocationSet, setUserMovement]);
 
 const fitMapToActiveDelivery = useCallback(() => {
   if (!mapRef.current || !activeDelivery) return;
@@ -662,57 +662,56 @@ const loadUserData = useCallback(async () => {
       AsyncStorage.getItem("userEmail"),
       AsyncStorage.getItem("userName")
     ]);
-      if (response.success && response.data) {
-        // Notification count is handled elsewhere
-      }
-    } catch (error) {
-      console.error("Error loading notification count:", error);
-    }
-  }, []);
+    setUserEmail(email || "");
+    setUserName(name || "Consumer");
+  } catch (error) {
+    console.error("Error loading user data:", error);
+  }
+}, []);
 
-  const memoizedLoadNotificationCount = useCallback(() => {
-    loadNotificationCount();
-  }, [loadNotificationCount]);
+const memoizedLoadNotificationCount = useCallback(() => {
+  loadNotificationCount();
+}, [loadNotificationCount]);
 
-  const checkSavedLocation = async () => {
-    try {
-      const savedLocation = await AsyncStorage.getItem("userLocation");
-      await AsyncStorage.getItem("userAddress");
+const checkSavedLocation = useCallback(async () => {
+  try {
+    const savedLocation = await AsyncStorage.getItem("userLocation");
+    await AsyncStorage.getItem("userAddress");
 
-      if (savedLocation && isMountedRef.current) {
-        const location = JSON.parse(savedLocation);
-        const deltas = calculateDelta(location.latitude);
-        setRegion({
-          latitude: location.latitude,
-          longitude: location.longitude,
-          ...deltas,
-        });
-        setIsLocationSet(true);
+    if (savedLocation && isMountedRef.current) {
+      const location = JSON.parse(savedLocation);
+      const deltas = calculateDelta(location.latitude);
+      setRegion({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        ...deltas,
+      });
+      setIsLocationSet(true);
 
-        // Load nearby merchants near the saved location (non-blocking)
-        loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
-          console.log("Merchant loading failed, map will display without merchant data:", err);
-        });
-      } else {
-        // Explicitly set to false if no saved location
-        setIsLocationSet(false);
-      }
-    } catch (error) {
-      console.error("Error checking saved location:", error);
-      // Ensure we set a definite state even on error
+      // Load nearby merchants near the saved location (non-blocking)
+      loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
+        console.log("Merchant loading failed, map will display without merchant data:", err);
+      });
+    } else {
+      // Explicitly set to false if no saved location
       setIsLocationSet(false);
     }
-  };
+  } catch (error) {
+    console.error("Error checking saved location:", error);
+    // Ensure we set a definite state even on error
+    setIsLocationSet(false);
+  }
+}, [calculateDelta, loadNearbyMerchants]);
 
-  const toggleMenu = useCallback(() => {
-    const toValue = isSidebarOpen ? -sidebarWidth : 0;
-    Animated.timing(slideAnim, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false, // Disable for web compatibility
-    }).start();
-    setIsSidebarOpen(!isSidebarOpen);
-  }, [isSidebarOpen, slideAnim]);
+const toggleMenu = useCallback(() => {
+  const toValue = isSidebarOpen ? -sidebarWidth : 0;
+  Animated.timing(slideAnim, {
+    toValue,
+    duration: 300,
+    useNativeDriver: false, // Disable for web compatibility
+  }).start();
+  setIsSidebarOpen(!isSidebarOpen);
+}, [isSidebarOpen, slideAnim]);
 
   // Close sidebar when clicking outside
   const closeSidebar = useCallback(() => {
@@ -792,6 +791,12 @@ const loadUserData = useCallback(async () => {
       showError("Navigation Error", "Failed to navigate. Please try again.");
     }
   }, [router, toggleMenu, showError, showInfo, isLocationSet]);
+
+  // Load user data on component mount
+  useEffect(() => {
+    loadUserData();
+    checkSavedLocation();
+  }, [loadUserData, checkSavedLocation]);
 
   // Add real-time notification listener
   useEffect(() => {
