@@ -106,9 +106,9 @@ export default function AdminModeration() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    
+
     loadModerationReports();
-    
+
     return () => subscription?.remove();
   }, []);
 
@@ -176,7 +176,7 @@ export default function AdminModeration() {
     const date = new Date(dateString);
     const now = new Date();
     const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffHours < 1) return 'Just now';
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${Math.floor(diffHours / 24)}d ago`;
@@ -216,13 +216,13 @@ export default function AdminModeration() {
 
               if (!response.ok) throw new Error(`Failed to ${action} report`);
 
-              setReports(prev => 
-                prev.map(report => 
-                  report.id === selectedReport.id 
-                    ? { 
-                        ...report, 
-                        status: action === 'resolve' ? 'RESOLVED' : action === 'dismiss' ? 'DISMISSED' : 'REVIEWED'
-                      }
+              setReports(prev =>
+                prev.map(report =>
+                  report.id === selectedReport.id
+                    ? {
+                      ...report,
+                      status: action === 'resolve' ? 'RESOLVED' : action === 'dismiss' ? 'DISMISSED' : 'REVIEWED'
+                    }
                     : report
                 )
               );
@@ -253,13 +253,13 @@ export default function AdminModeration() {
         {
           text: 'Confirm',
           onPress: () => {
-            setReports(prev => 
-              prev.map(report => 
+            setReports(prev =>
+              prev.map(report =>
                 selectedReports.includes(report.id)
-                  ? { 
-                      ...report, 
-                      status: action === 'resolve' ? 'RESOLVED' : 'DISMISSED'
-                    }
+                  ? {
+                    ...report,
+                    status: action === 'resolve' ? 'RESOLVED' : 'DISMISSED'
+                  }
                   : report
               )
             );
@@ -272,7 +272,7 @@ export default function AdminModeration() {
   };
 
   const toggleReportSelection = (reportId: string) => {
-    setSelectedReports(prev => 
+    setSelectedReports(prev =>
       prev.includes(reportId)
         ? prev.filter(id => id !== reportId)
         : [...prev, reportId]
@@ -320,8 +320,8 @@ export default function AdminModeration() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -336,7 +336,7 @@ export default function AdminModeration() {
             icon="time"
             color="#f59e0b"
           />
-          
+
           <StatCard
             title="Resolved Today"
             value={moderationStats.resolvedToday}
@@ -344,7 +344,7 @@ export default function AdminModeration() {
             icon="checkmark-circle"
             color="#10b981"
           />
-          
+
           <StatCard
             title="Avg Resolution"
             value={`${moderationStats.averageResolutionTime}h`}
@@ -352,7 +352,7 @@ export default function AdminModeration() {
             icon="speedometer"
             color="#3b82f6"
           />
-          
+
           <StatCard
             title="Total Reports"
             value={moderationStats.totalReports}
@@ -425,19 +425,19 @@ export default function AdminModeration() {
                   style={styles.checkbox}
                   onPress={() => toggleReportSelection(report.id)}
                 >
-                  <Ionicons 
-                    name={selectedReports.includes(report.id) ? "checkbox" : "square-outline"} 
-                    size={20} 
-                    color="rgb(11, 26, 81)" 
+                  <Ionicons
+                    name={selectedReports.includes(report.id) ? "checkbox" : "square-outline"}
+                    size={20}
+                    color="rgb(11, 26, 81)"
                   />
                 </TouchableOpacity>
 
                 <View style={styles.reportInfo}>
                   <View style={styles.reportTitle}>
-                    <Ionicons 
-                      name={getContentTypeIcon(report.contentType) as any} 
-                      size={16} 
-                      color="#6b7280" 
+                    <Ionicons
+                      name={getContentTypeIcon(report.contentType) as any}
+                      size={16}
+                      color="#6b7280"
                     />
                     <Text style={styles.contentType}>{report.contentType}</Text>
                     <View style={[
@@ -447,7 +447,7 @@ export default function AdminModeration() {
                       <Text style={styles.priorityText}>{report.priority}</Text>
                     </View>
                   </View>
-                  
+
                   <Text style={styles.reportReason}>{report.reason}</Text>
                   <Text style={styles.reportContent} numberOfLines={2}>
                     {report.content}
@@ -470,7 +470,7 @@ export default function AdminModeration() {
                 <Text style={styles.reporterInfo}>
                   Reported by: {report.reporter.fullName}
                 </Text>
-                
+
                 {report.status === 'PENDING' && (
                   <TouchableOpacity
                     style={styles.actionButton}
@@ -596,11 +596,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       marginBottom: isTablet ? 0 : 12,
     },
     statHeader: {
@@ -701,11 +697,7 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
       padding: Math.max(16, width * 0.04),
       marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     },
     reportHeader: {
       flexDirection: 'row',

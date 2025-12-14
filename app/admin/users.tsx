@@ -55,7 +55,7 @@ export default function AdminUserManagement() {
 
   useEffect(() => {
     filterUsers();
-  }, [users, selectedRole, selectedStatus, searchQuery]);
+  }, [users, selectedRole, selectedStatus, searchQuery, filterUsers]);
 
   const loadUsers = async () => {
     try {
@@ -184,12 +184,12 @@ export default function AdminUserManagement() {
 
               if (!response.ok) throw new Error(`Failed to ${action} user`);
 
-              setUsers(prev => prev.map(user => 
-                user.id === userId 
-                  ? { 
-                      ...user, 
-                      status: action === 'activate' ? 'ACTIVE' : action === 'suspend' ? 'SUSPENDED' : 'BANNED'
-                    }
+              setUsers(prev => prev.map(user =>
+                user.id === userId
+                  ? {
+                    ...user,
+                    status: action === 'activate' ? 'ACTIVE' : action === 'suspend' ? 'SUSPENDED' : 'BANNED'
+                  }
                   : user
               ));
 
@@ -256,8 +256,8 @@ export default function AdminUserManagement() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -401,7 +401,7 @@ export default function AdminUserManagement() {
             {selectedUser && (
               <ScrollView style={styles.modalBody}>
                 <Text style={styles.modalUserName}>{selectedUser.fullName}</Text>
-                
+
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Contact Information</Text>
                   <Text style={styles.modalText}>Email: {selectedUser.email}</Text>
@@ -539,11 +539,8 @@ const getResponsiveStyles = (screenData: any) => {
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      // @ts-ignore
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     },
     statValue: {
       fontSize: isTablet ? 24 : isSmallScreen ? 18 : 20,
@@ -596,11 +593,8 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
       padding: Math.max(16, width * 0.04),
       marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      // @ts-ignore
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     },
     userHeader: {
       flexDirection: 'row',

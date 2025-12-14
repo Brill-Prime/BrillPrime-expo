@@ -66,7 +66,7 @@ export default function OTPVerification() {
     try {
       const { authService } = await import('../../services/authService');
       const tempEmail = await AsyncStorage.getItem("pendingUserData"); // Assuming pendingUserData stores email and other details
-      const tempRole = await AsyncStorage.getItem("selectedRole");
+      // const tempRole = await AsyncStorage.getItem("selectedRole");
 
       if (!tempEmail) {
         Alert.alert("Error", "Session expired. Please sign up again.");
@@ -118,7 +118,7 @@ export default function OTPVerification() {
       }
 
       const userData = JSON.parse(pendingUserData);
-      
+
       const { authService } = await import('../../services/authService');
       const response = await authService.resendOTP(userData.email);
 
@@ -144,7 +144,7 @@ export default function OTPVerification() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Verify it's you</Text>
+        <Text style={styles.title}>Verify it&apos;s you</Text>
       </View>
 
       {/* OTP Input Fields */}
@@ -195,7 +195,7 @@ export default function OTPVerification() {
 
       {/* Resend Code */}
       <View style={styles.resendContainer}>
-        <Text style={styles.resendText}>Didn't get code? </Text>
+        <Text style={styles.resendText}>Didn&apos;t get code? </Text>
         <TouchableOpacity onPress={handleResendOTP} disabled={isVerifying}>
           <Text style={styles.resendLink}>Resend</Text>
         </TouchableOpacity>
@@ -248,11 +248,8 @@ const styles = StyleSheet.create({
   otpInputFilled: {
     borderColor: "rgb(11, 26, 81)",
     borderWidth: 2,
-    shadowColor: "rgba(70, 130, 180, 0.1)",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 3,
-    elevation: 3,
+    // @ts-ignore
+    boxShadow: '0px 0px 3px rgba(70, 130, 180, 1)',
   },
   emailInfo: {
     alignItems: "center",

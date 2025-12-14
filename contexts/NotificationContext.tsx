@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { notificationService, Notification } from '../services/notificationService';
 import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native'; // Add Platform import
+import { Platform } from 'react-native';
 
 interface NotificationContextType {
   unreadCount: number;
@@ -41,7 +41,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     } catch (error) {
       // Silently fail - notifications are not critical
-      console.log('Notification refresh skipped');
+      console.log('Notification refresh skipped:', error);
       setUnreadCount(0);
     }
   }, []);
@@ -74,6 +74,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Set up real-time notification subscription
   useEffect(() => {
+    let isMounted = true;
+
     const setupRealtimeSubscription = async () => {
       try {
         // Only set up subscription if user is authenticated
@@ -86,7 +88,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const userData = await authService.getStoredUser();
         if (!userData?.id) return;
 
-        const { supabase } = await import('../config/supabase');
+        // Import supabase dynamically to avoid issues during app startup
+        let supabase;
+        try {
+          const supabaseModule = await import('../config/supabase');
+          supabase = supabaseModule.supabase;
+        } catch (importError) {
+          console.error('Failed to import supabase:', importError);
+          return;
+        }
 
         // Get user ID from Supabase
         const { data: users } = await supabase
@@ -101,6 +111,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const sub = notificationService.subscribeToNotifications(
           users.id,
           async (notification) => {
+            if (!isMounted) return;
+
             console.log('📬 New notification received:', notification);
 
             // Update unread count
@@ -110,20 +122,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setLatestNotification(notification);
 
             // Send local push notification
-            await notificationService.sendLocalNotification(
-              notification.title,
-              notification.message,
-              notification.data
-            );
+            try {
+              await notificationService.sendLocalNotification(
+                notification.title,
+                notification.message,
+                notification.data
+              );
+            } catch (notificationError) {
+              console.error('Error sending local notification:', notificationError);
+            }
 
             // Auto-clear after 5 seconds
             setTimeout(() => {
-              setLatestNotification(null);
+              if (isMounted) {
+                setLatestNotification(null);
+              }
             }, 5000);
           }
         );
 
-        setSubscription(sub);
+        if (isMounted) {
+          setSubscription(sub);
+        }
       } catch (error) {
         console.error('Error setting up notification subscription:', error);
       }
@@ -133,23 +153,32 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     refreshNotifications();
 
     // Fallback polling every 30 seconds
-    const interval = setInterval(refreshNotifications, 30000);
+    const interval = setInterval(() => {
+      if (isMounted) {
+        refreshNotifications();
+      }
+    }, 30000);
 
     // Refresh when app regains focus (only on web)
     const handleFocus = () => {
-      refreshNotifications();
+      if (isMounted) {
+        refreshNotifications();
+      }
     };
 
     // Only add event listeners on web platform
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.addEventListener('focus', handleFocus);
     }
 
     return () => {
-      subscription?.unsubscribe();
+      isMounted = false;
+      if (subscription && subscription.unsubscribe) {
+        subscription.unsubscribe();
+      }
       clearInterval(interval);
       // Only remove event listeners on web platform
-      if (Platform.OS === 'web') {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.removeEventListener('focus', handleFocus);
       }
     };

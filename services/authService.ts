@@ -808,7 +808,7 @@ class AuthService {
       }
       
       return null;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error getting token:', error);
       return null;
     }

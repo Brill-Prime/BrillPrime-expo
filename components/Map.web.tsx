@@ -140,9 +140,13 @@ const MapWeb = forwardRef<any, MapProps>(({
         hasCustomStyle: customMapStyle && customMapStyle.length > 0,
       });
 
+      // Validate coordinates before creating map
+      const centerLat = isFinite(region.latitude) ? region.latitude : 0;
+      const centerLng = isFinite(region.longitude) ? region.longitude : 0;
+
       const map = new window.google.maps.Map(mapRef.current, {
-        center: { lat: region.latitude, lng: region.longitude },
-        zoom: region.latitudeDelta ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13,
+        center: { lat: centerLat, lng: centerLng },
+        zoom: region.latitudeDelta && isFinite(region.latitudeDelta) ? Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2) : 13,
         styles: customMapStyle,
         disableDefaultUI: !showsUserLocation,
         zoomControl: zoomEnabled,
@@ -347,10 +351,14 @@ const MapWeb = forwardRef<any, MapProps>(({
     extractedMarkers.forEach((markerData: any, index: number) => {
       if (markerData.coordinate && window.google?.maps) {
         try {
+          // Validate marker coordinates
+          const markerLat = isFinite(markerData.coordinate.latitude) ? markerData.coordinate.latitude : 0;
+          const markerLng = isFinite(markerData.coordinate.longitude) ? markerData.coordinate.longitude : 0;
+
           const marker = new window.google.maps.Marker({
             position: {
-              lat: markerData.coordinate.latitude,
-              lng: markerData.coordinate.longitude
+              lat: markerLat,
+              lng: markerLng
             },
             map: googleMapRef.current,
             title: markerData.title || '',
@@ -398,9 +406,13 @@ const MapWeb = forwardRef<any, MapProps>(({
       // Set flag to prevent triggering user interaction events
       isUpdatingFromProp.current = true;
 
+      // Validate coordinates before setting center
+      const centerLat = isFinite(region.latitude) ? region.latitude : 0;
+      const centerLng = isFinite(region.longitude) ? region.longitude : 0;
+
       googleMapRef.current.setCenter({
-        lat: region.latitude,
-        lng: region.longitude
+        lat: centerLat,
+        lng: centerLng
       });
 
       if (region.latitudeDelta) {
@@ -457,14 +469,25 @@ const MapWeb = forwardRef<any, MapProps>(({
       directionsRenderer.setMap(googleMapRef.current);
       directionsRendererRef.current = directionsRenderer;
 
-      const waypointsFormatted = waypoints.map(point => ({
-        location: new window.google.maps.LatLng(point.latitude, point.longitude),
-        stopover: true
-      }));
+      const waypointsFormatted = waypoints.map(point => {
+        // Validate waypoint coordinates
+        const lat = isFinite(point.latitude) ? point.latitude : 0;
+        const lng = isFinite(point.longitude) ? point.longitude : 0;
+        return {
+          location: new window.google.maps.LatLng(lat, lng),
+          stopover: true
+        };
+      });
+
+      // Validate origin and destination coordinates
+      const originLat = isFinite(origin.latitude) ? origin.latitude : 0;
+      const originLng = isFinite(origin.longitude) ? origin.longitude : 0;
+      const destLat = isFinite(destination.latitude) ? destination.latitude : 0;
+      const destLng = isFinite(destination.longitude) ? destination.longitude : 0;
 
       directionsService.route({
-        origin: new window.google.maps.LatLng(origin.latitude, origin.longitude),
-        destination: new window.google.maps.LatLng(destination.latitude, destination.longitude),
+        origin: new window.google.maps.LatLng(originLat, originLng),
+        destination: new window.google.maps.LatLng(destLat, destLng),
         waypoints: waypointsFormatted,
         travelMode: window.google.maps.TravelMode.DRIVING,
       }, (result, status) => {
@@ -494,7 +517,11 @@ const MapWeb = forwardRef<any, MapProps>(({
       }
 
       console.log('[Map.web] Animating to region:', region);
-      googleMapRef.current.panTo({ lat: region.latitude, lng: region.longitude });
+      // Validate coordinates before panning
+      const panLat = isFinite(region.latitude) ? region.latitude : 0;
+      const panLng = isFinite(region.longitude) ? region.longitude : 0;
+
+      googleMapRef.current.panTo({ lat: panLat, lng: panLng });
 
       if (region.latitudeDelta) {
         const zoom = Math.round(Math.log(360 / region.latitudeDelta) / Math.LN2);
@@ -517,7 +544,10 @@ const MapWeb = forwardRef<any, MapProps>(({
       try {
         const bounds = new window.google.maps.LatLngBounds();
         coordinates.forEach(coord => {
-          bounds.extend(new window.google.maps.LatLng(coord.latitude, coord.longitude));
+          // Validate coordinates before extending bounds
+          const lat = isFinite(coord.latitude) ? coord.latitude : 0;
+          const lng = isFinite(coord.longitude) ? coord.longitude : 0;
+          bounds.extend(new window.google.maps.LatLng(lat, lng));
         });
         googleMapRef.current.fitBounds(bounds, options?.edgePadding);
       } catch (err) {

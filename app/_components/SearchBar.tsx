@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import React from "react";
+import { View, TouchableOpacity, StyleSheet, TextInput } from "react-native";
+import { useRouter } from "expo-router";
 
 interface SearchBarProps {
   onFilterPress: () => void;
@@ -16,15 +16,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const router = useRouter();
 
   const handleSearchPress = () => {
-    router.push('/search');
+    router.push("/search");
   };
 
   return (
     <View style={styles.searchContainer}>
-      <TouchableOpacity style={styles.searchInputContainer} onPress={handleSearchPress}>
-        <View style={styles.searchIcon}>
-          {/* Add search icon */}
-        </View>
+      <TouchableOpacity
+        style={styles.searchInputContainer}
+        onPress={handleSearchPress}
+      >
+        <View style={styles.searchIcon}>{/* Add search icon */}</View>
         <TextInput
           style={styles.searchInput}
           placeholder="Search for merchants..."
@@ -42,24 +43,20 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
 const styles = StyleSheet.create({
   searchContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 20,
     right: 20,
     bottom: 100,
     zIndex: 10,
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     borderRadius: 30,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.15)",
   },
   searchIcon: {
     marginRight: 10,

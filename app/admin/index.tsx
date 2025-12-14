@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,155 +6,153 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [adminUser, setAdminUser] = useState({
-    name: 'Admin User',
-    email: 'admin@brillprime.com',
-    role: 'Super Admin'
+  const [screenData, setScreenData] = useState(Dimensions.get("window"));
+  const [adminUser] = useState({
+    name: "Admin User",
+    email: "admin@brillprime.com",
+    role: "Super Admin",
   });
 
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenData(window);
-    });
-
-    checkAdminAccess();
-
-    return () => subscription?.remove();
-  }, []);
-
-  const checkAdminAccess = async () => {
+  const checkAdminAccess = useCallback(async () => {
     try {
       const [adminToken, adminTokenExpiry] = await AsyncStorage.multiGet([
-        'adminToken',
-        'adminTokenExpiry'
+        "adminToken",
+        "adminTokenExpiry",
       ]);
 
-      const isTokenExpired = adminTokenExpiry[1] 
-        ? Date.now() > parseInt(adminTokenExpiry[1]) 
+      const isTokenExpired = adminTokenExpiry[1]
+        ? Date.now() > parseInt(adminTokenExpiry[1])
         : true;
 
       if (!adminToken[1] || isTokenExpired) {
-        Alert.alert('Session Expired', 'Please sign in to access admin panel', [
-          { text: 'OK', onPress: () => router.replace('/admin/auth') }
+        Alert.alert("Session Expired", "Please sign in to access admin panel", [
+          { text: "OK", onPress: () => router.replace("/admin/auth") },
         ]);
       }
     } catch (error) {
-      console.error('Error checking admin access:', error);
-      router.replace('/admin/auth');
+      console.error("Error checking admin access:", error);
+      router.replace("/admin/auth");
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setScreenData(window);
+    });
+    checkAdminAccess();
+    return () => subscription?.remove();
+  }, [checkAdminAccess]);
 
   const handleSignOut = async () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out of admin panel?',
+      "Sign Out",
+      "Are you sure you want to sign out of admin panel?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Sign Out',
-          style: 'destructive',
+          text: "Sign Out",
+          style: "destructive",
           onPress: async () => {
             try {
               await AsyncStorage.multiRemove([
-                'adminToken', 
-                'adminEmail', 
-                'adminRole', 
-                'adminTokenExpiry'
+                "adminToken",
+                "adminEmail",
+                "adminRole",
+                "adminTokenExpiry",
               ]);
-              router.replace('/admin/auth');
+              router.replace("/admin/auth");
             } catch (error) {
-              console.error('Error signing out:', error);
+              console.error("Error signing out:", error);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const adminFeatures = [
     {
-      id: 'control',
-      title: 'Control Center',
-      description: 'System overview and management',
-      icon: 'speedometer',
-      route: '/admin/control-center',
-      color: 'rgb(11, 26, 81)'
+      id: "control",
+      title: "Control Center",
+      description: "System overview and management",
+      icon: "speedometer",
+      route: "/admin/control-center",
+      color: "rgb(11, 26, 81)",
     },
     {
-      id: 'escrow',
-      title: 'Escrow Management',
-      description: 'Monitor payment transactions',
-      icon: 'shield-checkmark',
-      route: '/admin/escrow-management',
-      color: 'rgb(11, 26, 81)'
+      id: "escrow",
+      title: "Escrow Management",
+      description: "Monitor payment transactions",
+      icon: "shield-checkmark",
+      route: "/admin/escrow-management",
+      color: "rgb(11, 26, 81)",
     },
     {
-      id: 'kyc',
-      title: 'KYC Verification',
-      description: 'Review user documents',
-      icon: 'document-text',
-      route: '/admin/kyc-verification',
-      color: 'rgb(11, 26, 81)'
+      id: "kyc",
+      title: "KYC Verification",
+      description: "Review user documents",
+      icon: "document-text",
+      route: "/admin/kyc-verification",
+      color: "rgb(11, 26, 81)",
     },
     {
-      id: 'moderation',
-      title: 'Content Moderation',
-      description: 'Review reported content',
-      icon: 'eye',
-      route: '/admin/moderation',
-      color: 'rgb(11, 26, 81)'
+      id: "moderation",
+      title: "Content Moderation",
+      description: "Review reported content",
+      icon: "eye",
+      route: "/admin/moderation",
+      color: "rgb(11, 26, 81)",
     },
     {
-      id: 'users',
-      title: 'User Management',
-      description: 'Manage user accounts',
-      icon: 'people',
-      route: '/admin/users',
-      color: 'rgb(11, 26, 81)'
+      id: "users",
+      title: "User Management",
+      description: "Manage user accounts",
+      icon: "people",
+      route: "/admin/users",
+      color: "rgb(11, 26, 81)",
     },
     {
-      id: 'analytics',
-      title: 'Analytics & Reports',
-      description: 'Platform insights',
-      icon: 'bar-chart',
-      route: '/admin/analytics',
-      color: 'rgb(11, 26, 81)'
-    }
+      id: "analytics",
+      title: "Analytics & Reports",
+      description: "Platform insights",
+      icon: "bar-chart",
+      route: "/admin/analytics",
+      color: "rgb(11, 26, 81)",
+    },
   ];
 
   const handleFeaturePress = (feature: any) => {
     // All admin features are now fully implemented
     switch (feature.id) {
-      case 'users':
-        router.push('/admin/users');
+      case "users":
+        router.push("/admin/users");
         break;
-      case 'kyc':
-        router.push('/admin/kyc-verification');
+      case "kyc":
+        router.push("/admin/kyc-verification");
         break;
-      case 'analytics':
-        router.push('/admin/analytics');
+      case "analytics":
+        router.push("/admin/analytics");
         break;
-      case 'moderation':
-        router.push('/admin/moderation');
+      case "moderation":
+        router.push("/admin/moderation");
         break;
-      case 'escrow':
-        router.push('/admin/escrow-management');
+      case "escrow":
+        router.push("/admin/escrow-management");
         break;
-      case 'control':
-        router.push('/admin/control-center');
+      case "control":
+        router.push("/admin/control-center");
         break;
       default:
         // Fallback for any undefined features
-        router.push(feature.route || '/admin/control-center');
+        router.push(feature.route || "/admin/control-center");
     }
   };
 
@@ -162,7 +160,7 @@ export default function AdminDashboard() {
 
   return (
     <LinearGradient
-      colors={['rgb(11, 26, 81)', '#1e3a8a']}
+      colors={["rgb(11, 26, 81)", "#1e3a8a"]}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -195,11 +193,15 @@ export default function AdminDashboard() {
               onPress={() => handleFeaturePress(feature)}
               activeOpacity={0.8}
             >
-              <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
+              <View
+                style={[styles.featureIcon, { backgroundColor: feature.color }]}
+              >
                 <Ionicons name={feature.icon as any} size={28} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
-              <Text style={styles.featureDescription}>{feature.description}</Text>
+              <Text style={styles.featureDescription}>
+                {feature.description}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -243,21 +245,21 @@ const getResponsiveStyles = (screenData: any) => {
       paddingTop: Math.max(50, height * 0.07),
     },
     headerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: 12,
     },
     adminBadge: {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     welcomeText: {
       fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
-      color: 'rgba(255, 255, 255, 0.8)',
+      color: "rgba(255, 255, 255, 0.8)",
     },
     adminName: {
       fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
@@ -266,7 +268,7 @@ const getResponsiveStyles = (screenData: any) => {
     },
     adminRole: {
       fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
-      color: 'rgba(255, 255, 255, 0.8)',
+      color: "rgba(255, 255, 255, 0.8)",
     },
     signOutButton: {
       padding: Math.max(8, width * 0.02),
@@ -291,75 +293,71 @@ const getResponsiveStyles = (screenData: any) => {
       marginBottom: 24,
     },
     featuresGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: Math.max(12, width * 0.03),
       marginBottom: 32,
     },
     featureCard: {
-      width: isTablet ? '31%' : '47%',
-      backgroundColor: 'white',
+      width: isTablet ? "31%" : "47%",
+      backgroundColor: "white",
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      alignItems: "center",
+      boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
       minHeight: 140,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     featureIcon: {
       width: 56,
       height: 56,
       borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       marginBottom: 12,
     },
     featureTitle: {
       fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
-      fontWeight: '600',
-      color: '#111827',
+      fontWeight: "600",
+      color: "#111827",
       marginBottom: 4,
-      textAlign: 'center',
+      textAlign: "center",
     },
     featureDescription: {
       fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
-      color: '#6b7280',
-      textAlign: 'center',
+      color: "#6b7280",
+      textAlign: "center",
       lineHeight: 16,
     },
     quickStats: {
-      backgroundColor: '#f8f9fa',
+      backgroundColor: "#f8f9fa",
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
       marginBottom: Math.max(32, height * 0.04),
     },
     quickStatsTitle: {
       fontSize: isTablet ? 16 : isSmallScreen ? 13 : 14,
-      fontWeight: '600',
-      color: '#111827',
+      fontWeight: "600",
+      color: "#111827",
       marginBottom: 16,
-      textAlign: 'center',
+      textAlign: "center",
     },
     statsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
+      flexDirection: "row",
+      justifyContent: "space-around",
     },
     statItem: {
-      alignItems: 'center',
+      alignItems: "center",
     },
     statNumber: {
       fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
-      fontWeight: 'bold',
-      color: 'rgb(11, 26, 81)',
+      fontWeight: "bold",
+      color: "rgb(11, 26, 81)",
       marginBottom: 4,
     },
     statLabel: {
       fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
-      color: '#6b7280',
+      color: "#6b7280",
     },
   });
 };

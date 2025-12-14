@@ -8,6 +8,7 @@ import {
   Alert,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,7 +134,7 @@ export default function AdminControlCenter() {
             async (text) => {
               if (text && text.trim()) {
                 try {
-                  const result = await adminService.sendSystemAnnouncement({
+                  const result = await adminService.sendAnnouncement({
                     title: 'Platform Announcement',
                     message: text.trim(),
                     targetAudience: 'all',
@@ -165,8 +166,8 @@ export default function AdminControlCenter() {
                 style: 'destructive',
                 onPress: async () => {
                   try {
-                    const result = await adminService.toggleSystemMaintenance(true, 'System under maintenance. We will be back shortly.');
-                    
+                    const result = await adminService.setMaintenanceMode(true, 'System under maintenance. We will be back shortly.');
+
                     if (result.success) {
                       Alert.alert('Success', 'Maintenance mode enabled. Users will see a maintenance message.');
                       await loadSystemMetrics();
@@ -183,7 +184,7 @@ export default function AdminControlCenter() {
           );
           break;
         case 'reports':
-          router.push('/admin/reports');
+          router.push('/admin/analytics');
           break;
         case 'escrow':
           router.push('/admin/escrow-management');
@@ -194,7 +195,7 @@ export default function AdminControlCenter() {
         case 'moderation':
           router.push('/admin/moderation');
           break;
-        
+
         // Implementing real control center actions
         case 'Emergency Shutdown':
           Alert.alert(
@@ -206,7 +207,7 @@ export default function AdminControlCenter() {
                 text: 'Confirm',
                 style: 'destructive',
                 onPress: async () => {
-                  const result = await adminService.toggleSystemMaintenance(true);
+                  const result = await adminService.setMaintenanceMode(true);
                   if (result.success) {
                     Alert.alert('Success', 'System maintenance mode enabled');
                   } else {
@@ -219,15 +220,9 @@ export default function AdminControlCenter() {
           break;
 
         case 'System Health Check':
-          const healthResult = await adminService.getSystemHealth();
-          if (healthResult.success && healthResult.data) {
-            Alert.alert(
-              'System Health',
-              `Status: ${healthResult.data.status}\nUptime: ${healthResult.data.uptime}s\nActive Users: ${healthResult.data.activeUsers}`
-            );
-          } else {
-            Alert.alert('Error', 'Failed to fetch system health');
-          }
+          // const healthResult = await adminService.getSystemHealth(); // Method not available in current adminService
+          // System health check functionality not available in current adminService
+          Alert.alert('Info', 'System health check is not currently available');
           break;
 
         case 'Clear Cache':
@@ -250,12 +245,9 @@ export default function AdminControlCenter() {
           break;
 
         case 'Backup Database':
-          const backupResult = await adminService.createBackup();
-          if (backupResult.success) {
-            Alert.alert('Success', 'Database backup initiated');
-          } else {
-            Alert.alert('Error', backupResult.error || 'Failed to create backup');
-          }
+          // const backupResult = await adminService.createBackup(); // Method not available in current adminService
+          // Database backup functionality not available in current adminService
+          Alert.alert('Info', 'Database backup is not currently available');
           break;
 
         default:
@@ -383,7 +375,7 @@ export default function AdminControlCenter() {
             <View style={styles.overviewCard}>
               <Text style={styles.cardTitle}>Real-time Activity</Text>
               <View style={styles.activityItem}>
-                <Text style={styles.activityLabel}>Today's Transactions</Text>
+                <Text style={styles.activityLabel}>Today&apos;s Transactions</Text>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{systemMetrics.transactions.todayTransactions}</Text>
                 </View>
@@ -403,7 +395,7 @@ export default function AdminControlCenter() {
             </View>
           </View>
         )}
-        
+
         {activeTab === 'transactions' && (
           <View style={styles.tabContent}>
             <View style={styles.overviewCard}>
@@ -604,11 +596,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       marginBottom: isTablet ? 0 : 12,
     },
     metricHeader: {
@@ -665,11 +653,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     },
     cardTitle: {
       fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
@@ -711,11 +695,7 @@ const getResponsiveStyles = (screenData: any) => {
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       minHeight: 120,
       justifyContent: 'center',
     },

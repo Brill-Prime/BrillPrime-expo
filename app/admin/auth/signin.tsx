@@ -58,7 +58,7 @@ export default function AdminSignIn() {
         // Store admin auth data
         const adminToken = 'admin_token_' + Date.now();
         const tokenExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString(); // 24 hours
-        
+
         await AsyncStorage.multiSet([
           ['adminToken', adminToken],
           ['adminEmail', formData.email],
@@ -256,11 +256,7 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
       alignItems: 'center',
       marginTop: 20,
-      shadowColor: '#dc2626',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 6,
+      boxShadow: '0px 4px 8px rgba(220, 38, 38, 0.3)',
     },
     disabledButton: {
       opacity: 0.6,

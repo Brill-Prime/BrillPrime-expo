@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
 
 interface HeaderProps {
   onMenuPress: () => void;
@@ -8,8 +7,6 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuPress, onBackPress }) => {
-  const router = useRouter();
-
   const handleBackPress = () => {
     onBackPress();
   };
@@ -45,11 +42,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    // @ts-ignore
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   menuButton: {
     width: 40,
@@ -58,11 +52,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    // @ts-ignore
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
 });
 

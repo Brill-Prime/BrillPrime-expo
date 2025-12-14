@@ -1,11 +1,8 @@
-import React, { useRef, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Dimensions } from 'react-native';
-import Map, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
-import { Ionicons } from '@expo/vector-icons';
-import { MapErrorBoundary } from './MapErrorBoundary';
-
-const { width, height } = Dimensions.get('window');
+import React, { useRef, useCallback } from "react";
+import { View, StyleSheet } from "react-native";
+import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
+import { MapErrorBoundary } from "./MapErrorBoundary";
 
 interface StoreLocation {
   id?: string;
@@ -53,87 +50,86 @@ interface MapContainerProps {
 
 const blueMapStyle = [
   {
-    "elementType": "geometry",
-    "stylers": [{ "color": "#f5f5f5" }]
+    elementType: "geometry",
+    stylers: [{ color: "#f5f5f5" }],
   },
   {
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#1a1a1a" }]
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#1a1a1a" }],
   },
   {
-    "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#ffffff" }, { "weight": 3 }]
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#ffffff" }, { weight: 3 }],
   },
   {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#64b5f6" }]
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#64b5f6" }],
   },
   {
-    "featureType": "water",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#1565c0" }]
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#1565c0" }],
   },
   {
-    "featureType": "road",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#ffffff" }]
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#ffffff" }],
   },
   {
-    "featureType": "road",
-    "elementType": "geometry.stroke",
-    "stylers": [{ "color": "#bdbdbd" }, { "weight": 0.8 }]
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#bdbdbd" }, { weight: 0.8 }],
   },
   {
-    "featureType": "road.highway",
-    "elementType": "geometry.fill",
-    "stylers": [{ "color": "#ffecb3" }]
+    featureType: "road.highway",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#ffecb3" }],
   },
   {
-    "featureType": "road.highway",
-    "elementType": "geometry.stroke",
-    "stylers": [{ "color": "#ffa726" }, { "weight": 1.5 }]
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#ffa726" }, { weight: 1.5 }],
   },
   {
-    "featureType": "poi",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#e8f5e9" }]
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#e8f5e9" }],
   },
   {
-    "featureType": "poi",
-    "elementType": "labels.icon",
-    "stylers": [{ "visibility": "on" }]
+    featureType: "poi",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "on" }],
   },
   {
-    "featureType": "poi.park",
-    "elementType": "geometry.fill",
-    "stylers": [{ "color": "#a8e6a1" }]
+    featureType: "poi.park",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#a8e6a1" }],
   },
   {
-    "featureType": "poi.medical",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#ffebee" }]
+    featureType: "poi.medical",
+    elementType: "geometry",
+    stylers: [{ color: "#ffebee" }],
   },
   {
-    "featureType": "poi.business",
-    "elementType": "labels.icon",
-    "stylers": [{ "visibility": "on" }]
+    featureType: "poi.business",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "on" }],
   },
   {
-    "featureType": "landscape",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#fafafa" }]
+    featureType: "landscape",
+    elementType: "geometry",
+    stylers: [{ color: "#fafafa" }],
   },
   {
-    "featureType": "transit",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#e3f2fd" }]
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#e3f2fd" }],
   },
   {
-    "featureType": "administrative",
-    "elementType": "geometry.stroke",
-    "stylers": [{ "color": "#9e9e9e" }, { "weight": 0.5 }]
-  }
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#9e9e9e" }, { weight: 0.5 }],
+  },
 ];
 
 const MapContainer: React.FC<MapContainerProps> = ({
@@ -149,19 +145,19 @@ const MapContainer: React.FC<MapContainerProps> = ({
   const mapRef = useRef<any>(null);
 
   const handleMapReady = useCallback(() => {
-    console.log('📍 Map ready with region:', region);
-    console.log('📊 Map ready callback fired successfully');
+    console.log("📍 Map ready with region:", region);
+    console.log("📊 Map ready callback fired successfully");
     onMapReady?.();
   }, [onMapReady, region]);
 
-  const handleMapError = useCallback(() => {
-    console.error('❌ Map error in MapContainer');
-  }, []);
+  // const handleMapError = useCallback(() => {
+  //   console.error("❌ Map error in MapContainer");
+  // }, []);
 
   return (
-    <MapErrorBoundary onRetry={() => console.log('Retrying map load...')}>
+    <MapErrorBoundary onRetry={() => console.log("Retrying map load...")}>
       <View style={styles.mapContainer}>
-        <Map
+        <MapView
           ref={mapRef}
           style={styles.map}
           provider={PROVIDER_GOOGLE}
@@ -169,7 +165,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
           region={region}
           onRegionChangeComplete={onRegionChange}
           onMapReady={handleMapReady}
-          onError={handleMapError}
           showsUserLocation={true}
         >
           {/* User marker - Only show when location is set with 3D pin style */}
@@ -178,8 +173,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
               {/* User's current location marker - 3D Pin */}
               <Marker
                 coordinate={{
-                  latitude: region.latitude,
-                  longitude: region.longitude,
+                  latitude: isFinite(region.latitude) ? region.latitude : 0,
+                  longitude: isFinite(region.longitude) ? region.longitude : 0,
                 }}
                 title="Your Location"
                 description={userAddress}
@@ -194,34 +189,39 @@ const MapContainer: React.FC<MapContainerProps> = ({
               </Marker>
 
               {/* Merchant markers */}
-              {storeLocations && storeLocations.map((merchant) => (
-                <Marker
-                  key={merchant.id || merchant.title}
-                  coordinate={{
-                    latitude: merchant.coords.lat,
-                    longitude: merchant.coords.lng,
-                  }}
-                  title={merchant.title}
-                  description={`${merchant.address}${merchant.distance ? ` • ${merchant.distance.toFixed(1)} km` : ''}`}
-                  onPress={() => onMerchantPress(merchant)}
-                />
-              ))}
+              {storeLocations &&
+                storeLocations.map((merchant) => (
+                  <Marker
+                    key={merchant.id || merchant.title}
+                    coordinate={{
+                      latitude: isFinite(merchant.coords.lat) ? merchant.coords.lat : 0,
+                      longitude: isFinite(merchant.coords.lng) ? merchant.coords.lng : 0,
+                    }}
+                    title={merchant.title}
+                    description={`${merchant.address}${merchant.distance
+                      ? ` • ${merchant.distance.toFixed(1)} km`
+                      : ""
+                      }`}
+                    onPress={() => onMerchantPress(merchant)}
+                  />
+                ))}
 
               {/* Driver markers for live tracking */}
-              {liveDrivers && liveDrivers.map((driver) => (
-                <Marker
-                  key={driver.id}
-                  coordinate={{
-                    latitude: driver.location.latitude,
-                    longitude: driver.location.longitude,
-                  }}
-                  title={`Driver ${driver.name}`}
-                  description={`ETA: ${driver.eta} mins`}
-                />
-              ))}
+              {liveDrivers &&
+                liveDrivers.map((driver) => (
+                  <Marker
+                    key={driver.id}
+                    coordinate={{
+                      latitude: isFinite(driver.location.latitude) ? driver.location.latitude : 0,
+                      longitude: isFinite(driver.location.longitude) ? driver.location.longitude : 0,
+                    }}
+                    title={`Driver ${driver.name}`}
+                    description={`ETA: ${driver.eta} mins`}
+                  />
+                ))}
             </>
           )}
-        </Map>
+        </MapView>
       </View>
     </MapErrorBoundary>
   );
@@ -230,18 +230,18 @@ const MapContainer: React.FC<MapContainerProps> = ({
 const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   map: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
+    width: "100%",
+    height: "100%",
+    position: "absolute",
     top: 0,
     left: 0,
   },
   userLocationPin: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+    alignItems: "center",
+    justifyContent: "flex-end",
     width: 50,
     height: 60,
   },
@@ -249,35 +249,32 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#4682B4',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#4682B4",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: '#4682B4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    borderColor: "#FFFFFF",
+    // @ts-ignore
+    boxShadow: "0px 4px 8px rgba(70, 130, 180, 0.4)",
   },
   pinPoint: {
     width: 0,
     height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
+    backgroundColor: "transparent",
+    borderStyle: "solid",
     borderLeftWidth: 8,
     borderRightWidth: 8,
     borderTopWidth: 12,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#4682B4',
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#4682B4",
     marginTop: -2,
   },
   pinShadow: {
     width: 20,
     height: 8,
     borderRadius: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
     marginTop: 2,
   },
 });

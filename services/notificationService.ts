@@ -1,11 +1,12 @@
 // Notification Service
 // Handles all notification-related functionality including push notifications, in-app alerts, and real-time updates
 
-import { AppState, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from './authService';
-import { apiClient, ApiResponse } from './api';
-import { supabase } from '../config/supabase';
+import { Platform } from "react-native"; // Added missing Platform import
+// Removed unused import
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService } from "./authService";
+import { apiClient, ApiResponse } from "./api";
+import { supabase } from "../config/supabase";
 
 // Define types for better type safety
 export interface Notification {
@@ -34,7 +35,7 @@ class NotificationService {
   private subscription: any = null;
   private appStateListener: any = null;
   private unreadCount: number = 0;
-  private onUnreadCountChangeCallbacks: Array<(count: number) => void> = [];
+  private onUnreadCountChangeCallbacks: ((count: number) => void)[] = [];
 
   // Subscribe to real-time notifications
   subscribeToNotifications(
@@ -43,17 +44,18 @@ class NotificationService {
   ) {
     try {
       // Create a channel for real-time notifications
-      const channel = supabase.channel(`notifications:${userId}`)
+      const channel = supabase
+        .channel(`notifications:${userId}`)
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${userId}`
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
           },
           (payload) => {
-            console.log('🔔 Real-time notification received:', payload);
+            console.log("🔔 Real-time notification received:", payload);
             const notification = payload.new as Notification;
             callback(notification);
           }
@@ -62,13 +64,17 @@ class NotificationService {
 
       return {
         unsubscribe: () => {
-          supabase.removeChannel(channel);
-        }
+          try {
+            supabase.removeChannel(channel);
+          } catch (error) {
+            console.error("Error unsubscribing from notifications:", error);
+          }
+        },
       };
     } catch (error) {
-      console.error('Error subscribing to notifications:', error);
+      console.error("Error subscribing to notifications:", error);
       return {
-        unsubscribe: () => {}
+        unsubscribe: () => {},
       };
     }
   }
@@ -91,14 +97,14 @@ class NotificationService {
       // Get user role if not provided
       let userRole = role;
       if (!userRole) {
-        userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+        userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
       }
 
       // Get user ID from Supabase
       const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', userData.id)
+        .from("users")
+        .select("id")
+        .eq("firebase_uid", userData.id)
         .single();
 
       if (userError || !users) {
@@ -107,11 +113,11 @@ class NotificationService {
 
       // Count unread notifications
       const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', users.id)
-        .eq('read', false)
-        .eq('role', userRole);
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", users.id)
+        .eq("read", false)
+        .eq("role", userRole);
 
       if (error) {
         return { success: true, data: { count: 0 } };
@@ -119,32 +125,37 @@ class NotificationService {
 
       return { success: true, data: { count: count || 0 } };
     } catch (error) {
-      console.error('Error getting unread count:', error);
+      console.error("Error getting unread count:", error);
       return { success: true, data: { count: 0 } };
     }
   }
 
   // Mark a notification as read
-  async markAsRead(notificationId: string): Promise<ApiResponse<{ message: string }>> {
+  async markAsRead(
+    notificationId: string
+  ): Promise<ApiResponse<{ message: string }>> {
     try {
       const token = await authService.getToken();
       if (!token) {
-        return { success: false, error: 'Authentication required' };
+        return { success: false, error: "Authentication required" };
       }
 
       const { error } = await supabase
-        .from('notifications')
+        .from("notifications")
         .update({ read: true })
-        .eq('id', notificationId);
+        .eq("id", notificationId);
 
       if (error) {
         return { success: false, error: error.message };
       }
 
-      return { success: true, data: { message: 'Notification marked as read' } };
+      return {
+        success: true,
+        data: { message: "Notification marked as read" },
+      };
     } catch (error) {
-      console.error('Error marking notification as read:', error);
-      return { success: false, error: 'Failed to mark notification as read' };
+      console.error("Error marking notification as read:", error);
+      return { success: false, error: "Failed to mark notification as read" };
     }
   }
 
@@ -153,45 +164,51 @@ class NotificationService {
     try {
       const token = await authService.getToken();
       if (!token) {
-        return { success: false, error: 'Authentication required' };
+        return { success: false, error: "Authentication required" };
       }
 
       // Get user data
       const userData = await authService.getStoredUser();
       if (!userData?.id) {
-        return { success: false, error: 'User not found' };
+        return { success: false, error: "User not found" };
       }
 
       // Get user role
-      const userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+      const userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
 
       // Get user ID from Supabase
       const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', userData.id)
+        .from("users")
+        .select("id")
+        .eq("firebase_uid", userData.id)
         .single();
 
       if (userError || !users) {
-        return { success: false, error: 'User not found in database' };
+        return { success: false, error: "User not found in database" };
       }
 
       // Mark all notifications as read
       const { error } = await supabase
-        .from('notifications')
+        .from("notifications")
         .update({ read: true })
-        .eq('user_id', users.id)
-        .eq('role', userRole)
-        .eq('read', false);
+        .eq("user_id", users.id)
+        .eq("role", userRole)
+        .eq("read", false);
 
       if (error) {
         return { success: false, error: error.message };
       }
 
-      return { success: true, data: { message: 'All notifications marked as read' } };
+      return {
+        success: true,
+        data: { message: "All notifications marked as read" },
+      };
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-      return { success: false, error: 'Failed to mark all notifications as read' };
+      console.error("Error marking all notifications as read:", error);
+      return {
+        success: false,
+        error: "Failed to mark all notifications as read",
+      };
     }
   }
 
@@ -204,39 +221,39 @@ class NotificationService {
     try {
       const token = await authService.getToken();
       if (!token) {
-        return { success: false, error: 'Authentication required' };
+        return { success: false, error: "Authentication required" };
       }
 
       // Get user data
       const userData = await authService.getStoredUser();
       if (!userData?.id) {
-        return { success: false, error: 'User not found' };
+        return { success: false, error: "User not found" };
       }
 
       // Get user role if not provided
       let userRole = role;
       if (!userRole) {
-        userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+        userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
       }
 
       // Get user ID from Supabase
       const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', userData.id)
+        .from("users")
+        .select("id")
+        .eq("firebase_uid", userData.id)
         .single();
 
       if (userError || !users) {
-        return { success: false, error: 'User not found in database' };
+        return { success: false, error: "User not found in database" };
       }
 
       // Get notifications
       const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', users.id)
-        .eq('role', userRole)
-        .order('created_at', { ascending: false })
+        .from("notifications")
+        .select("*")
+        .eq("user_id", users.id)
+        .eq("role", userRole)
+        .order("created_at", { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
 
       if (error) {
@@ -245,8 +262,8 @@ class NotificationService {
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Error getting notifications:', error);
-      return { success: false, error: 'Failed to get notifications' };
+      console.error("Error getting notifications:", error);
+      return { success: false, error: "Failed to get notifications" };
     }
   }
 
@@ -258,47 +275,49 @@ class NotificationService {
   ): Promise<void> {
     try {
       // For mobile platforms, we might want to use a notification library
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== "web") {
         // In a real implementation, we would use something like expo-notifications
-        console.log('📱 Local notification (mobile):', title, body, data);
+        console.log("📱 Local notification (mobile):", title, body, data);
         return;
       }
 
       // For web, show a browser notification if permissions are granted
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        if (Notification.permission === 'granted') {
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "granted") {
           new Notification(title, {
             body,
-            data
+            data,
           });
-        } else if (Notification.permission !== 'denied') {
+        } else if (Notification.permission !== "denied") {
           const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
+          if (permission === "granted") {
             new Notification(title, {
               body,
-              data
+              data,
             });
           }
         }
       }
     } catch (error) {
-      console.error('Error sending local notification:', error);
+      console.error("Error sending local notification:", error);
     }
   }
 
   // Register device for push notifications
   async registerDevice(): Promise<string | null> {
     try {
-      let deviceId = await AsyncStorage.getItem('device_id');
-      
+      let deviceId = await AsyncStorage.getItem("device_id");
+
       if (!deviceId) {
-        deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        await AsyncStorage.setItem('device_id', deviceId);
+        deviceId = `device_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+        await AsyncStorage.setItem("device_id", deviceId);
       }
-      
+
       return deviceId;
     } catch (error) {
-      console.error('Error registering device:', error);
+      console.error("Error registering device:", error);
       return null;
     }
   }
@@ -307,34 +326,36 @@ class NotificationService {
   async initializePushNotifications(): Promise<boolean> {
     try {
       // Check if notifications are supported (skip on server-side environments)
-      if (Platform.OS === 'web' && typeof window === 'undefined') {
-        console.log('Push notifications not supported in this environment');
+      if (Platform.OS === "web" && typeof window === "undefined") {
+        console.log("Push notifications not supported in this environment");
         return false;
       }
 
-      const isRegistered = await AsyncStorage.getItem('fcm_registered');
-      
-      if (isRegistered === 'true') {
+      const isRegistered = await AsyncStorage.getItem("fcm_registered");
+
+      if (isRegistered === "true") {
         return true;
       }
 
       // Platform-specific initialization would go here
-      console.log('Push notifications initialized');
+      console.log("Push notifications initialized");
       return true;
     } catch (error) {
-      console.error('Error initializing push notifications:', error);
+      console.error("Error initializing push notifications:", error);
       return false;
     }
   }
 
   // Update notification preferences
-  async updateSettings(preferences: NotificationSettings): Promise<ApiResponse<{ message: string }>> {
+  async updateSettings(
+    preferences: NotificationSettings
+  ): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
-      return { success: false, error: 'Authentication required' };
+      return { success: false, error: "Authentication required" };
     }
 
-    return apiClient.put('/api/notifications/preferences', preferences, {
+    return apiClient.put("/api/notifications/preferences", preferences, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -343,10 +364,10 @@ class NotificationService {
   async getSettings(): Promise<ApiResponse<NotificationSettings>> {
     const token = await authService.getToken();
     if (!token) {
-      return { success: false, error: 'Authentication required' };
+      return { success: false, error: "Authentication required" };
     }
 
-    return apiClient.get('/api/notifications/preferences', {
+    return apiClient.get("/api/notifications/preferences", {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -360,17 +381,18 @@ class NotificationService {
   }): Promise<ApiResponse<Notification[]>> {
     const token = await authService.getToken();
     if (!token) {
-      return { success: false, error: 'Authentication required' };
+      return { success: false, error: "Authentication required" };
     }
 
-    let endpoint = '/api/notifications/history';
+    let endpoint = "/api/notifications/history";
     const queryParams = new URLSearchParams();
 
     if (filters) {
-      if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
-      if (filters.toDate) queryParams.append('toDate', filters.toDate);
-      if (filters.limit) queryParams.append('limit', filters.limit.toString());
-      if (filters.offset) queryParams.append('offset', filters.offset.toString());
+      if (filters.fromDate) queryParams.append("fromDate", filters.fromDate);
+      if (filters.toDate) queryParams.append("toDate", filters.toDate);
+      if (filters.limit) queryParams.append("limit", filters.limit.toString());
+      if (filters.offset)
+        queryParams.append("offset", filters.offset.toString());
     }
 
     if (queryParams.toString()) {
@@ -383,12 +405,16 @@ class NotificationService {
   }
 
   // Helper function for retry logic
-  private async withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  private async withRetry<T>(
+    fn: () => Promise<T>,
+    retries = 3,
+    delay = 1000
+  ): Promise<T> {
     try {
       return await fn();
     } catch (error) {
       if (retries === 0) throw error;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
       return this.withRetry(fn, retries - 1, delay * 2);
     }
   }
@@ -399,7 +425,7 @@ class NotificationService {
       // First try using NetInfo if available
       try {
         // Safely import NetInfo to avoid crashes if not available
-        const netInfoModule = await import('@react-native-community/netinfo');
+        const netInfoModule = await import("@react-native-community/netinfo");
         if (netInfoModule && netInfoModule.default) {
           const state = await netInfoModule.default.fetch();
           if (state.isConnected !== null) {
@@ -407,45 +433,50 @@ class NotificationService {
           }
         }
       } catch (netInfoError) {
-        console.warn('NetInfo check failed, falling back to fetch:', netInfoError);
+        console.warn(
+          "NetInfo check failed, falling back to fetch:",
+          netInfoError
+        );
       }
-      
+
       // Fallback to fetch if NetInfo is not available or fails
-      if (typeof fetch !== 'undefined') {
+      if (typeof fetch !== "undefined") {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        
+
         try {
-          const response = await fetch('https://www.google.com', { 
-            method: 'HEAD',
-            cache: 'no-store',
-            mode: 'no-cors',
-            signal: controller.signal
+          await fetch("https://www.google.com", {
+            method: "HEAD",
+            cache: "no-store",
+            mode: "no-cors",
+            signal: controller.signal,
           });
           clearTimeout(timeout);
           return true;
         } catch (fetchError) {
           clearTimeout(timeout);
-          console.warn('Fetch-based network check failed:', fetchError);
+          console.warn("Fetch-based network check failed:", fetchError);
           return false;
         }
       }
-      
+
       // If we can't check connectivity, assume we're online
       return true;
     } catch (error) {
-      console.warn('Network check failed:', error);
+      console.warn("Network check failed:", error);
       return true; // Assume online if check fails
     }
   }
 
   // Get unread count with enhanced error handling and retry logic
-  async getUnreadCountWithRetry(role?: string): Promise<ApiResponse<{ count: number }>> {
+  async getUnreadCountWithRetry(
+    role?: string
+  ): Promise<ApiResponse<{ count: number }>> {
     try {
       // Check network connectivity first
       const isConnected = await this.checkNetworkConnectivity();
       if (!isConnected) {
-        console.log('No network connection, using cached notification count');
+        console.log("No network connection, using cached notification count");
         return { success: true, data: { count: this.unreadCount } };
       }
 
@@ -454,64 +485,70 @@ class NotificationService {
         const token = await authService.getToken();
         if (!token) {
           // This is normal during app startup, return cached count
-          console.log('No auth token available, using cached notification count');
+          console.log(
+            "No auth token available, using cached notification count"
+          );
           return { success: true, data: { count: this.unreadCount } };
         }
 
         // Get user data
         const userData = await authService.getStoredUser();
         if (!userData?.id) {
-          console.log('No user data available, using cached notification count');
+          console.log(
+            "No user data available, using cached notification count"
+          );
           return { success: true, data: { count: this.unreadCount } };
         }
 
         // Get user role if not provided
         let userRole = role;
         if (!userRole) {
-          userRole = await AsyncStorage.getItem('userRole') || 'consumer';
+          userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
         }
 
         // Use Supabase client directly
-        const { supabase } = await import('../config/supabase');
-        
+        const { supabase } = await import("../config/supabase");
+
         // Get user ID from Supabase with error handling
         const { data: users, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('firebase_uid', userData.id)
+          .from("users")
+          .select("id")
+          .eq("firebase_uid", userData.id)
           .single();
 
         if (userError || !users) {
-          console.log('User not found in database, using cached notification count');
+          console.log(
+            "User not found in database, using cached notification count"
+          );
           return { success: true, data: { count: this.unreadCount } };
         }
 
         // Count unread notifications with timeout
         const countPromise = supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', users.id)
-          .eq('read', false)
-          .eq('role', userRole);
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", users.id)
+          .eq("read", false)
+          .eq("role", userRole);
 
         // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), 10000)
         );
 
-        const { count, error } = await Promise.race([
+        const { count, error } = (await Promise.race([
           countPromise,
-          timeoutPromise
-        ]) as any;
+          timeoutPromise,
+        ])) as any;
 
         if (error) {
-          console.log('Error counting notifications, using cached count');
+          console.log("Error counting notifications, using cached count");
           return { success: true, data: { count: this.unreadCount } };
         }
 
         const finalCount = count || 0;
         console.log(`🔔 Unread notifications: ${finalCount}`);
-        
+
         // Update internal count and notify listeners
         this.unreadCount = finalCount;
         this.notifyUnreadCountChange(finalCount);
@@ -519,12 +556,12 @@ class NotificationService {
         return { success: true, data: { count: finalCount } };
       });
     } catch (error: any) {
-      console.error('Error getting unread count:', error);
-      
+      console.error("Error getting unread count:", error);
+
       // Return cached count during error
-      return { 
-        success: true, 
-        data: { count: this.unreadCount }
+      return {
+        success: true,
+        data: { count: this.unreadCount },
       };
     }
   }
@@ -544,7 +581,7 @@ class NotificationService {
 
   // Notify all subscribers about unread count change
   private notifyUnreadCountChange(count: number): void {
-    this.onUnreadCountChangeCallbacks.forEach(callback => callback(count));
+    this.onUnreadCountChangeCallbacks.forEach((callback) => callback(count));
   }
 
   // Clean up resources
@@ -553,7 +590,7 @@ class NotificationService {
       this.subscription.unsubscribe();
       this.subscription = null;
     }
-    
+
     if (this.appStateListener) {
       this.appStateListener.remove();
       this.appStateListener = null;

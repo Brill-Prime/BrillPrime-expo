@@ -8,13 +8,13 @@ export interface User {
   name?: string;
   phone?: string;
   profileImageUrl?: string;
-  role: 'consumer' | 'merchant' | 'driver';
+  role: "consumer" | "merchant" | "driver";
   isVerified?: boolean;
   createdAt: string;
   updatedAt: string;
   address?: string;
   roles?: UserRoleStatus;
-  currentRole?: 'consumer' | 'merchant' | 'driver';
+  currentRole?: "consumer" | "merchant" | "driver";
 }
 
 export interface UserRoleStatus {
@@ -28,7 +28,7 @@ export interface RoleVerification {
   isVerified: boolean;
   registeredAt?: string;
   verifiedAt?: string;
-  verificationStatus?: 'pending' | 'approved' | 'rejected';
+  verificationStatus?: "pending" | "approved" | "rejected";
   rejectionReason?: string;
   documents?: RoleDocument[];
 }
@@ -37,12 +37,12 @@ export interface RoleDocument {
   id: string;
   type: string;
   url: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   uploadedAt: string;
 }
 
 export interface RoleRegistrationRequest {
-  role: 'merchant' | 'driver';
+  role: "merchant" | "driver";
   businessName?: string;
   businessType?: string;
   businessAddress?: string;
@@ -66,7 +66,7 @@ export interface AuthResponse {
 export interface Merchant {
   id: string;
   name: string;
-  type: 'fuel' | 'market' | 'shopping' | 'restaurant';
+  type: "fuel" | "market" | "shopping" | "restaurant";
   address: string;
   phone: string;
   email: string;
@@ -91,11 +91,11 @@ export interface Commodity {
   description: string;
   image: string;
   unit: string;
-  availability: 'In Stock' | 'Out of Stock' | 'Limited Stock';
-  specifications: Array<{
+  availability: "In Stock" | "Out of Stock" | "Limited Stock";
+  specifications: {
     label: string;
     value: string;
-  }>;
+  }[];
 }
 
 export interface MerchantCommodity {
@@ -119,9 +119,15 @@ export interface Order {
   unit: string;
   unitPrice: number;
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "delivered"
+    | "cancelled";
   deliveryAddress: string;
-  deliveryType: 'self' | 'someone_else';
+  deliveryType: "self" | "someone_else";
   recipientName?: string;
   recipientPhone?: string;
   notes?: string;
@@ -134,10 +140,10 @@ export interface Transaction {
   id: string;
   userId: string;
   orderId?: string;
-  type: 'purchase' | 'refund' | 'payment' | 'reward';
+  type: "purchase" | "refund" | "payment" | "reward";
   amount: number;
   description: string;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  status: "pending" | "completed" | "failed" | "cancelled";
   date: string;
   paymentMethod?: string;
 }
@@ -147,7 +153,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'order' | 'payment' | 'promotion' | 'system';
+  type: "order" | "payment" | "promotion" | "system";
   read: boolean;
   timestamp: string;
 }
@@ -168,7 +174,7 @@ export interface SignUpRequest {
   phoneNumber?: string;
   password: string;
   confirmPassword?: string;
-  role: 'consumer' | 'merchant' | 'driver';
+  role: "consumer" | "merchant" | "driver";
   firebaseUid?: string;
 }
 
@@ -207,7 +213,7 @@ export interface CreateOrderRequest {
   commodityId: string;
   quantity: number;
   deliveryAddress: string;
-  deliveryType: 'self' | 'someone_else';
+  deliveryType: "self" | "someone_else";
   recipientName?: string;
   recipientPhone?: string;
   notes?: string;
@@ -216,7 +222,7 @@ export interface CreateOrderRequest {
 export interface PaymentRequest {
   orderId: string;
   amount: number;
-  paymentMethod: 'card' | 'wallet' | 'cash';
+  paymentMethod: "card" | "wallet" | "cash";
 }
 
 // Generic API Response

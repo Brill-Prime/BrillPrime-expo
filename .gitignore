@@ -88,3 +88,6 @@ yarn-error.*
 *.tsbuildinfo
 
 # @end expo-cli
+
+# Auxly - AI Task Management (internal data)
+.auxly/

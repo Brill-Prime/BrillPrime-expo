@@ -37,20 +37,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUserData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [storedToken, storedRole, userData] = await Promise.all([
-        AsyncStorage.getItem('userToken'),
-        AsyncStorage.getItem('userRole'),
-        authService.getStoredUser()
-      ]);
+      const storedToken = await AsyncStorage.getItem('userToken');
+      const storedRole = await AsyncStorage.getItem('userRole');
+      let userData = null;
+      try {
+        userData = await authService.getStoredUser();
+      } catch (error) {
+        console.warn('Failed to get stored user data:', error);
+      }
 
       if (storedToken) {
         setToken(storedToken);
-        
+
         // Only set as authenticated if we have both token and role
         if (storedRole) {
           setRole(storedRole);
           setIsAuthenticated(true);
-          
+
           if (userData) {
             setUser(userData as User);
           }
@@ -85,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.success && response.data) {
         const userData = response.data as User;
         setUser(userData);
-        
+
         // Update AsyncStorage
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
         await AsyncStorage.setItem('userEmail', userData.email);

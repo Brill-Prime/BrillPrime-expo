@@ -38,7 +38,7 @@ export default function AdminEscrowManagement() {
   const [selectedTransaction, setSelectedTransaction] = useState<EscrowTransaction | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionNotes, setActionNotes] = useState('');
-  
+
   const [transactions, setTransactions] = useState<EscrowTransaction[]>([
     {
       id: '1',
@@ -87,9 +87,9 @@ export default function AdminEscrowManagement() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    
+
     loadEscrowTransactions();
-    
+
     return () => subscription?.remove();
   }, []);
 
@@ -194,13 +194,13 @@ export default function AdminEscrowManagement() {
               if (!response.ok) throw new Error(`Failed to ${action} transaction`);
 
               // Update transaction status
-              setTransactions(prev => 
-                prev.map(t => 
-                  t.id === selectedTransaction.id 
-                    ? { 
-                        ...t, 
-                        status: action === 'release' ? 'RELEASED' : action === 'refund' ? 'REFUNDED' : t.status 
-                      }
+              setTransactions(prev =>
+                prev.map(t =>
+                  t.id === selectedTransaction.id
+                    ? {
+                      ...t,
+                      status: action === 'release' ? 'RELEASED' : action === 'refund' ? 'REFUNDED' : t.status
+                    }
                     : t
                 )
               );
@@ -258,8 +258,8 @@ export default function AdminEscrowManagement() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -274,7 +274,7 @@ export default function AdminEscrowManagement() {
             icon="wallet"
             color="#10b981"
           />
-          
+
           <StatCard
             title="Held Amount"
             value={formatCurrency(escrowStats.heldAmount)}
@@ -282,7 +282,7 @@ export default function AdminEscrowManagement() {
             icon="time"
             color="#f59e0b"
           />
-          
+
           <StatCard
             title="Disputed"
             value={formatCurrency(escrowStats.disputedAmount)}
@@ -290,7 +290,7 @@ export default function AdminEscrowManagement() {
             icon="warning"
             color="#ef4444"
           />
-          
+
           <StatCard
             title="Released Today"
             value={formatCurrency(escrowStats.releasedToday)}
@@ -344,10 +344,10 @@ export default function AdminEscrowManagement() {
                   styles.statusBadge,
                   { backgroundColor: getStatusColor(transaction.status) }
                 ]}>
-                  <Ionicons 
-                    name={getStatusIcon(transaction.status) as any} 
-                    size={12} 
-                    color="white" 
+                  <Ionicons
+                    name={getStatusIcon(transaction.status) as any}
+                    size={12}
+                    color="white"
                   />
                   <Text style={styles.statusText}>{transaction.status}</Text>
                 </View>
@@ -362,7 +362,7 @@ export default function AdminEscrowManagement() {
                   <Text style={styles.partyLabel}>Seller:</Text>
                   <Text style={styles.partyName}>{transaction.sellerName}</Text>
                 </View>
-                
+
                 <View style={styles.amountInfo}>
                   <Text style={styles.amountLabel}>Amount:</Text>
                   <Text style={styles.amountValue}>{formatCurrency(transaction.totalAmount)}</Text>
@@ -508,11 +508,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       padding: Math.max(16, width * 0.04),
       borderRadius: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       marginBottom: isTablet ? 0 : 12,
     },
     statHeader: {
@@ -583,11 +579,7 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
       padding: Math.max(16, width * 0.04),
       marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     },
     transactionHeader: {
       flexDirection: 'row',
