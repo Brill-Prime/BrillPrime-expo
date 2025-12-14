@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TextStyle, Dimensions } from 'react-native';
 import { theme } from '../../config/theme';
 
 interface CardProps {

@@ -548,8 +548,7 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: -1,
     overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
-    border: 0,
+    borderWidth: 0,
   },
   visuallyHidden: {
     position: 'absolute',
@@ -558,8 +557,7 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: -1,
     overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
-    border: 0,
+    borderWidth: 0,
   },
   container: {
     flex: 1,

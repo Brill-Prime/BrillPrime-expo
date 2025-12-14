@@ -411,7 +411,6 @@ const styles = StyleSheet.create({
   imageLabel: {
     fontSize: theme.typography.fontSize.sm,
     fontFamily: theme.typography.fontFamily.medium,
-    color: theme.colors.text,
     padding: 10,
     backgroundColor: theme.colors.primary,
     color: theme.colors.white,

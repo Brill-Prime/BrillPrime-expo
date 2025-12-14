@@ -53,9 +53,32 @@ export default function AdminUserManagement() {
     return () => subscription?.remove();
   }, []);
 
+  const filterUsers = () => {
+    let filtered = [...users];
+
+    if (selectedRole !== 'all') {
+      filtered = filtered.filter(user => user.role === selectedRole);
+    }
+
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(user => user.status === selectedStatus);
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(user =>
+        user.fullName.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.phone.includes(query)
+      );
+    }
+
+    setFilteredUsers(filtered);
+  };
+
   useEffect(() => {
     filterUsers();
-  }, [users, selectedRole, selectedStatus, searchQuery, filterUsers]);
+  }, [users, selectedRole, selectedStatus, searchQuery]);
 
   const loadUsers = async () => {
     try {
@@ -129,28 +152,6 @@ export default function AdminUserManagement() {
     } catch (error) {
       console.error('Error loading users:', error);
     }
-  };
-
-  const filterUsers = () => {
-    let filtered = [...users];
-
-    if (selectedRole !== 'all') {
-      filtered = filtered.filter(user => user.role === selectedRole);
-    }
-
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(user => user.status === selectedStatus);
-    }
-
-    if (searchQuery) {
-      filtered = filtered.filter(user =>
-        user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.phone.includes(searchQuery)
-      );
-    }
-
-    setFilteredUsers(filtered);
   };
 
   const onRefresh = async () => {

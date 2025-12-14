@@ -123,7 +123,7 @@ class CommunicationService {
           conversationId: messageData.conversation_id,
           senderId: messageData.sender_id,
           senderName: sender.full_name || 'Unknown',
-          senderRole: sender.role,
+          senderRole: sender.role as 'consumer' | 'merchant' | 'driver',
           message: messageData.message,
           messageType: messageData.message_type || 'text',
           timestamp: messageData.created_at,
@@ -164,10 +164,12 @@ class CommunicationService {
   // Get conversations for user
   async getConversations(): Promise<ApiResponse<Conversation[]>> {
     try {
-      const user = await authService.getCurrentUser();
-      if (!user) {
+      const userResponse = await authService.getCurrentUser();
+      if (!userResponse.success || !userResponse.data) {
         return { success: false, error: 'User not authenticated' };
       }
+
+      const user = userResponse.data;
 
       // Get Firebase UID to find user in database
       const firebaseUid = user.uid;
@@ -417,10 +419,12 @@ class CommunicationService {
     attachments?: Array<{ id: string; uri: string; name?: string; type?: 'image' | 'document' }>
   ): Promise<ApiResponse<ChatMessage>> {
     try {
-      const user = await authService.getCurrentUser();
-      if (!user) {
+      const userResponse = await authService.getCurrentUser();
+      if (!userResponse.success || !userResponse.data) {
         return { success: false, error: 'User not authenticated' };
       }
+
+      const user = userResponse.data;
 
       // Get user ID from database
       const { data: dbUser } = await supabase
@@ -549,10 +553,12 @@ class CommunicationService {
   // Mark messages as read
   async markMessagesAsRead(conversationId: string): Promise<ApiResponse<{ message: string }>> {
     try {
-      const user = await authService.getCurrentUser();
-      if (!user) {
+      const userResponse = await authService.getCurrentUser();
+      if (!userResponse.success || !userResponse.data) {
         return { success: false, error: 'User not authenticated' };
       }
+
+      const user = userResponse.data;
 
       // Get user ID from database
       const { data: dbUser } = await supabase

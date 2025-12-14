@@ -1,5 +1,5 @@
 
-import apiClient from './api';
+import { apiClient } from './api';
 import { authService } from './authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

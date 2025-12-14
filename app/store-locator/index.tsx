@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
-import apiClient from '../../services/api';
+import { apiClient } from '../../services/api';
 import { authService } from '../../services/authService';
 import { locationService } from '../../services/locationService';
 
@@ -30,7 +30,7 @@ export default function StoreLocator() {
 
         // Assuming apiClient.get is a function that makes HTTP requests
         const response = await apiClient.get(
-          `/api/merchants/nearby?latitude=${location.latitude}&longitude=${location.longitude}&radius=10`,
+          `/api/merchants/nearby?latitude=${location.coords.latitude}&longitude=${location.coords.longitude}&radius=10`,
           {
             Authorization: `Bearer ${token}`,
           }

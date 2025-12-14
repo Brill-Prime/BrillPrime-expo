@@ -13,8 +13,8 @@ export const useSessionTimeout = () => {
   const router = useRouter();
   const { showConfirmDialog } = useAlert();
   const lastActivityRef = useRef(Date.now());
-  const timeoutIdRef = useRef<NodeJS.Timeout>();
-  const warningIdRef = useRef<NodeJS.Timeout>();
+  const timeoutIdRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const warningIdRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const resetTimers = useCallback(() => {
     lastActivityRef.current = Date.now();

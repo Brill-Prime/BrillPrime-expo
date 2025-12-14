@@ -114,7 +114,7 @@ export default function SignUp() {
     }
 
     // Use stored role instead of component state
-    const finalRole = storedRole;
+    const finalRole = storedRole as 'consumer' | 'merchant' | 'driver';
 
     setLoading(true);
 

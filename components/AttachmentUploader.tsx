@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAlert } from './AlertProvider';
-import styles from './attachment-uploader.module.css';
 
 
 export interface Attachment {
@@ -345,7 +344,7 @@ export default function AttachmentUploader({
       {/* Hidden file inputs for web */}
       {Platform.OS === 'web' && (
         <>
-          <label htmlFor="image-upload" className={styles.visuallyHidden}>
+          <label htmlFor="image-upload" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 } as any}>
             Upload images
           </label>
           <input
@@ -354,12 +353,12 @@ export default function AttachmentUploader({
             type="file"
             accept="image/*"
             multiple
-            className={styles.hiddenInput}
+            style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }}
             onChange={handleWebImageChange}
             aria-label="Select images to upload"
             title="Select images"
           />
-          <label htmlFor="file-upload" className={styles.visuallyHidden}>
+          <label htmlFor="file-upload" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 } as any}>
             Upload files
           </label>
           <input
@@ -368,7 +367,7 @@ export default function AttachmentUploader({
             type="file"
             accept="*/*"
             multiple
-            className={styles.hiddenInput}
+            style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }}
             onChange={handleWebFileChange}
             aria-label="Select files to upload"
             title="Select files"
