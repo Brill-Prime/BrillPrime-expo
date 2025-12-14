@@ -40,15 +40,13 @@ function NotificationsScreen() {
     try {
       setLoading(true);
       const userRole = await AsyncStorage.getItem('userRole');
-      const response = await notificationService.getNotifications({
-        role: userRole || 'consumer'
-      });
+      const response = await notificationService.getNotifications(1, 20, userRole || 'consumer');
 
       if (response.success && response.data && response.data.length > 0) {
         // Format timestamps to be consistent
         const formattedNotifications = response.data.map(notif => ({
           ...notif,
-          timestamp: notif.timestamp || notif.createdAt || 'Just now'
+          timestamp: notif.timestamp || notif.created_at || 'Just now'
         }));
         setNotifications(formattedNotifications);
       } else {

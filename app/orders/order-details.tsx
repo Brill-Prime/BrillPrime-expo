@@ -18,9 +18,7 @@ import LiveOrderTracker from '../../components/LiveOrderTracker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
 import ReceiptSharingModal from '../../components/ReceiptSharingModal';
-
-// Assuming orderService is imported and has methods like cancelOrder
-// import orderService from '../../services/orderService'; // Placeholder for actual import
+import { orderService } from '../../services/orderService';
 
 interface OrderItem {
   name: string;
@@ -800,6 +798,12 @@ const styles = StyleSheet.create({
   },
   details: {
     marginTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1b1b1b',
+    marginBottom: 10,
   },
   locationContainer: {
     flexDirection: 'row',

@@ -56,8 +56,11 @@ export default function DriverOrders() {
   const getCurrentLocation = async () => {
     try {
       const location = await locationService.getCurrentLocation();
-      if (location) {
-        setCurrentLocation(location);
+      if (location && location.coords) {
+        setCurrentLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+        });
       }
     } catch (error) {
       console.error('Error getting location:', error);
@@ -97,7 +100,7 @@ export default function DriverOrders() {
               customerName: order.customerName || 'Customer',
               distance: parseFloat(distance.toFixed(1)),
               estimatedEarnings: order.deliveryFee || 0,
-              status: 'available',
+              status: 'available' as 'available' | 'accepted' | 'picking_up' | 'delivering' | 'completed',
               items: order.items || [],
               pickupLocation: order.merchant?.location || { latitude: 0, longitude: 0 },
               deliveryLocation: order.deliveryLocation || { latitude: 0, longitude: 0 },

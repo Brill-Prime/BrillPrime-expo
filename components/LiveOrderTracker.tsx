@@ -188,25 +188,28 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
           style={styles.map}
           region={region}
           showsUserLocation={userRole === 'driver'}
-          markers={[
-            ...(driverLocation ? [{
-              coordinate: {
+        >
+          {driverLocation && (
+            <Marker
+              coordinate={{
                 latitude: driverLocation.latitude,
                 longitude: driverLocation.longitude,
-              },
-              title: 'Driver',
-              pinColor: '#ff4444',
-            }] : []),
-            ...(consumerLocation && userRole === 'driver' ? [{
-              coordinate: {
+              }}
+              title="Driver"
+              pinColor="#ff4444"
+            />
+          )}
+          {consumerLocation && userRole === 'driver' && (
+            <Marker
+              coordinate={{
                 latitude: consumerLocation.latitude,
                 longitude: consumerLocation.longitude,
-              },
-              title: 'Delivery Location',
-              pinColor: '#28a745',
-            }] : []),
-          ]}
-        />
+              }}
+              title="Delivery Location"
+              pinColor="#28a745"
+            />
+          )}
+        </MapView>
       ) : (
         <MapView
           provider={PROVIDER_GOOGLE}
@@ -256,7 +259,7 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
               onPress={async () => {
                 try {
                   const { orderService } = await import('../services/orderService');
-                  const response = await orderService.updateOrderStatus(orderId, 'delivered');
+                  const response = await orderService.updateOrderStatus(orderId, 'DELIVERED');
                   if (response.success) {
                     Alert.alert('Success', 'Order marked as delivered', [
                       { text: 'OK', onPress: onClose }

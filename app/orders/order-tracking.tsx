@@ -119,21 +119,21 @@ export default function OrderTrackingScreen() {
         try {
           orderSubscription = supabase
             .channel(`order_${orderId}`)
-            .on(
-              'postgres_changes',
+            .on<any>(
+              'postgres_changes' as any,
               {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'orders',
                 filter: `id=eq.${orderId}`,
-              },
+              } as any,
               (payload: any) => {
                 console.log('Order updated:', payload.new);
-                setOrderDetails((prev: any) => ({
-                  ...prev,
+                setOrderDetails((prevOrder: any) => ({
+                  ...prevOrder,
                   ...payload.new,
                   status: payload.new.status,
-                  driver: payload.new.driver || prev?.driver // Ensure driver info is updated if present
+                  driver: payload.new.driver || prevOrder?.driver // Ensure driver info is updated if present
                 }));
                 if (payload.new.driver) {
                   setDriverLocation({
@@ -143,9 +143,12 @@ export default function OrderTrackingScreen() {
                   });
                 } else {
                   // Clear driver location if driver is no longer assigned
-                  if (prev?.driverId && !payload.new.driverId) {
-                     setDriverLocation(null);
-                  }
+                  setOrderDetails((prevOrder: any) => {
+                    if (prevOrder?.driverId && !payload.new.driverId) {
+                      setDriverLocation(null);
+                    }
+                    return prevOrder;
+                  });
                 }
               }
             )

@@ -5,6 +5,7 @@ export interface SalesMetrics {
   totalOrders: number;
   averageOrderValue: number;
   completionRate: number;
+  maxSalesThisPeriod?: number;
   periodComparison: {
     revenue: number;
     orders: number;
@@ -13,6 +14,7 @@ export interface SalesMetrics {
 
 export interface CategoryBreakdown {
   category: string;
+  categoryName?: string; // Alias for category
   revenue: number;
   orders: number;
   percentage: number;
@@ -21,8 +23,11 @@ export interface CategoryBreakdown {
 export interface TopProduct {
   id: string;
   name: string;
+  productName?: string; // Alias for name
   sales: number;
+  unitsSold?: number; // Alias for sales
   revenue: number;
+  totalRevenue?: number; // Alias for revenue
   image_url?: string;
 }
 
@@ -36,6 +41,7 @@ export interface CustomerInsight {
 export interface TimeSeriesData {
   date: string;
   revenue: number;
+  sales?: number; // Alias for revenue
   orders: number;
 }
 

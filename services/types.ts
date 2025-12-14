@@ -2,6 +2,7 @@
 
 export interface User {
   id: string;
+  uid?: string; // Firebase UID
   email: string;
   firstName?: string;
   lastName?: string;
@@ -115,6 +116,7 @@ export interface Order {
   merchantName: string;
   commodityId: string;
   commodityName: string;
+  commodityType?: string;
   quantity: number;
   unit: string;
   unitPrice: number;
@@ -125,7 +127,12 @@ export interface Order {
     | "preparing"
     | "ready"
     | "delivered"
-    | "cancelled";
+    | "cancelled"
+    | "PENDING"
+    | "CONFIRMED"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "CANCELLED";
   deliveryAddress: string;
   deliveryType: "self" | "someone_else";
   recipientName?: string;
@@ -134,6 +141,13 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   estimatedDelivery?: string;
+  items?: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  driverId?: string;
 }
 
 export interface Transaction {

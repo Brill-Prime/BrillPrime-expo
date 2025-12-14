@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { PROVIDER_GOOGLE } from '../../components/Map';
+import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import { apiClient } from '../../services/api';
 import { authService } from '../../services/authService';
 import { locationService } from '../../services/locationService';
@@ -64,14 +64,24 @@ export default function StoreLocator() {
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
-        enableStoreLocator={true}
-        storeLocations={stores} // Use the fetched store data
-        onLocationSelect={setSelectedLocation}
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}
-      />
+      >
+        {stores.map((store: any) => (
+          <Marker
+            key={store.id}
+            coordinate={{
+              latitude: store.latitude,
+              longitude: store.longitude
+            }}
+            title={store.name}
+            description={store.address}
+            onPress={() => setSelectedLocation(store)}
+          />
+        ))}
+      </MapView>
 
       {/* Location Details Panel */}
       {selectedLocation && (

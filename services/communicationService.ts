@@ -171,21 +171,8 @@ class CommunicationService {
 
       const user = userResponse.data;
 
-      // Get Firebase UID to find user in database
-      const firebaseUid = user.uid;
-
-      // Get user from database
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', firebaseUid)
-        .single();
-
-      if (!dbUser) {
-        return { success: false, error: 'User not found in database' };
-      }
-
-      const userId = dbUser.id;
+      // Use the user ID directly from the authenticated user
+      const userId = user.id;
 
       // Fetch conversations where user is a participant
       const { data: conversations, error } = await supabase
@@ -426,16 +413,12 @@ class CommunicationService {
 
       const user = userResponse.data;
 
-      // Get user ID from database
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('id, full_name, role')
-        .eq('firebase_uid', user.uid)
-        .single();
-
-      if (!dbUser) {
-        return { success: false, error: 'User not found' };
-      }
+      // Use user data directly from authenticated user
+      const dbUser = {
+        id: user.id,
+        full_name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        role: user.role
+      };
 
       // Upload attachments to storage if present
       let uploadedAttachments: Array<{ id: string; uri: string; name?: string; type?: 'image' | 'document' }> = [];
@@ -560,16 +543,8 @@ class CommunicationService {
 
       const user = userResponse.data;
 
-      // Get user ID from database
-      const { data: dbUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', user.uid)
-        .single();
-
-      if (!dbUser) {
-        return { success: false, error: 'User not found' };
-      }
+      // Use user ID directly from authenticated user
+      const dbUser = { id: user.id };
 
       // Mark all messages in conversation as read (except own messages)
       const { error } = await supabase

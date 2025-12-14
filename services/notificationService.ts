@@ -16,18 +16,42 @@ export interface Notification {
   message: string;
   read: boolean;
   created_at: string;
+  timestamp?: string;
   data?: Record<string, any>;
   role?: string;
-  type?: string;
+  type?: 'order' | 'payment' | 'promotion' | 'system';
 }
 
 export interface NotificationSettings {
   email_notifications: boolean;
   push_notifications: boolean;
+  pushNotifications?: boolean; // Alias for push_notifications
   sms_notifications: boolean;
   in_app_alerts: boolean;
   sound_enabled: boolean;
   vibration_enabled: boolean;
+  categories?: {
+    orders: boolean;
+    promotions: boolean;
+    messages: boolean;
+    updates: boolean;
+  };
+  quietHours?: {
+    enabled: boolean;
+    start: string;
+    end: string;
+  };
+}
+
+export interface ScheduledNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  scheduled_at: string;
+  status: 'pending' | 'sent' | 'cancelled';
+  type?: string;
+  data?: Record<string, any>;
 }
 
 class NotificationService {
@@ -582,6 +606,147 @@ class NotificationService {
   // Notify all subscribers about unread count change
   private notifyUnreadCountChange(count: number): void {
     this.onUnreadCountChangeCallbacks.forEach((callback) => callback(count));
+  }
+
+  // Delete a notification
+  async deleteNotification(notificationId: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const user = await authService.getCurrentUser();
+      if (!user.success || !user.data) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', user.data.id);
+
+      if (error) {
+        console.error('Error deleting notification:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: { message: 'Notification deleted' } };
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      return { success: false, error: 'Failed to delete notification' };
+    }
+  }
+
+  // Update category preferences
+  async updateCategoryPreferences(categories: Record<string, boolean>): Promise<ApiResponse<NotificationSettings>> {
+    try {
+      const user = await authService.getCurrentUser();
+      if (!user.success || !user.data) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const currentSettings = await this.getSettings();
+      if (!currentSettings.success || !currentSettings.data) {
+        return { success: false, error: 'Failed to get current settings' };
+      }
+
+      const updatedSettings = {
+        ...currentSettings.data,
+        categories: {
+          ...currentSettings.data.categories,
+          ...categories
+        }
+      };
+
+      return await this.updateSettings(updatedSettings);
+    } catch (error) {
+      console.error('Error updating category preferences:', error);
+      return { success: false, error: 'Failed to update category preferences' };
+    }
+  }
+
+  // Set quiet hours
+  async setQuietHours(quietHours: { enabled: boolean; start: string; end: string }): Promise<ApiResponse<NotificationSettings>> {
+    try {
+      const user = await authService.getCurrentUser();
+      if (!user.success || !user.data) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const currentSettings = await this.getSettings();
+      if (!currentSettings.success || !currentSettings.data) {
+        return { success: false, error: 'Failed to get current settings' };
+      }
+
+      const updatedSettings = {
+        ...currentSettings.data,
+        quietHours
+      };
+
+      return await this.updateSettings(updatedSettings);
+    } catch (error) {
+      console.error('Error setting quiet hours:', error);
+      return { success: false, error: 'Failed to set quiet hours' };
+    }
+  }
+
+  // Get push history (alias for getHistory)
+  async getPushHistory(filters?: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    read?: boolean;
+  }): Promise<ApiResponse<Notification[]>> {
+    return this.getHistory(filters);
+  }
+
+  // Get scheduled notifications
+  async getScheduledNotifications(): Promise<ApiResponse<ScheduledNotification[]>> {
+    try {
+      const user = await authService.getCurrentUser();
+      if (!user.success || !user.data) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const { data, error } = await supabase
+        .from('scheduled_notifications')
+        .select('*')
+        .eq('user_id', user.data.id)
+        .order('scheduled_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching scheduled notifications:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: data || [] };
+    } catch (error) {
+      console.error('Error fetching scheduled notifications:', error);
+      return { success: false, error: 'Failed to fetch scheduled notifications' };
+    }
+  }
+
+  // Cancel a scheduled notification
+  async cancelScheduledNotification(notificationId: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const user = await authService.getCurrentUser();
+      if (!user.success || !user.data) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const { error } = await supabase
+        .from('scheduled_notifications')
+        .update({ status: 'cancelled' })
+        .eq('id', notificationId)
+        .eq('user_id', user.data.id);
+
+      if (error) {
+        console.error('Error cancelling scheduled notification:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: { message: 'Scheduled notification cancelled' } };
+    } catch (error) {
+      console.error('Error cancelling scheduled notification:', error);
+      return { success: false, error: 'Failed to cancel scheduled notification' };
+    }
   }
 
   // Clean up resources

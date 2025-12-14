@@ -19,13 +19,14 @@ function MerchantAnalytics() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedPeriod, setSelectedPeriod] = useState('30days');
   const [metrics, setMetrics] = useState<SalesMetrics | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdown[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [customerInsights, setCustomerInsights] = useState<CustomerInsight | null>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesData[]>([]);
 
-  const merchantId = user?.id || user?.uid || '';
+  const merchantId = user?.id || '';
 
   const getDateRange = () => {
     const end = new Date();
@@ -91,7 +92,6 @@ function MerchantAnalytics() {
   }, [selectedPeriod, merchantId]);
 
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [selectedPeriod, setSelectedPeriod] = useState('30days');
 
   useEffect(() => {
     loadMerchantId();
@@ -377,6 +377,9 @@ const getResponsiveStyles = (screenData: any) => {
       borderTopRightRadius: 35,
       paddingHorizontal: responsivePadding,
       paddingTop: Math.max(24, height * 0.03),
+    },
+    section: {
+      marginBottom: Math.max(24, height * 0.04),
     },
     sectionTitle: {
       fontSize: isTablet ? 22 : isSmallScreen ? 16 : 18,

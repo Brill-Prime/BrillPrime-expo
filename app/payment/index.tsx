@@ -12,8 +12,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 interface PaymentMethod {
-  id: string;
-  type: 'mastercard' | 'visa' | 'apple-pay' | 'google-pay' | 'paypal';
+  id: string | number;
+  type: 'mastercard' | 'visa' | 'apple-pay' | 'google-pay' | 'paypal' | 'CARD' | 'BANK_TRANSFER' | string;
   cardNumber?: string;
   expiry?: string;
   name?: string;
@@ -48,11 +48,11 @@ export default function PaymentMethodScreen() {
       if (response.success && response.data) {
         const transformedMethods: PaymentMethod[] = response.data.map(method => ({
           id: method.id,
-          type: method.type === 'card' ? (method.brand?.toLowerCase() as any) || 'visa' : method.type as any,
+          type: (method.type === 'CARD' || method.type === 'card') ? (method.brand?.toLowerCase() as any) || 'visa' : method.type as any,
           cardNumber: method.last4 ? `**** **** **** ${method.last4}` : undefined,
           expiry: method.expiryMonth && method.expiryYear ? 
             `${method.expiryMonth.toString().padStart(2, '0')}/${method.expiryYear.toString().slice(-2)}` : undefined,
-          name: method.type !== 'card' ? 'Account Holder' : undefined
+          name: (method.type !== 'CARD' && method.type !== 'card') ? 'Account Holder' : undefined
         }));
 
         setPaymentMethods(transformedMethods);

@@ -147,7 +147,7 @@ export default function AddPaymentMethodScreen() {
         const existingMethods = await AsyncStorage.getItem('paymentMethods');
         const methods = existingMethods ? JSON.parse(existingMethods) : [];
         methods.push({
-          id: response.data?.id || Date.now().toString(),
+          id: (response.data && typeof response.data === 'object' && 'id' in response.data) ? response.data.id : Date.now().toString(),
           ...data,
           createdAt: new Date().toISOString(),
         });
