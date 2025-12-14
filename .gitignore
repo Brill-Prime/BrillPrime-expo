@@ -91,3 +91,17 @@ yarn-error.*
 
 # Auxly - AI Task Management (internal data)
 .auxly/
+
+# IDE and Editor folders
+.idea/
+.qoder/
+.windsurf/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.backup

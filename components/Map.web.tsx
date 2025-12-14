@@ -108,6 +108,9 @@ const MapWeb = forwardRef<any, MapProps>(({
             title: props.title,
             description: props.description,
             pinColor: props.pinColor || '#FF0000',
+            customContent: child.props.children, // Store custom marker content
+            onPress: props.onPress,
+            rotation: props.rotation,
           });
         }
       }
@@ -326,6 +329,100 @@ const MapWeb = forwardRef<any, MapProps>(({
     };
   }, []);
 
+  // Custom Overlay class for rendering React components as markers
+  const createCustomOverlay = useCallback((markerData: any) => {
+    if (!window.google?.maps) return null;
+
+    class CustomOverlay extends window.google.maps.OverlayView {
+      private position: google.maps.LatLng;
+      private containerDiv: HTMLDivElement | null = null;
+      private customContent: any;
+      private onPress?: () => void;
+      private rotation?: number;
+
+      constructor(position: google.maps.LatLng, customContent: any, onPress?: () => void, rotation?: number) {
+        super();
+        this.position = position;
+        this.customContent = customContent;
+        this.onPress = onPress;
+        this.rotation = rotation;
+      }
+
+      onAdd() {
+        this.containerDiv = document.createElement('div');
+        this.containerDiv.style.position = 'absolute';
+        this.containerDiv.style.cursor = this.onPress ? 'pointer' : 'default';
+        this.containerDiv.style.pointerEvents = 'auto';
+        
+        if (this.rotation) {
+          this.containerDiv.style.transform = `rotate(${this.rotation}deg)`;
+          this.containerDiv.style.transformOrigin = 'center center';
+        }
+
+        // Render the custom React content into the div
+        if (this.customContent) {
+          const tempContainer = document.createElement('div');
+          const root = (window as any).ReactDOM?.createRoot?.(tempContainer) || (window as any).ReactDOM?.render;
+          
+          if (root) {
+            if (typeof root === 'function') {
+              root(this.customContent, tempContainer);
+            } else {
+              root.render(this.customContent);
+            }
+            this.containerDiv.innerHTML = tempContainer.innerHTML;
+            
+            // Copy computed styles from the rendered content
+            const firstChild = tempContainer.firstElementChild as HTMLElement;
+            if (firstChild) {
+              const zIndex = firstChild.style.zIndex || window.getComputedStyle(firstChild).zIndex;
+              if (zIndex && zIndex !== 'auto') {
+                this.containerDiv.style.zIndex = zIndex;
+              }
+            }
+          } else {
+            // Fallback: render as HTML string if ReactDOM not available
+            this.containerDiv.innerHTML = '<div style="background: #4682B4; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>';
+          }
+        }
+
+        if (this.onPress) {
+          this.containerDiv.addEventListener('click', this.onPress);
+        }
+
+        const panes = this.getPanes();
+        if (panes) {
+          panes.overlayMouseTarget.appendChild(this.containerDiv);
+        }
+      }
+
+      draw() {
+        if (!this.containerDiv) return;
+
+        const overlayProjection = this.getProjection();
+        if (!overlayProjection) return;
+
+        const pos = overlayProjection.fromLatLngToDivPixel(this.position);
+        if (pos) {
+          this.containerDiv.style.left = pos.x + 'px';
+          this.containerDiv.style.top = pos.y + 'px';
+        }
+      }
+
+      onRemove() {
+        if (this.containerDiv) {
+          if (this.onPress) {
+            this.containerDiv.removeEventListener('click', this.onPress);
+          }
+          this.containerDiv.parentNode?.removeChild(this.containerDiv);
+          this.containerDiv = null;
+        }
+      }
+    }
+
+    return CustomOverlay;
+  }, []);
+
   // Update markers when they change (only after map is ready)
   useEffect(() => {
     if (!mapReady || !googleMapRef.current || !extractedMarkers || !window.google?.maps) {
@@ -340,7 +437,12 @@ const MapWeb = forwardRef<any, MapProps>(({
     // Clear existing markers
     markersRef.current.forEach(marker => {
       try {
-        marker.setMap(null);
+        if (marker.setMap) {
+          marker.setMap(null);
+        } else if (marker.onRemove) {
+          // Custom overlay
+          marker.onRemove();
+        }
       } catch (err) {
         console.warn('[Map.web] Error removing marker:', err);
       }
@@ -355,17 +457,38 @@ const MapWeb = forwardRef<any, MapProps>(({
           const markerLat = isFinite(markerData.coordinate.latitude) ? markerData.coordinate.latitude : 0;
           const markerLng = isFinite(markerData.coordinate.longitude) ? markerData.coordinate.longitude : 0;
 
-          const marker = new window.google.maps.Marker({
-            position: {
-              lat: markerLat,
-              lng: markerLng
-            },
-            map: googleMapRef.current,
-            title: markerData.title || '',
-            animation: google.maps.Animation.DROP,
-          });
+          // Use custom overlay if custom content is provided
+          if (markerData.customContent) {
+            const CustomOverlayClass = createCustomOverlay(markerData);
+            if (CustomOverlayClass) {
+              const position = new window.google.maps.LatLng(markerLat, markerLng);
+              const overlay = new CustomOverlayClass(
+                position,
+                markerData.customContent,
+                markerData.onPress,
+                markerData.rotation
+              );
+              overlay.setMap(googleMapRef.current);
+              markersRef.current.push(overlay as any);
+            }
+          } else {
+            // Use standard Google Maps marker
+            const marker = new window.google.maps.Marker({
+              position: {
+                lat: markerLat,
+                lng: markerLng
+              },
+              map: googleMapRef.current,
+              title: markerData.title || '',
+              animation: google.maps.Animation.DROP,
+            });
 
-          markersRef.current.push(marker);
+            if (markerData.onPress) {
+              marker.addListener('click', markerData.onPress);
+            }
+
+            markersRef.current.push(marker);
+          }
         } catch (err) {
           console.error(`[Map.web] Error creating marker ${index}:`, err);
         }
@@ -373,7 +496,7 @@ const MapWeb = forwardRef<any, MapProps>(({
     });
 
     console.log('[Map.web] ✅ Markers updated successfully, total:', markersRef.current.length);
-  }, [extractedMarkers, mapReady]);
+  }, [extractedMarkers, mapReady, createCustomOverlay]);
 
   // Update region when prop changes (only if map is initialized)
   // Only update if there's a significant change to prevent feedback loops
