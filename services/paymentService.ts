@@ -2,7 +2,6 @@
 // Handles payment processing and transaction management
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 import { Transaction, PaymentRequest } from './types';
 
 class PaymentService {
@@ -11,14 +10,7 @@ class PaymentService {
     clientSecret: string;
     paymentIntentId: string;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post('/api/payments/create-intent', { amount, currency }, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post('/api/payments/create-intent', { amount, currency });
   }
 
   // Validate payment data
@@ -53,11 +45,6 @@ class PaymentService {
     status: 'success' | 'failed' | 'pending';
     message: string;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     if (data.amount <= 0) {
       return { success: false, error: 'Valid payment amount is required' };
     }
@@ -71,9 +58,7 @@ class PaymentService {
       return { success: false, error: 'Invalid payment method. Use CARD or BANK_TRANSFER only.' };
     }
 
-    return apiClient.post('/api/payments/initialize', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post('/api/payments/initialize', data);
   }
 
   // Get payment history (updated to match backend endpoint)
@@ -90,11 +75,6 @@ class PaymentService {
       totalPages: number;
     };
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     let endpoint = '/api/payments/history';
     const queryParams = new URLSearchParams();
 
@@ -107,33 +87,17 @@ class PaymentService {
       endpoint += `?${queryParams.toString()}`;
     }
 
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get(endpoint);
   }
 
   // Get transaction by ID
   async getTransaction(transactionId: string): Promise<ApiResponse<Transaction>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get<Transaction>(`/api/transactions/${transactionId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get<Transaction>(`/api/transactions/${transactionId}`);
   }
 
   // Confirm transaction
   async confirmTransaction(transactionId: string): Promise<ApiResponse<Transaction>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<Transaction>(`/api/transactions/${transactionId}/confirm`, {}, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<Transaction>(`/api/transactions/${transactionId}/confirm`, {});
   }
 
   // Request refund
@@ -142,14 +106,7 @@ class PaymentService {
     status: string;
     message: string;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post(`/api/transactions/${transactionId}/refund`, { reason }, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post(`/api/transactions/${transactionId}/refund`, { reason });
   }
 
   // Get payment methods (using profile endpoint from backend)
@@ -165,15 +122,8 @@ class PaymentService {
     expiryYear?: number;
     isDefault: boolean;
   }>>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     // Backend endpoint is /api/profile/payment-methods
-    return apiClient.get('/api/profile/payment-methods', {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get('/api/profile/payment-methods');
   }
 
   // Add payment method (using profile endpoint from backend)
@@ -184,41 +134,20 @@ class PaymentService {
     accountName?: string;
     isDefault?: boolean;
   }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     // Backend endpoint is /api/profile/payment-methods
-    return apiClient.post('/api/profile/payment-methods', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post('/api/profile/payment-methods', data);
   }
 
   // Remove payment method (using profile endpoint from backend)
   async removePaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     // Backend endpoint is /api/profile/payment-methods/:id
-    return apiClient.delete(`/api/profile/payment-methods/${paymentMethodId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.delete(`/api/profile/payment-methods/${paymentMethodId}`);
   }
 
   // Set default payment method (using profile endpoint from backend)
   async setDefaultPaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     // Backend endpoint is /api/profile/payment-methods/:id with isDefault: true
-    return apiClient.put(`/api/profile/payment-methods/${paymentMethodId}`, { isDefault: true }, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.put(`/api/profile/payment-methods/${paymentMethodId}`, { isDefault: true });
   }
 
   // Process toll payment
@@ -228,14 +157,7 @@ class PaymentService {
     amount: number;
     paymentMethodId: string;
   }): Promise<ApiResponse<Transaction>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<Transaction>('/api/toll-payments', tollData, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<Transaction>('/api/toll-payments', tollData);
   }
 
   // Get toll payment history
@@ -248,11 +170,6 @@ class PaymentService {
     payments: Transaction[];
     total: number;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     let endpoint = '/api/toll-payments';
     const queryParams = new URLSearchParams();
 
@@ -267,9 +184,7 @@ class PaymentService {
       endpoint += `?${queryParams.toString()}`;
     }
 
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get(endpoint);
   }
 }
 

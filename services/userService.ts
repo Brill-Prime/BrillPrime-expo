@@ -168,14 +168,7 @@ class UserService {
     locationServices: boolean;
     emailUpdates: boolean;
   }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.put<{ message: string }>('/api/user/settings', settings, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.put<{ message: string }>('/api/user/settings', settings);
   }
 
   // Get user settings
@@ -184,26 +177,12 @@ class UserService {
     locationServices: boolean;
     emailUpdates: boolean;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get('/api/user/settings', {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get('/api/user/settings');
   }
 
   // Delete user account
   async deleteAccount(): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.delete<{ message: string }>('/api/user/account', {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.delete<{ message: string }>('/api/user/account');
   }
 
   // Change password
@@ -212,14 +191,7 @@ class UserService {
     newPassword: string;
     confirmPassword: string;
   }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.put<{ message: string }>('/api/user/password', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.put<{ message: string }>('/api/user/password', data);
   }
 
   // Upload profile photo
@@ -295,14 +267,7 @@ class UserService {
 
   // Update profile with photo URL (for direct URL updates)
   async updateProfilePhoto(profileImageUrl: string): Promise<ApiResponse<User>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.put<User>('/api/auth/profile', { profileImageUrl }, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.put<User>('/api/auth/profile', { profileImageUrl });
   }
 
   // Update privacy settings

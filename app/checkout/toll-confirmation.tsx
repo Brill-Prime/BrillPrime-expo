@@ -66,7 +66,7 @@ export default function TollConfirmationScreen() {
 
   useEffect(() => {
     loadOrderData();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -106,9 +106,9 @@ export default function TollConfirmationScreen() {
 
   const handleConfirmPayment = async () => {
     if (!orderData) return;
-    
+
     setLoading(true);
-    
+
     try {
       const finalOrder = {
         id: `TOLL${Date.now()}`,
@@ -178,7 +178,7 @@ export default function TollConfirmationScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: responsivePadding }}>
-          
+
           {/* Toll Pass Summary */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Toll Pass Details</Text>
@@ -234,10 +234,10 @@ export default function TollConfirmationScreen() {
                 onPress={() => handlePaymentMethodSelect(method.id)}
                 disabled={!method.available}
               >
-                <Ionicons 
-                  name={method.icon as any} 
-                  size={24} 
-                  color={selectedPaymentMethod === method.id ? "#2f75c2" : "#666"} 
+                <Ionicons
+                  name={method.icon as any}
+                  size={24}
+                  color={selectedPaymentMethod === method.id ? "#2f75c2" : "#666"}
                 />
                 <Text style={[
                   styles.paymentText,
@@ -279,7 +279,7 @@ export default function TollConfirmationScreen() {
 
       {/* Confirm Payment Button */}
       <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.confirmButton, loading && styles.disabledButton]}
           onPress={handleConfirmPayment}
           disabled={loading}
@@ -348,10 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   tollHeader: {
@@ -401,10 +398,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   journeyRow: {
@@ -434,10 +428,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   selectedPaymentMethod: {
@@ -472,10 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   costRow: {
@@ -517,10 +505,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 5,
   },
   confirmButton: {

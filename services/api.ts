@@ -2,13 +2,14 @@
 // This file provides the core API client and configuration
 
 import { ENV } from '../config/environment';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../config/firebase';
 
 // Default headers for all requests
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
-  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
-  'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
 };
 
 interface ApiResponse<T = any> {
@@ -21,6 +22,7 @@ interface ApiResponse<T = any> {
 class ApiClient {
   private baseURL: string;
   private authToken: string = '';
+  private tokenRefreshPromise: Promise<string | null> | null = null;
 
   constructor() {
     // Serverless architecture: Firebase for Auth, Supabase for all backend logic
@@ -40,24 +42,85 @@ class ApiClient {
     this.authToken = token;
   }
 
+  private async getAuthToken(): Promise<string | null> {
+    // Use cached token if available
+    if (this.authToken) return this.authToken;
+
+    // If a refresh is in-flight, await it
+    if (this.tokenRefreshPromise) return this.tokenRefreshPromise;
+
+    // Start a token acquisition routine
+    this.tokenRefreshPromise = (async () => {
+      try {
+        const [[, storedToken], [, expiryStr]] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
+        const expiry = expiryStr ? parseInt(expiryStr) : 0;
+        const nearExpiry = expiry < (Date.now() + 60 * 60 * 1000); // within 1 hour
+
+        let token = storedToken || '';
+
+        // If token missing or near expiry, try to refresh from Firebase
+        if (!token || nearExpiry) {
+          const currentUser = auth?.currentUser;
+          if (currentUser) {
+            try {
+              const refreshed = await currentUser.getIdToken(true);
+              token = refreshed;
+              const newExpiry = Date.now() + (24 * 60 * 60 * 1000);
+              await AsyncStorage.multiSet([
+                ['userToken', token],
+                ['tokenExpiry', newExpiry.toString()],
+              ]);
+            } catch (e) {
+              // If refresh fails, keep stored token if present; otherwise null
+              if (!storedToken) {
+                await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+                token = '';
+              }
+            }
+          }
+        }
+
+        this.authToken = token || '';
+        return this.authToken || null;
+      } finally {
+        this.tokenRefreshPromise = null;
+      }
+    })();
+
+    return this.tokenRefreshPromise;
+  }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
       const controller = new AbortController();
-      const timeoutMs = 30000; // 30 seconds timeout
+      const timeoutMs = ENV.apiTimeout; // configurable timeout
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       console.log(`🌐 API Request: ${this.baseURL}${endpoint}`);
       const startTime = Date.now();
 
-      // Merge default headers with any custom headers and auth token
+      // Merge default headers with any custom headers
       const headers = new Headers({
         ...DEFAULT_HEADERS,
         ...(options.headers || {}),
-        'x-firebase-uid': this.authToken
       });
+
+      // Add auth headers if not provided explicitly
+      if (!headers.has('Authorization')) {
+        const token = await this.getAuthToken();
+        const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+        const authHeader = token ? `Bearer ${token}` : (anonKey ? `Bearer ${anonKey}` : undefined);
+        if (authHeader) headers.set('Authorization', authHeader);
+      }
+
+      // Include Firebase UID if available
+      const uid = auth?.currentUser?.uid;
+      if (uid && !headers.has('x-firebase-uid')) {
+        headers.set('x-firebase-uid', uid);
+      }
 
       // Handle preflight requests
       if (options.method === 'OPTIONS') {
@@ -67,26 +130,58 @@ class ApiClient {
         } as ApiResponse<T>;
       }
 
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        ...options,
-        headers,
-        mode: 'cors',
-        signal: controller.signal,
-      });
+      const maxRetries = Math.max(0, ENV.maxRetries);
+      let attempt = 0;
+      let lastError: any = null;
+      let response: Response | null = null;
+
+      const isTransientError = (err: any, resp?: Response | null) => {
+        if (resp && (resp.status === 503 || resp.status === 429)) return true;
+        if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') return true; // timeout
+        if (err instanceof TypeError && err.message === 'Failed to fetch') return true; // network
+        return false;
+      };
+
+      while (attempt <= maxRetries) {
+        try {
+          response = await fetch(`${this.baseURL}${endpoint}`, {
+            ...options,
+            headers,
+            mode: 'cors',
+            signal: controller.signal,
+          });
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          if (attempt < maxRetries && isTransientError(err)) {
+            // exponential backoff with jitter
+            const base = 500; // ms
+            const delay = Math.min(base * Math.pow(2, attempt), 8000) + Math.floor(Math.random() * 250);
+            await new Promise(res => setTimeout(res, delay));
+            attempt++;
+            continue;
+          }
+          throw err;
+        }
+      }
 
       clearTimeout(timeoutId);
       const duration = Date.now() - startTime;
-      console.log(`✅ API Response: ${endpoint} [${response.status}] (${duration}ms)`);
+      if (response) {
+        console.log(`✅ API Response: ${endpoint} [${response.status}] (${duration}ms)`);
+      }
 
-      if (!response.ok) {
+      if (!response || !response.ok) {
         let errorText = '';
         try {
-          errorText = await response.text();
+          errorText = response ? await response.text() : '';
         } catch (e) {
-          errorText = response.statusText;
+          errorText = response ? response.statusText : '';
         }
-        console.error(`API Error [${response.status}] ${endpoint}:`, errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+        const statusCode = response ? response.status : 'NO_RESPONSE';
+        console.error(`API Error [${statusCode}] ${endpoint}:`, errorText);
+        throw new Error(`HTTP ${statusCode}: ${errorText || (response ? response.statusText : 'No response')}`);
       }
 
       let data;

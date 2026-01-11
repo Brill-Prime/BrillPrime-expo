@@ -257,7 +257,7 @@ class AuthService {
 
         // Don't treat cancelled popups as errors that need redirect
         if (popupError.code === 'auth/popup-closed-by-user' ||
-            popupError.code === 'auth/cancelled-popup-request') {
+          popupError.code === 'auth/cancelled-popup-request') {
           return { success: false, error: 'Sign-in cancelled' };
         }
 
@@ -420,7 +420,7 @@ class AuthService {
 
         // Don't treat cancelled popups as errors that need redirect
         if (popupError.code === 'auth/popup-closed-by-user' ||
-            popupError.code === 'auth/cancelled-popup-request') {
+          popupError.code === 'auth/cancelled-popup-request') {
           return { success: false, error: 'Sign-in cancelled' };
         }
 
@@ -504,7 +504,7 @@ class AuthService {
 
         // Don't treat cancelled popups as errors that need redirect
         if (popupError.code === 'auth/popup-closed-by-user' ||
-            popupError.code === 'auth/cancelled-popup-request') {
+          popupError.code === 'auth/cancelled-popup-request') {
           return { success: false, error: 'Sign-in cancelled' };
         }
 
@@ -621,26 +621,42 @@ class AuthService {
     return apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.RESEND_OTP, { email });
   }
 
-  // Request password reset
+  // Request password reset (backend endpoint)
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
     try {
-      // Use Firebase's built-in password reset
-      await sendPasswordResetEmail(auth as Auth, data.email);
+      const response = await apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.REQUEST, { email: data.email });
 
-      return {
-        success: true,
-        data: { message: 'Password reset email sent successfully. Please check your inbox.' },
-      };
-    } catch (error: any) {
-      console.error('Password reset error:', error);
+      if (response.success) {
+        return response;
+      }
 
-      if (error.code === 'auth/user-not-found') {
-        return { success: false, error: 'No account found with this email address.' };
+      // Log error via errorService for user feedback
+      const err = new Error(response.error || 'Failed to request password reset');
+      try {
+        const { errorService } = await import('./errorService');
+        errorService.logError(err, { endpoint: API_ENDPOINTS.PASSWORD_RESET.REQUEST, payload: { email: data.email } }, 'medium');
+      } catch (_) {
+        // fail silently if dynamic import fails
       }
 
       return {
         success: false,
-        error: error.message || 'Failed to send password reset email',
+        error: response.error || 'Failed to request password reset',
+      };
+    } catch (error: any) {
+      console.error('Password reset request error:', error);
+
+      // Log error via errorService for user feedback
+      try {
+        const { errorService } = await import('./errorService');
+        errorService.logError(error instanceof Error ? error : new Error(String(error)), { endpoint: API_ENDPOINTS.PASSWORD_RESET.REQUEST, payload: { email: data.email } }, 'medium');
+      } catch (_) {
+        // fail silently if dynamic import fails
+      }
+
+      return {
+        success: false,
+        error: error?.message || 'Network error. Please try again later.',
       };
     }
   }
@@ -692,14 +708,16 @@ class AuthService {
       if (auth) {
         await firebaseSignOut(auth);
       }
-      
+
       // Clear all local storage
       await this.clearAuthData();
-      
+
       // Reset current user state
       this.currentUser = null;
       this.authToken = null;
-      
+      // Clear ApiClient token cache
+      try { apiClient.setAuthToken(''); } catch (_) { }
+
       // Optional: Call your backend to invalidate the token if needed
       try {
         const token = await this.getToken();
@@ -734,6 +752,9 @@ class AuthService {
         ['userEmail', authData.user.email], // Store email for offline use
         // We don't store firebaseUid here as it's implicitly handled by Firebase auth state
       ]);
+
+      // Propagate token to ApiClient for centralized acquisition
+      apiClient.setAuthToken(authData.token);
     } catch (error: any) {
       console.error('Error storing auth data:', error);
     }
@@ -782,11 +803,11 @@ class AuthService {
           // Check if token needs refresh
           const expiry = await AsyncStorage.getItem('tokenExpiry');
           const needsRefresh = !expiry || Date.now() > (parseInt(expiry) - 5 * 60 * 1000); // 5 min buffer
-          
+
           // Force refresh if token is expiring soon
           const freshToken = await this.currentUser.getIdToken(needsRefresh);
           this.authToken = freshToken;
-          
+
           // Update stored token and expiry
           if (needsRefresh) {
             await AsyncStorage.setItem(this.TOKEN_KEY, freshToken);
@@ -794,19 +815,19 @@ class AuthService {
             await AsyncStorage.setItem('tokenExpiry', newExpiry.toString());
             console.log('Token refreshed successfully');
           }
-          
+
           return freshToken;
         } catch (firebaseError) {
           console.warn('Firebase token refresh failed, using stored token');
         }
       }
-      
+
       // Fallback to stored token
       const storedToken = await AsyncStorage.getItem(this.TOKEN_KEY);
       if (storedToken && this.isValidTokenFormat(storedToken)) {
         return storedToken;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error getting token:', error);

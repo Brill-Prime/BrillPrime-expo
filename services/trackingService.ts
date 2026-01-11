@@ -1,6 +1,5 @@
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 
 interface OrderTracking {
   orderId: number;
@@ -26,14 +25,7 @@ interface OrderTracking {
 class TrackingService {
   // Track order
   async trackOrder(orderId: number): Promise<ApiResponse<OrderTracking>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get<OrderTracking>(`/api/tracking/order/${orderId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get<OrderTracking>(`/api/tracking/order/${orderId}`);
   }
 
   // Update delivery location (Driver only)
@@ -42,14 +34,7 @@ class TrackingService {
     longitude: number;
     status: string;
   }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<{ message: string }>(`/api/tracking/${orderId}/location`, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<{ message: string }>(`/api/tracking/${orderId}/location`, data);
   }
 }
 

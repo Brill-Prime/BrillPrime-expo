@@ -1,6 +1,5 @@
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 
 interface EscrowTransaction {
   id: number;
@@ -23,38 +22,17 @@ interface EscrowTransaction {
 class EscrowService {
   // Get escrow transactions
   async getEscrowTransactions(): Promise<ApiResponse<EscrowTransaction[]>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get<EscrowTransaction[]>('/api/escrows', {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get<EscrowTransaction[]>('/api/escrows');
   }
 
   // Get escrow details
   async getEscrowDetails(escrowId: number): Promise<ApiResponse<EscrowTransaction>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get<EscrowTransaction>(`/api/escrows/${escrowId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get<EscrowTransaction>(`/api/escrows/${escrowId}`);
   }
 
   // Release escrow (buyer confirms delivery)
   async releaseEscrow(escrowId: number): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<{ message: string }>(`/api/escrows/${escrowId}/release`, {}, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<{ message: string }>(`/api/escrows/${escrowId}/release`, {});
   }
 
   // Dispute escrow
@@ -62,14 +40,7 @@ class EscrowService {
     reason: string;
     description: string;
   }): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<{ message: string }>(`/api/escrows/${escrowId}/dispute`, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<{ message: string }>(`/api/escrows/${escrowId}/dispute`, data);
   }
 }
 

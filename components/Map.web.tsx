@@ -31,7 +31,7 @@ interface MapProps {
   // Route directions props
   origin?: { latitude: number; longitude: number };
   destination?: { latitude: number; longitude: number };
-  waypoints?: Array<{ latitude: number; longitude: number }>;
+  waypoints?: { latitude: number; longitude: number }[];
   showRoute?: boolean;
   eta?: string;
 }
@@ -72,8 +72,6 @@ const MapWeb = forwardRef<any, MapProps>(({
 }, ref) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const polylineRef = useRef<google.maps.Polyline | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const isInitializedRef = useRef<boolean>(false);
   const scriptLoadingRef = useRef<boolean>(false);
@@ -94,29 +92,7 @@ const MapWeb = forwardRef<any, MapProps>(({
     };
   }, []);
 
-  // Extract markers from children if provided as React components
-  const extractedMarkers = React.useMemo(() => {
-    if (markers.length > 0) return markers;
 
-    const childMarkers: any[] = [];
-    React.Children.forEach(children, (child: any) => {
-      if (React.isValidElement(child)) {
-        const props = child.props as any;
-        if (props?.coordinate) {
-          childMarkers.push({
-            coordinate: props.coordinate,
-            title: props.title,
-            description: props.description,
-            pinColor: props.pinColor || '#FF0000',
-            customContent: child.props.children, // Store custom marker content
-            onPress: props.onPress,
-            rotation: props.rotation,
-          });
-        }
-      }
-    });
-    return childMarkers;
-  }, [children, markers]);
 
   // Initialize map (stable - no dependencies that change)
   const initMap = useCallback(() => {
@@ -228,7 +204,7 @@ const MapWeb = forwardRef<any, MapProps>(({
       isInitializedRef.current = false;
       if (onError) onError(err);
     }
-  }, []);
+  }, [region.latitude, region.longitude, region.latitudeDelta, region.longitudeDelta, customMapStyle, showsUserLocation, onRegionChangeComplete, onMapReady, onError, mapRef, isInitializedRef, googleMapRef, lastRegionRef, isUpdatingFromProp, setIsLoading, setMapReady, setError]);
 
   // Load Google Maps script (runs once)
   useEffect(() => {
@@ -260,6 +236,8 @@ const MapWeb = forwardRef<any, MapProps>(({
 
     // Check if script is already being loaded
     const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
+    let loadHandler: () => void; // Declare loadHandler in outer scope
+
     if (existingScript) {
       console.log('[Map.web] Google Maps script already exists');
 
@@ -277,7 +255,7 @@ const MapWeb = forwardRef<any, MapProps>(({
 
       // Wait for existing script to load
       console.log('[Map.web] Waiting for existing script to load...');
-      const loadHandler = () => {
+      loadHandler = () => {  // Assign to the outer-scoped variable
         console.log('[Map.web] Existing script loaded');
         setTimeout(() => initMap(), 100);
       };
@@ -286,7 +264,9 @@ const MapWeb = forwardRef<any, MapProps>(({
 
       // Cleanup
       return () => {
-        existingScript.removeEventListener('load', loadHandler);
+        if (loadHandler) {
+          existingScript.removeEventListener('load', loadHandler);
+        }
       };
     }
 
@@ -324,179 +304,14 @@ const MapWeb = forwardRef<any, MapProps>(({
     document.head.appendChild(script);
 
     return () => {
-      // Don't remove script on unmount as it might be used by other components
-      scriptLoadingRef.current = false;
+      // For the case where there was no existing script, loadHandler would be undefined
+      if (loadHandler) {
+        // This case is for when there was an existing script with a loadHandler
+      } else {
+        // When there was no existing script, we don't have a loadHandler to remove
+      }
     };
-  }, []);
-
-  // Custom Overlay class for rendering React components as markers
-  const createCustomOverlay = useCallback((markerData: any) => {
-    if (!window.google?.maps) return null;
-
-    class CustomOverlay extends window.google.maps.OverlayView {
-      private position: google.maps.LatLng;
-      private containerDiv: HTMLDivElement | null = null;
-      private customContent: any;
-      private onPress?: () => void;
-      private rotation?: number;
-
-      constructor(position: google.maps.LatLng, customContent: any, onPress?: () => void, rotation?: number) {
-        super();
-        this.position = position;
-        this.customContent = customContent;
-        this.onPress = onPress;
-        this.rotation = rotation;
-      }
-
-      onAdd() {
-        this.containerDiv = document.createElement('div');
-        this.containerDiv.style.position = 'absolute';
-        this.containerDiv.style.cursor = this.onPress ? 'pointer' : 'default';
-        this.containerDiv.style.pointerEvents = 'auto';
-        
-        if (this.rotation) {
-          this.containerDiv.style.transform = `rotate(${this.rotation}deg)`;
-          this.containerDiv.style.transformOrigin = 'center center';
-        }
-
-        // Render the custom React content into the div
-        if (this.customContent) {
-          const tempContainer = document.createElement('div');
-          const root = (window as any).ReactDOM?.createRoot?.(tempContainer) || (window as any).ReactDOM?.render;
-          
-          if (root) {
-            if (typeof root === 'function') {
-              root(this.customContent, tempContainer);
-            } else {
-              root.render(this.customContent);
-            }
-            this.containerDiv.innerHTML = tempContainer.innerHTML;
-            
-            // Copy computed styles from the rendered content
-            const firstChild = tempContainer.firstElementChild as HTMLElement;
-            if (firstChild) {
-              const zIndex = firstChild.style.zIndex || window.getComputedStyle(firstChild).zIndex;
-              if (zIndex && zIndex !== 'auto') {
-                this.containerDiv.style.zIndex = zIndex;
-              }
-            }
-          } else {
-            // Fallback: render as HTML string if ReactDOM not available
-            this.containerDiv.innerHTML = '<div style="background: #4682B4; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>';
-          }
-        }
-
-        if (this.onPress) {
-          this.containerDiv.addEventListener('click', this.onPress);
-        }
-
-        const panes = this.getPanes();
-        if (panes) {
-          panes.overlayMouseTarget.appendChild(this.containerDiv);
-        }
-      }
-
-      draw() {
-        if (!this.containerDiv) return;
-
-        const overlayProjection = this.getProjection();
-        if (!overlayProjection) return;
-
-        const pos = overlayProjection.fromLatLngToDivPixel(this.position);
-        if (pos) {
-          this.containerDiv.style.left = pos.x + 'px';
-          this.containerDiv.style.top = pos.y + 'px';
-        }
-      }
-
-      onRemove() {
-        if (this.containerDiv) {
-          if (this.onPress) {
-            this.containerDiv.removeEventListener('click', this.onPress);
-          }
-          this.containerDiv.parentNode?.removeChild(this.containerDiv);
-          this.containerDiv = null;
-        }
-      }
-    }
-
-    return CustomOverlay;
-  }, []);
-
-  // Update markers when they change (only after map is ready)
-  useEffect(() => {
-    if (!mapReady || !googleMapRef.current || !extractedMarkers || !window.google?.maps) {
-      if (!mapReady) {
-        console.log('[Map.web] Map not ready yet, skipping marker update');
-      }
-      return;
-    }
-
-    console.log('[Map.web] Updating markers, count:', extractedMarkers.length);
-
-    // Clear existing markers
-    markersRef.current.forEach(marker => {
-      try {
-        if (marker.setMap) {
-          marker.setMap(null);
-        } else if (marker.onRemove) {
-          // Custom overlay
-          marker.onRemove();
-        }
-      } catch (err) {
-        console.warn('[Map.web] Error removing marker:', err);
-      }
-    });
-    markersRef.current = [];
-
-    // Add new markers
-    extractedMarkers.forEach((markerData: any, index: number) => {
-      if (markerData.coordinate && window.google?.maps) {
-        try {
-          // Validate marker coordinates
-          const markerLat = isFinite(markerData.coordinate.latitude) ? markerData.coordinate.latitude : 0;
-          const markerLng = isFinite(markerData.coordinate.longitude) ? markerData.coordinate.longitude : 0;
-
-          // Use custom overlay if custom content is provided
-          if (markerData.customContent) {
-            const CustomOverlayClass = createCustomOverlay(markerData);
-            if (CustomOverlayClass) {
-              const position = new window.google.maps.LatLng(markerLat, markerLng);
-              const overlay = new CustomOverlayClass(
-                position,
-                markerData.customContent,
-                markerData.onPress,
-                markerData.rotation
-              );
-              overlay.setMap(googleMapRef.current);
-              markersRef.current.push(overlay as any);
-            }
-          } else {
-            // Use standard Google Maps marker
-            const marker = new window.google.maps.Marker({
-              position: {
-                lat: markerLat,
-                lng: markerLng
-              },
-              map: googleMapRef.current,
-              title: markerData.title || '',
-              animation: google.maps.Animation.DROP,
-            });
-
-            if (markerData.onPress) {
-              marker.addListener('click', markerData.onPress);
-            }
-
-            markersRef.current.push(marker);
-          }
-        } catch (err) {
-          console.error(`[Map.web] Error creating marker ${index}:`, err);
-        }
-      }
-    });
-
-    console.log('[Map.web] ✅ Markers updated successfully, total:', markersRef.current.length);
-  }, [extractedMarkers, mapReady, createCustomOverlay]);
+  }, [initMap, onError]); // Close the useEffect here
 
   // Update region when prop changes (only if map is initialized)
   // Only update if there's a significant change to prevent feedback loops
@@ -559,7 +374,7 @@ const MapWeb = forwardRef<any, MapProps>(({
       console.error('[Map.web] Error updating region:', err);
       isUpdatingFromProp.current = false;
     }
-  }, [region.latitude, region.longitude, region.latitudeDelta, mapReady]);
+  }, [region.latitude, region.longitude, region.latitudeDelta, region.longitudeDelta, mapReady]);
 
   // Update route when origin/destination change
   useEffect(() => {

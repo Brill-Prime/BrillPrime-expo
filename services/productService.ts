@@ -1,6 +1,5 @@
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 
 interface Product {
   id: number;
@@ -86,14 +85,7 @@ class ProductService {
     images: string[];
     isActive?: boolean;
   }): Promise<ApiResponse<Product>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<Product>('/api/products', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<Product>('/api/products', data);
   }
 
   // Update product (Merchant only)
@@ -106,26 +98,12 @@ class ProductService {
     images?: string[];
     isActive?: boolean;
   }): Promise<ApiResponse<Product>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.put<Product>(`/api/products/${productId}`, data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.put<Product>(`/api/products/${productId}`, data);
   }
 
   // Delete product (Merchant only)
   async deleteProduct(productId: number): Promise<ApiResponse<{ message: string }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.delete<{ message: string }>(`/api/products/${productId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.delete<{ message: string }>(`/api/products/${productId}`);
   }
 
   // Get all categories
@@ -139,14 +117,7 @@ class ProductService {
     description: string;
     icon: string;
   }): Promise<ApiResponse<Category>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<Category>('/api/categories', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<Category>('/api/categories', data);
   }
 }
 

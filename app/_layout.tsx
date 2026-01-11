@@ -16,6 +16,7 @@ import { useDeepLinking } from "../hooks/useDeepLinking";
 import { analyticsService } from "../services/analyticsService";
 import RealtimeNotificationBanner from "../components/RealtimeNotificationBanner";
 import { ThemeProvider } from "../contexts/ThemeContext";
+import { useSessionTimeout } from "../hooks/useSessionTimeout";
 
 function ErrorFallback({
   error,
@@ -125,6 +126,7 @@ export default function RootLayout() {
             <NotificationProvider>
               <MerchantProvider>
                 <AlertProvider>
+                  <SessionTimeoutHandler />
                   <View style={styles.container}>
                     <OfflineBanner />
                     <RealtimeNotificationBanner />
@@ -145,11 +147,31 @@ export default function RootLayout() {
                         options={{ headerShown: false }}
                       />
                       <Stack.Screen
-                        name="home"
+                        name="home/consumer"
                         options={{ headerShown: false }}
                       />
                       <Stack.Screen
-                        name="onboarding"
+                        name="home/merchant"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="home/driver"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="onboarding/screen1"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="onboarding/screen2"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="onboarding/screen3"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="merchant/home"
                         options={{ headerShown: false }}
                       />
                     </Stack>
@@ -162,6 +184,13 @@ export default function RootLayout() {
       </ThemeProvider>
     </ErrorBoundary>
   );
+}
+
+// Component to handle session timeout within AlertProvider context
+function SessionTimeoutHandler() {
+  // Enable centralized token validation/refresh on app resume
+  useSessionTimeout();
+  return null;
 }
 
 // Component to handle auth state and redirects

@@ -2,7 +2,6 @@
 // Handles order management and tracking API calls
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 import { Order, CreateOrderRequest } from './types';
 
 class OrderService {
@@ -66,11 +65,6 @@ class OrderService {
     notes?: string;
     coordinates?: { latitude: number; longitude: number };
   }): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     // Use Supabase edge function
     return apiClient.post<Order>('/functions/v1/create-order', {
       items: [{
@@ -80,8 +74,6 @@ class OrderService {
       deliveryAddressId: '1', // You'll need to handle address selection
       paymentMethodId: orderData.paymentMethod,
       notes: orderData.notes
-    }, {
-      Authorization: `Bearer ${token}`,
     });
   }
 
@@ -94,11 +86,6 @@ class OrderService {
     orders: Order[];
     total: number;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
     let endpoint = '/api/orders';
     const queryParams = new URLSearchParams();
 
@@ -112,45 +99,22 @@ class OrderService {
       endpoint += `?${queryParams.toString()}`;
     }
 
-    return apiClient.get(endpoint, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get(endpoint);
   }
 
   // Get order by ID
   async getOrder(orderId: string): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get<Order>(`/api/orders/${orderId}`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get<Order>(`/api/orders/${orderId}`);
   }
 
   // Update order status (updated endpoint)
   async updateOrderStatus(orderId: string, status: 'PENDING' | 'CONFIRMED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED'): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.put<Order>(`/api/orders/${orderId}/status`, { status }, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.put<Order>(`/api/orders/${orderId}/status`, { status });
   }
 
   // Cancel order (updated endpoint)
   async cancelOrder(orderId: string, reason?: string): Promise<ApiResponse<Order>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.post<Order>(`/api/orders/${orderId}/cancel`, { reason }, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.post<Order>(`/api/orders/${orderId}/cancel`, { reason });
   }
 
   // Track order
@@ -171,14 +135,7 @@ class OrderService {
       };
     };
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get(`/api/orders/${orderId}/tracking`, {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get(`/api/orders/${orderId}/tracking`);
   }
 
   // Get order summary/stats
@@ -189,14 +146,7 @@ class OrderService {
     totalSpent: number;
     averageOrderValue: number;
   }>> {
-    const token = await authService.getToken();
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    return apiClient.get('/api/orders/summary', {
-      Authorization: `Bearer ${token}`,
-    });
+    return apiClient.get('/api/orders/summary');
   }
 }
 

@@ -252,7 +252,7 @@ function ConsumerHomeContent() {
           let distance: number | undefined;
           if (isLocationSet && region) {
             distance = locationService.calculateDistance(
-              region.latitude, 
+              region.latitude,
               region.longitude,
               merchant.latitude || merchant.coords?.lat,
               merchant.longitude || merchant.coords?.lng
@@ -338,8 +338,8 @@ function ConsumerHomeContent() {
       const { apiClient } = await import('../../services/api');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await apiClient.callFunction<any>(
-        'merchants-nearby', 
-        { lat: latitude.toString(), lng: longitude.toString() }, 
+        'merchants-nearby',
+        { lat: latitude.toString(), lng: longitude.toString() },
         headers
       );
 
@@ -353,7 +353,7 @@ function ConsumerHomeContent() {
         // Transform API response to StoreLocation format with enhanced data
         const stores: StoreLocation[] = data.data.map((merchant: any) => {
           const distance = locationService.calculateDistance(
-            latitude, 
+            latitude,
             longitude,
             merchant.latitude || merchant.coords?.lat,
             merchant.longitude || merchant.coords?.lng
@@ -418,301 +418,301 @@ function ConsumerHomeContent() {
     return `${timeInMinutes} mins`;
   };
 
-const handleMapReady = useCallback(() => {
-  console.log('Map is ready!');
-  const initializeLiveTracking = async () => {
-    try {
-      console.log('[LiveTracking] Starting live tracking...');
-      await locationService.startLiveTracking(5000); // Update every 5 seconds
-      setIsLiveTrackingEnabled(true);
+  const handleMapReady = useCallback(() => {
+    console.log('Map is ready!');
+    const initializeLiveTracking = async () => {
+      try {
+        console.log('[LiveTracking] Starting live tracking...');
+        await locationService.startLiveTracking(5000); // Update every 5 seconds
+        setIsLiveTrackingEnabled(true);
 
-      // Subscribe to location updates
-      const unsubscribe = locationService.onLocationUpdate((location) => {
-        if (isMountedRef.current) {
-          console.log('[LiveTracking] Location update received:', {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            accuracy: location.accuracy,
-            isMoving: location.isMoving,
-          });
+        // Subscribe to location updates
+        const unsubscribe = locationService.onLocationUpdate((location) => {
+          if (isMountedRef.current) {
+            console.log('[LiveTracking] Location update received:', {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              accuracy: location.accuracy,
+              isMoving: location.isMoving,
+            });
 
-          // Only update if location has changed significantly (more than ~50 meters)
-          // BUT always allow the first location update
-          const SIGNIFICANT_MOVEMENT_THRESHOLD = 0.0005; // ~55 meters
-          const lastLocation = lastLocationRef.current;
+            // Only update if location has changed significantly (more than ~50 meters)
+            // BUT always allow the first location update
+            const SIGNIFICANT_MOVEMENT_THRESHOLD = 0.0005; // ~55 meters
+            const lastLocation = lastLocationRef.current;
 
-          if (lastLocation) {
-            const latDiff = Math.abs(location.latitude - lastLocation.latitude);
-            const lngDiff = Math.abs(location.longitude - lastLocation.longitude);
+            if (lastLocation) {
+              const latDiff = Math.abs(location.latitude - lastLocation.latitude);
+              const lngDiff = Math.abs(location.longitude - lastLocation.longitude);
 
-            // Skip update if movement is insignificant
-            if (latDiff < SIGNIFICANT_MOVEMENT_THRESHOLD && lngDiff < SIGNIFICANT_MOVEMENT_THRESHOLD) {
-              console.log('[LiveTracking] Movement too small, skipping update');
-              return;
+              // Skip update if movement is insignificant
+              if (latDiff < SIGNIFICANT_MOVEMENT_THRESHOLD && lngDiff < SIGNIFICANT_MOVEMENT_THRESHOLD) {
+                console.log('[LiveTracking] Movement too small, skipping update');
+                return;
+              }
+            } else {
+              // First location - always process it
+              console.log('[LiveTracking] First location detected, initializing map position');
             }
-          } else {
-            // First location - always process it
-            console.log('[LiveTracking] First location detected, initializing map position');
+
+            console.log('[LiveTracking] Updating region to live location');
+
+            // Store the new location
+            lastLocationRef.current = {
+              latitude: location.latitude,
+              longitude: location.longitude,
+            };
+
+            // Update user's current region
+            const deltas = calculateDelta(location.latitude);
+            const newRegion = {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              ...deltas,
+            };
+
+            console.log('[LiveTracking] Setting region to:', newRegion);
+            setRegion(newRegion);
+
+            // Update movement data
+            setUserMovement({
+              heading: location.heading,
+              isMoving: location.isMoving
+            });
+
+            // Mark location as set if this is the first update
+            if (!lastLocation) {
+              setIsLocationSet(true);
+              console.log('[LiveTracking] Location set to true (first GPS fix)');
+            }
+
+            // Load nearby merchants based on the new location if moving or first time
+            if (location.isMoving || !lastLocation) {
+              loadNearbyMerchants(location.latitude, location.longitude);
+            }
           }
+        });
 
-          console.log('[LiveTracking] Updating region to live location');
+        return () => unsubscribe();
+      } catch (error) {
+        console.error('Failed to initialize live tracking:', error);
+        // Show user-friendly error message
+        setNotificationMessage('⚠️ Location tracking failed. Please enable location permissions in your browser.');
+        setTimeout(() => setNotificationMessage(null), 5000);
+        setIsLiveTrackingEnabled(false);
+      }
+    };
 
-          // Store the new location
-          lastLocationRef.current = {
-            latitude: location.latitude,
-            longitude: location.longitude,
-          };
-
-          // Update user's current region
-          const deltas = calculateDelta(location.latitude);
-          const newRegion = {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            ...deltas,
-          };
-
-          console.log('[LiveTracking] Setting region to:', newRegion);
-          setRegion(newRegion);
-
-          // Update movement data
-          setUserMovement({
-            heading: location.heading,
-            isMoving: location.isMoving
-          });
-
-          // Mark location as set if this is the first update
-          if (!lastLocation) {
-            setIsLocationSet(true);
-            console.log('[LiveTracking] Location set to true (first GPS fix)');
-          }
-
-          // Load nearby merchants based on the new location if moving or first time
-          if (location.isMoving || !lastLocation) {
-            loadNearbyMerchants(location.latitude, location.longitude);
-          }
-        }
-      });
-
-      return () => unsubscribe();
-    } catch (error) {
-      console.error('Failed to initialize live tracking:', error);
-      // Show user-friendly error message
-      setNotificationMessage('⚠️ Location tracking failed. Please enable location permissions in your browser.');
-      setTimeout(() => setNotificationMessage(null), 5000);
-      setIsLiveTrackingEnabled(false);
-    }
-  };
-
-  initializeLiveTracking();
+    initializeLiveTracking();
   }, [loadNearbyMerchants, calculateDelta, setRegion, setIsLocationSet, setUserMovement]);
 
-const fitMapToActiveDelivery = useCallback(() => {
-  if (!mapRef.current || !activeDelivery) return;
+  const fitMapToActiveDelivery = useCallback(() => {
+    if (!mapRef.current || !activeDelivery) return;
 
-  const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
-  if (!driver) return;
+    const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
+    if (!driver) return;
 
-  const locationsToFit = [
-    { latitude: driver.latitude, longitude: driver.longitude },
-    { latitude: region.latitude, longitude: region.longitude },
-  ];
+    const locationsToFit = [
+      { latitude: driver.latitude, longitude: driver.longitude },
+      { latitude: region.latitude, longitude: region.longitude },
+    ];
 
-  if (activeDelivery.status === 'picking_up') {
-    locationsToFit.push(activeDelivery.merchantLocation);
-  }
+    if (activeDelivery.status === 'picking_up') {
+      locationsToFit.push(activeDelivery.merchantLocation);
+    }
 
-  mapRef.current.fitToCoordinates(locationsToFit, {
-    edgePadding: { top: 100, right: 50, bottom: showDriverCard ? 250 : 150, left: 50 },
-    animated: true
-  });
-}, [activeDelivery, nearbyDrivers, region, showDriverCard, mapRef]);
+    mapRef.current.fitToCoordinates(locationsToFit, {
+      edgePadding: { top: 100, right: 50, bottom: showDriverCard ? 250 : 150, left: 50 },
+      animated: true
+    });
+  }, [activeDelivery, nearbyDrivers, region, showDriverCard, mapRef]);
 
-// Real-time driver tracking
-useEffect(() => {
-  if (!activeDelivery) return;
+  // Real-time driver tracking
+  useEffect(() => {
+    if (!activeDelivery) return;
 
-  const trackingInterval = setInterval(() => {
-    // Wrap async operations in an IIFE to avoid async setInterval issues
-    (async () => {
-      try {
-        // In real app, fetch from backend: const driverData = await orderService.getDriverLocation(activeDelivery.driverId);
-        // Simulate driver movement
-        const currentDriver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
-        if (!currentDriver) return;
+    const trackingInterval = setInterval(() => {
+      // Wrap async operations in an IIFE to avoid async setInterval issues
+      (async () => {
+        try {
+          // In real app, fetch from backend: const driverData = await orderService.getDriverLocation(activeDelivery.driverId);
+          // Simulate driver movement
+          const currentDriver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
+          if (!currentDriver) return;
 
-        let newLat = currentDriver.latitude;
-        let newLng = currentDriver.longitude;
+          let newLat = currentDriver.latitude;
+          let newLng = currentDriver.longitude;
 
-        if (activeDelivery.status === 'picking_up') {
-          // Move towards merchant
-          const latDiff = activeDelivery.merchantLocation.latitude - currentDriver.latitude;
-          const lngDiff = activeDelivery.merchantLocation.longitude - currentDriver.longitude;
-          newLat += latDiff * 0.1;
-          newLng += lngDiff * 0.1;
+          if (activeDelivery.status === 'picking_up') {
+            // Move towards merchant
+            const latDiff = activeDelivery.merchantLocation.latitude - currentDriver.latitude;
+            const lngDiff = activeDelivery.merchantLocation.longitude - currentDriver.longitude;
+            newLat += latDiff * 0.1;
+            newLng += lngDiff * 0.1;
 
-          const distanceToMerchant = locationService.calculateDistance(
-            newLat, newLng,
-            activeDelivery.merchantLocation.latitude,
-            activeDelivery.merchantLocation.longitude
-          );
+            const distanceToMerchant = locationService.calculateDistance(
+              newLat, newLng,
+              activeDelivery.merchantLocation.latitude,
+              activeDelivery.merchantLocation.longitude
+            );
 
-          // Check if driver arrived at merchant
-          if (distanceToMerchant < 0.05) {
-            setNotificationMessage('🎉 Driver has arrived at the merchant!');
-            setTimeout(() => setNotificationMessage(null), 3000);
-            setActiveDelivery({ ...activeDelivery, status: 'delivering' });
-          }
-        } else if (activeDelivery.status === 'delivering') {
-          // Move towards consumer
-          const latDiff = region.latitude - currentDriver.latitude;
-          const lngDiff = region.longitude - currentDriver.longitude;
-          newLat += latDiff * 0.1;
-          newLng += lngDiff * 0.1;
-
-          const distanceToConsumer = locationService.calculateDistance(
-            newLat, newLng,
-            region.latitude,
-            region.longitude
-          );
-
-          // Check if driver arrived at consumer
-          if (distanceToConsumer < 0.05) {
-            setNotificationMessage('🎊 Driver has arrived at your location!');
-            setTimeout(() => {
-              setNotificationMessage(null);
-              setActiveDelivery(null);
-              setShowDriverCard(false);
-            }, 3000);
-          }
-        }
-
-        // Update driver location
-        setNearbyDrivers(prev => prev.map(d =>
-          d.id === activeDelivery.driverId
-            ? {
-              ...d,
-              latitude: newLat,
-              longitude: newLng,
-              distanceToMerchant: activeDelivery.status === 'picking_up'
-                ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
-                : 0,
-              distanceToConsumer: activeDelivery.status === 'delivering'
-                ? locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude)
-                : 0,
-              eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
+            // Check if driver arrived at merchant
+            if (distanceToMerchant < 0.05) {
+              setNotificationMessage('🎉 Driver has arrived at the merchant!');
+              setTimeout(() => setNotificationMessage(null), 3000);
+              setActiveDelivery({ ...activeDelivery, status: 'delivering' });
             }
-            : d
-        ));
+          } else if (activeDelivery.status === 'delivering') {
+            // Move towards consumer
+            const latDiff = region.latitude - currentDriver.latitude;
+            const lngDiff = region.longitude - currentDriver.longitude;
+            newLat += latDiff * 0.1;
+            newLng += lngDiff * 0.1;
 
-        setActiveDelivery(prev => prev ? { ...prev, driverLocation: { latitude: newLat, longitude: newLng } } : null);
+            const distanceToConsumer = locationService.calculateDistance(
+              newLat, newLng,
+              region.latitude,
+              region.longitude
+            );
 
-        // Auto-zoom to include all locations
-        fitMapToActiveDelivery();
-      } catch (error) {
-        console.error('Error tracking driver:', error);
-      }
-    })();
-  }, 5000);
+            // Check if driver arrived at consumer
+            if (distanceToConsumer < 0.05) {
+              setNotificationMessage('🎊 Driver has arrived at your location!');
+              setTimeout(() => {
+                setNotificationMessage(null);
+                setActiveDelivery(null);
+                setShowDriverCard(false);
+              }, 3000);
+            }
+          }
 
-  return () => clearInterval(trackingInterval);
-}, [activeDelivery, nearbyDrivers, region, fitMapToActiveDelivery]);
+          // Update driver location
+          setNearbyDrivers(prev => prev.map(d =>
+            d.id === activeDelivery.driverId
+              ? {
+                ...d,
+                latitude: newLat,
+                longitude: newLng,
+                distanceToMerchant: activeDelivery.status === 'picking_up'
+                  ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
+                  : 0,
+                distanceToConsumer: activeDelivery.status === 'delivering'
+                  ? locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude)
+                  : 0,
+                eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
+              }
+              : d
+          ));
 
-// Simulate starting a delivery
-const simulateDelivery = () => {
-  if (storeLocations.length === 0) return;
+          setActiveDelivery(prev => prev ? { ...prev, driverLocation: { latitude: newLat, longitude: newLng } } : null);
 
-  const merchant = storeLocations[0];
-  const driver: Driver = {
-    id: 'driver-1',
-    latitude: merchant.coords.lat - 0.01,
-    longitude: merchant.coords.lng - 0.01,
-    name: 'John Doe',
-    eta: '15 mins',
-    status: 'picking_up',
-    location: {
+          // Auto-zoom to include all locations
+          fitMapToActiveDelivery();
+        } catch (error) {
+          console.error('Error tracking driver:', error);
+        }
+      })();
+    }, 5000);
+
+    return () => clearInterval(trackingInterval);
+  }, [activeDelivery, nearbyDrivers, region, fitMapToActiveDelivery]);
+
+  // Simulate starting a delivery
+  const simulateDelivery = () => {
+    if (storeLocations.length === 0) return;
+
+    const merchant = storeLocations[0];
+    const driver: Driver = {
+      id: 'driver-1',
       latitude: merchant.coords.lat - 0.01,
       longitude: merchant.coords.lng - 0.01,
-    },
+      name: 'John Doe',
+      eta: '15 mins',
+      status: 'picking_up',
+      location: {
+        latitude: merchant.coords.lat - 0.01,
+        longitude: merchant.coords.lng - 0.01,
+      },
+    };
+
+    setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
+    setActiveDelivery({
+      driverId: driver.id,
+      merchantLocation: { latitude: merchant.coords.lat, longitude: merchant.coords.lng },
+      status: 'picking_up',
+      driverLocation: { latitude: driver.latitude, longitude: driver.longitude },
+    });
+    setShowDriverCard(true);
   };
 
-  setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
-  setActiveDelivery({
-    driverId: driver.id,
-    merchantLocation: { latitude: merchant.coords.lat, longitude: merchant.coords.lng },
-    status: 'picking_up',
-    driverLocation: { latitude: driver.latitude, longitude: driver.longitude },
-  });
-  setShowDriverCard(true);
-};
-
-const loadNotificationCount = useCallback(async () => {
-  try {
-    const { notificationService } = await import("../../services/notificationService");
-    const response = await notificationService.getUnreadCount();
-    if (response.success && response.data) {
-      // Notification count is handled elsewhere
+  const loadNotificationCount = useCallback(async () => {
+    try {
+      const { notificationService } = await import("../../services/notificationService");
+      const response = await notificationService.getUnreadCount();
+      if (response.success && response.data) {
+        // Notification count is handled elsewhere
+      }
+    } catch (error) {
+      console.error("Error loading notification count:", error);
     }
-  } catch (error) {
-    console.error("Error loading notification count:", error);
-  }
-}, []);
+  }, []);
 
-const loadUserData = useCallback(async () => {
-  try {
-    const [email, name] = await Promise.all([
-      AsyncStorage.getItem("userEmail"),
-      AsyncStorage.getItem("userName")
-    ]);
-    setUserEmail(email || "");
-    setUserName(name || "Consumer");
-  } catch (error) {
-    console.error("Error loading user data:", error);
-  }
-}, []);
+  const loadUserData = useCallback(async () => {
+    try {
+      const [email, name] = await Promise.all([
+        AsyncStorage.getItem("userEmail"),
+        AsyncStorage.getItem("userName")
+      ]);
+      setUserEmail(email || "");
+      setUserName(name || "Consumer");
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  }, []);
 
-const memoizedLoadNotificationCount = useCallback(() => {
-  loadNotificationCount();
-}, [loadNotificationCount]);
+  const memoizedLoadNotificationCount = useCallback(() => {
+    loadNotificationCount();
+  }, [loadNotificationCount]);
 
-const checkSavedLocation = useCallback(async () => {
-  try {
-    const savedLocation = await AsyncStorage.getItem("userLocation");
-    await AsyncStorage.getItem("userAddress");
+  const checkSavedLocation = useCallback(async () => {
+    try {
+      const savedLocation = await AsyncStorage.getItem("userLocation");
+      await AsyncStorage.getItem("userAddress");
 
-    if (savedLocation && isMountedRef.current) {
-      const location = JSON.parse(savedLocation);
-      const deltas = calculateDelta(location.latitude);
-      setRegion({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        ...deltas,
-      });
-      setIsLocationSet(true);
+      if (savedLocation && isMountedRef.current) {
+        const location = JSON.parse(savedLocation);
+        const deltas = calculateDelta(location.latitude);
+        setRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          ...deltas,
+        });
+        setIsLocationSet(true);
 
-      // Load nearby merchants near the saved location (non-blocking)
-      loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
-        console.log("Merchant loading failed, map will display without merchant data:", err);
-      });
-    } else {
-      // Explicitly set to false if no saved location
+        // Load nearby merchants near the saved location (non-blocking)
+        loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
+          console.log("Merchant loading failed, map will display without merchant data:", err);
+        });
+      } else {
+        // Explicitly set to false if no saved location
+        setIsLocationSet(false);
+      }
+    } catch (error) {
+      console.error("Error checking saved location:", error);
+      // Ensure we set a definite state even on error
       setIsLocationSet(false);
     }
-  } catch (error) {
-    console.error("Error checking saved location:", error);
-    // Ensure we set a definite state even on error
-    setIsLocationSet(false);
-  }
-}, [calculateDelta, loadNearbyMerchants]);
+  }, [calculateDelta, loadNearbyMerchants]);
 
-const toggleMenu = useCallback(() => {
-  const toValue = isSidebarOpen ? -sidebarWidth : 0;
-  Animated.timing(slideAnim, {
-    toValue,
-    duration: 300,
-    useNativeDriver: false, // Disable for web compatibility
-  }).start();
-  setIsSidebarOpen(!isSidebarOpen);
-}, [isSidebarOpen, slideAnim]);
+  const toggleMenu = useCallback(() => {
+    const toValue = isSidebarOpen ? -sidebarWidth : 0;
+    Animated.timing(slideAnim, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false, // Disable for web compatibility
+    }).start();
+    setIsSidebarOpen(!isSidebarOpen);
+  }, [isSidebarOpen, slideAnim]);
 
   // Close sidebar when clicking outside
   const closeSidebar = useCallback(() => {
@@ -799,38 +799,38 @@ const toggleMenu = useCallback(() => {
       try {
         // Check if we already have a saved location
         const savedLocation = await AsyncStorage.getItem("userLocation");
-        
+
         if (!savedLocation && !hasShownLocationPrompt) {
           // No saved location - request permission automatically
           console.log('[Consumer] No saved location, requesting permission automatically');
-          
+
           const hasPermission = await locationService.requestLocationPermission();
-          
+
           if (hasPermission) {
             // Permission granted - get current location
             const location = await locationService.getCurrentLocation();
-            
+
             if (location) {
               const { latitude, longitude } = location.coords;
               console.log('📍 Auto-detected user location:', { latitude, longitude });
-              
+
               const deltas = calculateDelta(latitude);
               const newRegion = {
                 latitude,
                 longitude,
                 ...deltas,
               };
-              
+
               setRegion(newRegion);
               setIsLocationSet(true);
               setHasShownLocationPrompt(true);
-              
+
               // Save location
               await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
-              
+
               // Load nearby merchants
               await loadNearbyMerchants(latitude, longitude);
-              
+
               // Animate map to location
               if (mapRef.current) {
                 mapRef.current.animateToRegion(newRegion, 1000);
@@ -852,7 +852,7 @@ const toggleMenu = useCallback(() => {
     };
 
     initializeLocation();
-  }, []); // Run once on mount
+  }, [calculateDelta, hasShownLocationPrompt, loadNearbyMerchants]); // Run once on mount
 
   // Load user data on component mount
   useEffect(() => {
@@ -868,7 +868,7 @@ const toggleMenu = useCallback(() => {
 
         // Initial load
         await notificationService.getUnreadCount();
-        
+
         // Poll for notifications every 30 seconds
         const interval = setInterval(async () => {
           try {
@@ -1060,44 +1060,62 @@ const toggleMenu = useCallback(() => {
           pitchEnabled={false}
         >
           {/* Merchant Markers */}
-          {storeLocations.map((merchant) => (
-            <Marker
-              key={merchant.id}
-              coordinate={{
-                latitude: isFinite(merchant.coords.lat) ? merchant.coords.lat : 0,
-                longitude: isFinite(merchant.coords.lng) ? merchant.coords.lng : 0
-              }}
-              onPress={() => handleMerchantPress(merchant)}
-            >
-              <MerchantMarker category={merchant.category} />
-            </Marker>
-          ))}
+          {storeLocations.map((merchant) => {
+            // Validate coordinates but don't default to 0,0
+            const lat = merchant.coords.lat;
+            const lng = merchant.coords.lng;
+
+            // Skip markers with invalid coordinates
+            if (!lat || !lng || lat === 0 || lng === 0 || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+              console.warn(`[Consumer] Invalid merchant coordinates:`, { lat, lng, merchantId: merchant.id });
+              return null;
+            }
+
+            return (
+              <Marker
+                key={merchant.id}
+                coordinate={{ latitude: lat, longitude: lng }}
+                onPress={() => handleMerchantPress(merchant)}
+              >
+                <MerchantMarker category={merchant.category} />
+              </Marker>
+            );
+          })}
 
           {/* Driver Markers */}
-          {nearbyDrivers.map((driver) => (
-            <Marker
-              key={driver.id}
-              coordinate={{
-                latitude: isFinite(driver.latitude) ? driver.latitude : 0,
-                longitude: isFinite(driver.longitude) ? driver.longitude : 0
-              }}
-            >
-              <DriverMarker status={driver.status as 'available' | 'busy' | 'offline'} />
-            </Marker>
-          ))}
+          {nearbyDrivers.map((driver) => {
+            // Validate coordinates but don't default to 0,0
+            const lat = driver.latitude;
+            const lng = driver.longitude;
+
+            // Skip markers with invalid coordinates
+            if (!lat || !lng || lat === 0 || lng === 0 || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+              console.warn(`[Consumer] Invalid driver coordinates:`, { lat, lng, driverId: driver.id });
+              return null;
+            }
+
+            return (
+              <Marker
+                key={driver.id}
+                coordinate={{ latitude: lat, longitude: lng }}
+              >
+                <DriverMarker status={driver.status as 'available' | 'busy' | 'offline'} />
+              </Marker>
+            );
+          })}
 
           {/* User Location Marker - 3D Pin Style */}
-          {isLocationSet && (
+          {isLocationSet && region && (
             <Marker
               coordinate={{
-                latitude: isFinite(region.latitude) ? region.latitude : 0,
-                longitude: isFinite(region.longitude) ? region.longitude : 0
+                latitude: region.latitude,
+                longitude: region.longitude
               }}
               rotation={userMovement.heading || 0}
             >
-              <UserMarker 
-                isMoving={userMovement.isMoving} 
-                heading={userMovement.heading} 
+              <UserMarker
+                isMoving={userMovement.isMoving}
+                heading={userMovement.heading}
               />
             </Marker>
           )}
@@ -1494,10 +1512,7 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#fff",
     zIndex: 1001,
-    shadowColor: "#000",
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    boxShadow: '2px 0px 8px rgba(0, 0, 0, 0.25)',
     elevation: 10,
   },
   sidebarScrollView: {
@@ -1828,8 +1843,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.white,
     ...theme.shadows.medium,
     elevation: 8,
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.4,
+    boxShadow: `0px 4px 8px ${theme.colors.primary}40`, // 40 is the hex for 0.4 opacity
   },
   pinPoint: {
     width: 0,

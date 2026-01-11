@@ -241,10 +241,10 @@ export default function ConfirmationScreen() {
           <View style={styles.summaryCard}>
             <Text style={styles.cardTitle}>Order Summary</Text>
             <View style={styles.orderItem}>
-              <Ionicons 
-                name={getCommodityIcon(orderData.commodityType)} 
-                size={40} 
-                color="#2e67c7" 
+              <Ionicons
+                name={getCommodityIcon(orderData.commodityType)}
+                size={40}
+                color="#2e67c7"
               />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{orderData.commodityName}</Text>
@@ -317,10 +317,10 @@ export default function ConfirmationScreen() {
                 onPress={() => method.available && setSelectedPaymentMethod(method.id)}
                 disabled={!method.available}
               >
-                <Ionicons 
-                  name={method.icon as any} 
-                  size={24} 
-                  color={method.available ? (selectedPaymentMethod === method.id ? '#2e67c7' : '#666') : '#ccc'} 
+                <Ionicons
+                  name={method.icon as any}
+                  size={24}
+                  color={method.available ? (selectedPaymentMethod === method.id ? '#2e67c7' : '#666') : '#ccc'}
                 />
                 <Text style={[
                   styles.paymentText,
@@ -368,7 +368,7 @@ export default function ConfirmationScreen() {
 
       {/* Confirm Button */}
       <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.confirmButton, loading && styles.disabledButton]}
           onPress={handleConfirmOrder}
           disabled={loading || orderStatus !== 'idle'} // Disable if processing or already responded
@@ -437,10 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   cardTitle: {
@@ -550,10 +547,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   priceRow: {
@@ -596,10 +590,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 5,
   },
   confirmButton: {

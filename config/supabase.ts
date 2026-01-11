@@ -11,8 +11,13 @@ function validateSupabaseUrl(url: string): { isValid: boolean; error?: string } 
     return { isValid: false, error: 'Supabase URL is missing' };
   }
 
+  // Allow localhost for development/testing environments
+  if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+    return { isValid: true };
+  }
+
   if (!url.startsWith('https://')) {
-    return { isValid: false, error: 'Supabase URL must use HTTPS' };
+    return { isValid: false, error: 'Supabase URL must use HTTPS (except for localhost)' };
   }
 
   if (!url.includes('.supabase.co')) {
@@ -56,12 +61,18 @@ if (!urlValidation.isValid || !keyValidation.isValid) {
     console.error(`  - Anon Key: ${keyValidation.error}`);
   }
 
-  console.error('\n📋 To fix this:');
-  console.error('  1. Copy .env.example to .env');
-  console.error('  2. Add EXPO_PUBLIC_SUPABASE_URL with your Supabase project URL');
-  console.error('  3. Add EXPO_PUBLIC_SUPABASE_ANON_KEY with your Supabase anon/public key');
-  console.error('  4. Find these values in your Supabase project settings');
-  console.error('\n🔗 Supabase Dashboard: https://supabase.com/dashboard/project/_/settings/api\n');
+  // Provide specific guidance for localhost URLs
+  if (supabaseUrl.startsWith('http://localhost') || supabaseUrl.startsWith('http://127.0.0.1')) {
+    console.warn('⚠️  Using localhost Supabase URL - this is typically for local development/testing only');
+    console.warn('   For production, ensure you use a proper Supabase project URL with HTTPS');
+  } else {
+    console.error('\n📋 To fix this:');
+    console.error('  1. Copy .env.example to .env');
+    console.error('  2. Add EXPO_PUBLIC_SUPABASE_URL with your Supabase project URL');
+    console.error('  3. Add EXPO_PUBLIC_SUPABASE_ANON_KEY with your Supabase anon/public key');
+    console.error('  4. Find these values in your Supabase project settings');
+    console.error('\n🔗 Supabase Dashboard: https://supabase.com/dashboard/project/_/settings/api\n');
+  }
 }
 
 // Create Supabase client with validated configuration

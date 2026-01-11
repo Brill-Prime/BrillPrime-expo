@@ -1,7 +1,6 @@
 // Merchant service for BrillPrime app
 
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 
 export interface Merchant {
         id: string;
@@ -24,15 +23,7 @@ export interface Commodity {
 // Fetch all merchants
 export const getMerchants = async (): Promise<Merchant[]> => {
         try {
-                const token = await authService.getToken();
-                if (!token) {
-                        console.warn('No authentication token available for fetching merchants');
-                        return [];
-                }
-                
-                const response = await apiClient.get<Merchant[]>('/api/merchants', {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.get<Merchant[]>('/api/merchants');
                 return response.success && response.data ? response.data : [];
         } catch (error) {
                 console.error('API Error:', error);
@@ -43,15 +34,7 @@ export const getMerchants = async (): Promise<Merchant[]> => {
 // Fetch a merchant by ID
 export const getMerchantById = async (id: string): Promise<Merchant | null> => {
         try {
-                const token = await authService.getToken();
-                if (!token) {
-                        console.warn('No authentication token available for fetching merchant details');
-                        return null;
-                }
-                
-                const response = await apiClient.get<Merchant>(`/api/merchants/${id}`, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.get<Merchant>(`/api/merchants/${id}`);
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -62,12 +45,7 @@ export const getMerchantById = async (id: string): Promise<Merchant | null> => {
 // Create a new merchant
 export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Merchant | null> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return null;
-
-                const response = await apiClient.post<Merchant>('/api/merchants', merchant, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.post<Merchant>('/api/merchants', merchant);
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -78,12 +56,7 @@ export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Me
 // Update an existing merchant
 export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant, 'id'>>): Promise<Merchant | null> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return null;
-
-                const response = await apiClient.put<Merchant>(`/api/merchants/${id}`, merchant, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.put<Merchant>(`/api/merchants/${id}`, merchant);
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -94,12 +67,7 @@ export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant
 // Delete a merchant
 export const deleteMerchant = async (id: string): Promise<boolean> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return false;
-
-                const response = await apiClient.delete(`/api/merchants/${id}`, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.delete(`/api/merchants/${id}`);
                 return response.success;
         } catch (error) {
                 console.error('API Error:', error);
@@ -110,10 +78,7 @@ export const deleteMerchant = async (id: string): Promise<boolean> => {
 // Fetch all commodities
 export const getCommodities = async (): Promise<{ success: boolean; data?: Commodity[] }> => {
         try {
-                const token = await authService.getToken();
-                const response = await apiClient.get<Commodity[]>('/api/commodities', token ? {
-                        Authorization: `Bearer ${token}`
-                } : {});
+                const response = await apiClient.get<Commodity[]>('/api/commodities');
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -124,10 +89,7 @@ export const getCommodities = async (): Promise<{ success: boolean; data?: Commo
 // Fetch commodities for a specific merchant
 export const getMerchantCommodities = async (merchantId: string): Promise<{ success: boolean; data?: Commodity[] }> => {
         try {
-                const token = await authService.getToken();
-                const response = await apiClient.get<Commodity[]>(`/api/merchants/${merchantId}/commodities`, token ? {
-                        Authorization: `Bearer ${token}`
-                } : {});
+                const response = await apiClient.get<Commodity[]>(`/api/merchants/${merchantId}/commodities`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -138,12 +100,7 @@ export const getMerchantCommodities = async (merchantId: string): Promise<{ succ
 // Add commodity for merchant
 export const addCommodity = async (merchantId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.post<Commodity>(`/api/merchants/${merchantId}/commodities`, commodity, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.post<Commodity>(`/api/merchants/${merchantId}/commodities`, commodity);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -154,12 +111,7 @@ export const addCommodity = async (merchantId: string, commodity: any): Promise<
 // Update commodity
 export const updateCommodity = async (merchantId: string, commodityId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.put<Commodity>(`/api/merchants/${merchantId}/commodities/${commodityId}`, commodity, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.put<Commodity>(`/api/merchants/${merchantId}/commodities/${commodityId}`, commodity);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -170,12 +122,7 @@ export const updateCommodity = async (merchantId: string, commodityId: string, c
 // Delete commodity
 export const deleteCommodity = async (merchantId: string, commodityId: string): Promise<boolean> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return false;
-
-                const response = await apiClient.delete(`/api/merchants/${merchantId}/commodities/${commodityId}`, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.delete(`/api/merchants/${merchantId}/commodities/${commodityId}`);
                 return response.success;
         } catch (error) {
                 console.error('API Error:', error);
@@ -186,12 +133,7 @@ export const deleteCommodity = async (merchantId: string, commodityId: string): 
 // Get merchant analytics
 export const getAnalytics = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -206,9 +148,6 @@ export const getMerchantOrders = async (merchantId: string, filters?: {
         offset?: number;
 }): Promise<{ success: boolean; data?: any[] }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
                 let endpoint = `/api/merchants/${merchantId}/orders`;
                 const queryParams = new URLSearchParams();
 
@@ -222,9 +161,7 @@ export const getMerchantOrders = async (merchantId: string, filters?: {
                         endpoint += `?${queryParams.toString()}`;
                 }
 
-                const response = await apiClient.get<any[]>(endpoint, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.get<any[]>(endpoint);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -242,12 +179,7 @@ export const updateStoreSettings = async (merchantId: string, settings: {
         acceptsOrders?: boolean;
 }): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.put<any>(`/api/merchants/${merchantId}/settings`, settings, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.put<any>(`/api/merchants/${merchantId}/settings`, settings);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -258,12 +190,7 @@ export const updateStoreSettings = async (merchantId: string, settings: {
 // Get merchant store settings
 export const getStoreSettings = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/settings`, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/settings`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -274,12 +201,9 @@ export const getStoreSettings = async (merchantId: string): Promise<{ success: b
 // Get merchant reviews (using ratings endpoint from backend)
 export const getMerchantReviews = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const token = await authService.getToken();
                 // Backend has /api/ratings/user/:userId endpoint
                 // We need to adapt this to get merchant reviews
-                const response = await apiClient.get<any>(`/api/ratings/user/${merchantId}`, token ? {
-                        Authorization: `Bearer ${token}`
-                } : {});
+                const response = await apiClient.get<any>(`/api/ratings/user/${merchantId}`);
 
                 if (response.success && response.data) {
                         // Transform the ratings data to reviews format
@@ -314,15 +238,10 @@ const calculateAverageRating = (ratings: any[]): number => {
 // Submit merchant review
 export const submitMerchantReview = async (merchantId: string, review: { rating: number; comment: string }): Promise<{ success: boolean; error?: string; data?: any }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false, error: 'Authentication required' };
-
                 const response = await apiClient.post<any>('/api/ratings', {
                         merchantId,
                         rating: review.rating,
                         comment: review.comment
-                }, {
-                        Authorization: `Bearer ${token}`
                 });
 
                 if (response.success && response.data) {
@@ -338,12 +257,7 @@ export const submitMerchantReview = async (merchantId: string, review: { rating:
 // Get merchant customers
 export const getCustomers = async (merchantId: string): Promise<{ success: boolean; data?: any[] }> => {
         try {
-                const token = await authService.getToken();
-                if (!token) return { success: false };
-
-                const response = await apiClient.get<any[]>(`/api/merchants/${merchantId}/customers`, {
-                        Authorization: `Bearer ${token}`
-                });
+                const response = await apiClient.get<any[]>(`/api/merchants/${merchantId}/customers`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -354,12 +268,6 @@ export const getCustomers = async (merchantId: string): Promise<{ success: boole
 // Fetch nearby merchants
 export const getNearbyMerchants = async (latitude: number, longitude: number, radius?: number): Promise<Merchant[]> => {
         try {
-                const token = await authService.getToken();
-                if (!token) {
-                        console.warn('No authentication token available for fetching nearby merchants');
-                        return [];
-                }
-                
                 const queryParams = new URLSearchParams({
                         lat: latitude.toString(),
                         lng: longitude.toString(),
@@ -367,10 +275,7 @@ export const getNearbyMerchants = async (latitude: number, longitude: number, ra
                 });
                 
                 const response = await apiClient.get<Merchant[]>(
-                        `/api/merchants/nearby?${queryParams.toString()}`,
-                        {
-                                Authorization: `Bearer ${token}`
-                        }
+                        `/api/merchants/nearby?${queryParams.toString()}`
                 );
                 return response.success && response.data ? response.data : [];
         } catch (error) {

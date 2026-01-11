@@ -73,7 +73,7 @@ export default function Favorites() {
       setLoading(true);
       const { favoritesService } = require('../../services/favoritesService');
       const result = await favoritesService.getFavorites();
-      
+
       if (result.success && result.data) {
         // Map favorites to display format
         setFavorites(result.data);
@@ -316,10 +316,7 @@ const getResponsiveStyles = (screenData: any) => {
       padding: Math.max(12, width * 0.03),
       borderWidth: 1,
       borderColor: '#e9ecef',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
       position: 'relative',
     },
@@ -331,10 +328,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       borderRadius: 15,
       padding: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
+      boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.2)',
       elevation: 2,
     },
     productInfo: {

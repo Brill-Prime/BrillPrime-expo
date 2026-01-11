@@ -210,7 +210,7 @@ function VehicleManagement() {
       // const formData = new FormData();
       // formData.append('type', documentType);
       // formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'document.jpg' });
-      
+
       showSuccess('Success', 'Document uploaded successfully');
       loadVehicleData();
     } catch (error) {
@@ -524,10 +524,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: '#fff',
       borderRadius: 16,
       padding: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
+      boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
       elevation: 5,
     },
     inputContainer: {
@@ -564,10 +561,7 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
     },
     documentHeader: {

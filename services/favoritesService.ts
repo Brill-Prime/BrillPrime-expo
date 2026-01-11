@@ -1,6 +1,5 @@
 
 import { apiClient } from './api';
-import { authService } from './authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FavoriteItem {
@@ -16,14 +15,7 @@ class FavoritesService {
 
   async getFavorites(): Promise<{ success: boolean; data?: FavoriteItem[]; error?: string }> {
     try {
-      const token = await authService.getToken();
-      if (!token) {
-        return { success: false, error: 'Authentication required' };
-      }
-
-      const response = await apiClient.get('/api/favorites', {
-        Authorization: `Bearer ${token}`,
-      });
+      const response = await apiClient.get('/api/favorites');
 
       if (response.success && response.data) {
         await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(response.data));
@@ -44,16 +36,9 @@ class FavoritesService {
 
   async addFavorite(itemId: string, itemType: 'merchant' | 'commodity'): Promise<{ success: boolean; error?: string }> {
     try {
-      const token = await authService.getToken();
-      if (!token) {
-        return { success: false, error: 'Authentication required' };
-      }
-
       const response = await apiClient.post('/api/favorites', {
         itemId,
         itemType,
-      }, {
-        Authorization: `Bearer ${token}`,
       });
 
       if (response.success) {
@@ -71,14 +56,7 @@ class FavoritesService {
 
   async removeFavorite(itemId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const token = await authService.getToken();
-      if (!token) {
-        return { success: false, error: 'Authentication required' };
-      }
-
-      const response = await apiClient.delete(`/api/favorites/${itemId}`, {
-        Authorization: `Bearer ${token}`,
-      });
+      const response = await apiClient.delete(`/api/favorites/${itemId}`);
 
       if (response.success) {
         // Update local cache

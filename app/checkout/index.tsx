@@ -100,11 +100,11 @@ export default function CheckoutScreen() {
     try {
       const { orderService } = await import('../../services/orderService');
       const { locationService } = await import('../../services/locationService');
-      
+
       // Get user location for driver assignment
       const userLocation = await AsyncStorage.getItem("userLocation");
       const coordinates = userLocation ? JSON.parse(userLocation) : null;
-      
+
       // Prepare order items for backend
       const orderItems = cartItems.map(item => ({
         productId: item.commodityId || item.id,
@@ -113,7 +113,7 @@ export default function CheckoutScreen() {
 
       // Get address ID (you may need to store this when selecting address)
       const addressId = await AsyncStorage.getItem('selectedAddressId') || '1';
-      
+
       // Create order via backend
       const orderPayload = {
         items: orderItems,
@@ -124,7 +124,7 @@ export default function CheckoutScreen() {
 
       const { authService } = await import('../../services/authService');
       const token = await authService.getToken();
-      
+
       if (!token) {
         throw new Error('Authentication required');
       }
@@ -139,7 +139,7 @@ export default function CheckoutScreen() {
       }
 
       const createdOrder = response.data.data;
-      
+
       // Save to local storage for offline access
       const existingOrders = await AsyncStorage.getItem('userOrders');
       const allOrders = existingOrders ? JSON.parse(existingOrders) : [];
@@ -158,7 +158,7 @@ export default function CheckoutScreen() {
         }))
       });
       await AsyncStorage.setItem('userOrders', JSON.stringify(allOrders));
-      
+
       const createdOrders = [createdOrder];
 
       // Save last order ID for quick access
@@ -168,8 +168,8 @@ export default function CheckoutScreen() {
 
       // Clear cart
       await AsyncStorage.multiRemove([
-        'cartItems', 
-        'checkoutItems', 
+        'cartItems',
+        'checkoutItems',
         'commoditiesCart'
       ]);
 
@@ -196,134 +196,134 @@ export default function CheckoutScreen() {
       <View style={styles.container}>
         {/* Header */}
         <View style={[styles.header, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Delivery Address */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Delivery Address</Text>
-          <TouchableOpacity style={styles.addressCard}>
-            <Ionicons name="location-outline" size={24} color="#2f75c2" />
-            <View style={styles.addressInfo}>
-              <Text style={styles.addressLabel}>
-                {selectedAddress?.label || 'Select Address'}
-              </Text>
-              <Text style={styles.addressText}>
-                {selectedAddress?.address || 'No address selected'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="#1b1b1b" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Checkout</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        {/* Order Items */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Order Items ({cartItems.length})</Text>
-          {cartItems.map((item, index) => (
-            <View key={item.id} style={styles.orderItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.commodityName}</Text>
-                <Text style={styles.merchantName}>{item.merchantName}</Text>
-                <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Delivery Address */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Delivery Address</Text>
+            <TouchableOpacity style={styles.addressCard}>
+              <Ionicons name="location-outline" size={24} color="#2f75c2" />
+              <View style={styles.addressInfo}>
+                <Text style={styles.addressLabel}>
+                  {selectedAddress?.label || 'Select Address'}
+                </Text>
+                <Text style={styles.addressText}>
+                  {selectedAddress?.address || 'No address selected'}
+                </Text>
               </View>
-              <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString('en-NG')}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Order Items */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Order Items ({cartItems.length})</Text>
+            {cartItems.map((item, index) => (
+              <View key={item.id} style={styles.orderItem}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.commodityName}</Text>
+                  <Text style={styles.merchantName}>{item.merchantName}</Text>
+                  <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+                </View>
+                <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString('en-NG')}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Payment Method */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMethod === 'card' && styles.selectedPayment]}
+              onPress={() => setPaymentMethod('card')}
+            >
+              <Ionicons name="card-outline" size={24} color="#2f75c2" />
+              <Text style={styles.paymentText}>Credit/Debit Card</Text>
+              {paymentMethod === 'card' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMethod === 'bank' && styles.selectedPayment]}
+              onPress={() => setPaymentMethod('bank')}
+            >
+              <Ionicons name="business-outline" size={24} color="#2f75c2" />
+              <Text style={styles.paymentText}>Bank Transfer</Text>
+              {paymentMethod === 'bank' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMethod === 'cash' && styles.selectedPayment]}
+              onPress={() => setPaymentMethod('cash')}
+            >
+              <Ionicons name="cash-outline" size={24} color="#2f75c2" />
+              <Text style={styles.paymentText}>Cash on Delivery</Text>
+              {paymentMethod === 'cash' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            </TouchableOpacity>
+          </View>
+
+          {/* Delivery Notes */}
+          <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.sectionTitle}>Delivery Notes (Optional)</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Add any special instructions for delivery..."
+              value={deliveryNotes}
+              onChangeText={setDeliveryNotes}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Order Summary */}
+          <View style={[styles.summaryCard, { marginHorizontal: responsivePadding }]}>
+            <Text style={styles.summaryTitle}>Order Summary</Text>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal</Text>
+              <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString('en-NG')}</Text>
             </View>
-          ))}
-        </View>
 
-        {/* Payment Method */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Delivery Fee</Text>
+              <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString('en-NG')}</Text>
+            </View>
 
-          <TouchableOpacity 
-            style={[styles.paymentOption, paymentMethod === 'card' && styles.selectedPayment]}
-            onPress={() => setPaymentMethod('card')}
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Service Fee</Text>
+              <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString('en-NG')}</Text>
+            </View>
+
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>₦{getTotal().toLocaleString('en-NG')}</Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Place Order Button */}
+        <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
+          <TouchableOpacity
+            style={[styles.placeOrderButton, loading && styles.disabledButton]}
+            onPress={handlePlaceOrder}
+            disabled={loading}
           >
-            <Ionicons name="card-outline" size={24} color="#2f75c2" />
-            <Text style={styles.paymentText}>Credit/Debit Card</Text>
-            {paymentMethod === 'card' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.paymentOption, paymentMethod === 'bank' && styles.selectedPayment]}
-            onPress={() => setPaymentMethod('bank')}
-          >
-            <Ionicons name="business-outline" size={24} color="#2f75c2" />
-            <Text style={styles.paymentText}>Bank Transfer</Text>
-            {paymentMethod === 'bank' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.paymentOption, paymentMethod === 'cash' && styles.selectedPayment]}
-            onPress={() => setPaymentMethod('cash')}
-          >
-            <Ionicons name="cash-outline" size={24} color="#2f75c2" />
-            <Text style={styles.paymentText}>Cash on Delivery</Text>
-            {paymentMethod === 'cash' && <Ionicons name="checkmark-circle" size={20} color="#2f75c2" />}
+            {loading ? (
+              <Text style={styles.placeOrderText}>Processing...</Text>
+            ) : (
+              <>
+                <Text style={styles.placeOrderText}>Place Order</Text>
+                <Text style={styles.orderTotal}>₦{getTotal().toLocaleString('en-NG')}</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-
-        {/* Delivery Notes */}
-        <View style={[styles.section, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.sectionTitle}>Delivery Notes (Optional)</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder="Add any special instructions for delivery..."
-            value={deliveryNotes}
-            onChangeText={setDeliveryNotes}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        {/* Order Summary */}
-        <View style={[styles.summaryCard, { marginHorizontal: responsivePadding }]}>
-          <Text style={styles.summaryTitle}>Order Summary</Text>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₦{getSubtotal().toLocaleString('en-NG')}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>₦{deliveryFee.toLocaleString('en-NG')}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service Fee</Text>
-            <Text style={styles.summaryValue}>₦{serviceFee.toLocaleString('en-NG')}</Text>
-          </View>
-
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₦{getTotal().toLocaleString('en-NG')}</Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Place Order Button */}
-      <View style={[styles.footer, { paddingHorizontal: responsivePadding }]}>
-        <TouchableOpacity 
-          style={[styles.placeOrderButton, loading && styles.disabledButton]}
-          onPress={handlePlaceOrder}
-          disabled={loading}
-        >
-          {loading ? (
-            <Text style={styles.placeOrderText}>Processing...</Text>
-          ) : (
-            <>
-              <Text style={styles.placeOrderText}>Place Order</Text>
-              <Text style={styles.orderTotal}>₦{getTotal().toLocaleString('en-NG')}</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
       </View>
     </ErrorBoundary>
   );
@@ -373,10 +373,7 @@ const styles = StyleSheet.create({
     padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   addressInfo: {
@@ -401,10 +398,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   itemInfo: {
@@ -439,10 +433,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   selectedPayment: {
@@ -469,10 +460,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 3,
   },
   summaryTitle: {
@@ -516,10 +504,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 5,
   },
   placeOrderButton: {

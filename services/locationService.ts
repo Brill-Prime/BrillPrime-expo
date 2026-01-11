@@ -294,21 +294,11 @@ class LocationService {
     type?: string
   ): Promise<ApiResponse<Merchant[]>> {
     try {
-      const token = await authService.getToken();
-
       let endpoint = `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`;
       if (type) {
         endpoint += `&type=${type}`;
       }
-
-      return apiClient.get<Merchant[]>(
-        endpoint,
-        token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : undefined
-      );
+      return apiClient.get<Merchant[]>(endpoint);
     } catch (error) {
       console.error("Error getting nearby merchants:", error);
       return { success: false, error: "Failed to get nearby merchants" };
@@ -615,20 +605,14 @@ class LocationService {
     this.trackingQueue = [];
 
     try {
-      const token = await authService.getToken();
-      if (token) {
-        // Send batch update or just the latest location
-        // const latestLocation = locationsToProcess[locationsToProcess.length - 1]; // Assigned but never used
-        // Disabled backend API call to prevent 401 errors when not authenticated
-        // await apiClient.put('/api/location/live', {
-        //   latitude: locationsToProcess[locationsToProcess.length - 1].latitude,
-        //   longitude: locationsToProcess[locationsToProcess.length - 1].longitude,
-        //   timestamp: locationsToProcess[locationsToProcess.length - 1].timestamp,
-        //   accuracy: 'high'
-        // }, {
-        //   Authorization: `Bearer ${token}`
-        // });
-      }
+      // Disabled backend API call to prevent 401 errors when not authenticated
+      // apiClient will inject Authorization automatically when available
+      // await apiClient.put('/api/location/live', {
+      //   latitude: locationsToProcess[locationsToProcess.length - 1].latitude,
+      //   longitude: locationsToProcess[locationsToProcess.length - 1].longitude,
+      //   timestamp: locationsToProcess[locationsToProcess.length - 1].timestamp,
+      //   accuracy: 'high'
+      // });
     } catch (error) {
       console.error("Failed to process location queue:", error);
       // Re-queue failed locations for retry (keep only latest)
@@ -662,17 +646,13 @@ class LocationService {
     location: LocationData
   ): Promise<void> {
     try {
-      const token = await authService.getToken();
-      if (token) {
-        // Disabled backend API call to prevent 401 errors when not authenticated
-        // await apiClient.put('/api/location/live', {
-        //   latitude: location.latitude,
-        //   longitude: location.longitude,
-        //   timestamp: location.timestamp
-        // }, {
-        //   Authorization: `Bearer ${token}`
-        // });
-      }
+      // Disabled backend API call to prevent 401 errors when not authenticated
+      // apiClient will inject Authorization automatically when available
+      // await apiClient.put('/api/location/live', {
+      //   latitude: location.latitude,
+      //   longitude: location.longitude,
+      //   timestamp: location.timestamp
+      // });
     } catch (error) {
       console.error("Failed to update live location:", error);
     }
@@ -755,17 +735,8 @@ class LocationService {
       if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
         return { success: true, data: cached.location };
       }
-
-      const token = await authService.getToken();
-      if (!token) {
-        return { success: false, error: "Authentication required" };
-      }
-
       const response = await apiClient.get<LocationData>(
-        `/api/location/live/${userId}`,
-        {
-          Authorization: `Bearer ${token}`,
-        }
+        `/api/location/live/${userId}`
       );
 
       // Cache successful response

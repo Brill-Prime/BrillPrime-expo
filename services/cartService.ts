@@ -1,5 +1,4 @@
 import { apiClient, ApiResponse } from './api';
-import { authService } from './authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
 
@@ -69,9 +68,7 @@ class CartService {
 
       // Try to sync with backend
       for (const item of items) {
-        await apiClient.post('/api/cart', item, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
+        await apiClient.post('/api/cart', item).catch(err => {
           console.log('Backend sync failed (non-critical):', err);
         });
       }
@@ -87,9 +84,7 @@ class CartService {
       
       if (token) {
         // Try backend first
-        const response = await apiClient.get<any>('/functions/v1/cart-get', { 
-          Authorization: `Bearer ${token}` 
-        });
+        const response = await apiClient.get<any>('/functions/v1/cart-get');
 
         if (response.success && response.data?.data) {
           // Transform backend data to CartItem format
@@ -136,8 +131,6 @@ class CartService {
         const response = await apiClient.post('/functions/v1/cart-add', {
           productId: item.commodityId,
           quantity: item.quantity
-        }, { 
-          Authorization: `Bearer ${token}` 
         });
 
         if (response.success) {
@@ -182,9 +175,7 @@ class CartService {
       // Try to sync with backend using fresh token
       const token = await this.getFreshToken();
       if (token) {
-        apiClient.put(`/api/cart/${itemId}`, { quantity: newQuantity }, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
+        apiClient.put(`/api/cart/${itemId}`, { quantity: newQuantity }).catch(err => {
           console.log('Backend sync failed (updated locally):', err);
         });
       }
@@ -209,9 +200,7 @@ class CartService {
       // Try to sync with backend using fresh token
       const token = await this.getFreshToken();
       if (token) {
-        apiClient.delete(`/api/cart/${itemId}`, { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
+        apiClient.delete(`/api/cart/${itemId}`).catch(err => {
           console.log('Backend sync failed (removed locally):', err);
         });
       }
@@ -236,9 +225,7 @@ class CartService {
       // Try to sync with backend using fresh token
       const token = await this.getFreshToken();
       if (token) {
-        apiClient.delete('/api/cart', { 
-          Authorization: `Bearer ${token}` 
-        }).catch(err => {
+        apiClient.delete('/api/cart').catch(err => {
           console.log('Backend sync failed (cleared locally):', err);
         });
       }

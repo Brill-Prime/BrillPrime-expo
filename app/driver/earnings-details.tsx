@@ -52,7 +52,7 @@ function DriverEarningsDetails() {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('week');
-  
+
   const [summary, setSummary] = useState<EarningsSummary>({
     totalEarnings: 0.00,
     todayEarnings: 0.00,
@@ -243,7 +243,7 @@ function DriverEarningsDetails() {
             <Text style={styles.summaryAmount}>
               {formatCurrency(getCurrentPeriodEarnings())}
             </Text>
-            
+
             {/* Period Selector */}
             <View style={styles.periodSelector}>
               {(['today', 'week', 'month', 'all'] as const).map((period) => (
@@ -446,10 +446,7 @@ const getResponsiveStyles = (screenData: any) => {
       padding: 24,
       backgroundColor: 'rgb(11, 26, 81)',
       borderRadius: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
+      boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.15)',
       elevation: 6,
     },
     summaryLabel: {
@@ -498,10 +495,7 @@ const getResponsiveStyles = (screenData: any) => {
       padding: 16,
       borderRadius: 12,
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
     },
     statValue: {
@@ -529,10 +523,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       borderRadius: 12,
       padding: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
     },
     breakdownItem: {
@@ -570,10 +561,7 @@ const getResponsiveStyles = (screenData: any) => {
       backgroundColor: 'white',
       borderRadius: 12,
       padding: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
     },
     payoutRow: {
@@ -603,10 +591,7 @@ const getResponsiveStyles = (screenData: any) => {
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
     },
     transactionLeft: {
