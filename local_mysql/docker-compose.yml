@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: brillprime-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-example}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-brillprime}
+      MYSQL_USER: ${MYSQL_USER:-bravo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bravo_pass}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./local_mysql/:/docker-entrypoint-initdb.d/:ro
+
+volumes:
+  mysql_data:

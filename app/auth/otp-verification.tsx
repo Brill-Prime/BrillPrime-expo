@@ -1,0 +1,305 @@
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export default function OTPVerification() {
+  const router = useRouter();
+  const [otp, setOtp] = useState(["", "", "", "", ""]);
+  const inputRefs = useRef<TextInput[]>([]);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    const loadUserEmail = async () => {
+      try {
+        const pendingUserData = await AsyncStorage.getItem("pendingUserData");
+        if (pendingUserData) {
+          const userData = JSON.parse(pendingUserData);
+          setUserEmail(userData.email || "");
+        }
+      } catch (error) {
+        console.error("Error loading user email:", error);
+      }
+    };
+
+    loadUserEmail();
+  }, []);
+
+  const handleOTPChange = (value: string, index: number) => {
+    // Only allow numeric input
+    const numericValue = value.replace(/[^0-9]/g, '');
+
+    const newOtp = [...otp];
+    newOtp[index] = numericValue;
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (numericValue && index < 4) {
+      inputRefs.current[index + 1]?.focus();
+    } else if (!numericValue && index > 0) {
+      // Auto-focus previous input on backspace
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (nativeEvent: any, index: number) => {
+    if (nativeEvent.key === "Backspace" && otp[index] === "" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const isCodeComplete = () => {
+    return otp.every(digit => digit !== "");
+  };
+
+  const handleVerifyOTP = async () => {
+    const otpString = otp.join("");
+
+    if (otpString.length !== 5) {
+      Alert.alert("Error", "Please enter all 5 digits of the verification code.");
+      return;
+    }
+
+    setIsVerifying(true);
+
+    try {
+      const { authService } = await import('../../services/authService');
+      const tempEmail = await AsyncStorage.getItem("pendingUserData"); // Assuming pendingUserData stores email and other details
+      const tempRole = await AsyncStorage.getItem("selectedRole");
+
+      if (!tempEmail) {
+        Alert.alert("Error", "Session expired. Please sign up again.");
+        router.replace("/auth/signup");
+        return;
+      }
+
+      const userData = JSON.parse(tempEmail); // Parse the stored pending user data
+
+      const response = await authService.verifyOTP({
+        email: userData.email, // Use email from parsed data
+        otp: otpString
+      });
+
+      if (response.success && response.data) {
+        // Store authenticated user data
+        await AsyncStorage.setItem("userToken", response.data.token);
+        await AsyncStorage.setItem("userEmail", response.data.user.email);
+        await AsyncStorage.setItem("userRole", response.data.user.role);
+
+        // Clean up temporary data
+        await AsyncStorage.multiRemove(["pendingUserData", "selectedRole"]);
+
+        Alert.alert("Success", "Account verified successfully!");
+
+        if (response.data.user.role === "consumer") {
+          router.replace("/home/consumer");
+        } else {
+          router.replace(`/dashboard/${response.data.user.role}`);
+        }
+      } else {
+        Alert.alert("Error", response.error || "Invalid verification code");
+      }
+    } catch (error) {
+      console.error("OTP Verification Error:", error);
+      Alert.alert("Error", "Verification failed. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    try {
+      const pendingUserData = await AsyncStorage.getItem("pendingUserData");
+      if (!pendingUserData) {
+        Alert.alert("Error", "Session expired. Please sign up again.");
+        router.replace("/auth/signup");
+        return;
+      }
+
+      const userData = JSON.parse(pendingUserData);
+      
+      const { authService } = await import('../../services/authService');
+      const response = await authService.resendOTP(userData.email);
+
+      if (response.success) {
+        Alert.alert("Code Resent", `A new verification code has been sent to ${userData.email}`);
+        setOtp(["", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+      } else {
+        Alert.alert("Error", response.error || "Failed to resend code. Please try again.");
+      }
+    } catch (error) {
+      console.error("Resend OTP Error:", error);
+      Alert.alert("Error", "Failed to resend code. Please try again.");
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Logo and Header */}
+      <View style={styles.header}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Verify it's you</Text>
+      </View>
+
+      {/* OTP Input Fields */}
+      <View style={styles.otpContainer}>
+        {otp.map((digit, index) => (
+          <TextInput
+            key={index}
+            ref={(ref) => {
+              if (ref) inputRefs.current[index] = ref;
+            }}
+            style={[
+              styles.otpInput,
+              digit ? styles.otpInputFilled : null
+            ]}
+            value={digit}
+            onChangeText={(value) => handleOTPChange(value, index)}
+            onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent, index)}
+            keyboardType="numeric"
+            maxLength={1}
+            selectTextOnFocus
+            editable={!isVerifying} // Disable input while verifying
+          />
+        ))}
+      </View>
+
+      {/* Email Info */}
+      <View style={styles.emailInfo}>
+        <Text style={styles.emailText}>A verification code has been sent to</Text>
+        <Text style={styles.emailAddress}>{userEmail || "your email"}</Text>
+      </View>
+
+      {/* Submit Button */}
+      <TouchableOpacity
+        style={[
+          styles.submitButton,
+          !isCodeComplete() && styles.submitButtonDisabled
+        ]}
+        onPress={handleVerifyOTP}
+        disabled={!isCodeComplete() || isVerifying} // Disable if code not complete or verifying
+      >
+        <Text style={[
+          styles.submitButtonText,
+          (!isCodeComplete() || isVerifying) && styles.submitButtonTextDisabled
+        ]}>
+          {isVerifying ? "Verifying..." : "Submit"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Resend Code */}
+      <View style={styles.resendContainer}>
+        <Text style={styles.resendText}>Didn't get code? </Text>
+        <TouchableOpacity onPress={handleResendOTP} disabled={isVerifying}>
+          <Text style={styles.resendLink}>Resend</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  header: {
+    alignItems: "center",
+    marginTop: 60,
+    marginBottom: 48,
+  },
+  logo: {
+    width: 64,
+    height: 52,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "rgb(11, 26, 81)",
+    textAlign: "center",
+  },
+  otpContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 16,
+    marginBottom: 32,
+  },
+  otpInput: {
+    width: 58,
+    height: 58,
+    borderWidth: 1,
+    borderColor: "rgb(70, 130, 180)",
+    borderRadius: 29,
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "600",
+    color: "rgb(11, 26, 81)",
+    backgroundColor: "white",
+  },
+  otpInputFilled: {
+    borderColor: "rgb(11, 26, 81)",
+    borderWidth: 2,
+    shadowColor: "rgba(70, 130, 180, 0.1)",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  emailInfo: {
+    alignItems: "center",
+    marginBottom: 48,
+  },
+  emailText: {
+    fontSize: 12,
+    fontWeight: "300",
+    color: "rgb(19, 19, 19)",
+    marginBottom: 4,
+  },
+  emailAddress: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgb(11, 26, 81)",
+  },
+  submitButton: {
+    backgroundColor: "rgb(70, 130, 180)",
+    borderRadius: 30,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  submitButtonDisabled: {
+    backgroundColor: "rgba(70, 130, 180, 0.5)",
+  },
+  submitButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  submitButtonTextDisabled: {
+    color: "rgba(255, 255, 255, 0.7)",
+  },
+  resendContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  resendText: {
+    fontSize: 12,
+    fontWeight: "300",
+    color: "rgb(19, 19, 19)",
+  },
+  resendLink: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgb(11, 26, 81)",
+  },
+});

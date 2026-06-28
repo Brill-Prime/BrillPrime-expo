@@ -1,0 +1,77 @@
+
+# Copy this file to .env and fill in your actual values
+# For Replit: Add these to Secrets (Tools > Secrets) instead
+
+# ==============================================================================
+# SUPABASE CONFIGURATION (REQUIRED)
+# ==============================================================================
+# Get these from: https://supabase.com/dashboard/project/_/settings/api
+
+# Your Supabase project URL (e.g., https://xxxxx.supabase.co)
+EXPO_PUBLIC_SUPABASE_URL=https://lkfprjjlqmtpamukoatl.supabase.co
+
+# Your Supabase anon/public key (starts with eyJ...)
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZnByampscW10cGFtdWtvYXRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3Njk3NTIsImV4cCI6MjA3NzM0NTc1Mn0.7hlDM8GI6Cwm2YTLkj8S4-ZuRDsY-Q3dAOZSBJirm1g
+
+# ==============================================================================
+# FIREBASE AUTHENTICATION (REQUIRED)
+# ==============================================================================
+# Get these from: Firebase Console > Project Settings > General > Your apps > Web app
+
+EXPO_PUBLIC_FIREBASE_API_KEY="AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+EXPO_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="123456789012"
+EXPO_PUBLIC_FIREBASE_APP_ID="1:123456789012:web:abcdef1234567890"
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID="G-XXXXXXXXXX"
+
+# Optional: Firebase Realtime Database URL
+EXPO_PUBLIC_FIREBASE_DATABASE_URL="https://your-project.firebaseio.com"
+
+# ==============================================================================
+# GOOGLE MAPS (REQUIRED FOR MAP FEATURES)
+# ==============================================================================
+# Get from: https://console.cloud.google.com/apis/credentials
+
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY="AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+# ==============================================================================
+# API CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# API request timeout in milliseconds
+EXPO_PUBLIC_API_TIMEOUT="30000"
+
+# ==============================================================================
+# FEATURE FLAGS (OPTIONAL)
+# ==============================================================================
+
+# Enable analytics tracking
+EXPO_PUBLIC_ENABLE_ANALYTICS="true"
+
+# Enable crash reporting
+EXPO_PUBLIC_ENABLE_CRASH_REPORTING="true"
+
+# Enable debug mode
+EXPO_PUBLIC_DEBUG_MODE="false"
+
+# ==============================================================================
+# ARCHITECTURE NOTES
+# ==============================================================================
+# This app uses a fully serverless architecture:
+# - Firebase: Authentication and user management
+# - Supabase: Database, Edge Functions, Storage, Real-time subscriptions
+# - No Express server or separate backend needed
+# - All API calls go through Supabase Edge Functions
+
+# ==============================================================================
+# NOTES
+# ==============================================================================
+# - Prefix with EXPO_PUBLIC_ to make variables accessible in the frontend
+# - Never commit .env file to version control
+# - For Replit deployment, add these to Secrets instead of .env file
+# - Test your configuration by running the app and checking the console logs
+# Google Maps API Key
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here

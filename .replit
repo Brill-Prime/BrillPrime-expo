@@ -1,0 +1,139 @@
+modules = ["nodejs-20", "bash"]
+[agent]
+expertMode = true
+integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_stripe:1.0.0", "javascript_sendgrid:1.0.0"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["supabase-cli"]
+
+
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["sh", "-c", "npx expo start --web --port 5000 --host 0.0.0.0"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Mobile Dev (LAN)"
+author = 48462500
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --lan --web"
+
+[[workflows.workflow]]
+name = "Start App"
+author = 49172621
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Mobile Dev (LAN)"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --web --port 5000 --host 0.0.0.0 --clear"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend"
+
+[[workflows.workflow]]
+name = "Frontend"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Start Application"
+author = 49734567
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start"
+
+[[ports]]
+localPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3001
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 8082
+
+[[ports]]
+localPort = 33505
+
+[[ports]]
+localPort = 34847
+
+[[ports]]
+localPort = 35255
+
+[[ports]]
+localPort = 36035
+
+[[ports]]
+localPort = 36735
+
+[[ports]]
+localPort = 36805
+
+[[ports]]
+localPort = 37717
+externalPort = 3000
+
+[[ports]]
+localPort = 38019
+
+[[ports]]
+localPort = 38123
+
+[[ports]]
+localPort = 39653
+
+[[ports]]
+localPort = 39797
+
+[[ports]]
+localPort = 39863
+
+[[ports]]
+localPort = 43473
+
+[[ports]]
+localPort = 43745
+
+[[ports]]
+localPort = 44989
+
+[[ports]]
+localPort = 46753

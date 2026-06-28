@@ -1,0 +1,15 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Corner frames -->
+  <path d="M32 32V64H48V48H64V32H32Z" fill="#4682b4"/>
+  <path d="M224 32V64H208V48H192V32H224Z" fill="#4682b4"/>
+  <path d="M32 224V192H48V208H64V224H32Z" fill="#4682b4"/>
+  <path d="M224 224V192H208V208H192V224H224Z" fill="#4682b4"/>
+  
+  <!-- Border -->
+  <rect x="16" y="16" width="224" height="224" fill="none" stroke="#4682b4" stroke-width="2" stroke-opacity="0.3" rx="24"/>
+  
+  <!-- Scanning line -->
+  <line x1="32" y1="128" x2="224" y2="128" stroke="#4682b4" stroke-width="2" opacity="0.8">
+    <animate attributeName="opacity" values="0.2;1;0.2" dur="2s" repeatCount="indefinite"/>
+  </line>
+</svg>
