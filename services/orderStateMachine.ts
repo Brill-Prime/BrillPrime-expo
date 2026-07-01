@@ -144,8 +144,17 @@ export class OrderStateMachine {
   /**
    * Merchant workflow: when merchant marks package ready.
    */
-  async merchantMarkedReady(orderId: string): Promise<OrderTransitionResult> {
-    return updateOrderStatusIdempotent(orderId, 'ready', ['accepted', 'preparing']);
+  async merchantMarkedReady(orderId: string, opts?: { radiusKm?: number }): Promise<OrderTransitionResult> {
+    const t = await updateOrderStatusIdempotent(orderId, 'ready', ['accepted', 'preparing']);
+    if (!t.success) return t;
+
+    // Trigger assignment (best-effort)
+    const assign = await this.assignDriverForReadyOrder(orderId, opts?.radiusKm ?? 10);
+    if (!assign.success) {
+      return { success: true, status: 'ready', meta: { warning: assign.error } };
+    }
+
+    return { success: true, status: 'ready', meta: { driverId: assign.meta?.driverId } };
   }
 
   /**

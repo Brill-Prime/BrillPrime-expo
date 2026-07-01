@@ -90,7 +90,29 @@ export default function OrderManagementScreen() {
     let subscription: { unsubscribe: () => void } | null = null;
 
     const setupRealtime = async () => {
-      const merchantResult = await merchantOrderService.getMerchantId();
+      // merchantOrderService.getMerchantId() is private; derive merchantId from current user via service auth flow
+      const { authService } = await import('../../services/authService');
+      const userData = await authService.getStoredUser();
+      if (!userData?.id) return;
+
+      const { supabase } = await import('../../config/supabase');
+      const { data: users, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', userData.id)
+        .single();
+
+      if (userError || !users) return;
+
+      const { data: merchant, error: merchantError } = await supabase
+        .from('merchants')
+        .select('id')
+        .eq('user_id', users.id)
+        .single();
+
+      if (merchantError || !merchant) return;
+
+      const merchantResult = { success: true, merchantId: merchant.id } as const;
       if (merchantResult.success && merchantResult.merchantId) {
         subscription = merchantOrderService.subscribeToOrders(
           merchantResult.merchantId,
@@ -176,14 +198,20 @@ export default function OrderManagementScreen() {
   };
 
   const handleMarkAsReady = async (orderId: string) => {
-    const result = await merchantOrderService.markAsReady(orderId);
-    if (result.success) {
-      showSuccess('Success', 'Order marked as ready for pickup');
-      setShowOrderDetails(false);
-      fetchOrders();
-      fetchStats();
-    } else {
-      showError('Error', result.error || 'Failed to update order');
+    try {
+      const { orderStateMachine } = await import('../../services/orderStateMachine');
+      const result = await orderStateMachine.merchantMarkedReady(orderId);
+
+      if (result.success) {
+        showSuccess('Success', 'Order marked as ready for pickup');
+        setShowOrderDetails(false);
+        fetchOrders();
+        fetchStats();
+      } else {
+        showError('Error', result.error || 'Failed to update order');
+      }
+    } catch (e: any) {
+      showError('Error', e?.message || 'Failed to update order');
     }
   };
 

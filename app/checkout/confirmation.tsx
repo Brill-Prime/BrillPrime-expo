@@ -114,7 +114,7 @@ export default function ConfirmationScreen() {
   };
 
   const getTotalAmount = () => {
-    return getSubtotal() + deliveryFee + serviceFee;
+  return getSubtotal() + deliveryFee + serviceFee;
   };
 
   const getCommodityIcon = (type: string) => {
@@ -173,6 +173,14 @@ export default function ConfirmationScreen() {
       // Clear pending order
       await AsyncStorage.removeItem('pendingOrder');
 
+      // Payment confirmed -> transition via state machine (and trigger driver assignment)
+      try {
+        const { orderStateMachine } = await import('../../services/orderStateMachine');
+        await orderStateMachine.onPaymentSucceeded(finalOrder.id, { radiusKm: 10 });
+      } catch (e) {
+        console.warn('orderStateMachine.onPaymentSucceeded failed:', e);
+      }
+
       setOrderStatus('success');
     } catch (error) {
       console.error('Error confirming order:', error);
@@ -196,7 +204,8 @@ export default function ConfirmationScreen() {
               if (lastOrderId) {
                 router.replace(`/orders/order-details?id=${lastOrderId}`);
               } else {
-                router.replace('/orders'); // Fallback if order ID is not found
+                // expo-router typings expect route segments, not arbitrary strings
+                router.replace('/(tabs)/orders' as any);
               }
             }
           }
