@@ -204,10 +204,15 @@ function AuthStateHandler() {
   useEffect(() => {
     // Check if onboarding is completed
     const checkOnboardingStatus = async () => {
-      const onboardingCompleted = await AsyncStorage.getItem(
-        "hasSeenOnboarding"
-      );
-      setHasCompletedOnboarding(onboardingCompleted === "true");
+      try {
+        const onboardingCompleted = await AsyncStorage.getItem(
+          "hasSeenOnboarding"
+        );
+        setHasCompletedOnboarding(onboardingCompleted === "true");
+      } catch (error) {
+        console.warn("Unable to read onboarding status:", error);
+        setHasCompletedOnboarding(false);
+      }
     };
     checkOnboardingStatus();
   }, []);
@@ -223,25 +228,38 @@ function AuthStateHandler() {
 
     // Check if user has selected a role
     const checkRoleSelection = async () => {
-      const selectedRole = await AsyncStorage.getItem("userRole");
+      try {
+        const [userRoleValue, selectedRoleValue] = await AsyncStorage.multiGet([
+          "userRole",
+          "selectedRole",
+        ]);
+        const selectedRole = userRoleValue[1] || selectedRoleValue[1];
 
-      if (selectedRole) {
-        // If role is selected, check authentication
-        if (isAuthenticated) {
-          // Redirect to appropriate home screen based on role
-          if (selectedRole === "merchant") {
-            router.replace("/merchant/home");
-          } else if (selectedRole === "driver") {
-            router.replace("/home/driver");
-          } else if (selectedRole === "consumer") {
-            router.replace("/home/consumer");
+        if (selectedRole) {
+          if (!userRoleValue[1]) {
+            await AsyncStorage.setItem("userRole", selectedRole);
+          }
+
+          // If role is selected, check authentication
+          if (isAuthenticated) {
+            // Redirect to appropriate home screen based on role
+            if (selectedRole === "merchant") {
+              router.replace("/home/merchant");
+            } else if (selectedRole === "driver") {
+              router.replace("/home/driver");
+            } else if (selectedRole === "consumer") {
+              router.replace("/home/consumer");
+            }
+          } else {
+            // If not authenticated, go to sign-in
+            router.replace("/auth/signin");
           }
         } else {
-          // If not authenticated, go to sign-in
-          router.replace("/auth/signin");
+          // If no role selected, go to role selection first
+          router.replace("/auth/role-selection");
         }
-      } else {
-        // If no role selected, go to role selection first
+      } catch (error) {
+        console.warn("Unable to resolve role selection:", error);
         router.replace("/auth/role-selection");
       }
     };
