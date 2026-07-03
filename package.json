@@ -3,14 +3,14 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "node scripts/start-expo.js",
+    "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "node scripts/start-expo.js --web --port 5000",
     "dev": "node scripts/start-expo.js --web --port 5000",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "start:web": "node scripts/start-expo.js --web --port 5000",
+    "start:web": "expo start --web --port 5000",
     "start:android": "node scripts/start-expo.js --android",
     "start:android:clear": "node scripts/clear-expo-cache.js && node scripts/start-expo.js --android --clear",
     "start:android:offline": "node scripts/clear-expo-cache.js && node scripts/start-expo.js --android --clear --offline-validation"
