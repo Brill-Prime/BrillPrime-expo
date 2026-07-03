@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 
 
 // Assuming responsiveFontSize and responsivePadding are defined elsewhere or you'll define them
@@ -51,46 +52,33 @@ export default function DriverOrderPreview({
       return null;
     }
 
-    // Only attempt to render map on native platforms
-    try {
-      // eslint-disable-next-line global-require
-      const { MapView, Marker, Polyline } = require('react-native-maps');
-
-      return (
-        <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: (order.pickupCoordinates.latitude + order.deliveryCoordinates.latitude) / 2,
-              longitude: (order.pickupCoordinates.longitude + order.deliveryCoordinates.longitude) / 2,
-              latitudeDelta: Math.abs(order.pickupCoordinates.latitude - order.deliveryCoordinates.latitude) * 2 || 0.05,
-              longitudeDelta: Math.abs(order.pickupCoordinates.longitude - order.deliveryCoordinates.longitude) * 2 || 0.05,
-            }}
-          >
-            <Marker
-              coordinate={order.pickupCoordinates}
-              title="Pickup Location"
-              description={order.pickupAddress}
-              pinColor="#28a745"
-            />
-            <Marker
-              coordinate={order.deliveryCoordinates}
-              title="Delivery Location"
-              description={order.deliveryAddress}
-              pinColor="#dc3545"
-            />
-            <Polyline
-              coordinates={[order.pickupCoordinates, order.deliveryCoordinates]}
-              strokeColor="#4682B4"
-              strokeWidth={3}
-            />
-          </MapView>
-        </View>
-      );
-    } catch (error) {
-      console.warn('Map unavailable on this platform', error);
-      return null;
-    }
+    return (
+      <View style={styles.mapContainer}>
+        <Map
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={{
+            latitude: (order.pickupCoordinates.latitude + order.deliveryCoordinates.latitude) / 2,
+            longitude: (order.pickupCoordinates.longitude + order.deliveryCoordinates.longitude) / 2,
+            latitudeDelta: Math.abs(order.pickupCoordinates.latitude - order.deliveryCoordinates.latitude) * 2 || 0.05,
+            longitudeDelta: Math.abs(order.pickupCoordinates.longitude - order.deliveryCoordinates.longitude) * 2 || 0.05,
+          }}
+        >
+          <Marker
+            coordinate={order.pickupCoordinates}
+            title="Pickup Location"
+            description={order.pickupAddress}
+            pinColor="#28a745"
+          />
+          <Marker
+            coordinate={order.deliveryCoordinates}
+            title="Delivery Location"
+            description={order.deliveryAddress}
+            pinColor="#dc3545"
+          />
+        </Map>
+      </View>
+    );
   };
 
   return (
