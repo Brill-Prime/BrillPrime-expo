@@ -60,7 +60,7 @@ export default function ConsumerOrders() {
           merchantName: order.merchantName || 'Unknown Merchant',
           items: order.items ? order.items.map(item => item.name) : ['Unknown Item'],
           totalAmount: order.totalAmount,
-          status: order.status,
+          status: (String(order.status || '').toLowerCase() as Order['status']),
           orderDate: order.createdAt,
           estimatedDelivery: order.estimatedDelivery,
           location: order.deliveryAddress,

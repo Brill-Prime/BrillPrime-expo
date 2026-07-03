@@ -1,5 +1,8 @@
 const { getDefaultConfig } = require('expo/metro-config');
 
+// NOTE: Kept intentionally minimal.
+// The goal is to avoid Metro loader issues on Windows.
 const config = getDefaultConfig(__dirname);
 
 module.exports = config;
+

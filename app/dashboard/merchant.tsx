@@ -172,7 +172,7 @@ export default function MerchantDashboard() {
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: "#4682B4" }]}>
-                <Ionicons name={feature.icon} size={28} color="white" />
+                <Ionicons name={"cube" as any} size={28} color="white" />
               </View>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>

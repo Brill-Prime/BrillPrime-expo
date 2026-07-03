@@ -1,6 +1,7 @@
 import { apiClient, ApiResponse } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
+import { authService } from './authService';
 
 export interface CartItem {
   id: string;

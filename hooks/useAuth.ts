@@ -90,7 +90,7 @@ export const useAuth = () => {
   const requireRole = useCallback((requiredRole: string, redirectTo: string = '/auth/signin') => {
     if (!authState.isLoading) {
       if (!authState.isAuthenticated) {
-        router.replace(redirectTo);
+        router.replace(redirectTo as never);
         return false;
       }
       

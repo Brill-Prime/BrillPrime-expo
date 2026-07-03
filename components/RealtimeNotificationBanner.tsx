@@ -32,8 +32,8 @@ export default function RealtimeNotificationBanner() {
   const handlePress = () => {
     if (latestNotification?.data?.order_id) {
       router.push(`/orders/order-details?id=${latestNotification.data.order_id}`);
-    } else if (latestNotification?.action) {
-      router.push(latestNotification.action as any);
+    } else if ((latestNotification as any)?.action) {
+      router.push((latestNotification as any).action as any);
     } else {
       router.push('/notifications');
     }

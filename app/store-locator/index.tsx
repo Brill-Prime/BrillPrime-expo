@@ -37,7 +37,7 @@ export default function StoreLocator() {
         );
 
         if (response.success && response.data) {
-          setStores(response.data);
+          setStores(Array.isArray(response.data) ? response.data : []);
         }
       } catch (error) {
         console.error('Error loading stores:', error);

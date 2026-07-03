@@ -6,8 +6,8 @@
     "start": "expo start --web --port 5000",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web --port 5000",
-    "dev": "expo start --web --port 5000",
+    "web": "node --conditions=react-native --no-warnings ./node_modules/expo/bin/cli start --web --port 5000",
+    "dev": "node --conditions=react-native --no-warnings ./node_modules/expo/bin/cli start --web --port 5000",
     "test": "jest",
     "typecheck": "tsc --noEmit"
   },

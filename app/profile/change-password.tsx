@@ -104,9 +104,9 @@ export default function ChangePasswordScreen() {
       try {
         const { userService } = await import('../../services/userService');
         await userService.changePassword({
-          email: userEmail,
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword,
+          confirmPassword: formData.confirmPassword,
         });
       } catch (apiError) {
         console.log('API call failed, simulating success:', apiError);

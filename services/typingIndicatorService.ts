@@ -98,7 +98,7 @@ class TypingIndicatorService {
 
     return () => {
       if (this.channel) {
-        this.channel.off('broadcast', handler);
+        this.channel.unsubscribe();
       }
     };
   }

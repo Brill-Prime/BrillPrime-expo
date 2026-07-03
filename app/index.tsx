@@ -4,9 +4,6 @@ import { Text, View, StyleSheet, Animated, Image, ActivityIndicator, Platform } 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
-// remove static import, we'll use expo-asset for robust web handling
-// import logoImage from '../assets/images/logo.png';
-import { Asset } from 'expo-asset';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -18,25 +15,10 @@ export default function SplashScreenComponent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [logoFailed, setLogoFailed] = useState(false);
-  const [logoUri, setLogoUri] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const useNativeDriver = Platform.OS !== 'web';
-
-    // Preload logo for web and get a reliable URI
-    (async () => {
-      try {
-        const asset = Asset.fromModule(require('../assets/images/logo.png'));
-        await asset.downloadAsync();
-        if (isMounted) {
-          setLogoUri(asset.localUri ?? asset.uri);
-        }
-      } catch (e) {
-        console.warn('Logo asset preload failed:', e);
-        if (isMounted) setLogoFailed(true);
-      }
-    })();
 
     // Fade in animation
     Animated.timing(fadeAnim, {
@@ -197,25 +179,13 @@ export default function SplashScreenComponent() {
           {logoFailed ? (
             <Text style={{ color: '#2563eb', fontSize: 48, fontWeight: 'bold' }}>BP</Text>
           ) : (
-            Platform.OS === 'web' ? (
-              logoUri && (
-                <Image
-                  source={{ uri: logoUri }}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                  onError={() => setLogoFailed(true)}
-                  accessibilityLabel="BrillPrime Logo"
-                />
-              )
-            ) : (
-              <Image
-                source={require('../assets/images/logo.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-                onError={() => setLogoFailed(true)}
-                accessibilityLabel="BrillPrime Logo"
-              />
-            )
+            <Image
+              source={require('../assets/images/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+              onError={() => setLogoFailed(true)}
+              accessibilityLabel="BrillPrime Logo"
+            />
           )}
         </Animated.View>
       </View>

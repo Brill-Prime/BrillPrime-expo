@@ -352,8 +352,8 @@ export default function DriverHome() {
       if (location) {
         setCurrentLocation(location);
         setRegion({
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         });

@@ -47,13 +47,15 @@ export default function PersonalInfoScreen() {
   const handleInputChange = (field: string, value: string) => {
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parentField]: {
-          ...prev[parentField as keyof PersonalInfoRequest],
-          [childField]: value,
-        },
-      }));
+      if (parentField === 'address') {
+        setFormData(prev => ({
+          ...prev,
+          address: {
+            ...prev.address,
+            [childField]: value,
+          },
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,

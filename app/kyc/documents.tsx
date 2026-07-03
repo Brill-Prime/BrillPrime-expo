@@ -30,7 +30,8 @@ export default function DocumentsScreen() {
   const [loading, setLoading] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
-  const documentType = type as KYCDocument['type'];
+  const resolvedDocumentType = (type as string | undefined) as KYCDocument['type'] | undefined;
+  const documentType = (resolvedDocumentType ?? 'identity') as KYCDocument['type'];
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -106,7 +107,6 @@ export default function DocumentsScreen() {
       'Select Image Source',
       'Choose how you want to upload the image',
       async () => {
-        // Camera option
         const cameraResult = await ImagePicker.launchCameraAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
@@ -122,25 +122,9 @@ export default function DocumentsScreen() {
           }
         }
       },
-      'Camera',
-      async () => {
+      () => {
         // Gallery option
-        const galleryResult = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
-
-        if (!galleryResult.canceled && galleryResult.assets[0]) {
-          if (isFront) {
-            setFrontImage(galleryResult.assets[0].uri);
-          } else {
-            setBackImage(galleryResult.assets[0].uri);
-          }
-        }
-      },
-      'Gallery'
+      }
     );
   };
 

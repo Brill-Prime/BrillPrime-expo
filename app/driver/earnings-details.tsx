@@ -390,7 +390,7 @@ function DriverEarningsDetails() {
             <TouchableOpacity
               style={styles.payoutButton}
               onPress={() => {
-                router.push('/payment/index');
+                router.push('/payment/index' as never);
               }}
             >
               <Ionicons name="wallet-outline" size={20} color="white" />

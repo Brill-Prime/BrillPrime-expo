@@ -21,7 +21,7 @@ interface PaymentMethod {
 
 export default function PaymentMethodScreen() {
   const router = useRouter();
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<string | number | null>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -46,14 +46,21 @@ export default function PaymentMethodScreen() {
       const response = await paymentService.getPaymentMethods();
 
       if (response.success && response.data) {
-        const transformedMethods: PaymentMethod[] = response.data.map(method => ({
-          id: method.id,
-          type: (method.type === 'CARD' || method.type === 'card') ? (method.brand?.toLowerCase() as any) || 'visa' : method.type as any,
-          cardNumber: method.last4 ? `**** **** **** ${method.last4}` : undefined,
-          expiry: method.expiryMonth && method.expiryYear ? 
-            `${method.expiryMonth.toString().padStart(2, '0')}/${method.expiryYear.toString().slice(-2)}` : undefined,
-          name: (method.type !== 'CARD' && method.type !== 'card') ? 'Account Holder' : undefined
-        }));
+        const transformedMethods: PaymentMethod[] = response.data.map(method => {
+          const rawType = String(method.type ?? '').toUpperCase();
+          const normalizedType = rawType === 'CARD'
+            ? (method.brand?.toLowerCase() || 'visa')
+            : rawType.toLowerCase();
+
+          return {
+            id: method.id,
+            type: normalizedType as PaymentMethod['type'],
+            cardNumber: method.last4 ? `**** **** **** ${method.last4}` : undefined,
+            expiry: method.expiryMonth && method.expiryYear ? 
+              `${method.expiryMonth.toString().padStart(2, '0')}/${method.expiryYear.toString().slice(-2)}` : undefined,
+            name: rawType !== 'CARD' && rawType !== 'BANK_TRANSFER' ? 'Account Holder' : undefined,
+          };
+        });
 
         setPaymentMethods(transformedMethods);
       } else {
@@ -89,7 +96,7 @@ export default function PaymentMethodScreen() {
     }
   };
 
-  const handleSelectMethod = (methodId: string) => {
+  const handleSelectMethod = (methodId: string | number) => {
     setSelectedMethod(methodId);
     // Navigate back to cart with selected payment method
     router.back();

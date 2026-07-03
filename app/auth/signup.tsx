@@ -53,7 +53,7 @@ export default function SignUp() {
         } else if (result.data.user.role === "driver") {
           router.replace("/home/driver");
         } else {
-          router.replace(`/dashboard/${result.data.user.role}`);
+          router.replace(`/dashboard/${result.data.user.role}` as never);
         }
       } else if (result?.error) {
         showError('Authentication Error', result.error);
@@ -236,7 +236,7 @@ export default function SignUp() {
         } else if (response.data.user.role === "driver") {
           router.replace("/home/driver");
         } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          router.replace(`/dashboard/${response.data.user.role}` as never);
         }
       } else {
         const errorMessage = response?.error || `${provider} sign-up failed`;

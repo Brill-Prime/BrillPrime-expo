@@ -205,8 +205,7 @@ function InventoryManagement() {
             ...item,
             currentStock: newStock,
             lastRestocked: new Date().toISOString(),
-            status: newStock <= item.minStock ? 'low_stock' : 
-                   newStock === 0 ? 'out_of_stock' : 'in_stock'
+            status: (newStock <= item.minStock ? 'low_stock' : newStock === 0 ? 'out_of_stock' : 'in_stock') as InventoryItem['status']
           };
         }
         return item;
@@ -231,8 +230,7 @@ function InventoryManagement() {
           return {
             ...item,
             currentStock: Math.max(0, newStock),
-            status: newStock <= item.minStock ? 'low_stock' : 
-                   newStock === 0 ? 'out_of_stock' : 'in_stock'
+            status: (newStock <= item.minStock ? 'low_stock' : newStock === 0 ? 'out_of_stock' : 'in_stock') as InventoryItem['status']
           };
         }
         return item;

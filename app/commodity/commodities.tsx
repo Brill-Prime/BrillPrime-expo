@@ -96,7 +96,7 @@ export default function CommoditiesScreen() {
     { id: 19, name: 'Vehicle Service', icon: 'build-outline', description: 'Auto repair & maintenance' },
   ];
 
-  const loadCommodities = useCallback(async () => {
+const loadCommodities = useCallback(async () => {
     try {
       setLoading(true);
       const response = await merchantService.getCommodities();
@@ -260,7 +260,7 @@ export default function CommoditiesScreen() {
   };
 
   const handleCategorySelect = (categoryId: number) => {
-    setSelectedCategory(categoryId);
+    setSelectedCategory(String(categoryId));
     setViewMode('products');
   };
 

@@ -170,7 +170,7 @@ export default function MerchantDetailScreen() {
         Alert.alert("Error", "Email client is not available on this device");
       }
     }).catch(() => {
-      Alert.Alert.alert("Error", "Unable to open email client");
+      Alert.alert("Error", "Unable to open email client");
     });
   };
 

@@ -20,11 +20,11 @@ interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'order' | 'payment' | 'system' | 'promotion';
+  type?: 'order' | 'payment' | 'system' | 'promotion';
   timestamp: string;
   read: boolean;
   action?: string;
-  createdAt?: string; // Added for fallback data
+  createdAt?: string;
 }
 
 import ErrorBoundary from '@/components/ErrorBoundary';

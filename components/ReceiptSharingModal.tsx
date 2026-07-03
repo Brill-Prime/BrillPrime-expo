@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAlert } from './AlertProvider';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 
@@ -179,9 +178,15 @@ www.brillprime.com
         URL.revokeObjectURL(url);
         showSuccess('Downloaded!', 'Receipt saved to downloads');
       } else {
-        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        await FileSystem.copyAsync({ from: uri, to: fileUri });
-        showSuccess('Saved!', 'Receipt saved to gallery');
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/png',
+            dialogTitle: 'Share Receipt',
+          });
+        } else {
+          showSuccess('Saved!', 'Receipt saved to gallery');
+        }
       }
       onClose();
     } catch (error) {

@@ -79,8 +79,10 @@ const locationService = {
 
 // Mocking Supabase import for testing purposes
 const supabase = {
-  channel: () => ({
-    on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+  channel: (_name: string) => ({
+    on: (_event: string, _filter: any, _callback: any) => ({
+      subscribe: () => ({ unsubscribe: () => {} }),
+    }),
     subscribe: () => ({ unsubscribe: () => {} }),
   }),
 };
@@ -119,7 +121,7 @@ export default function OrderTrackingScreen() {
         try {
           orderSubscription = supabase
             .channel(`order_${orderId}`)
-            .on<any>(
+            .on(
               'postgres_changes' as any,
               {
                 event: 'UPDATE',

@@ -4,7 +4,26 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="" />
+    <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TODO.md" beforeDir="false" afterPath="$PROJECT_DIR$/TODO.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/android/gradle.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/_components/MapContainer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/_components/MapContainer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/signup.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/signup.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/checkout/confirmation.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/checkout/confirmation.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/checkout/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/checkout/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/checkout/order-preview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/checkout/order-preview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/commodity/commodities.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/commodity/commodities.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/merchant.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/merchant.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/driver/earnings-details.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/driver/earnings-details.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/driver/vehicle-management.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/driver/vehicle-management.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/driver-order-preview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/driver-order-preview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useAuth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useAuth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/metro.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/metro.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/tsconfig.json" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,21 +35,21 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "Salbajnr"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Salbajnr&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Brill-Prime/Brillprime-expo",
-    "accountId": "dcb8abbd-06a7-4a79-abbe-0fb843d90d7d"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Brill-Prime/Brillprime-expo&quot;,
+    &quot;accountId&quot;: &quot;dcb8abbd-06a7-4a79-abbe-0fb843d90d7d&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 0
-}]]></component>
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
   <component name="ProjectId" id="34bgzyLJXXEINCKrCGz6HasmUu4" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -44,11 +63,15 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "frntnd-+-bcknd",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "Working-copy",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/DELL 7480/Desktop/True life Stor/anything brillprime/Brillprime-expo"
+    "last_opened_file_path": "C:/Users/USER/Desktop/Brill Prime Limited/brill-prime-mobile",
+    "settings.editor.selected.configurable": "AndroidSdkUpdater",
+    "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="" />

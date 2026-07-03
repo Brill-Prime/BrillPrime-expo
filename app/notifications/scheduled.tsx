@@ -120,7 +120,7 @@ export default function ScheduledNotifications() {
                   <View style={styles.notificationFooter}>
                     <Ionicons name="calendar" size={16} color="#7f8c8d" />
                     <Text style={styles.scheduledTime}>
-                      {new Date(item.scheduledFor).toLocaleString()}
+                      {new Date(item.scheduled_at).toLocaleString()}
                     </Text>
                   </View>
                 </View>

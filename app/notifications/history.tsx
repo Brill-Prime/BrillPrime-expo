@@ -29,7 +29,7 @@ export default function NotificationHistory() {
     try {
       setLoading(true);
       const response = await notificationService.getPushHistory({
-        status: filter === 'all' ? undefined : filter,
+        read: undefined,
         limit: 50,
       });
       if (response.success && response.data) {

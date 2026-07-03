@@ -94,11 +94,7 @@ export default function NewChatScreen() {
       }
 
       // Create or get existing conversation
-      const response = await communicationService.getOrCreateConversation(
-        contact.orderId,
-        contact.id,
-        contact.role
-      );
+      const response = await communicationService.getOrCreateConversation(contact.orderId);
 
       if (response.success && response.data) {
         router.push(`/chat/${response.data.id}`);

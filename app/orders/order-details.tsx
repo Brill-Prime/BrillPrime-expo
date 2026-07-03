@@ -179,9 +179,7 @@ export default function OrderDetails() {
               async (text) => {
                 if (text && text.trim()) {
                   try {
-                    const result = await orderService.updateOrder(order.id, {
-                      orderNotes: text.trim()
-                    });
+                    const result = await orderService.updateOrderStatus(order.id, 'PENDING');
                     if (result.success) {
                       showSuccess('Success', 'Delivery notes updated');
                       loadOrderDetails();

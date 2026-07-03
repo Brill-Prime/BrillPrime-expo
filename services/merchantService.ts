@@ -171,7 +171,7 @@ export const getMerchantOrders = async (merchantId: string, filters?: {
 
 // Update merchant store settings
 export const updateStoreSettings = async (merchantId: string, settings: {
-        businessHours?: Record<string, string>;
+        businessHours?: Record<string, string | { open: string; close: string; isOpen: boolean }>;
         deliveryRadius?: number;
         minimumOrder?: number;
         deliveryFee?: number;

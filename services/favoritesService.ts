@@ -18,8 +18,9 @@ class FavoritesService {
       const response = await apiClient.get('/api/favorites');
 
       if (response.success && response.data) {
-        await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(response.data));
-        return { success: true, data: response.data };
+        const favorites = Array.isArray(response.data) ? response.data : [];
+        await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(favorites));
+        return { success: true, data: favorites };
       }
 
       return { success: false, error: 'Failed to load favorites' };

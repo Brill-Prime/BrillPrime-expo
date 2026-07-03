@@ -23,13 +23,18 @@ export interface Notification {
 }
 
 export interface NotificationSettings {
-  email_notifications: boolean;
-  push_notifications: boolean;
-  pushNotifications?: boolean; // Alias for push_notifications
-  sms_notifications: boolean;
-  in_app_alerts: boolean;
-  sound_enabled: boolean;
-  vibration_enabled: boolean;
+  email_notifications?: boolean;
+  push_notifications?: boolean;
+  pushNotifications?: boolean;
+  emailNotifications?: boolean;
+  sms_notifications?: boolean;
+  smsNotifications?: boolean;
+  in_app_alerts?: boolean;
+  inAppAlerts?: boolean;
+  sound_enabled?: boolean;
+  soundEnabled?: boolean;
+  vibration_enabled?: boolean;
+  vibrationEnabled?: boolean;
   categories?: {
     orders: boolean;
     promotions: boolean;
@@ -41,6 +46,17 @@ export interface NotificationSettings {
     start: string;
     end: string;
   };
+}
+
+interface NotificationHistoryFilters {
+  fromDate?: string;
+  toDate?: string;
+  startDate?: string;
+  endDate?: string;
+  type?: string;
+  read?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 export interface ScheduledNotification {
@@ -373,7 +389,7 @@ class NotificationService {
   // Update notification preferences
   async updateSettings(
     preferences: NotificationSettings
-  ): Promise<ApiResponse<{ message: string }>> {
+  ): Promise<ApiResponse<NotificationSettings>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: "Authentication required" };
@@ -397,12 +413,7 @@ class NotificationService {
   }
 
   // Get notification history
-  async getHistory(filters?: {
-    fromDate?: string;
-    toDate?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<ApiResponse<Notification[]>> {
+  async getHistory(filters?: NotificationHistoryFilters): Promise<ApiResponse<Notification[]>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: "Authentication required" };
@@ -414,6 +425,8 @@ class NotificationService {
     if (filters) {
       if (filters.fromDate) queryParams.append("fromDate", filters.fromDate);
       if (filters.toDate) queryParams.append("toDate", filters.toDate);
+      if (filters.startDate) queryParams.append("fromDate", filters.startDate);
+      if (filters.endDate) queryParams.append("toDate", filters.endDate);
       if (filters.limit) queryParams.append("limit", filters.limit.toString());
       if (filters.offset)
         queryParams.append("offset", filters.offset.toString());
@@ -688,13 +701,15 @@ class NotificationService {
   }
 
   // Get push history (alias for getHistory)
-  async getPushHistory(filters?: {
-    startDate?: string;
-    endDate?: string;
-    type?: string;
-    read?: boolean;
-  }): Promise<ApiResponse<Notification[]>> {
-    return this.getHistory(filters);
+  async getPushHistory(filters?: NotificationHistoryFilters): Promise<ApiResponse<Notification[]>> {
+    return this.getHistory({
+      fromDate: filters?.startDate,
+      toDate: filters?.endDate,
+      type: filters?.type,
+      read: filters?.read,
+      limit: filters?.limit,
+      offset: filters?.offset,
+    });
   }
 
   // Get scheduled notifications

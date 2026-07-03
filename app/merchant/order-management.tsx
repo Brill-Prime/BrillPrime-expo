@@ -90,7 +90,7 @@ export default function OrderManagementScreen() {
     let subscription: { unsubscribe: () => void } | null = null;
 
     const setupRealtime = async () => {
-      const merchantResult = await merchantOrderService.getMerchantId();
+      const merchantResult = await (merchantOrderService as any).getMerchantId();
       if (merchantResult.success && merchantResult.merchantId) {
         subscription = merchantOrderService.subscribeToOrders(
           merchantResult.merchantId,

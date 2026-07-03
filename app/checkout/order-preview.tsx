@@ -32,7 +32,7 @@ export default function OrderPreview() {
 
   const loadCartItems = async () => {
     const items = await cartService.getCartItems();
-    setCartItems(items);
+    setCartItems(items as any);
   };
 
   const calculateTotals = () => {

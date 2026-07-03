@@ -194,9 +194,9 @@ export default function ConfirmationScreen() {
             onPress: async () => {
               const lastOrderId = await AsyncStorage.getItem('lastOrderId');
               if (lastOrderId) {
-                router.replace(`/orders/order-details?id=${lastOrderId}`);
+                router.replace(`/orders/order-details?id=${lastOrderId}` as never);
               } else {
-                router.replace('/orders'); // Fallback if order ID is not found
+                router.replace('/orders' as never); // Fallback if order ID is not found
               }
             }
           }

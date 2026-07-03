@@ -1,8 +1,22 @@
 import React, { useRef, useCallback } from "react";
-import { View, StyleSheet } from "react-native";
-import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
+import { View, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MapErrorBoundary } from "./MapErrorBoundary";
+
+// react-native-maps is native-only. Avoid importing it on web entirely.
+// This file is only used on native; for web we render a lightweight placeholder.
+let MapView: any = null;
+let PROVIDER_GOOGLE: any = null;
+let Marker: any = null;
+
+// Important: avoid requiring `react-native-maps` at module evaluation time.
+// Even conditional requires can still be statically analyzed by Metro for web.
+// Do NOT reference react-native-maps in this file at all for web.
+// Native can still render via separate entrypoints; this file should be web-safe.
+
+
+
+
 
 interface StoreLocation {
   id?: string;
@@ -150,9 +164,10 @@ const MapContainer: React.FC<MapContainerProps> = ({
     onMapReady?.();
   }, [onMapReady, region]);
 
-  // const handleMapError = useCallback(() => {
-  //   console.error("❌ Map error in MapContainer");
-  // }, []);
+  // Always render a placeholder on web. This prevents Metro from even evaluating the native map JSX.
+  if (Platform.OS === "web") {
+    return <View style={styles.mapContainer} />;
+  }
 
   return (
     <MapErrorBoundary onRetry={() => console.log("Retrying map load...")}>
@@ -167,6 +182,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
           onMapReady={handleMapReady}
           showsUserLocation={true}
         >
+
+
           {/* User marker - Only show when location is set with 3D pin style */}
           {isLocationSet === true && (
             <>

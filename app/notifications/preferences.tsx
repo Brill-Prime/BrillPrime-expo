@@ -20,24 +20,22 @@ export default function NotificationPreferences() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<NotificationSettings>({
-    pushNotifications: true,
-    emailNotifications: true,
-    orderUpdates: true,
-    promotions: false,
-    merchantUpdates: true,
-    systemNotifications: true,
+    push_notifications: true,
+    email_notifications: true,
+    sms_notifications: false,
+    in_app_alerts: true,
+    sound_enabled: true,
+    vibration_enabled: true,
     categories: {
-      order: { push: true, email: true, inApp: true },
-      payment: { push: true, email: true, inApp: true },
-      promo: { push: false, email: false, inApp: true },
-      delivery: { push: true, email: true, inApp: true },
-      system: { push: true, email: false, inApp: true },
-      promotion: { push: false, email: false, inApp: true },
+      orders: true,
+      promotions: false,
+      messages: true,
+      updates: true,
     },
     quietHours: {
       enabled: false,
-      startTime: '22:00',
-      endTime: '08:00',
+      start: '22:00',
+      end: '08:00',
     },
   });
 
@@ -60,24 +58,24 @@ export default function NotificationPreferences() {
   };
 
   const updateCategoryPreference = async (
-    category: keyof NotificationSettings['categories'],
+    category: keyof NonNullable<NotificationSettings['categories']>,
     channel: 'push' | 'email' | 'inApp',
     value: boolean
   ) => {
+    const currentCategories = settings.categories ?? { orders: true, promotions: false, messages: true, updates: true };
+    const nextCategories = {
+      ...currentCategories,
+      [category]: value,
+    } as NonNullable<NotificationSettings['categories']>;
+
     const newSettings = {
       ...settings,
-      categories: {
-        ...settings.categories,
-        [category]: {
-          ...settings.categories[category],
-          [channel]: value,
-        },
-      },
+      categories: nextCategories,
     };
     setSettings(newSettings);
 
     try {
-      await notificationService.updateCategoryPreferences(category, newSettings.categories[category]);
+      await notificationService.updateCategoryPreferences(nextCategories);
     } catch (error) {
       console.error('Error updating preference:', error);
       Alert.alert('Error', 'Failed to update preference');
@@ -85,18 +83,19 @@ export default function NotificationPreferences() {
   };
 
   const toggleQuietHours = async (enabled: boolean) => {
+    const quietHours = settings.quietHours ?? { enabled: false, start: '22:00', end: '08:00' };
     const newSettings = {
       ...settings,
-      quietHours: { ...settings.quietHours, enabled },
+      quietHours: { ...quietHours, enabled },
     };
     setSettings(newSettings);
 
     try {
-      await notificationService.setQuietHours(
+      await notificationService.setQuietHours({
         enabled,
-        settings.quietHours.startTime,
-        settings.quietHours.endTime
-      );
+        start: quietHours.start,
+        end: quietHours.end,
+      });
     } catch (error) {
       console.error('Error updating quiet hours:', error);
       Alert.alert('Error', 'Failed to update quiet hours');
@@ -126,7 +125,7 @@ export default function NotificationPreferences() {
     icon,
   }: {
     title: string;
-    category: keyof NotificationSettings['categories'];
+    category: keyof NonNullable<NotificationSettings['categories']>;
     icon: string;
   }) => (
     <View style={styles.categoryCard}>
@@ -137,7 +136,7 @@ export default function NotificationPreferences() {
       <View style={styles.channelRow}>
         <Text style={styles.channelLabel}>Push</Text>
         <Switch
-          value={settings.categories[category].push}
+          value={Boolean(settings.categories?.[category])}
           onValueChange={(value) => updateCategoryPreference(category, 'push', value)}
           trackColor={{ false: '#ccc', true: '#4682B4' }}
         />
@@ -145,7 +144,7 @@ export default function NotificationPreferences() {
       <View style={styles.channelRow}>
         <Text style={styles.channelLabel}>Email</Text>
         <Switch
-          value={settings.categories[category].email}
+          value={Boolean(settings.categories?.[category])}
           onValueChange={(value) => updateCategoryPreference(category, 'email', value)}
           trackColor={{ false: '#ccc', true: '#4682B4' }}
         />
@@ -153,7 +152,7 @@ export default function NotificationPreferences() {
       <View style={styles.channelRow}>
         <Text style={styles.channelLabel}>In-App</Text>
         <Switch
-          value={settings.categories[category].inApp}
+          value={Boolean(settings.categories?.[category])}
           onValueChange={(value) => updateCategoryPreference(category, 'inApp', value)}
           trackColor={{ false: '#ccc', true: '#4682B4' }}
         />
@@ -185,11 +184,10 @@ export default function NotificationPreferences() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>Notification Categories</Text>
 
-          <CategoryPreference title="Order Updates" category="order" icon="cube-outline" />
-          <CategoryPreference title="Payment & Billing" category="payment" icon="card-outline" />
-          <CategoryPreference title="Delivery Status" category="delivery" icon="car-outline" />
-          <CategoryPreference title="Promotions & Deals" category="promo" icon="gift-outline" />
-          <CategoryPreference title="System Alerts" category="system" icon="settings-outline" />
+          <CategoryPreference title="Order Updates" category="orders" icon="cube-outline" />
+          <CategoryPreference title="Messages" category="messages" icon="chatbubble-outline" />
+          <CategoryPreference title="Promotions & Deals" category="promotions" icon="gift-outline" />
+          <CategoryPreference title="System Alerts" category="updates" icon="settings-outline" />
 
           <Text style={styles.sectionTitle}>Quiet Hours</Text>
           <View style={styles.quietHoursCard}>
@@ -204,7 +202,7 @@ export default function NotificationPreferences() {
             {settings.quietHours.enabled && (
               <View style={styles.quietHoursTime}>
                 <Text style={styles.timeLabel}>
-                  {settings.quietHours.startTime} - {settings.quietHours.endTime}
+                  {settings.quietHours.start} - {settings.quietHours.end}
                 </Text>
                 <Text style={styles.timeDescription}>
                   Notifications will be silenced during these hours

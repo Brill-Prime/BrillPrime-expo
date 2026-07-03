@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
-  Alert, // Import Alert for showing alerts
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+
 
 // Assuming responsiveFontSize and responsivePadding are defined elsewhere or you'll define them
 // For now, let's use arbitrary values or mock them if not provided.
@@ -42,8 +43,58 @@ export default function DriverOrderPreview({
   onReject,
 }: DriverOrderPreviewProps) {
   const [showMap, setShowMap] = useState(false);
+  const isWeb = Platform.OS === 'web';
+
+  const renderRouteMap = () => {
+    // Don't render map on web
+    if (isWeb || !showMap || !order?.pickupCoordinates || !order?.deliveryCoordinates) {
+      return null;
+    }
+
+    // Only attempt to render map on native platforms
+    try {
+      // eslint-disable-next-line global-require
+      const { MapView, Marker, Polyline } = require('react-native-maps');
+
+      return (
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: (order.pickupCoordinates.latitude + order.deliveryCoordinates.latitude) / 2,
+              longitude: (order.pickupCoordinates.longitude + order.deliveryCoordinates.longitude) / 2,
+              latitudeDelta: Math.abs(order.pickupCoordinates.latitude - order.deliveryCoordinates.latitude) * 2 || 0.05,
+              longitudeDelta: Math.abs(order.pickupCoordinates.longitude - order.deliveryCoordinates.longitude) * 2 || 0.05,
+            }}
+          >
+            <Marker
+              coordinate={order.pickupCoordinates}
+              title="Pickup Location"
+              description={order.pickupAddress}
+              pinColor="#28a745"
+            />
+            <Marker
+              coordinate={order.deliveryCoordinates}
+              title="Delivery Location"
+              description={order.deliveryAddress}
+              pinColor="#dc3545"
+            />
+            <Polyline
+              coordinates={[order.pickupCoordinates, order.deliveryCoordinates]}
+              strokeColor="#4682B4"
+              strokeWidth={3}
+            />
+          </MapView>
+        </View>
+      );
+    } catch (error) {
+      console.warn('Map unavailable on this platform', error);
+      return null;
+    }
+  };
 
   return (
+
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={styles.container}>
@@ -117,37 +168,7 @@ export default function DriverOrderPreview({
                 </Text>
               </TouchableOpacity>
 
-              {showMap && order?.pickupCoordinates && order?.deliveryCoordinates && (
-                <View style={styles.mapContainer}>
-                  <MapView
-                    style={styles.map}
-                    initialRegion={{
-                      latitude: (order.pickupCoordinates.latitude + order.deliveryCoordinates.latitude) / 2,
-                      longitude: (order.pickupCoordinates.longitude + order.deliveryCoordinates.longitude) / 2,
-                      latitudeDelta: Math.abs(order.pickupCoordinates.latitude - order.deliveryCoordinates.latitude) * 2 || 0.05,
-                      longitudeDelta: Math.abs(order.pickupCoordinates.longitude - order.deliveryCoordinates.longitude) * 2 || 0.05,
-                    }}
-                  >
-                    <Marker
-                      coordinate={order.pickupCoordinates}
-                      title="Pickup Location"
-                      description={order.pickupAddress}
-                      pinColor="#28a745"
-                    />
-                    <Marker
-                      coordinate={order.deliveryCoordinates}
-                      title="Delivery Location"
-                      description={order.deliveryAddress}
-                      pinColor="#dc3545"
-                    />
-                    <Polyline
-                      coordinates={[order.pickupCoordinates, order.deliveryCoordinates]}
-                      strokeColor="#4682B4"
-                      strokeWidth={3}
-                    />
-                  </MapView>
-                </View>
-              )}
+              {renderRouteMap()}
             </View>
 
             {/* Customer Info */}

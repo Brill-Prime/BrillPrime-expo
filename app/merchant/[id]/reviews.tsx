@@ -30,7 +30,8 @@ interface NewReview {
 
 export default function MerchantReviewsScreen() {
   const router = useRouter();
-  const { id: merchantId } = useLocalSearchParams();
+  const { id: merchantIdParam } = useLocalSearchParams();
+  const merchantId = Array.isArray(merchantIdParam) ? merchantIdParam[0] : merchantIdParam ?? '';
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState(0);

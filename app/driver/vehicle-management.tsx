@@ -168,37 +168,42 @@ function VehicleManagement() {
   };
 
   const handleUploadDocument = async (documentType: VehicleDocument['type']) => {
-    showConfirmDialog(
+    Alert.alert(
       'Upload Document',
       'Choose how you want to upload the document',
-      async () => {
-        // Camera option
-        const result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
+      [
+        {
+          text: 'Camera',
+          onPress: async () => {
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 0.8,
+            });
 
-        if (!result.canceled && result.assets[0]) {
-          await uploadDocumentImage(documentType, result.assets[0].uri);
-        }
-      },
-      'Camera',
-      async () => {
-        // Gallery option
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
+            if (!result.canceled && result.assets[0]) {
+              await uploadDocumentImage(documentType, result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Gallery',
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 0.8,
+            });
 
-        if (!result.canceled && result.assets[0]) {
-          await uploadDocumentImage(documentType, result.assets[0].uri);
-        }
-      },
-      'Gallery'
+            if (!result.canceled && result.assets[0]) {
+              await uploadDocumentImage(documentType, result.assets[0].uri);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
     );
   };
 
