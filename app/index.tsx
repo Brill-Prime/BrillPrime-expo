@@ -5,7 +5,9 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync().catch((error) => {
+  console.warn("Failed to keep native splash screen visible:", error);
+});
 
 export default function SplashScreenComponent() {
   const router = useRouter();
@@ -65,7 +67,8 @@ export default function SplashScreenComponent() {
         }
 
         // Step 2: Check if user has selected a role
-        const selectedRole = await AsyncStorage.getItem('selectedRole');
+        const [selectedRoleValue, userRoleValue] = await AsyncStorage.multiGet(['selectedRole', 'userRole']);
+        const selectedRole = selectedRoleValue[1] || userRoleValue[1];
         console.log('selectedRole:', selectedRole);
 
         if (!selectedRole) {
@@ -75,6 +78,10 @@ export default function SplashScreenComponent() {
             router.replace('/auth/role-selection');
           }
           return;
+        }
+
+        if (!userRoleValue[1]) {
+          await AsyncStorage.setItem('userRole', selectedRole);
         }
 
         // Step 3: Check authentication status
