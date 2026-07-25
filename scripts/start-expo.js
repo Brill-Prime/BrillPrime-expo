@@ -2,17 +2,26 @@
 const { spawn } = require('child_process');
 
 const rawArgs = process.argv.slice(2);
-const args = rawArgs.filter((arg) => arg !== '--offline-validation');
-const disableDependencyValidation = rawArgs.includes('--offline-validation');
+// Filter out our custom flags
+const args = rawArgs.filter(
+  (arg) => arg !== '--offline-validation' && arg !== '--skip-validation'
+);
+
+// Always skip dependency validation on Replit / web builds.
+// Many native-only packages (expo-notifications, expo-local-authentication, etc.)
+// fail the check even when installed because their native modules aren't linked
+// in a web-only environment.  The env var suppresses that check.
+const env = {
+  ...process.env,
+  EXPO_NO_DEPENDENCY_VALIDATION: '1',
+};
+
 const expoCliPath = require.resolve('expo/bin/cli');
 
 const child = spawn(process.execPath, [expoCliPath, 'start', ...args], {
   stdio: 'inherit',
   shell: false,
-  env: {
-    ...process.env,
-    ...(disableDependencyValidation ? { EXPO_NO_DEPENDENCY_VALIDATION: '1' } : {}),
-  },
+  env,
 });
 
 child.on('exit', (code, signal) => {
@@ -20,6 +29,5 @@ child.on('exit', (code, signal) => {
     process.kill(process.pid, signal);
     return;
   }
-
   process.exit(code ?? 0);
 });

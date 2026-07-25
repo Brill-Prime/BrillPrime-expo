@@ -76,7 +76,7 @@ export default {
       origin: false
     },
     eas: {
-      projectId: "your-project-id"
+      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || ""
     },
     // Firebase configuration pulled strictly from environment variables
     firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
