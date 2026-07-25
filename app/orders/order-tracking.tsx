@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../config/supabase';
 import { orderService } from '../../services/orderService';
 import { locationService } from '../../services/locationService';
+import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 
 interface OrderStatus {
   status: string;
@@ -186,6 +187,32 @@ export default function OrderTrackingScreen() {
 
   const responsivePadding = Math.max(20, screenWidth * 0.05);
 
+  // Coords used by the inline map card
+  const deliveryCoords = useMemo(() => {
+    if (!orderDetails?.delivery_latitude || !orderDetails?.delivery_longitude) return null;
+    return {
+      latitude: Number(orderDetails.delivery_latitude),
+      longitude: Number(orderDetails.delivery_longitude),
+    };
+  }, [orderDetails?.delivery_latitude, orderDetails?.delivery_longitude]);
+
+  const mapRegion = useMemo(() => {
+    if (driverLocation && deliveryCoords) {
+      const midLat = (driverLocation.latitude + deliveryCoords.latitude) / 2;
+      const midLng = (driverLocation.longitude + deliveryCoords.longitude) / 2;
+      const latDelta = Math.max(Math.abs(driverLocation.latitude - deliveryCoords.latitude) * 1.6, 0.01);
+      const lngDelta = Math.max(Math.abs(driverLocation.longitude - deliveryCoords.longitude) * 1.6, 0.01);
+      return { latitude: midLat, longitude: midLng, latitudeDelta: latDelta, longitudeDelta: lngDelta };
+    }
+    if (driverLocation) {
+      return { latitude: driverLocation.latitude, longitude: driverLocation.longitude, latitudeDelta: 0.012, longitudeDelta: 0.012 };
+    }
+    if (deliveryCoords) {
+      return { latitude: deliveryCoords.latitude, longitude: deliveryCoords.longitude, latitudeDelta: 0.012, longitudeDelta: 0.012 };
+    }
+    return { latitude: 6.5244, longitude: 3.3792, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+  }, [driverLocation, deliveryCoords]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -241,6 +268,67 @@ export default function OrderTrackingScreen() {
               </View>
             </View>
           </View>
+
+          {/* Live Driver Map — compact card shown when driver is active */}
+          {driverLocation && isDeliveryActive && (
+            <View style={styles.mapCard}>
+              {/* Card header */}
+              <View style={styles.mapCardHeader}>
+                <View style={styles.mapCardTitleRow}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.mapCardTitle}>Live Driver Location</Text>
+                </View>
+                {estimatedArrival && estimatedArrival !== 'Calculating...' && (
+                  <View style={styles.mapEtaChip}>
+                    <Ionicons name="time-outline" size={13} color="#4682B4" />
+                    <Text style={styles.mapEtaText}>{estimatedArrival}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Map surface */}
+              <View style={styles.mapSurface}>
+                <Map
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.inlineMap}
+                  region={mapRegion}
+                  zoomEnabled={true}
+                  scrollEnabled={true}
+                  showsUserLocation={false}
+                  userType="consumer"
+                  // Draw a live route from driver → delivery destination
+                  showRoute={!!deliveryCoords}
+                  origin={driverLocation}
+                  destination={deliveryCoords ?? undefined}
+                >
+                  {/* Driver pin */}
+                  <Marker
+                    coordinate={{ latitude: driverLocation.latitude, longitude: driverLocation.longitude }}
+                    title="Driver"
+                    pinColor="#4682B4"
+                  />
+                  {/* Delivery pin */}
+                  {deliveryCoords && (
+                    <Marker
+                      coordinate={deliveryCoords}
+                      title="Your delivery location"
+                      pinColor="#28a745"
+                    />
+                  )}
+                </Map>
+              </View>
+
+              {/* Footer hint */}
+              <View style={styles.mapCardFooter}>
+                <Ionicons name="location" size={13} color="#4682B4" />
+                <Text style={styles.mapCardFooterText}>
+                  {orderDetails.status === 'ready'
+                    ? 'Driver is heading to the merchant to pick up your order'
+                    : 'Driver is on the way to your delivery address'}
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Driver Card — only shown when order is in transit / ready */}
           {driverLocation && isDeliveryActive && (
@@ -442,4 +530,79 @@ const styles = StyleSheet.create({
   secondaryButtonText: { color: '#4682B4' },
   backButton: { backgroundColor: '#4682B4', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   backButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  // ── Live driver map card ────────────────────────────────────────────────
+  mapCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  mapCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#28a745',
+    // pulse implied by green colour; full animation would need Animated API
+  },
+  mapCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0c1a2a',
+  },
+  mapEtaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  mapEtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4682B4',
+  },
+  mapSurface: {
+    height: 220,
+    width: '100%',
+  },
+  inlineMap: {
+    flex: 1,
+  },
+  mapCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#f8faff',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+  },
+  mapCardFooterText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 17,
+  },
 });
