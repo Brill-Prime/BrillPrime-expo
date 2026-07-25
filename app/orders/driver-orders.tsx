@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -192,6 +194,29 @@ export default function DriverOrders() {
     router.push({ pathname: '/orders/order-tracking', params: { orderId } });
   };
 
+  // Open external maps app for turn-by-turn navigation to the next stop
+  const openMapsForOrder = useCallback((item: DriverOrder) => {
+    // Before pickup → navigate to merchant; after pickup → navigate to delivery
+    const target = item.status === 'in_transit' ? item.deliveryLocation : item.pickupLocation;
+    if (!target?.latitude || !target?.longitude) return;
+
+    const { latitude, longitude } = target;
+    const label = item.status === 'in_transit'
+      ? encodeURIComponent(item.delivery_address || 'Delivery location')
+      : encodeURIComponent(item.merchantAddress || 'Pickup location');
+
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+    const iosNative = `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=driving`;
+
+    if (Platform.OS === 'ios') {
+      Linking.canOpenURL(iosNative).then((supported) => {
+        Linking.openURL(supported ? iosNative : webUrl);
+      });
+    } else {
+      Linking.openURL(webUrl);
+    }
+  }, []);
+
   const renderOrderCard = ({ item }: { item: DriverOrder }) => {
     const isActive = item.status === 'in_transit';
 
@@ -238,13 +263,22 @@ export default function DriverOrders() {
         </View>
 
         <View style={styles.orderFooter}>
+          {/* Quick-navigate icon — always visible, opens Google Maps directly */}
+          <TouchableOpacity
+            style={styles.mapsIconButton}
+            onPress={() => openMapsForOrder(item)}
+            accessibilityLabel="Open in Google Maps"
+          >
+            <Ionicons name="navigate-circle-outline" size={22} color="#4682B4" />
+          </TouchableOpacity>
+
           {isActive ? (
             <TouchableOpacity
               style={styles.trackButton}
               onPress={() => handleTrackActive(item.id)}
             >
               <Ionicons name="navigate" size={16} color="#fff" />
-              <Text style={styles.trackButtonText}>Navigate</Text>
+              <Text style={styles.trackButtonText}>Live Navigate</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -379,6 +413,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pickupButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  mapsIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4682B4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+  },
   trackButton: {
     flex: 1,
     flexDirection: 'row',
