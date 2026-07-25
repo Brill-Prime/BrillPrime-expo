@@ -1,28 +1,77 @@
-            - name: Expo GitHub Action
-  # You may pin to the exact commit or the version.
-  # uses: expo/expo-github-action@6a82be3e3ed85d15c05f90d869db8dc95382aef3
-  uses: expo/expo-github-action@8.1.0
-  with:
-    # Expo CLI version to install
-    expo-version: # optional
-    # If Expo CLI should be cached to speed up installation
-    expo-cache: # optional, default is true
-    # EAS CLI version to install
-    eas-version: # optional
-    # If EAS CLI should be cached to speed up installation
-    eas-cache: # optional, default is true
-    # The package manager used to install the CLIs
-    packager: # optional, default is yarn
-    # If the action should patch the ENOSPC errors
-    patch-watchers: # optional, default is true
-    # Your Expo token, for authentication. (use with secrets)
-    token: # optional
-    # A custom remote cache key to use for EAS CLI.
-    eas-cache-key: # optional
-    # A custom remote cache key to use for Expo CLI.
-    expo-cache-key: # optional
-    # Your Expo username, for authentication.
-    username: # optional
-    # Your Expo password, for authentication. (use with secrets)
-    password: # optional
-          
+name: Expo CI
+
+on:
+  push:
+    branches: ["Working-copy"]
+  pull_request:
+    branches: ["Working-copy"]
+
+jobs:
+  # ── Job 1: TypeScript type check (always runs, no secrets needed) ──────────
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        env:
+          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+
+      - name: Run TypeScript type check
+        run: npm run typecheck
+        env:
+          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+
+  # ── Job 2: EAS Build — Android (only on push, requires EXPO_TOKEN secret) ──
+  eas-build-android:
+    name: EAS Build — Android Preview
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Expo & EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        env:
+          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+
+      - name: EAS Build (Android preview — queued, non-blocking)
+        run: eas build --platform android --profile preview --non-interactive --no-wait
+        env:
+          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
