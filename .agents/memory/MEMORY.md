@@ -2,3 +2,5 @@
 - [Status enum casing](status-casing.md) — DB order statuses are lowercase snake_case; never pass uppercase to Supabase
 - [Driver location tracking](driver-location-tracking.md) — drivers write to `driver_locations` table; consumers subscribe via `subscribeToDriverLocation`
 - [Subscription cleanup pattern](subscription-cleanup.md) — always use a ref (not state) for cleanup functions to avoid stale closures
+- [Metro config for Expo web](metro-expo-web.md) — blockList for .local/ and __tests__, extraNodeModules for all @firebase/* to fix resolution issues.
+- [npm ENOTEMPTY fix](npm-enotempty-fix.md) — 232 leftover .xxx-yyy temp dirs in node_modules block npm installs; delete them before retrying.
