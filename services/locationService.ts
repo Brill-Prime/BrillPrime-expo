@@ -727,41 +727,99 @@ class LocationService {
   > = new Map();
   private cacheTimeout: number = 10000; // 10 seconds
 
-  // Get live location of a specific user with caching
-  async getLiveLocation(userId: string): Promise<ApiResponse<LocationData>> {
+  // Get live location of a specific driver from Supabase driver_locations table
+  async getLiveLocation(driverId: string): Promise<ApiResponse<LocationData>> {
     try {
       // Check cache first
-      const cached = this.liveLocationCache.get(userId);
+      const cached = this.liveLocationCache.get(driverId);
       if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
         return { success: true, data: cached.location };
       }
-      const response = await apiClient.get<LocationData>(
-        `/api/location/live/${userId}`
-      );
 
-      // Cache successful response
-      if (response.success && response.data) {
-        this.liveLocationCache.set(userId, {
-          location: response.data,
-          timestamp: Date.now(),
-        });
+      const supabaseModule = await import("../config/supabase");
+      const { supabase } = supabaseModule;
+
+      const { data, error } = await supabase
+        .from("driver_locations")
+        .select("latitude, longitude, accuracy, heading, speed, is_moving, timestamp")
+        .eq("driver_id", driverId)
+        .single();
+
+      if (error || !data) {
+        // Return cached stale data if available
+        const cached = this.liveLocationCache.get(driverId);
+        if (cached) {
+          return { success: true, data: { ...cached.location, isStale: true } };
+        }
+        return { success: false, error: error?.message ?? "Driver location not found" };
       }
 
-      return response;
+      const location: LocationData = {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        accuracy: data.accuracy,
+        heading: data.heading,
+        speed: data.speed,
+        isMoving: data.is_moving,
+        timestamp: new Date(data.timestamp).getTime(),
+      };
+
+      this.liveLocationCache.set(driverId, { location, timestamp: Date.now() });
+      return { success: true, data: location };
     } catch (error) {
       console.error("Error getting live location:", error);
-
-      // Return cached data if available during error
-      const cached = this.liveLocationCache.get(userId);
+      const cached = this.liveLocationCache.get(driverId);
       if (cached) {
-        return {
-          success: true,
-          data: { ...cached.location, isStale: true },
-        };
+        return { success: true, data: { ...cached.location, isStale: true } };
       }
-
       return { success: false, error: "Failed to get live location" };
     }
+  }
+
+  // Subscribe to real-time driver location updates via Supabase
+  subscribeToDriverLocation(
+    driverId: string,
+    callback: (location: LocationData) => void
+  ): () => void {
+    let channel: any = null;
+
+    import("../config/supabase").then(({ supabase }) => {
+      channel = supabase
+        .channel(`driver_location_${driverId}`)
+        .on(
+          "postgres_changes" as any,
+          {
+            event: "*",
+            schema: "public",
+            table: "driver_locations",
+            filter: `driver_id=eq.${driverId}`,
+          },
+          (payload: any) => {
+            const row = payload.new;
+            if (!row) return;
+            const location: LocationData = {
+              latitude: row.latitude,
+              longitude: row.longitude,
+              accuracy: row.accuracy,
+              heading: row.heading,
+              speed: row.speed,
+              isMoving: row.is_moving,
+              timestamp: new Date(row.timestamp).getTime(),
+            };
+            this.liveLocationCache.set(driverId, { location, timestamp: Date.now() });
+            callback(location);
+          }
+        )
+        .subscribe();
+    });
+
+    return () => {
+      if (channel) {
+        import("../config/supabase").then(({ supabase }) => {
+          supabase.removeChannel(channel);
+        });
+      }
+    };
   }
 
   // Clear live location cache

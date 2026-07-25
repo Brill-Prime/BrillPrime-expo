@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,88 +10,9 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Mocking services that will be imported
-const orderService = {
-  trackOrder: async (orderId: string) => {
-    // Mock implementation
-    console.log(`Mock tracking order: ${orderId}`);
-    return {
-      success: true,
-      data: {
-        order: {
-          id: orderId,
-          orderDate: new Date().toISOString(),
-          commodityName: 'Sample Item',
-          deliveryAddress: '123 Main St, Anytown',
-          estimatedDelivery: new Date(Date.now() + 3600000).toISOString(),
-          status: 'confirmed',
-          deliveryTime: null,
-          driverId: 'driver123',
-          driver: { current_latitude: 37.7749, current_longitude: -122.4194, timestamp: new Date().toISOString() }
-        }
-      }
-    };
-  },
-  subscribeToOrderUpdates: (orderId: string, callback: (order: any) => void) => {
-    console.log(`Mock subscribing to order updates for: ${orderId}`);
-    // Mock subscription logic
-    const interval = setInterval(() => {
-      const updatedStatus = ['confirmed', 'preparing', 'out_for_delivery', 'delivered'][Math.floor(Math.random() * 4)];
-      callback({
-        id: orderId,
-        orderDate: new Date().toISOString(),
-        commodityName: 'Sample Item',
-        deliveryAddress: '123 Main St, Anytown',
-        estimatedDelivery: new Date(Date.now() + 3600000).toISOString(),
-        status: updatedStatus,
-        deliveryTime: updatedStatus === 'delivered' ? new Date().toISOString() : null,
-        driverId: 'driver123',
-        driver: { current_latitude: 37.7749 + Math.random() * 0.01, current_longitude: -122.4194 + Math.random() * 0.01, timestamp: new Date().toISOString() }
-      });
-    }, 15000); // Update every 15 seconds
-    return () => {
-      clearInterval(interval);
-      console.log(`Mock unsubscribed from order updates for: ${orderId}`);
-    };
-  }
-};
-
-const locationService = {
-  getLiveLocation: async (driverId: string) => {
-    // Mock implementation
-    console.log(`Mock getting live location for driver: ${driverId}`);
-    return {
-      success: true,
-      data: {
-        latitude: 37.7749 + Math.random() * 0.02,
-        longitude: -122.4194 + Math.random() * 0.02,
-        timestamp: new Date().toISOString()
-      }
-    };
-  },
-  calculateDistance: (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    // Mock distance calculation (in km)
-    return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2)) * 111; // Rough approximation
-  }
-};
-
-// Mocking Supabase import for testing purposes
-const supabase = {
-  channel: (_name: string) => ({
-    on: (_event: string, _filter: any, _callback: any) => ({
-      subscribe: () => ({ unsubscribe: () => {} }),
-    }),
-    subscribe: () => ({ unsubscribe: () => {} }),
-  }),
-};
-const importMock = async (path: string) => {
-  if (path.includes('orderService')) return { orderService };
-  if (path.includes('locationService')) return { locationService };
-  if (path.includes('supabase')) return { supabase };
-  return {};
-};
+import { supabase } from '../../config/supabase';
+import { orderService } from '../../services/orderService';
+import { locationService } from '../../services/locationService';
 
 interface OrderStatus {
   status: string;
@@ -101,236 +22,169 @@ interface OrderStatus {
   current: boolean;
 }
 
+// DB status values → display labels
+const STATUS_STEPS = [
+  { key: 'pending',    label: 'Order Placed' },
+  { key: 'accepted',   label: 'Order Confirmed' },
+  { key: 'preparing',  label: 'Preparing Order' },
+  { key: 'ready',      label: 'Ready for Pickup' },
+  { key: 'in_transit', label: 'Out for Delivery' },
+  { key: 'delivered',  label: 'Delivered' },
+];
+
 export default function OrderTrackingScreen() {
   const router = useRouter();
-  const { orderId } = useLocalSearchParams();
-  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState<any>(null);
-  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number; timestamp: string } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number; timestamp?: string } | null>(null);
   const [estimatedArrival, setEstimatedArrival] = useState<string>('Calculating...');
+  const cleanupRef = useRef<Array<() => void>>([]);
 
+  // Dimension listener
   useEffect(() => {
-    const loadAndSubscribe = async () => {
-      await loadOrderDetails();
-
-      if (orderId) {
-        // Mocking the import and setup for Supabase channel
-        const { supabase } = await importMock('../../config/supabase'); // Use mock
-        let orderSubscription: { unsubscribe: () => void } | null = null;
-        try {
-          orderSubscription = supabase
-            .channel(`order_${orderId}`)
-            .on(
-              'postgres_changes' as any,
-              {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'orders',
-                filter: `id=eq.${orderId}`,
-              } as any,
-              (payload: any) => {
-                console.log('Order updated:', payload.new);
-                setOrderDetails((prevOrder: any) => ({
-                  ...prevOrder,
-                  ...payload.new,
-                  status: payload.new.status,
-                  driver: payload.new.driver || prevOrder?.driver // Ensure driver info is updated if present
-                }));
-                if (payload.new.driver) {
-                  setDriverLocation({
-                    latitude: payload.new.driver.current_latitude || 0,
-                    longitude: payload.new.driver.current_longitude || 0,
-                    timestamp: payload.new.driver.timestamp || new Date().toISOString()
-                  });
-                } else {
-                  // Clear driver location if driver is no longer assigned
-                  setOrderDetails((prevOrder: any) => {
-                    if (prevOrder?.driverId && !payload.new.driverId) {
-                      setDriverLocation(null);
-                    }
-                    return prevOrder;
-                  });
-                }
-              }
-            )
-            .subscribe();
-        } catch (error) {
-          console.error('Error setting up order subscription:', error);
-        }
-
-        // Polling as a fallback
-        const pollInterval = setInterval(async () => {
-          await loadOrderDetails(); // Reload details to catch updates not via subscription
-          if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
-            await updateDriverLocation();
-          }
-        }, 10000);
-
-        return () => {
-          orderSubscription?.unsubscribe();
-          clearInterval(pollInterval);
-        };
-      }
-    };
-
-    loadAndSubscribe();
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenDimensions(window);
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
     });
+    return () => sub?.remove();
+  }, []);
+
+  // Load and subscribe
+  useEffect(() => {
+    if (!orderId) return;
+
+    let active = true;
+
+    const load = async () => {
+      await loadOrderDetails(active);
+    };
+    load();
+
+    // Real-time order status subscription
+    const orderChannel = supabase
+      .channel(`order_tracking_${orderId}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${orderId}`,
+        },
+        (payload: any) => {
+          if (!active) return;
+          setOrderDetails((prev: any) => ({ ...prev, ...payload.new }));
+        }
+      )
+      .subscribe();
+
+    cleanupRef.current.push(() => supabase.removeChannel(orderChannel));
 
     return () => {
-      subscription?.remove();
+      active = false;
+      cleanupRef.current.forEach(fn => fn());
+      cleanupRef.current = [];
     };
-  }, [orderId]); // Re-run effect if orderId changes
+  }, [orderId]);
 
-  // Effect to update driver location if orderDetails or driverId changes after initial load
+  // Subscribe to driver location when driver is assigned
   useEffect(() => {
-    if (orderDetails?.driverId && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing')) {
-      updateDriverLocation();
-    }
-  }, [orderDetails?.driverId, orderDetails?.status]);
+    if (!orderDetails?.driver_id) return;
+    if (!['in_transit', 'ready'].includes(orderDetails?.status)) return;
 
+    // Initial fetch
+    locationService.getLiveLocation(orderDetails.driver_id).then((res) => {
+      if (res.success && res.data) {
+        setDriverLocation({
+          latitude: res.data.latitude,
+          longitude: res.data.longitude,
+          timestamp: new Date(res.data.timestamp).toISOString(),
+        });
+        recalcETA(res.data.latitude, res.data.longitude);
+      }
+    });
 
-  const loadOrderDetails = async () => {
+    // Real-time subscription
+    const unsub = locationService.subscribeToDriverLocation(
+      orderDetails.driver_id,
+      (loc) => {
+        setDriverLocation({
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          timestamp: new Date(loc.timestamp).toISOString(),
+        });
+        recalcETA(loc.latitude, loc.longitude);
+      }
+    );
+    cleanupRef.current.push(unsub);
+
+    return () => unsub();
+  }, [orderDetails?.driver_id, orderDetails?.status]);
+
+  const recalcETA = (driverLat: number, driverLng: number) => {
+    if (!orderDetails?.delivery_latitude || !orderDetails?.delivery_longitude) return;
+    const distance = locationService.calculateDistance(
+      driverLat,
+      driverLng,
+      orderDetails.delivery_latitude,
+      orderDetails.delivery_longitude
+    );
+    const mins = Math.round((distance / 30) * 60);
+    setEstimatedArrival(mins > 0 ? `${mins} min` : 'Arriving soon');
+  };
+
+  const loadOrderDetails = async (active = true) => {
     try {
       setLoading(true);
-
-      const { orderService } = await importMock('../../services/orderService'); // Use mock
       const response = await orderService.trackOrder(orderId as string);
+      if (!active) return;
 
       if (response.success && response.data) {
         setOrderDetails(response.data.order);
-
-        if (response.data.order.driver) {
-          setDriverLocation({
-            latitude: response.data.order.driver.current_latitude || 0,
-            longitude: response.data.order.driver.current_longitude || 0,
-            timestamp: response.data.order.driver.timestamp || new Date().toISOString()
-          });
-        } else {
-          setDriverLocation(null); // Clear if no driver assigned
-        }
-
-        // Update local storage with latest data
-        const ordersData = await AsyncStorage.getItem('userOrders');
-        const orders = ordersData ? JSON.parse(ordersData) : [];
-        const updatedOrders = orders.map((o: any) => 
-          o.id === orderId ? response.data.order : o
-        );
-        await AsyncStorage.setItem('userOrders', JSON.stringify(updatedOrders));
-      } else {
-        // Fallback to local storage
-        const ordersData = await AsyncStorage.getItem('userOrders');
-        if (ordersData) {
-          const orders = JSON.parse(ordersData);
-          const order = orders.find((o: any) => o.id === orderId);
-          if (order) {
-            setOrderDetails(order);
-            if (order.driver) {
-              setDriverLocation({
-                latitude: order.driver.current_latitude || 0,
-                longitude: order.driver.current_longitude || 0,
-                timestamp: order.driver.timestamp || new Date().toISOString()
-              });
-            } else {
-              setDriverLocation(null);
-            }
-          }
+        if (response.data.tracking.driverInfo?.location) {
+          const loc = response.data.tracking.driverInfo.location;
+          setDriverLocation({ latitude: loc.latitude, longitude: loc.longitude });
         }
       }
     } catch (error) {
       console.error('Error loading order details:', error);
-
-      // Fallback to local storage on error
-      const ordersData = await AsyncStorage.getItem('userOrders');
-      if (ordersData) {
-        const orders = JSON.parse(ordersData);
-        const order = orders.find((o: any) => o.id === orderId);
-        if (order) {
-          setOrderDetails(order);
-          if (order.driver) {
-            setDriverLocation({
-              latitude: order.driver.current_latitude || 0,
-              longitude: order.driver.current_longitude || 0,
-              timestamp: order.driver.timestamp || new Date().toISOString()
-            });
-          } else {
-            setDriverLocation(null);
-          }
-        }
-      }
     } finally {
-      setLoading(false);
+      if (active) setLoading(false);
     }
   };
 
   const getOrderSteps = (): OrderStatus[] => {
     if (!orderDetails) return [];
 
-    const steps = [
-      { status: 'pending', title: 'Order Placed', time: formatTime(orderDetails.orderDate), completed: false, current: false },
-      { status: 'confirmed', title: 'Order Confirmed', time: 'Pending...', completed: false, current: false },
-      { status: 'preparing', title: 'Preparing Order', time: 'Pending...', completed: false, current: false },
-      { status: 'out_for_delivery', title: 'Out for Delivery', time: 'Pending...', completed: false, current: false },
-      { status: 'delivered', title: 'Delivered', time: orderDetails.deliveryTime || 'Pending...', completed: false, current: false }
-    ];
+    const currentIndex = STATUS_STEPS.findIndex(s => s.key === orderDetails.status);
 
-    const statusOrder = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
-    const currentIndex = statusOrder.indexOf(orderDetails.status);
-
-    return steps.map((step, index) => ({
-      ...step,
+    return STATUS_STEPS.map((step, index) => ({
+      status: step.key,
+      title: step.label,
       completed: index < currentIndex,
       current: index === currentIndex,
-      time: index === 0 ? formatTime(orderDetails.orderDate) : 
-            index === currentIndex ? 'In Progress...' :
-            index < currentIndex ? 'Completed' : 'Pending...'
+      time:
+        index === 0 ? formatTime(orderDetails.created_at) :
+        index < currentIndex ? 'Completed' :
+        index === currentIndex ? 'In Progress...' :
+        'Pending...',
     }));
-  };
-
-  const updateDriverLocation = async () => {
-    if (!orderDetails?.driverId) return;
-
-    try {
-      const { locationService } = await importMock('../../services/locationService'); // Use mock
-      const response = await locationService.getLiveLocation(orderDetails.driverId);
-
-      if (response.success && response.data) {
-        setDriverLocation(response.data);
-
-        // Calculate ETA if we have delivery address coordinates
-        if (orderDetails.deliveryLocation) {
-          const distance = locationService.calculateDistance(
-            response.data.latitude,
-            response.data.longitude,
-            orderDetails.deliveryLocation.latitude,
-            orderDetails.deliveryLocation.longitude
-          );
-
-          // Assume average speed of 30 km/h
-          const estimatedMinutes = Math.round((distance / 30) * 60);
-          setEstimatedArrival(estimatedMinutes > 0 ? `${estimatedMinutes} min` : 'Arriving soon');
-        }
-      }
-    } catch (error) {
-      console.error('Error updating driver location:', error);
-    }
   };
 
   const formatTime = (dateString: string) => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    } catch (error) {
-      console.error("Error formatting date:", dateString, error);
-      return 'Invalid Date';
+      return new Date(dateString).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
     }
   };
 
-  const responsivePadding = Math.max(20, screenDimensions.width * 0.05);
+  const responsivePadding = Math.max(20, screenWidth * 0.05);
 
   if (loading) {
     return (
@@ -353,6 +207,9 @@ export default function OrderTrackingScreen() {
     );
   }
 
+  const isDeliveryActive = ['in_transit', 'ready'].includes(orderDetails.status);
+  const productName = orderDetails.items?.[0]?.product?.name ?? orderDetails.notes ?? 'Order';
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -368,54 +225,54 @@ export default function OrderTrackingScreen() {
         <View style={{ paddingHorizontal: responsivePadding }}>
           {/* Order Info Card */}
           <View style={styles.orderCard}>
-            <Text style={styles.orderId}>Order #{orderDetails.id}</Text>
+            <Text style={styles.orderId}>Order #{orderDetails.order_number}</Text>
             <View style={styles.orderInfo}>
               <View style={styles.infoRow}>
                 <Ionicons name="cube-outline" size={20} color="#666" />
-                <Text style={styles.infoText}>{orderDetails.commodityName}</Text>
+                <Text style={styles.infoText}>{productName}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Ionicons name="location-outline" size={20} color="#666" />
-                <Text style={styles.infoText}>{orderDetails.deliveryAddress}</Text>
+                <Text style={styles.infoText}>{orderDetails.delivery_address}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Ionicons name="time-outline" size={20} color="#666" />
-                <Text style={styles.infoText}>
-                  Est. Delivery: {formatTime(orderDetails.estimatedDelivery)}
-                </Text>
+                <Ionicons name="cash-outline" size={20} color="#666" />
+                <Text style={styles.infoText}>₦{Number(orderDetails.total_amount ?? 0).toLocaleString()}</Text>
               </View>
             </View>
           </View>
 
-          {/* Driver Location Card */}
-          {driverLocation && (orderDetails.status === 'out_for_delivery' || orderDetails.status === 'preparing') && (
+          {/* Driver Card — only shown when order is in transit / ready */}
+          {driverLocation && isDeliveryActive && (
             <View style={styles.driverCard}>
               <View style={styles.driverHeader}>
                 <Ionicons name="bicycle" size={24} color="#4682B4" />
-                <Text style={styles.driverTitle}>Driver on the way</Text>
+                <Text style={styles.driverTitle}>
+                  {orderDetails.status === 'ready' ? 'Driver assigned — heading to pick up' : 'Driver on the way'}
+                </Text>
               </View>
+              {orderDetails.driver && (
+                <Text style={styles.driverName}>
+                  {orderDetails.driver.first_name} {orderDetails.driver.last_name}
+                </Text>
+              )}
               <View style={styles.driverInfo}>
                 <View style={styles.driverRow}>
                   <Text style={styles.driverLabel}>ETA:</Text>
                   <Text style={styles.driverValue}>{estimatedArrival}</Text>
                 </View>
-                <View style={styles.driverRow}>
-                  <Text style={styles.driverLabel}>Last updated:</Text>
-                  <Text style={styles.driverValue}>
-                    {driverLocation.timestamp ? new Date(driverLocation.timestamp).toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    }) : 'N/A'}
-                  </Text>
-                </View>
+                {driverLocation.timestamp && (
+                  <View style={styles.driverRow}>
+                    <Text style={styles.driverLabel}>Last updated:</Text>
+                    <Text style={styles.driverValue}>
+                      {new Date(driverLocation.timestamp).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                )}
               </View>
-              <TouchableOpacity 
-                style={styles.trackLiveButton}
-                onPress={updateDriverLocation}
-              >
-                <Ionicons name="refresh" size={16} color="#4682B4" />
-                <Text style={styles.trackLiveText}>Refresh Location</Text>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -423,32 +280,26 @@ export default function OrderTrackingScreen() {
           <View style={styles.timelineSection}>
             <Text style={styles.sectionTitle}>Order Progress</Text>
             <View style={styles.timeline}>
-              {getOrderSteps().map((step, index) => (
+              {getOrderSteps().map((step, index, arr) => (
                 <View key={step.status} style={styles.timelineItem}>
                   <View style={styles.timelineLeft}>
                     <View style={[
                       styles.timelineIcon,
                       step.completed && styles.completedIcon,
-                      step.current && styles.currentIcon
+                      step.current && styles.currentIcon,
                     ]}>
-                      <Ionicons 
-                        name={step.completed ? "checkmark" : step.current ? "time" : "ellipse-outline"} 
-                        size={16} 
-                        color={step.completed ? "#fff" : step.current ? "#4682B4" : "#ccc"} 
+                      <Ionicons
+                        name={step.completed ? 'checkmark' : step.current ? 'time' : 'ellipse-outline'}
+                        size={16}
+                        color={step.completed ? '#fff' : step.current ? '#4682B4' : '#ccc'}
                       />
                     </View>
-                    {index < getOrderSteps().length - 1 && (
-                      <View style={[
-                        styles.timelineLine,
-                        step.completed && styles.completedLine
-                      ]} />
+                    {index < arr.length - 1 && (
+                      <View style={[styles.timelineLine, step.completed && styles.completedLine]} />
                     )}
                   </View>
                   <View style={styles.timelineContent}>
-                    <Text style={[
-                      styles.timelineTitle,
-                      step.current && styles.currentStepTitle
-                    ]}>
+                    <Text style={[styles.timelineTitle, step.current && styles.currentStepTitle]}>
                       {step.title}
                     </Text>
                     <Text style={styles.timelineTime}>{step.time}</Text>
@@ -460,7 +311,7 @@ export default function OrderTrackingScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push(`/orders/order-details?id=${orderId}`)}
             >
@@ -468,15 +319,13 @@ export default function OrderTrackingScreen() {
               <Text style={styles.actionButtonText}>View Full Details</Text>
             </TouchableOpacity>
 
-            {orderDetails.status !== 'delivered' && orderDetails.status !== 'cancelled' && (
-              <TouchableOpacity 
+            {orderDetails.status !== 'delivered' && orderDetails.status !== 'cancelled' && orderDetails.status !== 'rejected' && (
+              <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryButton]}
-                onPress={() => router.push(`/support`)}
+                onPress={() => router.push('/support')}
               >
                 <Ionicons name="help-circle-outline" size={20} color="#4682B4" />
-                <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>
-                  Need Help?
-                </Text>
+                <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Need Help?</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -487,21 +336,9 @@ export default function OrderTrackingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' },
+  loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -509,13 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     paddingHorizontal: 40,
   },
-  errorText: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#e74c3c',
-    marginBottom: 24,
-  },
+  errorText: { marginTop: 16, fontSize: 18, fontWeight: '600', color: '#e74c3c', marginBottom: 24 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -526,22 +357,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
-  headerBackButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    flex: 1,
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
+  headerBackButton: { padding: 8 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#0c1a2a', flex: 1, textAlign: 'center' },
+  placeholder: { width: 40 },
+  content: { flex: 1 },
   orderCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -553,25 +372,28 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  orderId: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    marginBottom: 16,
+  orderId: { fontSize: 18, fontWeight: 'bold', color: '#0c1a2a', marginBottom: 16 },
+  orderInfo: { gap: 12 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoText: { fontSize: 14, color: '#666', flex: 1 },
+  driverCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  orderInfo: {
-    gap: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    flex: 1,
-  },
+  driverHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  driverTitle: { fontSize: 16, fontWeight: '600', color: '#0c1a2a', flex: 1 },
+  driverName: { fontSize: 14, color: '#4682B4', marginBottom: 8, fontWeight: '500' },
+  driverInfo: { gap: 8 },
+  driverRow: { flexDirection: 'row', gap: 8 },
+  driverLabel: { fontSize: 14, color: '#666', fontWeight: '500' },
+  driverValue: { fontSize: 14, color: '#0c1a2a', fontWeight: '600' },
   timelineSection: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -583,23 +405,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-    marginBottom: 20,
-  },
-  timeline: {
-    paddingLeft: 10,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  timelineLeft: {
-    alignItems: 'center',
-    marginRight: 15,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#0c1a2a', marginBottom: 20 },
+  timeline: { paddingLeft: 10 },
+  timelineItem: { flexDirection: 'row', marginBottom: 20 },
+  timelineLeft: { alignItems: 'center', marginRight: 15 },
   timelineIcon: {
     width: 32,
     height: 32,
@@ -610,45 +419,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#e0e0e0',
   },
-  completedIcon: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  currentIcon: {
-    backgroundColor: '#fff',
-    borderColor: '#4682B4',
-    borderWidth: 3,
-  },
-  timelineLine: {
-    width: 2,
-    height: 40,
-    backgroundColor: '#e0e0e0',
-    marginTop: 5,
-  },
-  completedLine: {
-    backgroundColor: '#4CAF50',
-  },
-  timelineContent: {
-    flex: 1,
-    paddingTop: 4,
-  },
-  timelineTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0c1a2a',
-    marginBottom: 2,
-  },
-  currentStepTitle: {
-    color: '#4682B4',
-  },
-  timelineTime: {
-    fontSize: 12,
-    color: '#666',
-  },
-  actions: {
-    gap: 12,
-    marginBottom: 30,
-  },
+  completedIcon: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+  currentIcon: { backgroundColor: '#fff', borderColor: '#4682B4', borderWidth: 3 },
+  timelineLine: { width: 2, height: 40, backgroundColor: '#e0e0e0', marginTop: 5 },
+  completedLine: { backgroundColor: '#4CAF50' },
+  timelineContent: { flex: 1, paddingTop: 4 },
+  timelineTitle: { fontSize: 15, fontWeight: '600', color: '#0c1a2a', marginBottom: 2 },
+  currentStepTitle: { color: '#4682B4' },
+  timelineTime: { fontSize: 12, color: '#666' },
+  actions: { gap: 12, marginBottom: 30 },
   actionButton: {
     backgroundColor: '#4682B4',
     borderRadius: 25,
@@ -658,85 +437,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#4682B4',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButtonText: {
-    color: '#4682B4',
-  },
-  backButton: {
-    backgroundColor: '#4682B4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  driverCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderLeftWidth: 4,
-    borderLeftColor: '#4682B4',
-  },
-  driverHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  driverTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0c1a2a',
-  },
-  driverInfo: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  driverRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  driverLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  driverValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0c1a2a',
-  },
-  trackLiveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#4682B4',
-  },
-  trackLiveText: {
-    color: '#4682B4',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  secondaryButton: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#4682B4' },
+  actionButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  secondaryButtonText: { color: '#4682B4' },
+  backButton: { backgroundColor: '#4682B4', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  backButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

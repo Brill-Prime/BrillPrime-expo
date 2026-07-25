@@ -18,7 +18,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [latestNotification, setLatestNotification] = useState<Notification | null>(null);
-  const [subscription, setSubscription] = useState<{ unsubscribe: () => void } | null>(null);
+  const subscriptionRef = React.useRef<{ unsubscribe: () => void } | null>(null);
 
   const refreshNotifications = useCallback(async () => {
     try {
@@ -142,7 +142,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         );
 
         if (isMounted) {
-          setSubscription(sub);
+          subscriptionRef.current = sub;
         }
       } catch (error) {
         console.error('Error setting up notification subscription:', error);
@@ -173,8 +173,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     return () => {
       isMounted = false;
-      if (subscription && subscription.unsubscribe) {
-        subscription.unsubscribe();
+      if (subscriptionRef.current?.unsubscribe) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
       }
       clearInterval(interval);
       // Only remove event listeners on web platform

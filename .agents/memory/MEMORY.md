@@ -1,0 +1,4 @@
+- [Live Order System patterns](live-order-patterns.md) — orderService/locationService must use Supabase directly; REST `/api/orders` does not exist
+- [Status enum casing](status-casing.md) — DB order statuses are lowercase snake_case; never pass uppercase to Supabase
+- [Driver location tracking](driver-location-tracking.md) — drivers write to `driver_locations` table; consumers subscribe via `subscribeToDriverLocation`
+- [Subscription cleanup pattern](subscription-cleanup.md) — always use a ref (not state) for cleanup functions to avoid stale closures
