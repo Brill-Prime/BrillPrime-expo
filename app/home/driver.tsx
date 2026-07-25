@@ -213,6 +213,9 @@ export default function DriverHome() {
     longitudeDelta: 0.0421,
   });
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  // Order assignment subscription refs (use refs, not state, to avoid stale closures)
+  const orderSubscriptionRef = useRef<(() => void) | null>(null);
+  const notifiedOrdersRef = useRef<Set<string>>(new Set());
   // Route directions state
   const [showRoute, setShowRoute] = useState(false);
   const [routeOrigin, setRouteOrigin] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -392,6 +395,107 @@ export default function DriverHome() {
     locationService.stopLiveTracking();
     setIsTrackingLocation(false);
   }, []);
+
+  // Resolve the driver's Supabase UUID from Firebase UID
+  const getSupabaseUserId = useCallback(async (): Promise<string | null> => {
+    try {
+      const { authService } = await import("../../services/authService");
+      const userData = await authService.getStoredUser();
+      if (!userData?.id) return null;
+
+      const { supabase } = await import("../../config/supabase");
+      const { data, error } = await supabase
+        .from("users")
+        .select("id")
+        .eq("firebase_uid", userData.id)
+        .single();
+
+      if (error || !data) return null;
+      return data.id as string;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Subscribe to order assignment notifications via Supabase realtime
+  const subscribeToOrderAssignments = useCallback(async () => {
+    const supabaseUserId = await getSupabaseUserId();
+    if (!supabaseUserId) {
+      console.log("[DriverHome] Could not resolve Supabase user ID — skipping order subscription");
+      return;
+    }
+
+    const { supabase } = await import("../../config/supabase");
+
+    const channel = supabase
+      .channel(`driver_order_assignments:${supabaseUserId}`)
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `driver_id=eq.${supabaseUserId}`,
+        },
+        (payload: any) => {
+          const order = payload.new;
+          if (!order?.id) return;
+
+          // Only alert once per order to avoid repeated notifications
+          // on subsequent status-change updates for the same order
+          if (notifiedOrdersRef.current.has(order.id)) return;
+          notifiedOrdersRef.current.add(order.id);
+
+          console.log("[DriverHome] New order assignment detected:", order.id);
+
+          const shortId = (order.id as string).slice(-8).toUpperCase();
+          const amount = order.total_amount
+            ? formatNaira(Number(order.total_amount))
+            : "N/A";
+          const status = order.status ?? "assigned";
+
+          showConfirmDialog(
+            "🚚 New Delivery Assignment",
+            `You have been assigned a new order.\n\nOrder #${shortId}\nStatus: ${status}\nAmount: ${amount}\n\nGo to Delivery Orders to accept and view details.`,
+            () => {
+              router.push("/orders/driver-orders");
+            }
+          );
+
+          // Also trigger a browser/OS notification so the driver is alerted
+          // even if the app is in the background
+          import("../../services/notificationService").then(
+            ({ notificationService }) => {
+              notificationService.sendLocalNotification(
+                "New Delivery Assignment",
+                `Order #${shortId} — ${amount}. Tap to open Delivery Orders.`,
+                { orderId: order.id, screen: "driver-orders" }
+              );
+            }
+          );
+        }
+      )
+      .subscribe((status: string) => {
+        console.log(`[DriverHome] Order assignment subscription status: ${status}`);
+      });
+
+    // Store cleanup function in a ref (not state) to avoid stale closures
+    orderSubscriptionRef.current = () => {
+      supabase.removeChannel(channel);
+    };
+  }, [getSupabaseUserId, showConfirmDialog, router]);
+
+  // Mount order-assignment listener and tear it down on unmount
+  useEffect(() => {
+    subscribeToOrderAssignments();
+
+    return () => {
+      if (orderSubscriptionRef.current) {
+        orderSubscriptionRef.current();
+        orderSubscriptionRef.current = null;
+      }
+    };
+  }, [subscribeToOrderAssignments]);
 
   const initializeData = useCallback(async () => {
     setIsLoading(true);
