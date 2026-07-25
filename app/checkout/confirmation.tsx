@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
-  Animated, // Import Animated
+  Animated,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,12 +71,12 @@ export default function ConfirmationScreen() {
         toValue: 1,
         tension: 50,
         friction: 7,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
 

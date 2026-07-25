@@ -231,7 +231,7 @@ export default function DriverHome() {
       Animated.timing(progressAnim, {
         toValue: 1,
         duration: 2000,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       })
     ).start();
 

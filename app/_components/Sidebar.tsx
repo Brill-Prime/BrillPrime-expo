@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Platform,
 } from "react-native";
 // ...existing code...
 
@@ -33,13 +34,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     } else {
       Animated.timing(slideAnim, {
         toValue: -300,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }
   }, [isOpen, slideAnim]);

@@ -50,7 +50,7 @@
     "expo-image-picker": "~17.0.11",
     "expo-linear-gradient": "~15.0.7",
     "expo-linking": "~8.0.12",
-    "expo-local-authentication": "^17.0.7",
+    "expo-local-authentication": "~14.0.1",
     "expo-location": "~19.0.7",
     "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.24",
