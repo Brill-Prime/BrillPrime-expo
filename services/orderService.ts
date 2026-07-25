@@ -252,6 +252,86 @@ class OrderService {
     }
   }
 
+  // ── Self-assignment / bidding ────────────────────────────────────────────
+
+  /**
+   * Return all orders that are ready and not yet claimed by any driver.
+   * These are the "open marketplace" orders that drivers can bid on.
+   */
+  async getAvailableOrders(): Promise<ApiResponse<{ orders: any[] }>> {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          merchant:merchants(id, name, address, latitude, longitude),
+          consumer:users!orders_consumer_id_fkey(id, first_name, last_name),
+          items:order_items(*, product:products(id, name, image_url, unit))
+        `)
+        .eq('status', 'ready')
+        .is('driver_id', null)
+        .order('created_at', { ascending: false });
+
+      if (error) return { success: false, error: error.message };
+      return { success: true, data: { orders: data ?? [] } };
+    } catch (error) {
+      console.error('Error fetching available orders:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * Atomically claim an available order for the current driver.
+   *
+   * Uses a conditional UPDATE (status=ready AND driver_id IS NULL) so that
+   * if two drivers race, only one succeeds — the other gets `alreadyClaimed`.
+   */
+  async claimOrder(orderId: string): Promise<{ success: boolean; alreadyClaimed?: boolean; error?: string }> {
+    try {
+      const userId = await this.getInternalUserId();
+      if (!userId) return { success: false, error: 'Not authenticated' };
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ driver_id: userId, updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .eq('status', 'ready')
+        .is('driver_id', null)
+        .select('id');
+
+      if (error) return { success: false, error: error.message };
+
+      // If no rows returned the update was blocked — another driver got there first
+      if (!data || data.length === 0) {
+        return { success: false, alreadyClaimed: true };
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error claiming order:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * Subscribe to real-time changes for the available-order pool.
+   * Fires `callback` with the updated order row whenever an order becomes
+   * available (status → ready, driver_id still null) or is taken.
+   */
+  subscribeToAvailableOrders(callback: (order: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void): () => void {
+    const channel = supabase
+      .channel('available_orders_pool')
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.ready' },
+        (payload: any) => {
+          callback(payload.new ?? payload.old, payload.eventType);
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }
+
   // Subscribe to real-time order status updates
   subscribeToOrderUpdates(
     orderId: string,
