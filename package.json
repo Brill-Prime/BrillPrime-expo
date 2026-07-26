@@ -9,7 +9,7 @@
     "web": "node scripts/start-expo.js --web --port 5000",
     "dev": "node scripts/start-expo.js --web --port 5000",
     "test": "jest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "start:web": "expo start --web --port 5000",
     "start:android": "node scripts/start-expo.js --android",
     "start:android:clear": "node scripts/clear-expo-cache.js && node scripts/start-expo.js --android --clear",

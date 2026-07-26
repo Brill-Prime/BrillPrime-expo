@@ -71,8 +71,8 @@ const MapWeb = forwardRef<any, MapProps>(({
   ...props
 }, ref) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
-  const googleMapRef = useRef<google.maps.Map | null>(null);
-  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const googleMapRef = useRef<any>(null);
+  const directionsRendererRef = useRef<any>(null);
   const isInitializedRef = useRef<boolean>(false);
   const scriptLoadingRef = useRef<boolean>(false);
   const initAttemptedRef = useRef<boolean>(false);
@@ -185,7 +185,7 @@ const MapWeb = forwardRef<any, MapProps>(({
       });
 
       // Wait for map to be fully idle before marking as ready
-      google.maps.event.addListenerOnce(map, 'idle', () => {
+      window.google.maps.event.addListenerOnce(map, 'idle', () => {
         setIsLoading(false);
         setMapReady(true);
         console.log('[Map.web] ✅ Map fully initialized and ready!');
