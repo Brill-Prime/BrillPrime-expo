@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
 import { orderService } from '../../services/orderService';
 import { locationService } from '../../services/locationService';
+import { routeService } from '../../services/routeService';
 import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 
 interface OrderStatus {
@@ -42,7 +44,10 @@ export default function OrderTrackingScreen() {
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number; timestamp?: string } | null>(null);
   const [estimatedArrival, setEstimatedArrival] = useState<string>('Calculating...');
+  const [fromCache, setFromCache] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const cleanupRef = useRef<Array<() => void>>([]);
+  const etaCacheRef = useRef<{ result: string; expiresAt: number } | null>(null);
 
   // Dimension listener
   useEffect(() => {
@@ -124,13 +129,38 @@ export default function OrderTrackingScreen() {
     return () => unsub();
   }, [orderDetails?.driver_id, orderDetails?.status]);
 
-  const recalcETA = (driverLat: number, driverLng: number) => {
+  const recalcETA = async (driverLat: number, driverLng: number) => {
     if (!orderDetails?.delivery_latitude || !orderDetails?.delivery_longitude) return;
+
+    // Serve from 60-second cache to avoid hammering the routing API on every location tick
+    if (etaCacheRef.current && Date.now() < etaCacheRef.current.expiresAt) {
+      setEstimatedArrival(etaCacheRef.current.result);
+      return;
+    }
+
+    try {
+      const route = await routeService.getRoute(
+        { latitude: driverLat, longitude: driverLng },
+        { latitude: Number(orderDetails.delivery_latitude), longitude: Number(orderDetails.delivery_longitude) }
+      );
+
+      if (route && route.duration > 0) {
+        const mins = Math.round(route.duration / 60);
+        const label = mins > 0 ? `${mins} min` : 'Arriving soon';
+        etaCacheRef.current = { result: label, expiresAt: Date.now() + 60_000 };
+        setEstimatedArrival(label);
+        return;
+      }
+    } catch {
+      // Fall through to Haversine fallback
+    }
+
+    // Haversine fallback when routing API is unavailable
     const distance = locationService.calculateDistance(
       driverLat,
       driverLng,
-      orderDetails.delivery_latitude,
-      orderDetails.delivery_longitude
+      Number(orderDetails.delivery_latitude),
+      Number(orderDetails.delivery_longitude)
     );
     const mins = Math.round((distance / 30) * 60);
     setEstimatedArrival(mins > 0 ? `${mins} min` : 'Arriving soon');
@@ -160,6 +190,8 @@ export default function OrderTrackingScreen() {
     );
   };
 
+  const CACHE_KEY = `order_tracking_${orderId}`;
+
   const loadOrderDetails = async (active = true) => {
     try {
       setLoading(true);
@@ -167,7 +199,17 @@ export default function OrderTrackingScreen() {
       if (!active) return;
 
       if (response.success && response.data) {
-        setOrderDetails(response.data.order);
+        const order = response.data.order;
+        setOrderDetails(order);
+        setFromCache(false);
+        setLastUpdatedAt(new Date());
+
+        // Persist to AsyncStorage for offline fallback
+        await AsyncStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({ order, cachedAt: new Date().toISOString() })
+        );
+
         if (response.data.tracking.driverInfo?.location) {
           const loc = response.data.tracking.driverInfo.location;
           setDriverLocation({ latitude: loc.latitude, longitude: loc.longitude });
@@ -175,6 +217,20 @@ export default function OrderTrackingScreen() {
       }
     } catch (error) {
       console.error('Error loading order details:', error);
+      if (!active) return;
+
+      // Network failure — try the AsyncStorage cache
+      try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { order, cachedAt } = JSON.parse(cached);
+          setOrderDetails(order);
+          setFromCache(true);
+          setLastUpdatedAt(new Date(cachedAt));
+        }
+      } catch (cacheError) {
+        console.error('Cache read error:', cacheError);
+      }
     } finally {
       if (active) setLoading(false);
     }
@@ -272,6 +328,16 @@ export default function OrderTrackingScreen() {
         <Text style={styles.headerTitle}>Track Order</Text>
         <View style={styles.placeholder} />
       </View>
+
+      {/* Offline / cached data banner */}
+      {fromCache && lastUpdatedAt && (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline-outline" size={15} color="#92400e" />
+          <Text style={styles.offlineBannerText}>
+            Offline — showing data from {lastUpdatedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+      )}
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: responsivePadding }}>
@@ -567,6 +633,17 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: '#e74c3c' },
   backButton: { backgroundColor: '#4682B4', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   backButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef3c7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  offlineBannerText: { fontSize: 12, color: '#92400e', fontWeight: '500', flex: 1 },
 
   // ── Live driver map card ────────────────────────────────────────────────
   mapCard: {
