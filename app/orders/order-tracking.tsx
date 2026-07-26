@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,6 +134,30 @@ export default function OrderTrackingScreen() {
     );
     const mins = Math.round((distance / 30) * 60);
     setEstimatedArrival(mins > 0 ? `${mins} min` : 'Arriving soon');
+  };
+
+  const handleCancelOrder = () => {
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        { text: 'Keep Order', style: 'cancel' },
+        {
+          text: 'Cancel Order',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await orderService.cancelOrder(orderId as string, 'Cancelled by consumer');
+            if (result.success) {
+              Alert.alert('Order Cancelled', 'Your order has been cancelled.', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            } else {
+              Alert.alert('Error', result.error || 'Failed to cancel order. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const loadOrderDetails = async (active = true) => {
@@ -407,6 +432,16 @@ export default function OrderTrackingScreen() {
               <Text style={styles.actionButtonText}>View Full Details</Text>
             </TouchableOpacity>
 
+            {['pending', 'accepted'].includes(orderDetails.status) && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={handleCancelOrder}
+              >
+                <Ionicons name="close-circle-outline" size={20} color="#e74c3c" />
+                <Text style={[styles.actionButtonText, styles.cancelButtonText]}>Cancel Order</Text>
+              </TouchableOpacity>
+            )}
+
             {orderDetails.status !== 'delivered' && orderDetails.status !== 'cancelled' && orderDetails.status !== 'rejected' && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryButton]}
@@ -526,8 +561,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryButton: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#4682B4' },
+  cancelButton: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e74c3c' },
   actionButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   secondaryButtonText: { color: '#4682B4' },
+  cancelButtonText: { color: '#e74c3c' },
   backButton: { backgroundColor: '#4682B4', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   backButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 

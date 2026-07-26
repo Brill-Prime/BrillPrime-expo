@@ -335,6 +335,7 @@ class MerchantOrderService {
         .from('orders')
         .update({
           driver_id: driverId,
+          status: 'ready',
           updated_at: new Date().toISOString(),
         })
         .eq('id', orderId);
