@@ -14,6 +14,7 @@ const args = rawArgs.filter(
 const env = {
   ...process.env,
   EXPO_NO_DEPENDENCY_VALIDATION: '1',
+  EXPO_NO_TYPESCRIPT_SETUP: '1',
 };
 
 const expoCliPath = require.resolve('expo/bin/cli');

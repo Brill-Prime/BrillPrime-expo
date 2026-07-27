@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { notificationService, NotificationSettings } from '@/services/notificationService';
+import { notificationService, NotificationSettings } from '../../services/notificationService';
 
 export default function NotificationPreferences() {
   const router = useRouter();

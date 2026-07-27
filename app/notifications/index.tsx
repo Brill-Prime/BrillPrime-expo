@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { notificationService } from '@/services/notificationService';
+import { notificationService } from '../../services/notificationService';
 
 interface Notification {
   id: string;
@@ -27,7 +27,7 @@ interface Notification {
   createdAt?: string;
 }
 
-import ErrorBoundary from '@/components/ErrorBoundary';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 function NotificationsScreen() {
   const router = useRouter();
