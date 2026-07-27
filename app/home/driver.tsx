@@ -613,6 +613,96 @@ export default function DriverHome() {
     }
   }, []);
 
+  // ── Multi-stop route optimisation ────────────────────────────────────────
+  // Fetches all active driver orders, runs the nearest-neighbour optimiser,
+  // and updates the map with ordered waypoints + final destination.
+  const loadAndOptimizeMultiStopRoute = useCallback(async () => {
+    if (!currentLocation) return;
+
+    try {
+      const { orderService } = await import("../../services/orderService");
+
+      // Fetch in_transit AND ready orders assigned to this driver
+      const [inTransitRes, readyRes] = await Promise.all([
+        orderService.getDriverOrders({ status: "in_transit" }),
+        orderService.getDriverOrders({ status: "ready" }),
+      ]);
+
+      const orders = [
+        ...(inTransitRes.success ? (inTransitRes.data?.orders ?? []) : []),
+        ...(readyRes.success ? (readyRes.data?.orders ?? []) : []),
+      ];
+
+      // Keep only orders that have delivery coordinates
+      const stopsWithCoords = orders.filter(
+        (o) => o.delivery_latitude && o.delivery_longitude
+      );
+
+      if (stopsWithCoords.length === 0) {
+        console.log("[DriverHome] No active delivery stops found");
+        return;
+      }
+
+      if (stopsWithCoords.length === 1) {
+        // Single stop — no optimisation needed
+        const stop = stopsWithCoords[0];
+        const dest = {
+          latitude: Number(stop.delivery_latitude),
+          longitude: Number(stop.delivery_longitude),
+        };
+        setRouteOrigin({ latitude: currentLocation.latitude, longitude: currentLocation.longitude });
+        setRouteDestination(dest);
+        setRouteWaypoints([]);
+        setShowRoute(true);
+        calculateETA(currentLocation, dest);
+        console.log("[DriverHome] Single-stop route set");
+        return;
+      }
+
+      // Multiple stops — optimise with nearest-neighbour algorithm
+      const stops = stopsWithCoords.map((o) => ({
+        latitude: Number(o.delivery_latitude),
+        longitude: Number(o.delivery_longitude),
+        // Higher priority = treated as "closer" — prefer in_transit over ready
+        priority: o.status === "in_transit" ? 2 : 1,
+      }));
+
+      const { optimizedOrder, totalDistance, estimatedTime } =
+        await locationService.optimizeRoute(stops);
+
+      // Map optimised indices back to coordinate objects
+      const sortedStops = optimizedOrder.map((i) => ({
+        latitude: stops[i].latitude,
+        longitude: stops[i].longitude,
+      }));
+
+      // First sorted stop = immediate next destination
+      // Middle stops = waypoints
+      // Last sorted stop = final destination
+      const [immediateNext, ...rest] = sortedStops;
+      const finalDest = rest.length > 0 ? rest.pop()! : immediateNext;
+      const midWaypoints = rest; // may be empty
+
+      setRouteOrigin({ latitude: currentLocation.latitude, longitude: currentLocation.longitude });
+      setRouteDestination(finalDest);
+      setRouteWaypoints(midWaypoints);
+      setShowRoute(true);
+
+      // Show combined ETA string
+      const etaStr = estimatedTime > 0
+        ? `~${estimatedTime} min · ${stopsWithCoords.length} stops · ${totalDistance} km`
+        : `${stopsWithCoords.length} stops · ${totalDistance} km`;
+      setEta(etaStr);
+
+      console.log(
+        `[DriverHome] Optimised ${stopsWithCoords.length} stops | ` +
+        `order: [${optimizedOrder.join(",")}] | distance: ${totalDistance} km | ETA: ${estimatedTime} min`
+      );
+    } catch (error) {
+      console.error("[DriverHome] Error optimising multi-stop route:", error);
+    }
+  }, [currentLocation, calculateETA]);
+
   // Simulate getting a delivery assignment
   const simulateDeliveryAssignment = useCallback(() => {
     if (!currentLocation) return;

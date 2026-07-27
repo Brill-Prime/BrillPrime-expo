@@ -1,8 +1,7 @@
 // Notification Service
 // Handles all notification-related functionality including push notifications, in-app alerts, and real-time updates
 
-import { Platform } from "react-native"; // Added missing Platform import
-// Removed unused import
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authService } from "./authService";
 import { apiClient, ApiResponse } from "./api";
@@ -307,34 +306,35 @@ class NotificationService {
     }
   }
 
-  // Send local notification (for foreground notifications)
+  // Send local notification (foreground — native via expo-notifications, web via Notification API)
   async sendLocalNotification(
     title: string,
     body: string,
     data?: Record<string, any>
   ): Promise<void> {
     try {
-      // For mobile platforms, we might want to use a notification library
       if (Platform.OS !== "web") {
-        // In a real implementation, we would use something like expo-notifications
-        console.log("📱 Local notification (mobile):", title, body, data);
+        // Use expo-notifications for native foreground banners
+        try {
+          const Notifications = await import("expo-notifications");
+          await Notifications.scheduleNotificationAsync({
+            content: { title, body, data: data ?? {} },
+            trigger: null, // fire immediately
+          });
+        } catch (e) {
+          console.log("📱 Local notification (mobile):", title, body, data);
+        }
         return;
       }
 
-      // For web, show a browser notification if permissions are granted
+      // Web — browser Notification API
       if (typeof window !== "undefined" && "Notification" in window) {
         if (Notification.permission === "granted") {
-          new Notification(title, {
-            body,
-            data,
-          });
+          new Notification(title, { body, data } as any);
         } else if (Notification.permission !== "denied") {
           const permission = await Notification.requestPermission();
           if (permission === "granted") {
-            new Notification(title, {
-              body,
-              data,
-            });
+            new Notification(title, { body, data } as any);
           }
         }
       }
@@ -343,18 +343,110 @@ class NotificationService {
     }
   }
 
-  // Register device for push notifications
-  async registerDevice(): Promise<string | null> {
+  /**
+   * Request push-notification permission, obtain an Expo push token, and
+   * upsert it into the `device_tokens` table linked to supabaseUserId.
+   *
+   * Call this once after the user has authenticated.
+   * Safe to call multiple times — it is idempotent (upsert on conflict).
+   */
+  async registerForPushNotificationsAsync(supabaseUserId: string): Promise<string | null> {
     try {
-      let deviceId = await AsyncStorage.getItem("device_id");
-
-      if (!deviceId) {
-        deviceId = `device_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-        await AsyncStorage.setItem("device_id", deviceId);
+      // ── Web: no Expo push token, use browser Notification API only ─────
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            await Notification.requestPermission();
+          }
+        }
+        return null;
       }
 
+      // ── Native: request permission + get Expo push token ──────────────
+      const Notifications = await import("expo-notifications");
+
+      // Configure how notifications appear when app is in the foreground
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== "granted") {
+        console.log("[NotificationService] Push permission denied");
+        return null;
+      }
+
+      // Get the Expo push token (works on physical devices; simulators return a fake token)
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: undefined, // uses app.json / app.config.js projectId automatically
+      });
+      const expoPushToken = tokenData.data;
+      console.log("[NotificationService] Expo push token:", expoPushToken);
+
+      // Persist locally
+      await AsyncStorage.setItem("expo_push_token", expoPushToken);
+      await AsyncStorage.setItem("fcm_registered", "true");
+
+      // Upsert into Supabase device_tokens (one row per user × platform)
+      const platform = Platform.OS as "ios" | "android";
+      const { error } = await supabase
+        .from("device_tokens")
+        .upsert(
+          {
+            user_id: supabaseUserId,
+            token: expoPushToken,
+            platform,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" }
+        );
+
+      if (error) {
+        console.error("[NotificationService] Failed to upsert device token:", error);
+      } else {
+        console.log("[NotificationService] Device token registered for user:", supabaseUserId);
+      }
+
+      // Set up Android notification channel
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("order-updates", {
+          name: "Order Updates",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#4682B4",
+        });
+      }
+
+      return expoPushToken;
+    } catch (error) {
+      console.error("[NotificationService] registerForPushNotificationsAsync error:", error);
+      return null;
+    }
+  }
+
+  // Register device for push notifications (legacy — calls the new method without userId)
+  async registerDevice(): Promise<string | null> {
+    try {
+      // Return cached token if we already have one
+      const cached = await AsyncStorage.getItem("expo_push_token");
+      if (cached) return cached;
+
+      let deviceId = await AsyncStorage.getItem("device_id");
+      if (!deviceId) {
+        deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem("device_id", deviceId);
+      }
       return deviceId;
     } catch (error) {
       console.error("Error registering device:", error);
@@ -362,23 +454,15 @@ class NotificationService {
     }
   }
 
-  // Initialize push notifications
+  // Initialize push notifications (legacy shim — kept for backward compat)
   async initializePushNotifications(): Promise<boolean> {
     try {
-      // Check if notifications are supported (skip on server-side environments)
       if (Platform.OS === "web" && typeof window === "undefined") {
-        console.log("Push notifications not supported in this environment");
         return false;
       }
-
       const isRegistered = await AsyncStorage.getItem("fcm_registered");
-
-      if (isRegistered === "true") {
-        return true;
-      }
-
-      // Platform-specific initialization would go here
-      console.log("Push notifications initialized");
+      if (isRegistered === "true") return true;
+      console.log("Push notifications initialized (pending user auth for token)");
       return true;
     } catch (error) {
       console.error("Error initializing push notifications:", error);

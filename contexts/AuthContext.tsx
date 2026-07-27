@@ -120,6 +120,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Register for push notifications once the user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    const registerPush = async () => {
+      try {
+        // Resolve the Supabase internal UUID (users.id) from the Firebase UID
+        const { supabase } = await import('../config/supabase');
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', user.id)
+          .single();
+
+        if (data?.id) {
+          const { notificationService } = await import('../services/notificationService');
+          await notificationService.registerForPushNotificationsAsync(data.id);
+        }
+      } catch (err) {
+        // Non-fatal — push registration failure must never break the app
+        console.warn('[AuthContext] Push token registration failed:', err);
+      }
+    };
+
+    registerPush();
+  }, [isAuthenticated, user?.id]);
+
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
