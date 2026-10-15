@@ -378,9 +378,9 @@ export default function ChatScreen() {
                   {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing
                 </Text>
                 <View style={styles.typingDots}>
-                  <View style={[styles.dot, styles.dot1]} />
-                  <View style={[styles.dot, styles.dot2]} />
-                  <View style={[styles.dot, styles.dot3]} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
                 </View>
               </View>
             </View>
@@ -656,15 +656,6 @@ const getResponsiveStyles = (screenData: any) => {
       height: 6,
       borderRadius: 3,
       backgroundColor: '#999',
-    },
-    dot1: {
-      animationDelay: '0s',
-    },
-    dot2: {
-      animationDelay: '0.2s',
-    },
-    dot3: {
-      animationDelay: '0.4s',
     },
   });
 };

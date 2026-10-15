@@ -1,6 +1,16 @@
 import React from 'react';
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { cleanup, renderHook, act } from '@testing-library/react-native';
 import { useCallback, useEffect } from 'react';
+
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  cleanup();
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+});
 
 /**
  * Test suite for commodity screen memory leak fix
@@ -10,15 +20,6 @@ import { useCallback, useEffect } from 'react';
  */
 
 describe('Commodity Screen - Memory Leak Fix', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-  });
-
   it('should properly cleanup interval on unmount', () => {
     const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
     const loadData = jest.fn();
@@ -36,7 +37,7 @@ describe('Commodity Screen - Memory Leak Fix', () => {
     });
 
     // Verify interval is set
-    expect(setInterval).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(1);
 
     // Unmount and verify cleanup
     unmount();
