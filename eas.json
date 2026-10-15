@@ -5,6 +5,7 @@
   },
   "build": {
     "development": {
+      "channel": "development",
       "developmentClient": true,
       "distribution": "internal",
       "android": {
@@ -13,27 +14,20 @@
       },
       "ios": {
         "simulator": true
-      },
-      "env": {
-        "EXPO_NO_DEPENDENCY_VALIDATION": "1"
       }
     },
     "preview": {
+      "channel": "preview",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_NO_DEPENDENCY_VALIDATION": "1"
       }
     },
     "production": {
+      "channel": "production",
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_NO_DEPENDENCY_VALIDATION": "1"
       }
     }
   },

@@ -7,7 +7,6 @@ on:
     branches: ["Working-copy"]
 
 jobs:
-  # ── Job 1: TypeScript type check (always runs, no secrets needed) ──────────
   typecheck:
     name: TypeScript Check
     runs-on: ubuntu-latest
@@ -16,35 +15,57 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-        env:
-          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+        run: npm ci
 
       - name: Run TypeScript type check
         run: npm run typecheck
         env:
-          EXPO_NO_DEPENDENCY_VALIDATION: "1"
-          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
-          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
-          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_NO_DOTENV: "1"
 
-  # ── Job 2: EAS Build — Android (only on push, requires EXPO_TOKEN secret) ──
+  expo-validation:
+    name: Expo Doctor and Metro Bundles
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Expo Doctor and dependency checks
+        run: |
+          npx expo-doctor
+          npx expo install --check
+        env:
+          EXPO_NO_DOTENV: "1"
+          CI: "1"
+
+      - name: Export iOS, Android, and web bundles
+        run: |
+          npx expo export --platform ios --output-dir /tmp/brillprime-ios --no-minify
+          npx expo export --platform android --output-dir /tmp/brillprime-android --no-minify
+          npx expo export --platform web --output-dir /tmp/brillprime-web --no-minify
+        env:
+          EXPO_NO_DOTENV: "1"
+
   eas-build-android:
     name: EAS Build — Android Preview
     runs-on: ubuntu-latest
-    needs: typecheck
+    needs: [typecheck, expo-validation]
     if: github.event_name == 'push'
 
     steps:
@@ -58,20 +79,30 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
           packager: npm
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-        env:
-          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
 
-      - name: EAS Build (Android preview — queued, non-blocking)
-        run: eas build --platform android --profile preview --non-interactive --no-wait
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Android preview
+        run: eas build --platform android --profile preview --non-interactive
         env:
-          EXPO_NO_DEPENDENCY_VALIDATION: "1"
+          EXPO_NO_DOTENV: "1"
+          EXPO_PUBLIC_EAS_PROJECT_ID: ${{ vars.EXPO_PUBLIC_EAS_PROJECT_ID }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
           EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_FIREBASE_DATABASE_URL: ${{ secrets.EXPO_PUBLIC_FIREBASE_DATABASE_URL }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}

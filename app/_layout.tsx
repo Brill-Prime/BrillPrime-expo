@@ -170,10 +170,6 @@ export default function RootLayout() {
                         name="onboarding/screen3"
                         options={{ headerShown: false }}
                       />
-                      <Stack.Screen
-                        name="merchant/home"
-                        options={{ headerShown: false }}
-                      />
                     </Stack>
                   </View>
                 </AlertProvider>

@@ -1,6 +1,7 @@
 // app.config.js
-// Load environment variables from .env file
-import 'dotenv/config';
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "";
+const googleMapsApiKey =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
 
 export default {
   name: "BrillPrime",
@@ -10,6 +11,12 @@ export default {
   icon: "./assets/images/logo.png",
   userInterfaceStyle: "light",
   scheme: "brillprime",
+  updates: easProjectId
+    ? { url: `https://u.expo.dev/${easProjectId}` }
+    : undefined,
+  runtimeVersion: {
+    policy: "appVersion"
+  },
   // Removed newArchEnabled: false to resolve warning about React Native's New Architecture
   splash: {
     image: "./assets/splash.png",
@@ -21,7 +28,7 @@ export default {
     supportsTablet: true,
     bundleIdentifier: "com.brillprime.app",
     config: {
-      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+      googleMapsApiKey
     }
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
@@ -30,10 +37,11 @@ export default {
       foregroundImage: "./assets/images/logo.png",
       backgroundColor: "#ffffff"
     },
-    package: "com.brillprime.app",
+    // Keep the package ID used by the existing Android native project.
+    package: "com.brillprime",
     config: {
       googleMaps: {
-        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+        apiKey: googleMapsApiKey
       }
     }
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
@@ -52,14 +60,29 @@ export default {
     "expo-font",
     "expo-web-browser",
     [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Allow BrillPrime to use your location for nearby services and delivery tracking."
+      }
+    ],
+    [
+      "expo-local-authentication",
+      {
+        faceIDPermission: "Allow BrillPrime to use Face ID to secure your account."
+      }
+    ],
+    [
+      "expo-image-picker",
+      {
+        photosPermission: "Allow BrillPrime to access photos when you choose an image.",
+        cameraPermission: "Allow BrillPrime to use the camera when you take a photo."
+      }
+    ],
+    "expo-notifications",
+    [
       "expo-build-properties",
       {
-        android: {
-          compileSdkVersion: 34,
-          targetSdkVersion: 34,
-          buildToolsVersion: "34.0.0"
-          // Removed newArchEnabled: false to resolve warning
-        },
         ios: {
           deploymentTarget: "15.1"
           // Removed newArchEnabled: false to resolve warning
@@ -76,14 +99,17 @@ export default {
       origin: false
     },
     eas: {
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || ""
+      projectId: easProjectId
     },
     // Firebase configuration pulled strictly from environment variables
     firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
     firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
     firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
     firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+    firebaseMessagingSenderId:
+      process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ||
+      process.env.FIREBASE_MESSAGING_SENDER_ID ||
+      '',
     firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
     firebaseDatabaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || '',
     firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || '',

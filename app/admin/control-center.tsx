@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAlert } from '../../components/AlertProvider';
 
 interface SystemMetrics {
   platform: {
@@ -42,6 +43,7 @@ interface SystemMetrics {
 
 export default function AdminControlCenter() {
   const router = useRouter();
+  const { promptText } = useAlert();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -128,32 +130,33 @@ export default function AdminControlCenter() {
 
       switch (action) {
         case 'announcement':
-          Alert.prompt(
-            'Send Announcement',
-            'Enter your announcement message:',
-            async (text) => {
-              if (text && text.trim()) {
-                try {
-                  const result = await adminService.sendAnnouncement({
-                    title: 'Platform Announcement',
-                    message: text.trim(),
-                    targetAudience: 'all',
-                    priority: 'medium'
-                  });
+          {
+            const text = await promptText({
+              title: 'Send Announcement',
+              message: 'Enter your announcement message:',
+              confirmText: 'Send',
+              multiline: true,
+            });
+            if (text && text.trim()) {
+              try {
+                const result = await adminService.sendAnnouncement({
+                  title: 'Platform Announcement',
+                  message: text.trim(),
+                  targetAudience: 'all',
+                  priority: 'medium'
+                });
 
-                  if (result.success) {
-                    Alert.alert('Success', 'Announcement sent successfully to all users');
-                  } else {
-                    Alert.alert('Error', result.error || 'Failed to send announcement');
-                  }
-                } catch (error) {
-                  console.error('Send announcement error:', error);
-                  Alert.alert('Error', 'Failed to send announcement');
+                if (result.success) {
+                  Alert.alert('Success', 'Announcement sent successfully to all users');
+                } else {
+                  Alert.alert('Error', result.error || 'Failed to send announcement');
                 }
+              } catch (error) {
+                console.error('Send announcement error:', error);
+                Alert.alert('Error', 'Failed to send announcement');
               }
-            },
-            'plain-text'
-          );
+            }
+          }
           break;
         case 'maintenance':
           Alert.alert(

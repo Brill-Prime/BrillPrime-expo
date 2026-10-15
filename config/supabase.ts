@@ -99,8 +99,6 @@ export const isSupabaseConfigured = urlValidation.isValid && keyValidation.isVal
 // Log success or provide guidance
 if (isSupabaseConfigured) {
   console.log('✅ Supabase client initialized successfully');
-  console.log(`🔷 URL: ${supabaseUrl}`);
-  console.log(`🔑 Key: ${supabaseAnonKey.substring(0, 20)}...`);
 
   // Configure error handling for real-time subscriptions
   supabase.realtime.setAuth(supabaseAnonKey);

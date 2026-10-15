@@ -2,6 +2,7 @@ modules = ["nodejs-20"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["eas-cli"]
 
 [agent]
 expertMode = true
@@ -33,7 +34,3 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 5001
-externalPort = 3000
