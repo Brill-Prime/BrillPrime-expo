@@ -39,14 +39,11 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
   const router = useRouter();
-  const cleanupRef = useRef<Array<() => void>>([]);
   const etaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cleanup all subscriptions on unmount
   useEffect(() => {
     return () => {
-      cleanupRef.current.forEach(fn => fn());
-      cleanupRef.current = [];
       locationService.stopLiveTracking();
       if (etaTimerRef.current) clearInterval(etaTimerRef.current);
     };
@@ -83,9 +80,11 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       if (!active) return;
       setOrder((prev: any) => ({ ...prev, ...updatedOrder }));
     });
-    cleanupRef.current.push(unsubscribeOrder);
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      unsubscribeOrder();
+    };
   }, [orderId]);
 
   // Subscribe to driver's real-time location when driver ID is known (consumer view)
@@ -106,11 +105,7 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
         setDriverLocation({ latitude: loc.latitude, longitude: loc.longitude });
       }
     );
-    cleanupRef.current.push(unsubscribe);
-
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, [order?.driver_id, userRole]);
 
   // Track driver's own GPS for route calculation
@@ -131,7 +126,7 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       }
     });
 
-    if (unsubscribe) cleanupRef.current.push(unsubscribe);
+    return unsubscribe;
   }, [userRole]);
 
   const loadOrderDetails = async (active = true) => {

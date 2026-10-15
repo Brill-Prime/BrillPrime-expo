@@ -14,9 +14,6 @@
       },
       "ios": {
         "simulator": true
-      },
-      "env": {
-        "EXPO_NO_DEPENDENCY_VALIDATION": "1"
       }
     },
     "preview": {
@@ -24,18 +21,12 @@
       "channel": "preview",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_NO_DEPENDENCY_VALIDATION": "1"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_NO_DEPENDENCY_VALIDATION": "1"
       }
     }
   },
