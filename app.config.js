@@ -1,7 +1,9 @@
 // app.config.js
-const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "";
-const googleMapsApiKey =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+// Load environment variables from .env file
+import 'dotenv/config';
+
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
 
 export default {
   name: "BrillPrime",
@@ -11,18 +13,18 @@ export default {
   icon: "./assets/images/logo.png",
   userInterfaceStyle: "light",
   scheme: "brillprime",
-  updates: easProjectId
-    ? { url: `https://u.expo.dev/${easProjectId}` }
-    : undefined,
-  runtimeVersion: {
-    policy: "appVersion"
-  },
   // Removed newArchEnabled: false to resolve warning about React Native's New Architecture
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
+  runtimeVersion: {
+    policy: 'appVersion'
+  },
+  updates: easProjectId ? {
+    url: `https://u.expo.dev/${easProjectId}`
+  } : undefined,
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
@@ -37,8 +39,7 @@ export default {
       foregroundImage: "./assets/images/logo.png",
       backgroundColor: "#ffffff"
     },
-    // Keep the package ID used by the existing Android native project.
-    package: "com.brillprime",
+    package: "com.brillprime.app",
     config: {
       googleMaps: {
         apiKey: googleMapsApiKey
@@ -51,19 +52,27 @@ export default {
     favicon: "./assets/images/logo.png",
     config: {
       googleMaps: {
-        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+        apiKey: googleMapsApiKey
       }
     }
   },
   plugins: [
     "expo-router",
+    "expo-asset",
     "expo-font",
     "expo-web-browser",
     [
+      "expo-image-picker",
+      {
+        photosPermission: "Allow BrillPrime to access your photos so you can attach images.",
+        cameraPermission: "Allow BrillPrime to use your camera to capture attachments.",
+        microphonePermission: false
+      }
+    ],
+    [
       "expo-location",
       {
-        locationWhenInUsePermission:
-          "Allow BrillPrime to use your location for nearby services and delivery tracking."
+        locationWhenInUsePermission: "Allow BrillPrime to use your location for nearby stores and deliveries."
       }
     ],
     [
@@ -72,17 +81,16 @@ export default {
         faceIDPermission: "Allow BrillPrime to use Face ID to secure your account."
       }
     ],
-    [
-      "expo-image-picker",
-      {
-        photosPermission: "Allow BrillPrime to access photos when you choose an image.",
-        cameraPermission: "Allow BrillPrime to use the camera when you take a photo."
-      }
-    ],
     "expo-notifications",
     [
       "expo-build-properties",
       {
+        android: {
+          compileSdkVersion: 36,
+          targetSdkVersion: 36,
+          buildToolsVersion: "36.0.0"
+          // Removed newArchEnabled: false to resolve warning
+        },
         ios: {
           deploymentTarget: "15.1"
           // Removed newArchEnabled: false to resolve warning
@@ -99,17 +107,14 @@ export default {
       origin: false
     },
     eas: {
-      projectId: easProjectId
+      projectId: easProjectId || ""
     },
     // Firebase configuration pulled strictly from environment variables
     firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
     firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
     firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
     firebaseStorageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-    firebaseMessagingSenderId:
-      process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ||
-      process.env.FIREBASE_MESSAGING_SENDER_ID ||
-      '',
+    firebaseMessagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
     firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
     firebaseDatabaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || '',
     firebaseMeasurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || '',

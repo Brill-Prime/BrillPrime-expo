@@ -9,11 +9,12 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAlert } from './AlertProvider';
-import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import ViewShot from 'react-native-view-shot';
 
 interface ReceiptItem {
@@ -101,7 +102,11 @@ www.brillprime.com
   const handleCopyToClipboard = async () => {
     try {
       const receiptText = generateReceiptText();
-      await Clipboard.setStringAsync(receiptText);
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(receiptText);
+      } else {
+        await Clipboard.setStringAsync(receiptText);
+      }
       showSuccess('Copied!', 'Receipt copied to clipboard');
       onClose();
     } catch (error) {

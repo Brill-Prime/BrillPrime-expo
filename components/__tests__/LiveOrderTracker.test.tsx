@@ -1,13 +1,29 @@
 import React from 'react';
-import { render, waitFor, act } from '@testing-library/react-native';
+import { cleanup, render, waitFor, act } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import LiveOrderTracker from '../LiveOrderTracker';
 import { locationService } from '../../services/locationService';
 import { orderService } from '../../services/orderService';
 
 // Mock dependencies
-jest.mock('../../services/locationService');
-jest.mock('../../services/orderService');
+jest.mock('../../services/locationService', () => ({
+  locationService: {
+    startLiveTracking: jest.fn(),
+    stopLiveTracking: jest.fn(),
+    onLocationUpdate: jest.fn(),
+    getLiveLocation: jest.fn(),
+    getCurrentLocation: jest.fn(),
+    subscribeToDriverLocation: jest.fn(() => jest.fn()),
+    calculateDistance: jest.fn(),
+  },
+}));
+jest.mock('../../services/orderService', () => ({
+  orderService: {
+    trackOrder: jest.fn(),
+    subscribeToOrderUpdates: jest.fn(() => jest.fn()),
+    updateOrderStatus: jest.fn(),
+  },
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: jest.fn(),
@@ -69,6 +85,7 @@ describe('LiveOrderTracker', () => {
   });
 
   afterEach(() => {
+    cleanup();
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
   });
