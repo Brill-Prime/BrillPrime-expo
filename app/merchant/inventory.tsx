@@ -37,7 +37,7 @@ interface InventoryItem {
 
 function InventoryManagement() {
   const router = useRouter();
-  const { showSuccess, showError, showConfirmDialog } = useAlert();
+  const { showSuccess, showError, showConfirmDialog, promptText } = useAlert();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
@@ -306,25 +306,18 @@ function InventoryManagement() {
 
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => {
-            Alert.prompt(
-              'Adjust Stock',
-              `Current stock: ${item.currentStock} ${item.unit}`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { 
-                  text: 'Update', 
-                  onPress: (value) => {
-                    const newStock = parseInt(value || '0');
-                    if (!isNaN(newStock)) {
-                      updateItemStock(item.id, newStock, 'adjustment');
-                    }
-                  }
-                }
-              ],
-              'plain-text',
-              item.currentStock.toString()
-            );
+          onPress={async () => {
+            const value = await promptText({
+              title: 'Adjust Stock',
+              message: `Current stock: ${item.currentStock} ${item.unit}`,
+              defaultValue: item.currentStock.toString(),
+              confirmText: 'Update',
+            });
+            if (value === null) return;
+            const newStock = parseInt(value || '0', 10);
+            if (!isNaN(newStock)) {
+              updateItemStock(item.id, newStock, 'adjustment');
+            }
           }}
         >
           <Ionicons name="create-outline" size={20} color="#28a745" />

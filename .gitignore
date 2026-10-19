@@ -9,6 +9,10 @@ node_modules/
 .expo-shared/
 dist/
 
+# EAS builds use Continuous Native Generation from app.config.js.
+/android
+/ios
+
 # Build and debug files
 npm-debug.*
 *.jks

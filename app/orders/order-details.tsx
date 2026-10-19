@@ -54,7 +54,7 @@ interface Order {
 export default function OrderDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { showSuccess, showError, showWarning, showConfirmDialog, showInfo } = useAlert();
+  const { showSuccess, showError, showWarning, showConfirmDialog, showInfo, promptText } = useAlert();
   const [order, setOrder] = useState<Order | null>(null);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [showLiveTracking, setShowLiveTracking] = useState(false);
@@ -172,28 +172,26 @@ export default function OrderDetails() {
         },
         {
           text: 'Add Delivery Notes',
-          onPress: () => {
-            Alert.prompt(
-              'Delivery Notes',
-              'Add special instructions for the driver:',
-              async (text) => {
-                if (text && text.trim()) {
-                  try {
-                    const result = await orderService.updateOrderStatus(order.id, 'pending');
-                    if (result.success) {
-                      showSuccess('Success', 'Delivery notes updated');
-                      loadOrderDetails();
-                    } else {
-                      showError('Error', result.error || 'Failed to update notes');
-                    }
-                  } catch (error) {
-                    showError('Error', 'Failed to update delivery notes');
-                  }
+          onPress: async () => {
+            const text = await promptText({
+              title: 'Delivery Notes',
+              message: 'Add special instructions for the driver:',
+              defaultValue: order.orderNotes || '',
+              multiline: true,
+            });
+            if (text && text.trim()) {
+              try {
+                const result = await orderService.updateOrderNotes(order.id, text.trim());
+                if (result.success) {
+                  showSuccess('Success', 'Delivery notes updated');
+                  loadOrderDetails();
+                } else {
+                  showError('Error', result.error || 'Failed to update notes');
                 }
-              },
-              'plain-text',
-              order.orderNotes || ''
-            );
+              } catch (error) {
+                showError('Error', 'Failed to update delivery notes');
+              }
+            }
           },
         },
         {
