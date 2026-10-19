@@ -77,7 +77,7 @@ This GitHub editing session cannot install dependencies or run the app/Android t
 - [ ] Critical payment safety fix: the live `payment-process` function currently simulates success and marks orders paid without provider verification, and it expects Supabase Auth despite the app using Firebase. Replace this with a verified provider flow before accepting real payments.
 - [ ] Run typecheck, Jest, Expo Doctor, and device/web smoke tests. The GitHub/EAS status was still pending at the time of this audit; no passing test result is claimed.
 - [ ] Confirm Firebase JWT trust and claim mapping before making broad RLS changes.
-- [ ] Fix the Supabase security advisor findings and inspect sanitized SQLSTATE 42703 / HTTP 406 / missing `merchants-list` function log samples.
+- [ ] Address remaining Supabase security advisor findings (promotions RLS, PostGIS RPC grants/schema, leaked-password protection, and remaining mutable search paths) and inspect sanitized SQLSTATE 42703 / HTTP 406 log samples. The missing `merchants-list` endpoint is now deployed; verify it end-to-end from the app.
 - [ ] Reconcile migration history and the repository's older geospatial migration before further production schema changes.
 - [ ] Run authenticated consumer, merchant, and driver tests for sign-in, checkout, payment, order state transitions, driver assignment, and live tracking.
 
