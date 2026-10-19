@@ -76,8 +76,9 @@ This GitHub editing session cannot install dependencies or run the app/Android t
 - [x] Deployed the missing public `merchants-list` Edge Function and tracked its source; added it to deployment/check scripts. It still needs an end-to-end request from the app.
 - [ ] Critical payment safety fix: the live `payment-process` function currently simulates success and marks orders paid without provider verification, and it expects Supabase Auth despite the app using Firebase. Replace this with a verified provider flow before accepting real payments.
 - [ ] Run typecheck, Jest, Expo Doctor, and device/web smoke tests. The GitHub/EAS status was still pending at the time of this audit; no passing test result is claimed.
-- [ ] Confirm Firebase JWT trust and claim mapping before making broad RLS changes.
-- [ ] Address remaining Supabase security advisor findings (promotions RLS, PostGIS RPC grants/schema, leaked-password protection, and remaining mutable search paths) and inspect sanitized SQLSTATE 42703 / HTTP 406 log samples. The missing `merchants-list` endpoint is now deployed; verify it end-to-end from the app.
+- [ ] Configure/verify the Firebase third-party Auth integration in the Supabase dashboard and ensure Firebase users have the `role: authenticated` custom claim.
+- [ ] Replace remaining RLS policies that compare Firebase `sub` values with UUID `auth.uid()` values, using a reviewed ownership mapping and role-specific smoke tests.
+- [ ] Address remaining Supabase security advisor findings (PostGIS RPC grants/schema, leaked-password protection, and remaining mutable search paths) and inspect sanitized SQLSTATE 42703 / HTTP 406 log samples. The missing `merchants-list` endpoint is now deployed; verify it end-to-end from the app.
 - [ ] Reconcile migration history and the repository's older geospatial migration before further production schema changes.
 - [ ] Run authenticated consumer, merchant, and driver tests for sign-in, checkout, payment, order state transitions, driver assignment, and live tracking.
 
