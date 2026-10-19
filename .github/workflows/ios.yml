@@ -2,7 +2,7 @@ name: EAS Build — iOS
 
 on:
   push:
-    branches: ["Working-copy"]
+    branches: ["Working-copy", "preview"]
 
 jobs:
   eas-build-ios:

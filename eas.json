@@ -5,10 +5,9 @@
   },
   "build": {
     "development": {
-      "channel": "development",
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "preview",
+      "channel": "development",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
@@ -20,7 +19,6 @@
     "preview": {
       "channel": "preview",
       "distribution": "internal",
-      "channel": "preview",
       "android": {
         "buildType": "apk"
       }

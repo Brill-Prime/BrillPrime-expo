@@ -2,9 +2,9 @@ name: Expo CI
 
 on:
   push:
-    branches: ["Working-copy"]
+    branches: ["Working-copy", "preview"]
   pull_request:
-    branches: ["Working-copy"]
+    branches: ["Working-copy", "preview"]
 
 jobs:
   # ── Job 1: TypeScript type check (always runs, no secrets needed) ──────────

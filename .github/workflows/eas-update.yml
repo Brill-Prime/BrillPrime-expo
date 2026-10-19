@@ -2,7 +2,7 @@ name: EAS Update
 
 on:
   push:
-    branches: ["Working-copy"]
+    branches: ["Working-copy", "preview"]
 
 jobs:
   publish-update:
