@@ -87,6 +87,7 @@ supabase functions deploy cart-delete
 supabase functions deploy create-order
 
 # Merchant functions
+supabase functions deploy merchants-list
 supabase functions deploy merchants-nearby
 
 # Payment functions
