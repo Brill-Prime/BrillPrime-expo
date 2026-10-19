@@ -41,6 +41,10 @@ Applied Supabase migration `20261019053950_add_foreign_key_indexes` and tracked 
 
 The default recent log window contained PostgreSQL errors with SQLSTATE `42703` (undefined column, 100 events) and `22P02` (invalid text representation, 3 events). Edge logs included 44 HTTP 406 events, 4 requests to `/functions/v1/merchants-list` returning 404, and 1 HTTP 400. These counts are signals, not proof that every event is a current app defect. The next diagnostic step is to inspect sanitized samples with timestamps and correlate them to current client requests before changing functions or query schemas.
 
+### Payment processing — critical before accepting real money
+
+The deployed `payment-process` function currently hard-codes `paymentSuccessful = true` and marks transactions/orders paid without a verified Paystack/Stripe result. It also calls Supabase Auth `getUser()` even though the app's email login uses Firebase Auth. Treat this function as unsafe for real payments until the identity integration and provider-side initialization/webhook verification are implemented and tested. Do not treat a client callback as proof of payment.
+
 ### Identity model requires confirmation before broad RLS changes
 
 The app uses Firebase Authentication while the database is Supabase Postgres. Current policies frequently use `auth.uid()` against UUID columns, while the app also stores a separate `firebase_uid` text field. Confirm whether Firebase JWTs are configured as trusted third-party JWTs in Supabase and verify the claims mapping. Until that is confirmed, rewriting many RLS policies could either leave data inaccessible or accidentally weaken row ownership checks.
