@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { auth as firebaseAuth } from './firebase';
 
 // Retrieve Supabase configuration from environment
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -77,18 +78,29 @@ if (!urlValidation.isValid || !keyValidation.isValid) {
 
 // Create Supabase client with validated configuration
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  // Firebase is the app's identity provider; do not persist a separate Supabase Auth session.
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: false,
+    autoRefreshToken: false,
     detectSessionInUrl: false,
+  },
+  // Supabase's third-party Firebase Auth integration must be enabled for this token to be accepted.
+  accessToken: async () => {
+    const currentUser = firebaseAuth?.currentUser;
+    if (!currentUser) return null;
+
+    try {
+      return await currentUser.getIdToken();
+    } catch (error) {
+      console.warn('Unable to obtain Firebase ID token for Supabase:', error);
+      return null;
+    }
   },
   global: {
     headers: {
       'x-client-info': 'brillprime-app',
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'apikey': supabaseAnonKey,
-      'Authorization': `Bearer ${supabaseAnonKey}`,
     },
   },
 });
@@ -99,9 +111,6 @@ export const isSupabaseConfigured = urlValidation.isValid && keyValidation.isVal
 // Log success or provide guidance
 if (isSupabaseConfigured) {
   console.log('✅ Supabase client initialized successfully');
-
-  // Configure error handling for real-time subscriptions
-  supabase.realtime.setAuth(supabaseAnonKey);
 
   // Add global error handler for broadcast errors
   const originalBroadcast = supabase.channel.bind(supabase);
