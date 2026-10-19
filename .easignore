@@ -1,3 +1,4 @@
+# Local environment files (keep safe templates only)
 # Local environment files (keep safe template only)
 .env*
 !.env.example

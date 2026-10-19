@@ -82,16 +82,13 @@ function ErrorFallback({
 }
 
 export default function RootLayout() {
-  // Render immediately; let fonts load in background so the animated splash at app/index.tsx is visible
+  // Keep startup routing centralized in app/index.tsx to avoid competing redirects.
   useDeepLinking();
 
   useEffect(() => {
     (async () => {
       try {
-        // Initialize analytics
         await analyticsService.initialize();
-
-        // Load fonts in background
         console.log("Loading fonts...");
         try {
           await Font.loadAsync({
@@ -115,8 +112,6 @@ export default function RootLayout() {
     })();
   }, []);
 
-  // removed initial ActivityIndicator gate so splash animation can be shown for 5 seconds
-
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <ThemeProvider>
@@ -136,38 +131,14 @@ export default function RootLayout() {
                         animation: "fade",
                       }}
                     >
-                      <Stack.Screen
-                        name="index"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="auth"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="home/consumer"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="home/merchant"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="home/driver"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="onboarding/screen1"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="onboarding/screen2"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="onboarding/screen3"
-                        options={{ headerShown: false }}
-                      />
+                      <Stack.Screen name="index" options={{ headerShown: false }} />
+                      <Stack.Screen name="auth" options={{ headerShown: false }} />
+                      <Stack.Screen name="home/consumer" options={{ headerShown: false }} />
+                      <Stack.Screen name="home/merchant" options={{ headerShown: false }} />
+                      <Stack.Screen name="home/driver" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding/screen1" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding/screen2" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding/screen3" options={{ headerShown: false }} />
                     </Stack>
                   </View>
                 </AlertProvider>
@@ -180,9 +151,7 @@ export default function RootLayout() {
   );
 }
 
-// Component to handle session timeout within AlertProvider context
 function SessionTimeoutHandler() {
-  // Enable centralized token validation/refresh on app resume
   useSessionTimeout();
   return null;
 }
