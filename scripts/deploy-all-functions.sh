@@ -30,6 +30,7 @@ functions=(
   "list-transactions"
   "reconcile-transactions"
   "merchants-nearby"
+  "merchants-list"
   "update-inventory"
   "manage-store-hours"
   "generate-merchant-analytics"
