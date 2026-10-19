@@ -73,6 +73,8 @@ This GitHub editing session cannot install dependencies or run the app/Android t
 - [x] Supabase project health, schema, migrations, RLS, Realtime publication, extensions, security/performance advisors, and aggregated recent logs were inspected.
 - [x] Added 16 indexes flagged for missing foreign-key coverage. Migration `20261019053950_add_foreign_key_indexes` was applied to Supabase and all 16 indexes were verified afterward.
 - [x] Added the database audit report at `docs/SUPABASE_DATABASE_AUDIT_2026-10-19.md`.
+- [x] Deployed the missing public `merchants-list` Edge Function and tracked its source; added it to deployment/check scripts. It still needs an end-to-end request from the app.
+- [ ] Critical payment safety fix: the live `payment-process` function currently simulates success and marks orders paid without provider verification, and it expects Supabase Auth despite the app using Firebase. Replace this with a verified provider flow before accepting real payments.
 - [ ] Run typecheck, Jest, Expo Doctor, and device/web smoke tests. The GitHub/EAS status was still pending at the time of this audit; no passing test result is claimed.
 - [ ] Confirm Firebase JWT trust and claim mapping before making broad RLS changes.
 - [ ] Fix the Supabase security advisor findings and inspect sanitized SQLSTATE 42703 / HTTP 406 / missing `merchants-list` function log samples.
