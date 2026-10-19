@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text } from "react-native";
+
 import { ErrorBoundary } from "react-error-boundary";
 import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
