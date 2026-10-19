@@ -1,15 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Stack, useRouter } from "expo-router";
+import React, { useEffect } from "react";
+import { Stack } from "expo-router";
 import { AlertProvider } from "../components/AlertProvider";
 import OfflineBanner from "../components/OfflineBanner";
 import { View, StyleSheet, Text } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { ErrorBoundary } from "react-error-boundary";
 import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import { AppProvider } from "../contexts/AppContext";
-import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { AuthProvider } from "../contexts/AuthContext";
 import { MerchantProvider } from "../contexts/MerchantContext";
 import { NotificationProvider } from "../contexts/NotificationContext";
 import { useDeepLinking } from "../hooks/useDeepLinking";
@@ -83,16 +81,13 @@ function ErrorFallback({
 }
 
 export default function RootLayout() {
-  // Render immediately; let fonts load in background so the animated splash at app/index.tsx is visible
+  // Keep startup routing centralized in app/index.tsx to avoid competing redirects.
   useDeepLinking();
 
   useEffect(() => {
     (async () => {
       try {
-        // Initialize analytics
         await analyticsService.initialize();
-
-        // Load fonts in background
         console.log("Loading fonts...");
         try {
           await Font.loadAsync({
@@ -116,8 +111,6 @@ export default function RootLayout() {
     })();
   }, []);
 
-  // removed initial ActivityIndicator gate so splash animation can be shown for 5 seconds
-
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <ThemeProvider>
@@ -130,7 +123,6 @@ export default function RootLayout() {
                   <View style={styles.container}>
                     <OfflineBanner />
                     <RealtimeNotificationBanner />
-                    <AuthStateHandler />
                     <Stack
                       screenOptions={{
                         headerShown: false,
@@ -138,38 +130,14 @@ export default function RootLayout() {
                         animation: "fade",
                       }}
                     >
-                      <Stack.Screen
-                        name="index"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="auth"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="home/consumer"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="home/merchant"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="home/driver"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="onboarding/screen1"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="onboarding/screen2"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="onboarding/screen3"
-                        options={{ headerShown: false }}
-                      />
+                      <Stack.Screen name="index" options={{ headerShown: false }} />
+                      <Stack.Screen name="auth" options={{ headerShown: false }} />
+                      <Stack.Screen name="home/consumer" options={{ headerShown: false }} />
+                      <Stack.Screen name="home/merchant" options={{ headerShown: false }} />
+                      <Stack.Screen name="home/driver" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding/screen1" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding/screen2" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding/screen3" options={{ headerShown: false }} />
                     </Stack>
                   </View>
                 </AlertProvider>
@@ -182,93 +150,8 @@ export default function RootLayout() {
   );
 }
 
-// Component to handle session timeout within AlertProvider context
 function SessionTimeoutHandler() {
-  // Enable centralized token validation/refresh on app resume
   useSessionTimeout();
-  return null;
-}
-
-// Component to handle auth state and redirects
-function AuthStateHandler() {
-  const { isAuthenticated, isLoading, role } = useAuth();
-  const router = useRouter();
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<
-    boolean | null
-  >(null);
-
-  useEffect(() => {
-    // Check if onboarding is completed
-    const checkOnboardingStatus = async () => {
-      try {
-        const onboardingCompleted = await AsyncStorage.getItem(
-          "hasSeenOnboarding"
-        );
-        setHasCompletedOnboarding(onboardingCompleted === "true");
-      } catch (error) {
-        console.warn("Unable to read onboarding status:", error);
-        setHasCompletedOnboarding(false);
-      }
-    };
-    checkOnboardingStatus();
-  }, []);
-
-  useEffect(() => {
-    if (isLoading || hasCompletedOnboarding === null) return;
-
-    if (!hasCompletedOnboarding) {
-      // Redirect to first onboarding screen
-      router.replace("/onboarding/screen1");
-      return;
-    }
-
-    // Check if user has selected a role
-    const checkRoleSelection = async () => {
-      try {
-        const [userRoleValue, selectedRoleValue] = await AsyncStorage.multiGet([
-          "userRole",
-          "selectedRole",
-        ]);
-        const selectedRole = userRoleValue[1] || selectedRoleValue[1];
-
-        if (selectedRole) {
-          if (!userRoleValue[1]) {
-            await AsyncStorage.setItem("userRole", selectedRole);
-          }
-
-          // If role is selected, check authentication
-          if (isAuthenticated) {
-            // Redirect to appropriate home screen based on role
-            if (selectedRole === "merchant") {
-              router.replace("/home/merchant");
-            } else if (selectedRole === "driver") {
-              router.replace("/home/driver");
-            } else if (selectedRole === "consumer") {
-              router.replace("/home/consumer");
-            }
-          } else {
-            // If not authenticated, go to sign-in
-            router.replace("/auth/signin");
-          }
-        } else {
-          // If no role selected, go to role selection first
-          router.replace("/auth/role-selection");
-        }
-      } catch (error) {
-        console.warn("Unable to resolve role selection:", error);
-        router.replace("/auth/role-selection");
-      }
-    };
-
-    checkRoleSelection();
-  }, [isAuthenticated, isLoading, role, hasCompletedOnboarding, router]);
-
-  // Show loading indicator while checking auth state or onboarding status
-  if (isLoading || hasCompletedOnboarding === null) {
-    // Allow the dedicated splash screen (app/index.tsx) to remain visible instead of covering it here
-    return null;
-  }
-
   return null;
 }
 
