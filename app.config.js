@@ -19,9 +19,7 @@ export default {
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
-  runtimeVersion: {
-    policy: 'appVersion'
-  },
+  runtimeVersion: "1.0.0",
   updates: easProjectId ? {
     url: `https://u.expo.dev/${easProjectId}`
   } : undefined,
