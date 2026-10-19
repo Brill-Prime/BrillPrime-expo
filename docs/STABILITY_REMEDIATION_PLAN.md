@@ -66,3 +66,17 @@ Exit criteria: every deletion has a usage check and setup is reproducible.
 
 ## Current limitations
 This GitHub editing session cannot install dependencies or run the app/Android tests. Validate locally or in CI before merging.
+
+## Execution update — 19 October 2026
+
+- [x] Email sign-in now waits for the Supabase user profile and accepts only the server-stored `consumer`, `merchant`, or `driver` role. It no longer silently defaults every email login to consumer, and it rejects inactive or unsupported roles.
+- [x] Supabase project health, schema, migrations, RLS, Realtime publication, extensions, security/performance advisors, and aggregated recent logs were inspected.
+- [x] Added 16 indexes flagged for missing foreign-key coverage. Migration `20261019053950_add_foreign_key_indexes` was applied to Supabase and all 16 indexes were verified afterward.
+- [x] Added the database audit report at `docs/SUPABASE_DATABASE_AUDIT_2026-10-19.md`.
+- [ ] Run typecheck, Jest, Expo Doctor, and device/web smoke tests. The GitHub/EAS status was still pending at the time of this audit; no passing test result is claimed.
+- [ ] Confirm Firebase JWT trust and claim mapping before making broad RLS changes.
+- [ ] Fix the Supabase security advisor findings and inspect sanitized SQLSTATE 42703 / HTTP 406 / missing `merchants-list` function log samples.
+- [ ] Reconcile migration history and the repository's older geospatial migration before further production schema changes.
+- [ ] Run authenticated consumer, merchant, and driver tests for sign-in, checkout, payment, order state transitions, driver assignment, and live tracking.
+
+**Production safety note:** No RLS policy, payment, order, or location data was changed as part of this pass. The remaining RLS findings are important, but the Firebase/Supabase identity mapping must be confirmed first to avoid locking out valid users or creating an authorization bypass.
