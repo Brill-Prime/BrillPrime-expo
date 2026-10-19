@@ -2,7 +2,7 @@
 // Load environment variables from .env file
 import 'dotenv/config';
 
-const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || 'aa9abbbe-13a1-44d5-91b0-b65256603d1b';
 const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
 
 export default {
