@@ -17,7 +17,7 @@ This audit checked the connected Brill Prime Supabase project, project health, p
 
 ## Change applied and verified
 
-Applied Supabase migration `20261019053950_add_foreign_key_indexes` and tracked it in this repository as `supabase/migrations/20261019053950_add_foreign_key_indexes.sql`. It adds 16 indexes covering foreign keys flagged by the performance advisor. A follow-up query confirmed all 16 indexes exist. The follow-up performance advisor no longer reports the previous unindexed-foreign-key finding.
+Applied Supabase migration `20261019053950_add_foreign_key_indexes` and tracked it in this repository as `supabase/migrations/20261019053950_add_foreign_key_indexes.sql`. It adds 16 indexes covering foreign keys flagged by the performance advisor. A follow-up query confirmed all 16 indexes exist. The follow-up performance advisor no longer reports the previous unindexed-foreign-key finding. A second migration, `20261019054334_harden_trigger_functions`, pins an empty search path and revokes direct `anon`/authenticated execution for the trigger-only `products_broadcast_trigger()` and `update_updated_at_column()` functions. Verification confirmed both no longer have direct execute privileges for those roles, and a transaction-scoped product update/rollback completed successfully.
 
 ## Remaining issues found
 
@@ -25,8 +25,8 @@ Applied Supabase migration `20261019053950_add_foreign_key_indexes` and tracked 
 
 1. `public.promotions` has RLS disabled and currently has no policies. Enabling RLS without a matching access policy would break promotion reads/writes; policies must be designed and tested against the actual identity model before changing production.
 2. `public.spatial_ref_sys` also has RLS disabled. It is PostGIS-managed, so do not blindly enable RLS on it; review exposed-schema/table grants and PostGIS requirements.
-3. Eight public functions have mutable `search_path` settings.
-4. Advisor flags SECURITY DEFINER functions callable by `anon`/authenticated, including `products_broadcast_trigger()`, `update_updated_at_column()`, and PostGIS `st_estimatedextent` overloads. Trigger-only functions should have direct RPC execution revoked after confirming triggers still exist; extension functions require separate review.
+3. Six public functions still have mutable `search_path` settings. Two trigger-only functions were hardened in migration `20261019054334_harden_trigger_functions`.
+4. Advisor still flags three PostGIS `st_estimatedextent` overloads callable as SECURITY DEFINER functions. Direct RPC execution was revoked from the two app-owned trigger-only functions; extension functions require separate review.
 5. Supabase Auth leaked-password protection is disabled. Enable it in Auth security settings.
 6. PostGIS is installed in `public`; moving it requires a compatibility review because app SQL/functions use spatial functions.
 
