@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import {
+  getAuth,
   initializeAuth,
   type Auth,
   type Persistence,
@@ -21,11 +22,22 @@ if (app) {
     auth = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
-    db = getFirestore(app);
-    storage = getStorage(app);
     console.log('✅ Firebase initialized successfully with native persistence');
   } catch (error) {
-    console.error('❌ Firebase initialization error:', error);
+    console.error('❌ Firebase Auth persistence initialization failed:', error);
+    try {
+      auth = getAuth(app);
+      console.warn('⚠️ Firebase Auth initialized with default persistence');
+    } catch (authError) {
+      console.error('❌ Firebase Auth fallback initialization failed:', authError);
+    }
+  }
+
+  try {
+    db = getFirestore(app);
+    storage = getStorage(app);
+  } catch (error) {
+    console.error('❌ Firebase service initialization error:', error);
   }
 }
 
