@@ -4,6 +4,7 @@
 import { apiClient } from './api';
 import { API_ENDPOINTS } from './apiEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { auth } from '../config/firebase';
 import type { Auth } from 'firebase/auth';
 import {
@@ -254,6 +255,9 @@ class AuthService {
 
   // Sign in with Google
   async signInWithGoogle(role?: string): Promise<ApiResponse<AuthResponse>> {
+    const mobileError = this.getMobileSocialSignInError('Google');
+    if (mobileError) return mobileError;
+
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
@@ -377,6 +381,10 @@ class AuthService {
 
   // Check for redirect result on app load
   async checkRedirectResult(): Promise<ApiResponse<AuthResponse> | null> {
+    if (Platform.OS !== 'web') {
+      return null;
+    }
+
     try {
       const result = await getRedirectResult(auth);
       if (!result) return null;
@@ -418,6 +426,9 @@ class AuthService {
 
   // Sign in with Apple
   async signInWithApple(role?: string): Promise<ApiResponse<AuthResponse>> {
+    const mobileError = this.getMobileSocialSignInError('Apple');
+    if (mobileError) return mobileError;
+
     try {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
@@ -502,6 +513,9 @@ class AuthService {
 
   // Sign in with Facebook
   async signInWithFacebook(role?: string): Promise<ApiResponse<AuthResponse>> {
+    const mobileError = this.getMobileSocialSignInError('Facebook');
+    if (mobileError) return mobileError;
+
     try {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');
@@ -613,6 +627,17 @@ class AuthService {
         error: error.message || 'Failed to sign in with Facebook'
       };
     }
+  }
+
+  private getMobileSocialSignInError(provider: string): ApiResponse<AuthResponse> | null {
+    if (Platform.OS === 'web') {
+      return null;
+    }
+
+    return {
+      success: false,
+      error: `${provider} sign-in is not configured for the mobile app yet. Please use email and password.`,
+    };
   }
 
   // Verify OTP
