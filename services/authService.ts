@@ -165,10 +165,44 @@ class AuthService {
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
 
-      // Use role from user data or default to 'consumer'
-      const userRole: 'consumer' | 'merchant' | 'driver' = 'consumer';
+      // Resolve the account role from the server-side profile before creating a local session.
+      // Never trust the role selected on the sign-in screen or silently default to consumer.
+      const profileResponse = await apiClient.get<Array<{ role?: string; is_active?: boolean }>>(
+        `/rest/v1/users?firebase_uid=eq.${encodeURIComponent(firebaseUser.uid)}&select=role,is_active&limit=1`,
+        {
+          Authorization: `Bearer ${firebaseToken}`,
+        }
+      );
 
-      // Create auth response immediately with Firebase data
+      if (
+        !profileResponse.success ||
+        !Array.isArray(profileResponse.data) ||
+        profileResponse.data.length !== 1
+      ) {
+        return {
+          success: false,
+          error: 'We could not verify your account role. Please try again later or contact support.',
+        };
+      }
+
+      const profile = profileResponse.data[0];
+      const supportedRoles = ['consumer', 'merchant', 'driver'] as const;
+      if (!supportedRoles.includes(profile.role as (typeof supportedRoles)[number])) {
+        return {
+          success: false,
+          error: 'This account does not have a supported BrillPrime role. Please contact support.',
+        };
+      }
+
+      if (profile.is_active === false) {
+        return {
+          success: false,
+          error: 'This account is currently inactive. Please contact support.',
+        };
+      }
+
+      const userRole = profile.role as 'consumer' | 'merchant' | 'driver';
+
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -185,29 +219,6 @@ class AuthService {
       };
 
       await this.storeAuthData(authData);
-
-      // Initialize role status for the user
-      // await roleManagementService.initializeRoleStatus(userRole);
-
-      // Fetch user data from Supabase asynchronously (non-blocking)
-      apiClient.get<any>(
-        `/rest/v1/users?firebase_uid=eq.${firebaseUser.uid}&select=*`,
-        {
-          Authorization: `Bearer ${firebaseToken}`,
-        }
-      ).then(userDataResponse => {
-        // Update role if Supabase returns different role
-        if (userDataResponse.success && userDataResponse.data && userDataResponse.data.length > 0) {
-          const supabaseUser = userDataResponse.data[0];
-          if (supabaseUser.role && supabaseUser.role !== userRole) {
-            console.log('Updating role from Supabase:', supabaseUser.role);
-            authData.user.role = supabaseUser.role;
-            this.storeAuthData(authData);
-          }
-        }
-      }).catch(err => {
-        console.log('Supabase user data fetch error (non-critical):', err);
-      });
 
       return {
         success: true,

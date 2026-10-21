@@ -13,6 +13,7 @@ functions=(
   "create-order"
   "payment-process"
   "merchants-nearby"
+  "merchants-list"
   "create-transaction"
   "verify-transaction"
   "mark-paid"
