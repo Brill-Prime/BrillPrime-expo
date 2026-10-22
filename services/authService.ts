@@ -173,14 +173,20 @@ class AuthService {
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
 
-      // Resolve the account role from the server-side profile before creating a local session.
-      // Never trust the role selected on the sign-in screen or silently default to consumer.
-      const profileResponse = await apiClient.get<Array<{ role?: string; is_active?: boolean }>>(
-        `/rest/v1/users?firebase_uid=eq.${encodeURIComponent(firebaseUser.uid)}&select=role,is_active&limit=1`,
-        {
-          Authorization: `Bearer ${firebaseToken}`,
-        }
-      );
+      // Resolve the account role from the server-side profile.
+      // If the Supabase profile doesn't exist yet (e.g. sync failed at sign-up),
+      // fall back to the role the user selected locally.
+      const profileResponse = await apiClient.get<Array<{ role?: string; is_active?: boolean }>>([
+        `/rest/v1/users`,
+        `?firebase_uid=eq.${encodeURIComponent(firebaseUser.uid)}`,
+        `&select=role,is_active`,
+        `&limit=1`,
+      ].join(''), {
+        Authorization: `Bearer ${firebaseToken}`,
+      });
+
+      const supportedRoles = ['consumer', 'merchant', 'driver'] as const;
+      let userRole: 'consumer' | 'merchant' | 'driver';
 
       if (!profileResponse.success) {
         // The API client converts HTTP errors into a safe message. Keep the details in
@@ -193,31 +199,66 @@ class AuthService {
         };
       }
 
-      if (!Array.isArray(profileResponse.data) || profileResponse.data.length !== 1) {
-        console.warn('Role verification returned no unique profile for authenticated Firebase user.');
-        return {
-          success: false,
-          error: 'Your login was accepted, but your BrillPrime profile is missing or incomplete. Please contact support to restore your account profile.',
-        };
-      }
+      if (Array.isArray(profileResponse.data) && profileResponse.data.length === 1) {
+        const profile = profileResponse.data[0];
 
-      const profile = profileResponse.data[0];
-      const supportedRoles = ['consumer', 'merchant', 'driver'] as const;
-      if (!supportedRoles.includes(profile.role as (typeof supportedRoles)[number])) {
-        return {
-          success: false,
-          error: 'This account does not have a supported BrillPrime role. Please contact support.',
-        };
-      }
+        if (profile.is_active === false) {
+          return {
+            success: false,
+            error: 'This account is currently inactive. Please contact support.',
+          };
+        }
 
-      if (profile.is_active === false) {
-        return {
-          success: false,
-          error: 'This account is currently inactive. Please contact support.',
-        };
-      }
+        if (!supportedRoles.includes(profile.role as (typeof supportedRoles)[number])) {
+          return {
+            success: false,
+            error: 'This account does not have a supported BrillPrime role. Please contact support.',
+          };
+        }
 
-      const userRole = profile.role as 'consumer' | 'merchant' | 'driver';
+        userRole = profile.role as 'consumer' | 'merchant' | 'driver';
+      } else {
+        // Fallback: Supabase profile missing or incomplete (sync failed at sign-up).
+        // Use the role the user selected on the role-selection screen.
+        console.warn(
+          'Supabase user profile not found — falling back to locally selected role.',
+          profileResponse.error,
+        );
+
+        const storedRole = await AsyncStorage.getItem('selectedRole') as
+          | 'consumer'
+          | 'merchant'
+          | 'driver'
+          | null;
+
+        if (!storedRole || !supportedRoles.includes(storedRole)) {
+          return {
+            success: false,
+            error:
+              'Your account profile could not be found. Please sign up again or contact support.',
+          };
+        }
+
+        userRole = storedRole;
+
+        // Attempt to back-fill the missing Supabase profile (non-blocking)
+        apiClient
+          .post(
+            '/rest/v1/users',
+            {
+              firebase_uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: userRole,
+              full_name: firebaseUser.displayName || '',
+            },
+            {
+              Authorization: `Bearer ${firebaseToken}`,
+              Prefer: 'resolution=merge-duplicates',
+            },
+          )
+          .then(() => console.log('Supabase profile back-filled successfully.'))
+          .catch((err: any) => console.warn('Supabase profile back-fill failed (non-critical):', err));
+      }
 
       const authData: AuthResponse = {
         token: firebaseToken,

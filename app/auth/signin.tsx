@@ -346,27 +346,33 @@ export default function SignIn() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Social Buttons */}
-          <View style={styles.socialContainer}>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialLogin("Google")}
-            >
-              <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialLogin("Apple")}
-            >
-              <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialLogin("Facebook")}
-            >
-              <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
-            </TouchableOpacity>
-          </View>
+          {/* Social Buttons — only shown on web where Firebase popup/redirect works */}
+          {Platform.OS === 'web' ? (
+            <View style={styles.socialContainer}>
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => handleSocialLogin("Google")}
+              >
+                <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => handleSocialLogin("Apple")}
+              >
+                <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => handleSocialLogin("Facebook")}
+              >
+                <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={styles.socialUnavailableText}>
+              Social sign-in is available on the web version.
+            </Text>
+          )}
 
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
@@ -521,6 +527,13 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
       textAlign: 'center',
       marginBottom: Math.max(16, height * 0.025),
+    },
+    socialUnavailableText: {
+      fontSize: isTablet ? 14 : isSmallScreen ? 11 : 13,
+      color: '#9CA3AF',
+      textAlign: 'center',
+      marginBottom: Math.max(16, height * 0.025),
+      fontStyle: 'italic',
     },
   });
 };
