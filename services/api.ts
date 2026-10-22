@@ -2,14 +2,18 @@
 // This file provides the core API client and configuration
 
 import { ENV } from '../config/environment';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
+
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Default headers for all requests
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
-  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
+  'apikey': supabaseAnonKey
 };
 
 interface ApiResponse<T = any> {
@@ -26,7 +30,6 @@ class ApiClient {
 
   constructor() {
     // Serverless architecture: Firebase for Auth, Supabase for all backend logic
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
       console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not set');
       this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
