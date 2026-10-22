@@ -103,26 +103,33 @@ class AuthService {
       // Initialize role status for the user
       // await roleManagementService.initializeRoleStatus(role);
 
-      // Sync with Supabase backend asynchronously (non-blocking)
-      // This stores additional user data in Supabase
-      apiClient.post<AuthResponse>(
+      // A successful Firebase signup is not enough: the app requires a server-side
+      // profile to verify the user's role on every subsequent sign-in. Wait for this
+      // write and fail visibly if Supabase cannot persist the profile.
+      const profileSync = await apiClient.post<Array<{ firebase_uid?: string; role?: string }>>(
         '/rest/v1/users',
         {
           firebase_uid: firebaseUser.uid,
           email: firebaseUser.email,
-          role: role,
-          phone_number: phoneNumber,
+          role,
+          phone_number: phoneNumber || null,
           full_name: displayName,
         },
         {
           Authorization: `Bearer ${firebaseToken}`,
-          'Prefer': 'resolution=merge-duplicates',
+          Prefer: 'resolution=merge-duplicates,return=representation',
         }
-      ).then(response => {
-        console.log('Supabase sync completed:', response);
-      }).catch(err => {
-        console.log('Supabase sync error (non-critical):', err);
-      });
+      );
+
+      if (!profileSync.success) {
+        console.error('Supabase profile creation failed after Firebase signup:', profileSync.error);
+        // Do not report a fully successful signup when role verification will fail later.
+        await this.clearAuthData();
+        return {
+          success: false,
+          error: 'Your login account was created, but BrillPrime could not finish setting up your profile. Please contact support before trying again.',
+        };
+      }
 
       return {
         success: true,
@@ -174,14 +181,22 @@ class AuthService {
         }
       );
 
-      if (
-        !profileResponse.success ||
-        !Array.isArray(profileResponse.data) ||
-        profileResponse.data.length !== 1
-      ) {
+      if (!profileResponse.success) {
+        // The API client converts HTTP errors into a safe message. Keep the details in
+        // device logs (without logging credentials) so 401/403/RLS/configuration failures
+        // can be distinguished from a genuinely missing profile during diagnosis.
+        console.error('Role verification request failed:', profileResponse.error || 'Unknown Supabase request error');
         return {
           success: false,
-          error: 'We could not verify your account role. Please try again later or contact support.',
+          error: 'We could not verify your account with BrillPrime. Please check your connection and try again. If this continues, contact support.',
+        };
+      }
+
+      if (!Array.isArray(profileResponse.data) || profileResponse.data.length !== 1) {
+        console.warn('Role verification returned no unique profile for authenticated Firebase user.');
+        return {
+          success: false,
+          error: 'Your login was accepted, but your BrillPrime profile is missing or incomplete. Please contact support to restore your account profile.',
         };
       }
 
