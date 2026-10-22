@@ -155,8 +155,17 @@ class ApiClient {
         ...(options.headers || {}),
       });
 
-      // Add auth headers if not provided explicitly. Never send a stale Firebase-style token
-      // or any non-Supabase JWT to the Supabase function layer.
+      // Drop empty or invalid Authorization headers before sending any request.
+      if (headers.has('Authorization')) {
+        const authHeader = headers.get('Authorization') || '';
+        const tokenValue = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+
+        if (!tokenValue || !this.isSupabaseAccessToken(tokenValue)) {
+          headers.delete('Authorization');
+        }
+      }
+
+      // Add auth headers only when a valid Supabase token is available.
       if (!headers.has('Authorization')) {
         const token = await this.getAuthToken();
         if (this.isSupabaseAccessToken(token)) {

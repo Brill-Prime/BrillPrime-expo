@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isLikelySupabaseAccessToken } from '../utils/authFlow';
 
 interface User {
   id: string;
@@ -39,8 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       const entries = await AsyncStorage.multiGet(['userToken', 'userRole', 'tokenExpiry']);
       const storedToken = entries[0]?.[1] ?? null;
-      const storedRole = entries[1]?.[1] ?? null;
+      const storedRoleFromSession = entries[1]?.[1] ?? null;
       const storedExpiry = entries[2]?.[1] ?? null;
+      const storedRole = storedRoleFromSession ?? (await AsyncStorage.getItem('selectedRole')) ?? null;
       let userData = null;
       try {
         userData = await authService.getStoredUser();
@@ -51,10 +53,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const expiryTime = storedExpiry ? Number(storedExpiry) : Number.NaN;
       const hasValidExpiry = Number.isFinite(expiryTime) && expiryTime > Date.now();
       const isSupportedRole = storedRole === 'consumer' || storedRole === 'merchant' || storedRole === 'driver';
+      const hasValidSupabaseToken = !!storedToken && isLikelySupabaseAccessToken(storedToken) && hasValidExpiry;
 
-      // Match startup routing: a token without a valid expiry or supported role
+      // Match startup routing: a token without a valid Supabase JWT or supported role
       // must not be treated as an authenticated session.
-      if (storedToken && hasValidExpiry && isSupportedRole) {
+      if (hasValidSupabaseToken && isSupportedRole) {
         setToken(storedToken);
         setRole(storedRole);
         setIsAuthenticated(true);

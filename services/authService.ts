@@ -6,6 +6,7 @@ import { API_ENDPOINTS } from './apiEndpoints';
 import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import {
   User,
   AuthResponse,
@@ -63,7 +64,22 @@ class AuthService {
         };
       }
 
-      const accessToken = session?.access_token || '';
+      const accessToken = session?.access_token || (await supabase.auth.getSession()).data.session?.access_token || '';
+      const pendingUserData = {
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        phone_number: phoneNumber || null,
+        role,
+        full_name: displayName,
+      };
+
+      await AsyncStorage.multiSet([
+        ['pendingUserData', JSON.stringify(pendingUserData)],
+        ['tempUserEmail', email],
+        ['tempUserRole', role],
+      ]);
+
       const authData: AuthResponse = {
         token: accessToken,
         user: {
@@ -81,6 +97,13 @@ class AuthService {
 
       if (accessToken) {
         await this.storeAuthData(authData);
+      }
+
+      if (!accessToken) {
+        return {
+          success: true,
+          data: authData,
+        };
       }
 
       const profileSync = await apiClient.post<Array<{ firebase_uid?: string; role?: string }>>(
@@ -118,6 +141,13 @@ class AuthService {
 
       if (error?.status === 422 || error?.message?.includes('already registered')) {
         return { success: false, error: 'That email address is already in use!' };
+      }
+
+      if (error?.message?.toLowerCase().includes('email rate limit exceeded') || error?.message?.toLowerCase().includes('rate limit')) {
+        return {
+          success: false,
+          error: 'Too many signup attempts for this email. Please wait a few minutes and try again.',
+        };
       }
 
       if (error?.message?.includes('invalid email')) {
@@ -166,6 +196,14 @@ class AuthService {
       });
 
       const supportedRoles = ['consumer', 'merchant', 'driver'] as const;
+      const normalizeStoredRole = (role?: string | null): 'consumer' | 'merchant' | 'driver' | null => {
+        if (!role || typeof role !== 'string') return null;
+        const normalized = role.trim().toLowerCase();
+        return supportedRoles.includes(normalized as (typeof supportedRoles)[number])
+          ? normalized as 'consumer' | 'merchant' | 'driver'
+          : null;
+      };
+
       let userRole: 'consumer' | 'merchant' | 'driver';
 
       if (!profileResponse.success) {
@@ -178,6 +216,7 @@ class AuthService {
 
       if (Array.isArray(profileResponse.data) && profileResponse.data.length === 1) {
         const profile = profileResponse.data[0];
+        const normalizedRole = normalizeStoredRole(profile.role);
 
         if (profile.is_active === false) {
           return {
@@ -186,24 +225,20 @@ class AuthService {
           };
         }
 
-        if (!supportedRoles.includes(profile.role as (typeof supportedRoles)[number])) {
+        if (!normalizedRole) {
           return {
             success: false,
             error: 'This account does not have a supported BrillPrime role. Please contact support.',
           };
         }
 
-        userRole = profile.role as 'consumer' | 'merchant' | 'driver';
+        userRole = normalizedRole;
       } else {
         console.warn('Supabase user profile not found — falling back to locally selected role.', profileResponse.error);
 
-        const storedRole = await AsyncStorage.getItem('selectedRole') as
-          | 'consumer'
-          | 'merchant'
-          | 'driver'
-          | null;
+        const storedRole = normalizeStoredRole(await AsyncStorage.getItem('selectedRole'));
 
-        if (!storedRole || !supportedRoles.includes(storedRole)) {
+        if (!storedRole) {
           return {
             success: false,
             error: 'Your account profile could not be found. Please sign up again or contact support.',
@@ -271,25 +306,36 @@ class AuthService {
   }
 
   private maybeRedirectToOAuthUrl(provider: string, url?: string): boolean {
-    if (Platform.OS !== 'web' || !url || typeof window === 'undefined') {
+    if (!url) {
       return false;
     }
 
-    window.location.href = url;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = url;
+      return true;
+    }
+
+    const redirectTarget = 'brillprime://auth/callback';
+    WebBrowser.openAuthSessionAsync(url, redirectTarget).catch(() => {
+      // Fall back to the provider URL if the browser session cannot be opened.
+      if (Platform.OS !== 'web' && typeof window !== 'undefined') {
+        window.location.href = url;
+      }
+    });
+
     return true;
   }
 
   // Sign in with Google
   async signInWithGoogle(role?: string): Promise<ApiResponse<AuthResponse>> {
-    const mobileError = this.getMobileSocialSignInError('Google');
-    if (mobileError) return mobileError;
-
     try {
       const provider = 'google';
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'brillprime://auth/callback';
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: redirectTo ? { redirectTo } : undefined,
+        options: { redirectTo },
       });
 
       if (error) {
@@ -358,14 +404,13 @@ class AuthService {
 
   // Sign in with Apple
   async signInWithApple(role?: string): Promise<ApiResponse<AuthResponse>> {
-    const mobileError = this.getMobileSocialSignInError('Apple');
-    if (mobileError) return mobileError;
-
     try {
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'brillprime://auth/callback';
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
-        options: redirectTo ? { redirectTo } : undefined,
+        options: { redirectTo },
       });
 
       if (error) {
@@ -397,14 +442,13 @@ class AuthService {
 
   // Sign in with Facebook
   async signInWithFacebook(role?: string): Promise<ApiResponse<AuthResponse>> {
-    const mobileError = this.getMobileSocialSignInError('Facebook');
-    if (mobileError) return mobileError;
-
     try {
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'brillprime://auth/callback';
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
-        options: redirectTo ? { redirectTo } : undefined,
+        options: { redirectTo },
       });
 
       if (error) {
@@ -432,17 +476,6 @@ class AuthService {
         error: error?.message || 'Failed to sign in with Facebook',
       };
     }
-  }
-
-  private getMobileSocialSignInError(provider: string): ApiResponse<AuthResponse> | null {
-    if (Platform.OS === 'web') {
-      return null;
-    }
-
-    return {
-      success: false,
-      error: `${provider} sign-in is not configured for the mobile app yet. Please use email and password.`,
-    };
   }
 
   // Verify OTP
@@ -586,18 +619,25 @@ class AuthService {
   // Helper methods
   private async storeAuthData(authData: AuthResponse): Promise<void> {
     try {
-      const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+      const normalizedRole = (() => {
+        const role = authData.user.role;
+        if (!role || typeof role !== 'string') return 'consumer';
+        const canonical = role.trim().toLowerCase();
+        return canonical === 'merchant' || canonical === 'driver' || canonical === 'consumer'
+          ? canonical
+          : 'consumer';
+      })();
+      const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000);
 
       await AsyncStorage.multiSet([
         [this.TOKEN_KEY, authData.token],
-        [this.USER_KEY, JSON.stringify(authData.user)],
-        [this.ROLE_KEY, authData.user.role],
+        [this.USER_KEY, JSON.stringify({ ...authData.user, role: normalizedRole })],
+        [this.ROLE_KEY, normalizedRole],
+        ['selectedRole', normalizedRole],
         ['tokenExpiry', tokenExpiry.toString()],
-        ['userEmail', authData.user.email], // Store email for offline use
-        // A dedicated local UID is not required because the active session is managed by Supabase.
+        ['userEmail', authData.user.email],
       ]);
 
-      // Propagate token to ApiClient for centralized acquisition
       apiClient.setAuthToken(authData.token);
     } catch (error: any) {
       console.error('Error storing auth data:', error);
@@ -606,11 +646,19 @@ class AuthService {
 
   private async storeUserData(user: User): Promise<void> {
     try {
+      const normalizedRole = (() => {
+        const role = user.role;
+        if (!role || typeof role !== 'string') return 'consumer';
+        const canonical = role.trim().toLowerCase();
+        return canonical === 'merchant' || canonical === 'driver' || canonical === 'consumer'
+          ? canonical
+          : 'consumer';
+      })();
       const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
 
       await AsyncStorage.multiSet([
-        [this.USER_KEY, JSON.stringify(user)],
-        [this.ROLE_KEY, user.role],
+        [this.USER_KEY, JSON.stringify({ ...user, role: normalizedRole })],
+        [this.ROLE_KEY, normalizedRole],
         ['tokenExpiry', tokenExpiry.toString()],
         ['userEmail', user.email],
       ]);

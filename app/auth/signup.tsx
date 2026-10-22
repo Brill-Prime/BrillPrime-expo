@@ -7,10 +7,12 @@ import { useAlert } from "../../components/AlertProvider";
 import AlertModal from "../../components/AlertModal";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
+import { getStoredRole } from '../../utils/authFlow';
 
 export default function SignUp() {
   const router = useRouter();
   const { showError, showConfirmDialog, showInfo } = useAlert();
+  const signUpRequestLock = React.useRef(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -23,10 +25,27 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
 
-  // Check for redirect auth result on mount
   React.useEffect(() => {
+    const ensureRoleSelected = async () => {
+      const selectedRole = getStoredRole(
+        await AsyncStorage.getItem('selectedRole'),
+        await AsyncStorage.getItem('userRole'),
+      );
+
+      if (!selectedRole) {
+        router.replace('/auth/role-selection');
+        return;
+      }
+
+      const storedRole = await AsyncStorage.getItem('selectedRole');
+      if (!storedRole) {
+        await AsyncStorage.setItem('selectedRole', selectedRole);
+      }
+    };
+
+    ensureRoleSelected();
     checkRedirectAuth();
-  }, []);
+  }, [router]);
 
   const checkRedirectAuth = async () => {
     try {
@@ -35,10 +54,12 @@ export default function SignUp() {
       
       if (result?.success && result.data) {
         // Successfully authenticated via redirect
+        const finalRole = result.data.user.role || (await AsyncStorage.getItem('selectedRole')) || 'consumer';
         await AsyncStorage.multiSet([
           ["userToken", result.data.token],
           ["userEmail", result.data.user.email],
-          ["userRole", result.data.user.role],
+          ["userRole", finalRole],
+          ["selectedRole", finalRole],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
@@ -99,34 +120,52 @@ export default function SignUp() {
   };
 
   const handleSignUp = async () => {
-    if (!validateForm()) return;
+    const emailToSubmit = formData.email.trim().toLowerCase();
 
-    // Check if user has selected a role first
-    const storedRole = await AsyncStorage.getItem("selectedRole");
-    if (!storedRole) {
-      showConfirmDialog(
-        "Role Required",
-        "Please select your role first.",
-        () => router.replace("/auth/role-selection")
-      );
+    if (signUpRequestLock.current) {
       return;
     }
 
-    // Use stored role instead of component state
-    const finalRole = storedRole as 'consumer' | 'merchant' | 'driver';
+    if (!validateForm()) return;
 
+    const lastSignUpAttempt = Number(await AsyncStorage.getItem('lastSignUpAttemptAt') || '0');
+    const now = Date.now();
+    const requestCooldownMs = 30000;
+
+    if (lastSignUpAttempt && now - lastSignUpAttempt < requestCooldownMs) {
+      const remainingSeconds = Math.max(1, Math.ceil((requestCooldownMs - (now - lastSignUpAttempt)) / 1000));
+      showError('Too many attempts', `Please wait ${remainingSeconds} seconds before trying again.`);
+      return;
+    }
+
+    const storedRole = getStoredRole(
+      await AsyncStorage.getItem('selectedRole'),
+      await AsyncStorage.getItem('userRole'),
+    );
+    if (!storedRole) {
+      router.replace('/auth/role-selection');
+      return;
+    }
+
+    if (!(await AsyncStorage.getItem('selectedRole'))) {
+      await AsyncStorage.setItem('selectedRole', storedRole);
+    }
+
+    const finalRole = storedRole as 'consumer' | 'merchant' | 'driver';
+    signUpRequestLock.current = true;
     setLoading(true);
 
     try {
-      // Import authService for real API calls
       const { authService } = await import('../../services/authService');
 
       const nameParts = formData.fullName.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
+      await AsyncStorage.setItem('lastSignUpAttemptAt', now.toString());
+
       const response = await authService.signUp({
-        email: formData.email,
+        email: emailToSubmit,
         password: formData.password,
         firstName,
         lastName,
@@ -135,9 +174,8 @@ export default function SignUp() {
       });
 
       if (response.success && response.data) {
-        // Store pending user data for OTP verification
         const pendingUserData = {
-          email: formData.email,
+          email: emailToSubmit,
           firstName,
           lastName,
           role: finalRole,
@@ -146,14 +184,12 @@ export default function SignUp() {
 
         await AsyncStorage.multiSet([
           ["pendingUserData", JSON.stringify(pendingUserData)],
-          ["tempUserEmail", formData.email],
+          ["tempUserEmail", emailToSubmit],
           ["tempUserRole", finalRole]
         ]);
 
-        // Show OTP sent modal
         setShowOtpModal(true);
       } else {
-        // Handle specific error cases
         const errorMessage = response.error || "Registration failed";
         if (errorMessage.includes("email already exists") || errorMessage.includes("already registered")) {
           showConfirmDialog(
@@ -161,6 +197,8 @@ export default function SignUp() {
             "An account with this email already exists. Would you like to sign in instead?",
             () => router.push("/auth/signin")
           );
+        } else if (errorMessage.includes("rate limit") || errorMessage.includes("Too many signup attempts") || errorMessage.includes("email rate limit exceeded")) {
+          showError("Too many attempts", "This email has been used too many times recently. Please wait a few minutes and try again.");
         } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
           showError("Network Error", "Please check your internet connection and try again.");
         } else if (errorMessage.includes("invalid email")) {
@@ -171,20 +209,22 @@ export default function SignUp() {
           showError("Sign Up Failed", errorMessage);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing up:", error);
 
-      // Handle network errors specifically
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
         showError(
           "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
+      } else if (error?.message?.toLowerCase().includes('rate limit') || error?.message?.toLowerCase().includes('email rate limit exceeded')) {
+        showError("Too many attempts", "This email has been used too many times recently. Please wait a few minutes and try again.");
       } else {
         showError("Error", "Sign up failed. Please try again.");
       }
     } finally {
       setLoading(false);
+      signUpRequestLock.current = false;
     }
   };
 
@@ -192,16 +232,18 @@ export default function SignUp() {
     try {
       setLoading(true);
 
-      // Check if user has selected a role first
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      const selectedRole = getStoredRole(
+        await AsyncStorage.getItem('selectedRole'),
+        await AsyncStorage.getItem('userRole'),
+      );
       if (!selectedRole) {
-        showConfirmDialog(
-          "Role Required",
-          "Please select your role first.",
-          () => router.replace("/auth/role-selection")
-        );
+        router.replace('/auth/role-selection');
         setLoading(false);
         return;
+      }
+
+      if (!(await AsyncStorage.getItem('selectedRole'))) {
+        await AsyncStorage.setItem('selectedRole', selectedRole);
       }
 
       // Import authService
@@ -218,10 +260,12 @@ export default function SignUp() {
 
       if (response?.success && response.data) {
         // Store user data from API response
+        const finalRole = response.data.user.role || selectedRole || 'consumer';
         await AsyncStorage.multiSet([
           ["userToken", response.data.token],
           ["userEmail", response.data.user.email],
-          ["userRole", response.data.user.role],
+          ["userRole", finalRole],
+          ["selectedRole", finalRole],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 

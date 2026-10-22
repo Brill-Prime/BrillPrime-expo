@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getPendingRegistrationData } from "../../utils/authFlow";
 
 export default function OTPVerification() {
   const router = useRouter();
@@ -9,14 +10,29 @@ export default function OTPVerification() {
   const inputRefs = useRef<TextInput[]>([]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [statusMessage, setStatusMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
 
   useEffect(() => {
     const loadUserEmail = async () => {
       try {
-        const pendingUserData = await AsyncStorage.getItem("pendingUserData");
-        if (pendingUserData) {
-          const userData = JSON.parse(pendingUserData);
-          setUserEmail(userData.email || "");
+        const [pendingUserData, tempUserEmail, tempUserRole, persistedUserEmail, persistedUserRole] = await AsyncStorage.multiGet([
+          "pendingUserData",
+          "tempUserEmail",
+          "tempUserRole",
+          "userEmail",
+          "userRole",
+        ]);
+
+        const pendingContext = getPendingRegistrationData(
+          pendingUserData[1],
+          tempUserEmail[1],
+          tempUserRole[1],
+          persistedUserEmail[1],
+          persistedUserRole[1],
+        );
+
+        if (pendingContext?.email) {
+          setUserEmail(pendingContext.email);
         }
       } catch (error) {
         console.error("Error loading user email:", error);
@@ -29,6 +45,10 @@ export default function OTPVerification() {
   const handleOTPChange = (value: string, index: number) => {
     // Only allow numeric input
     const numericValue = value.replace(/[^0-9]/g, '');
+
+    if (statusMessage) {
+      setStatusMessage(null);
+    }
 
     const newOtp = [...otp];
     newOtp[index] = numericValue;
@@ -57,52 +77,73 @@ export default function OTPVerification() {
     const otpString = otp.join("");
 
     if (otpString.length !== 5) {
-      Alert.alert("Error", "Please enter all 5 digits of the verification code.");
+      setStatusMessage({ type: 'error', text: 'Please enter all 5 digits of the verification code.' });
       return;
     }
 
     setIsVerifying(true);
+    setStatusMessage({ type: 'info', text: 'Verifying your code...' });
 
     try {
       const { authService } = await import('../../services/authService');
-      const tempEmail = await AsyncStorage.getItem("pendingUserData"); // Assuming pendingUserData stores email and other details
-      // const tempRole = await AsyncStorage.getItem("selectedRole");
+      const [pendingUserData, tempUserEmail, tempUserRole, persistedUserEmail, persistedUserRole] = await AsyncStorage.multiGet([
+        "pendingUserData",
+        "tempUserEmail",
+        "tempUserRole",
+        "userEmail",
+        "userRole",
+      ]);
 
-      if (!tempEmail) {
-        Alert.alert("Error", "Session expired. Please sign up again.");
+      const pendingContext = getPendingRegistrationData(
+        pendingUserData[1],
+        tempUserEmail[1],
+        tempUserRole[1],
+        persistedUserEmail[1],
+        persistedUserRole[1],
+      );
+
+      if (!pendingContext?.email) {
+        setStatusMessage({ type: 'error', text: 'Your signup session expired. Please sign up again.' });
         router.replace("/auth/signup");
         return;
       }
 
-      const userData = JSON.parse(tempEmail); // Parse the stored pending user data
-
       const response = await authService.verifyOTP({
-        email: userData.email, // Use email from parsed data
+        email: pendingContext.email,
         otp: otpString
       });
 
       if (response.success && response.data) {
-        // Store authenticated user data
-        await AsyncStorage.setItem("userToken", response.data.token);
-        await AsyncStorage.setItem("userEmail", response.data.user.email);
-        await AsyncStorage.setItem("userRole", response.data.user.role);
+        const authenticatedUser = response.data.user ?? {
+          email: pendingContext.email,
+          role: pendingContext.role ?? 'consumer',
+          id: '',
+          name: pendingContext.email,
+          phone: '',
+          isVerified: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
 
-        // Clean up temporary data
-        await AsyncStorage.multiRemove(["pendingUserData", "selectedRole"]);
+        await AsyncStorage.setItem("userToken", response.data.token || "");
+        await AsyncStorage.setItem("userEmail", authenticatedUser.email || pendingContext.email);
+        await AsyncStorage.setItem("userRole", authenticatedUser.role || pendingContext.role || "consumer");
 
-        Alert.alert("Success", "Account verified successfully!");
+        await AsyncStorage.multiRemove(["pendingUserData", "tempUserEmail", "tempUserRole", "selectedRole"]);
 
-        if (response.data.user.role === "consumer") {
+        setStatusMessage({ type: 'success', text: 'Account verified successfully.' });
+
+        if (authenticatedUser.role === "consumer") {
           router.replace("/home/consumer");
         } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
+          router.replace(`/dashboard/${authenticatedUser.role}`);
         }
       } else {
-        Alert.alert("Error", response.error || "Invalid verification code");
+        setStatusMessage({ type: 'error', text: response.error || "Invalid verification code. Please try again." });
       }
     } catch (error) {
       console.error("OTP Verification Error:", error);
-      Alert.alert("Error", "Verification failed. Please try again.");
+      setStatusMessage({ type: 'error', text: "Verification failed. Please try again." });
     } finally {
       setIsVerifying(false);
     }
@@ -110,28 +151,41 @@ export default function OTPVerification() {
 
   const handleResendOTP = async () => {
     try {
-      const pendingUserData = await AsyncStorage.getItem("pendingUserData");
-      if (!pendingUserData) {
-        Alert.alert("Error", "Session expired. Please sign up again.");
+      const [pendingUserData, tempUserEmail, tempUserRole, persistedUserEmail, persistedUserRole] = await AsyncStorage.multiGet([
+        "pendingUserData",
+        "tempUserEmail",
+        "tempUserRole",
+        "userEmail",
+        "userRole",
+      ]);
+
+      const pendingContext = getPendingRegistrationData(
+        pendingUserData[1],
+        tempUserEmail[1],
+        tempUserRole[1],
+        persistedUserEmail[1],
+        persistedUserRole[1],
+      );
+
+      if (!pendingContext?.email) {
+        setStatusMessage({ type: 'error', text: 'Your signup session expired. Please sign up again.' });
         router.replace("/auth/signup");
         return;
       }
 
-      const userData = JSON.parse(pendingUserData);
-
       const { authService } = await import('../../services/authService');
-      const response = await authService.resendOTP(userData.email);
+      const response = await authService.resendOTP(pendingContext.email);
 
       if (response.success) {
-        Alert.alert("Code Resent", `A new verification code has been sent to ${userData.email}`);
         setOtp(["", "", "", "", ""]);
+        setStatusMessage({ type: 'success', text: `A new verification code has been sent to ${pendingContext.email}.` });
         inputRefs.current[0]?.focus();
       } else {
-        Alert.alert("Error", response.error || "Failed to resend code. Please try again.");
+        setStatusMessage({ type: 'error', text: response.error || "Failed to resend code. Please try again." });
       }
     } catch (error) {
       console.error("Resend OTP Error:", error);
-      Alert.alert("Error", "Failed to resend code. Please try again.");
+      setStatusMessage({ type: 'error', text: "Failed to resend code. Please try again." });
     }
   };
 
@@ -175,6 +229,12 @@ export default function OTPVerification() {
         <Text style={styles.emailText}>A verification code has been sent to</Text>
         <Text style={styles.emailAddress}>{userEmail || "your email"}</Text>
       </View>
+
+      {statusMessage && (
+        <View style={[styles.statusBox, statusMessage.type === 'error' ? styles.statusError : statusMessage.type === 'success' ? styles.statusSuccess : styles.statusInfo]}>
+          <Text style={styles.statusText}>{statusMessage.text}</Text>
+        </View>
+      )}
 
       {/* Submit Button */}
       <TouchableOpacity
@@ -253,7 +313,7 @@ const styles = StyleSheet.create({
   },
   emailInfo: {
     alignItems: "center",
-    marginBottom: 48,
+    marginBottom: 24,
   },
   emailText: {
     fontSize: 12,
@@ -265,6 +325,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "rgb(11, 26, 81)",
+  },
+  statusBox: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  statusError: {
+    backgroundColor: "#FDECEC",
+    borderWidth: 1,
+    borderColor: "#F5B7B1",
+  },
+  statusSuccess: {
+    backgroundColor: "#E9F9EE",
+    borderWidth: 1,
+    borderColor: "#A9D9B7",
+  },
+  statusInfo: {
+    backgroundColor: "#EEF5FF",
+    borderWidth: 1,
+    borderColor: "#C7D9F8",
+  },
+  statusText: {
+    color: "#1F2937",
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "600",
   },
   submitButton: {
     backgroundColor: "rgb(70, 130, 180)",

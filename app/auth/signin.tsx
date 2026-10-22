@@ -20,6 +20,7 @@ import LockIcon from '../../components/LockIcon';
 
 // Import authService here to ensure it's available for checkRedirectAuth
 import { authService } from '../../services/authService';
+import { getStoredRole, normalizeRole } from '../../utils/authFlow';
 
 export default function SignIn() {
   const router = useRouter();
@@ -38,6 +39,26 @@ export default function SignIn() {
     return () => subscription?.remove();
   }, []);
 
+  useEffect(() => {
+    const ensureRoleSelected = async () => {
+      const selectedRole = getStoredRole(
+        await AsyncStorage.getItem('selectedRole'),
+        await AsyncStorage.getItem('userRole'),
+      );
+
+      if (!selectedRole) {
+        router.replace('/auth/role-selection');
+        return;
+      }
+
+      if (!(await AsyncStorage.getItem('selectedRole'))) {
+        await AsyncStorage.setItem('selectedRole', selectedRole);
+      }
+    };
+
+    ensureRoleSelected();
+  }, [router]);
+
   // Placeholder for checkAuthStatus if it exists in the original code,
   // otherwise, it might be an artifact from the thought process.
   const checkAuthStatus = async () => {
@@ -51,10 +72,12 @@ export default function SignIn() {
       if (result?.success && result.data) {
         // Successfully authenticated via redirect
         // Store auth data
+        const finalRole = result.data.user.role || (await AsyncStorage.getItem('selectedRole')) || 'consumer';
         await AsyncStorage.multiSet([
           ["userToken", result.data.token],
           ["userEmail", result.data.user.email],
-          ["userRole", result.data.user.role],
+          ["userRole", finalRole],
+          ["selectedRole", finalRole],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
@@ -108,15 +131,18 @@ export default function SignIn() {
     }
 
     // Check if user has selected a role first
-    const selectedRole = await AsyncStorage.getItem("selectedRole") as 'consumer' | 'merchant' | 'driver' | null;
+    const selectedRole = getStoredRole(
+      await AsyncStorage.getItem('selectedRole'),
+      await AsyncStorage.getItem('userRole'),
+    );
     if (!selectedRole) {
-      showConfirmDialog(
-        "Role Required",
-        "Please select your role first.",
-        () => router.replace("/auth/role-selection")
-      );
-      setLoading(false); // Reset loading state
+      router.replace('/auth/role-selection');
+      setLoading(false);
       return;
+    }
+
+    if (!(await AsyncStorage.getItem('selectedRole'))) {
+      await AsyncStorage.setItem('selectedRole', selectedRole);
     }
 
     try {
@@ -130,10 +156,12 @@ export default function SignIn() {
       }
 
       // Store user data from auth response
+      const finalRole = normalizeRole(authResponse.data.user.role) ?? selectedRole;
       await AsyncStorage.multiSet([
         ["userToken", authResponse.data.token],
         ["userEmail", authResponse.data.user.email],
-        ["userRole", authResponse.data.user.role],
+        ["userRole", finalRole],
+        ["selectedRole", finalRole],
         ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
       ]);
 
@@ -181,15 +209,18 @@ export default function SignIn() {
       setLoading(true);
 
       // Check if user has selected a role first
-      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      const selectedRole = getStoredRole(
+        await AsyncStorage.getItem('selectedRole'),
+        await AsyncStorage.getItem('userRole'),
+      );
       if (!selectedRole) {
-        showConfirmDialog(
-          "Role Required",
-          "Please select your role first.",
-          () => router.replace("/auth/role-selection")
-        );
+        router.replace('/auth/role-selection');
         setLoading(false);
         return;
+      }
+
+      if (!(await AsyncStorage.getItem('selectedRole'))) {
+        await AsyncStorage.setItem('selectedRole', selectedRole);
       }
 
       console.log(`Starting ${provider} sign-in with role:`, selectedRole);
@@ -214,12 +245,13 @@ export default function SignIn() {
       // Common logic for successful social login
       if (response?.success && response.data) {
         console.log('Social login successful, storing data and routing...');
-        
+        const normalizedUserRole = normalizeRole(response.data.user.role) ?? selectedRole;
+
         // Validate that the user's role matches selected role
-        if (response.data.user.role !== selectedRole) {
+        if (normalizedUserRole !== selectedRole) {
           showConfirmDialog(
             "Role Mismatch",
-            `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
+            `Your account is registered as ${normalizedUserRole}, but you selected ${selectedRole}. Please select the correct role.`,
             () => router.replace("/auth/role-selection")
           );
           setLoading(false);
@@ -230,7 +262,8 @@ export default function SignIn() {
         await AsyncStorage.multiSet([
           ["userToken", response.data.token],
           ["userEmail", response.data.user.email],
-          ["userRole", response.data.user.role],
+          ["userRole", normalizedUserRole],
+          ["selectedRole", normalizedUserRole],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
@@ -345,33 +378,26 @@ export default function SignIn() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Social Buttons — only shown on web where Firebase popup/redirect works */}
-          {Platform.OS === 'web' ? (
-            <View style={styles.socialContainer}>
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Google")}
-              >
-                <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Apple")}
-              >
-                <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Facebook")}
-              >
-                <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={styles.socialUnavailableText}>
-              Social sign-in is available on the web version.
-            </Text>
-          )}
+          <View style={styles.socialContainer}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Google")}
+            >
+              <Ionicons name="logo-google" size={screenData.width >= 768 ? 28 : 24} color="#DB4437" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Apple")}
+            >
+              <Ionicons name="logo-apple" size={screenData.width >= 768 ? 28 : 24} color="#000" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Facebook")}
+            >
+              <Ionicons name="logo-facebook" size={screenData.width >= 768 ? 28 : 24} color="#1877F2" />
+            </TouchableOpacity>
+          </View>
 
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
