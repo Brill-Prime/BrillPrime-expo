@@ -7,7 +7,11 @@ import { useAlert } from "../../components/AlertProvider";
 import AlertModal from "../../components/AlertModal";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
+<<<<<<< HEAD
 import { getStoredRole } from '../../utils/authFlow';
+=======
+import { getRoleHomeRoute, isUserRole } from '../../utils/authRouting';
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
 export default function SignUp() {
   const router = useRouter();
@@ -53,6 +57,7 @@ export default function SignUp() {
       const result = await authService.checkRedirectResult();
       
       if (result?.success && result.data) {
+<<<<<<< HEAD
         // Successfully authenticated via redirect
         const finalRole = result.data.user.role || (await AsyncStorage.getItem('selectedRole')) || 'consumer';
         await AsyncStorage.multiSet([
@@ -75,6 +80,9 @@ export default function SignUp() {
         } else {
           router.replace(`/dashboard/${result.data.user.role}` as never);
         }
+=======
+        router.replace(getRoleHomeRoute(result.data.user.role) as never);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else if (result?.error) {
         showError('Authentication Error', result.error);
       }
@@ -122,11 +130,27 @@ export default function SignUp() {
   const handleSignUp = async () => {
     const emailToSubmit = formData.email.trim().toLowerCase();
 
+<<<<<<< HEAD
     if (signUpRequestLock.current) {
       return;
     }
 
     if (!validateForm()) return;
+=======
+    // Check if user has selected a role first
+    const storedRole = await AsyncStorage.getItem("selectedRole");
+    if (!isUserRole(storedRole)) {
+      showConfirmDialog(
+        "Role Required",
+        "Please select your role first.",
+        () => router.replace("/auth/role-selection")
+      );
+      return;
+    }
+
+    // Use stored role instead of component state
+    const finalRole = storedRole;
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
     const lastSignUpAttempt = Number(await AsyncStorage.getItem('lastSignUpAttemptAt') || '0');
     const now = Date.now();
@@ -174,6 +198,15 @@ export default function SignUp() {
       });
 
       if (response.success && response.data) {
+<<<<<<< HEAD
+=======
+        if (response.data.token) {
+          router.replace(getRoleHomeRoute(response.data.user.role) as never);
+          return;
+        }
+
+        // Store pending user data for OTP verification
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
         const pendingUserData = {
           email: emailToSubmit,
           firstName,
@@ -232,12 +265,23 @@ export default function SignUp() {
     try {
       setLoading(true);
 
+<<<<<<< HEAD
       const selectedRole = getStoredRole(
         await AsyncStorage.getItem('selectedRole'),
         await AsyncStorage.getItem('userRole'),
       );
       if (!selectedRole) {
         router.replace('/auth/role-selection');
+=======
+      // Check if user has selected a role first
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      if (!isUserRole(selectedRole)) {
+        showConfirmDialog(
+          "Role Required",
+          "Please select your role first.",
+          () => router.replace("/auth/role-selection")
+        );
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
         setLoading(false);
         return;
       }
@@ -259,6 +303,7 @@ export default function SignUp() {
       }
 
       if (response?.success && response.data) {
+<<<<<<< HEAD
         // Store user data from API response
         const finalRole = response.data.user.role || selectedRole || 'consumer';
         await AsyncStorage.multiSet([
@@ -281,6 +326,9 @@ export default function SignUp() {
         } else {
           router.replace(`/dashboard/${response.data.user.role}` as never);
         }
+=======
+        router.replace(getRoleHomeRoute(response.data.user.role) as never);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else {
         const errorMessage = response?.error || `${provider} sign-up failed`;
         if (errorMessage !== 'Sign-in cancelled') {

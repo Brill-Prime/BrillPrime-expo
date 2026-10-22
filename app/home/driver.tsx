@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
 import { useAuth } from "../../contexts/AuthContext";
+import { getRoleHomeRoute, isUserRole } from "../../utils/authRouting";
 import { PerformanceOptimizer } from "../../utils/performance";
 import { locationService } from "../../services/locationService";
 import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
@@ -502,7 +503,7 @@ export default function DriverHome() {
     try {
       // Guard drivers-only view
       if (!authLoading && role !== 'driver') {
-        router.replace('/auth/role-selection');
+        router.replace(isUserRole(role) ? getRoleHomeRoute(role) as never : '/auth/role-selection');
         return;
       }
 
@@ -561,10 +562,16 @@ export default function DriverHome() {
         router.push("/support");
         break;
       case "Switch to Consumer":
-        router.push("/home/consumer");
+        showError(
+          "Role Not Available",
+          "This account is registered as a driver. Sign in with a consumer account to open the consumer home."
+        );
         break;
       case "Switch to Merchant":
-        router.push("/home/merchant");
+        showError(
+          "Role Not Available",
+          "This account is registered as a driver. Sign in with a merchant account to open the merchant home."
+        );
         break;
       default:
         showInfo("Navigation", `Navigating to ${item}`);
@@ -577,11 +584,7 @@ export default function DriverHome() {
       "Are you sure you want to sign out?",
       async () => {
         try {
-          await AsyncStorage.multiRemove([
-            "userToken",
-            "userEmail",
-            "userRole",
-          ]);
+          await signOut();
           PerformanceOptimizer.clearCache();
           router.replace("/");
           showSuccess("Signed Out", "You have been successfully signed out.");
@@ -594,7 +597,7 @@ export default function DriverHome() {
         }
       },
     );
-  }, [showConfirmDialog, showSuccess, showError, router]);
+  }, [showConfirmDialog, showSuccess, showError, router, signOut]);
 
   const handleTabPress = useCallback((tab) => {
     setActiveTab(tab);

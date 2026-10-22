@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAlert } from "../../components/AlertProvider";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
+import { getRoleHomeRoute, isUserRole } from '../../utils/authRouting';
 
 // Import authService here to ensure it's available for checkRedirectAuth
 import { authService } from '../../services/authService';
@@ -39,6 +40,7 @@ export default function SignIn() {
     return () => subscription?.remove();
   }, []);
 
+<<<<<<< HEAD
   useEffect(() => {
     const ensureRoleSelected = async () => {
       const selectedRole = getStoredRole(
@@ -66,10 +68,13 @@ export default function SignIn() {
     // For now, we'll just assume it's handled by the redirect check or sign-in process
   };
 
+=======
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
   const checkRedirectAuth = React.useCallback(async () => {
     try {
       const result = await authService.checkRedirectResult();
       if (result?.success && result.data) {
+<<<<<<< HEAD
         // Successfully authenticated via redirect
         // Store auth data
         const finalRole = result.data.user.role || (await AsyncStorage.getItem('selectedRole')) || 'consumer';
@@ -94,6 +99,9 @@ export default function SignIn() {
           // Default to consumer home for unknown roles
           router.replace('/home/consumer');
         }
+=======
+        router.replace(getRoleHomeRoute(result.data.user.role) as never);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else if (result?.error) {
         showError('Authentication Error', result.error);
       }
@@ -103,12 +111,8 @@ export default function SignIn() {
   }, [router, showError]);
 
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      await checkAuthStatus();
-      await checkRedirectAuth();
-    };
-    checkAuthAndRedirect();
-  }, [router, checkRedirectAuth]);
+    void checkRedirectAuth();
+  }, [checkRedirectAuth]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -131,6 +135,7 @@ export default function SignIn() {
     }
 
     // Check if user has selected a role first
+<<<<<<< HEAD
     const selectedRole = getStoredRole(
       await AsyncStorage.getItem('selectedRole'),
       await AsyncStorage.getItem('userRole'),
@@ -138,6 +143,16 @@ export default function SignIn() {
     if (!selectedRole) {
       router.replace('/auth/role-selection');
       setLoading(false);
+=======
+    const selectedRole = await AsyncStorage.getItem("selectedRole");
+    if (!isUserRole(selectedRole)) {
+      showConfirmDialog(
+        "Role Required",
+        "Please select your role first.",
+        () => router.replace("/auth/role-selection")
+      );
+      setLoading(false); // Reset loading state
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       return;
     }
 
@@ -149,12 +164,13 @@ export default function SignIn() {
       const authResponse = await authService.signInWithEmail({
         email: formData.email,
         password: formData.password
-      });
+      }, selectedRole);
 
       if (!authResponse.success || !authResponse.data) {
         throw new Error(authResponse.error || 'Authentication failed');
       }
 
+<<<<<<< HEAD
       // Store user data from auth response
       const finalRole = normalizeRole(authResponse.data.user.role) ?? selectedRole;
       await AsyncStorage.multiSet([
@@ -178,6 +194,9 @@ export default function SignIn() {
         // Default to consumer home for unknown roles
         router.replace('/home/consumer');
       }
+=======
+      router.replace(getRoleHomeRoute(authResponse.data.user.role) as never);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
     } catch (error: any) {
       console.error("Error signing in:", error);
       
@@ -209,12 +228,22 @@ export default function SignIn() {
       setLoading(true);
 
       // Check if user has selected a role first
+<<<<<<< HEAD
       const selectedRole = getStoredRole(
         await AsyncStorage.getItem('selectedRole'),
         await AsyncStorage.getItem('userRole'),
       );
       if (!selectedRole) {
         router.replace('/auth/role-selection');
+=======
+      const selectedRole = await AsyncStorage.getItem("selectedRole");
+      if (!isUserRole(selectedRole)) {
+        showConfirmDialog(
+          "Role Required",
+          "Please select your role first.",
+          () => router.replace("/auth/role-selection")
+        );
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
         setLoading(false);
         return;
       }
@@ -244,6 +273,7 @@ export default function SignIn() {
 
       // Common logic for successful social login
       if (response?.success && response.data) {
+<<<<<<< HEAD
         console.log('Social login successful, storing data and routing...');
         const normalizedUserRole = normalizeRole(response.data.user.role) ?? selectedRole;
 
@@ -280,6 +310,9 @@ export default function SignIn() {
           // Default to consumer home for unknown roles
           router.replace('/home/consumer');
         }
+=======
+        router.replace(getRoleHomeRoute(response.data.user.role) as never);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else if (response?.error && response.error !== 'Sign-in cancelled') {
         console.error(`${provider} sign-in failed:`, response.error);
         showError("Sign In Failed", response.error);

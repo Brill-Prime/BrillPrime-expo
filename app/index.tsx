@@ -4,8 +4,12 @@ import { Text, View, StyleSheet, Animated, Image, ActivityIndicator, Platform } 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
+<<<<<<< HEAD
 import { supabase } from '../config/supabase';
 import { resolveAuthRoute, hasCompletedOnboarding } from '../utils/authFlow';
+=======
+import { getRoleHomeRoute, isUserRole } from '../utils/authRouting';
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
 void SplashScreen.preventAutoHideAsync().catch((error) => {
   console.warn("Failed to keep native splash screen visible:", error);
@@ -85,6 +89,7 @@ export default function SplashScreenComponent() {
           return;
         }
 
+<<<<<<< HEAD
         if (decision.route === 'role-selection' && isMounted) {
           router.replace('/auth/role-selection');
           return;
@@ -119,7 +124,32 @@ export default function SplashScreenComponent() {
           } else {
             router.replace('/auth/role-selection');
           }
+=======
+        // Supabase is the source of truth for both the session and the stored role.
+        const { authService } = await import('../services/authService');
+        const sessionResult = await authService.restoreSession();
+        if (sessionResult?.success && sessionResult.data) {
+          if (isMounted) {
+            router.replace(getRoleHomeRoute(sessionResult.data.user.role) as never);
+          }
+          return;
         }
+
+        const pendingUserData = await AsyncStorage.getItem('pendingUserData');
+        if (pendingUserData) {
+          if (isMounted) router.replace('/auth/otp-verification');
+          return;
+        }
+
+        const selectedRole = await AsyncStorage.getItem('selectedRole');
+        if (!isUserRole(selectedRole)) {
+          if (isMounted) router.replace('/auth/role-selection');
+          return;
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
+        }
+
+        const userEmail = await AsyncStorage.getItem('userEmail');
+        if (isMounted) router.replace(userEmail ? '/auth/signin' : '/auth/signup');
       } catch (error) {
         console.error('Error checking auth state:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');

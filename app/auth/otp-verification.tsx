@@ -2,11 +2,15 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+<<<<<<< HEAD
 import { getPendingRegistrationData } from "../../utils/authFlow";
+=======
+import { getRoleHomeRoute } from "../../utils/authRouting";
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
 export default function OTPVerification() {
   const router = useRouter();
-  const [otp, setOtp] = useState(["", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<TextInput[]>([]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [userEmail, setUserEmail] = useState("");
@@ -43,11 +47,19 @@ export default function OTPVerification() {
   }, []);
 
   const handleOTPChange = (value: string, index: number) => {
-    // Only allow numeric input
     const numericValue = value.replace(/[^0-9]/g, '');
 
+<<<<<<< HEAD
     if (statusMessage) {
       setStatusMessage(null);
+=======
+    if (numericValue.length > 1) {
+      const pastedDigits = numericValue.slice(0, 6).split('');
+      const nextOtp = Array.from({ length: 6 }, (_, digitIndex) => pastedDigits[digitIndex] || '');
+      setOtp(nextOtp);
+      inputRefs.current[Math.min(pastedDigits.length, 5)]?.focus();
+      return;
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
     }
 
     const newOtp = [...otp];
@@ -55,7 +67,7 @@ export default function OTPVerification() {
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (numericValue && index < 4) {
+    if (numericValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
     } else if (!numericValue && index > 0) {
       // Auto-focus previous input on backspace
@@ -76,8 +88,13 @@ export default function OTPVerification() {
   const handleVerifyOTP = async () => {
     const otpString = otp.join("");
 
+<<<<<<< HEAD
     if (otpString.length !== 5) {
       setStatusMessage({ type: 'error', text: 'Please enter all 5 digits of the verification code.' });
+=======
+    if (otpString.length !== 6) {
+      Alert.alert("Error", "Please enter all 6 digits of the verification code.");
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       return;
     }
 
@@ -114,6 +131,7 @@ export default function OTPVerification() {
       });
 
       if (response.success && response.data) {
+<<<<<<< HEAD
         const authenticatedUser = response.data.user ?? {
           email: pendingContext.email,
           role: pendingContext.role ?? 'consumer',
@@ -138,6 +156,10 @@ export default function OTPVerification() {
         } else {
           router.replace(`/dashboard/${authenticatedUser.role}`);
         }
+=======
+        Alert.alert("Success", "Account verified successfully!");
+        router.replace(getRoleHomeRoute(response.data.user.role) as never);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else {
         setStatusMessage({ type: 'error', text: response.error || "Invalid verification code. Please try again." });
       }
@@ -177,8 +199,13 @@ export default function OTPVerification() {
       const response = await authService.resendOTP(pendingContext.email);
 
       if (response.success) {
+<<<<<<< HEAD
         setOtp(["", "", "", "", ""]);
         setStatusMessage({ type: 'success', text: `A new verification code has been sent to ${pendingContext.email}.` });
+=======
+        Alert.alert("Code Resent", `A new verification code has been sent to ${userData.email}`);
+        setOtp(["", "", "", "", "", ""]);
+>>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
         inputRefs.current[0]?.focus();
       } else {
         setStatusMessage({ type: 'error', text: response.error || "Failed to resend code. Please try again." });
@@ -217,7 +244,7 @@ export default function OTPVerification() {
             onChangeText={(value) => handleOTPChange(value, index)}
             onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent, index)}
             keyboardType="numeric"
-            maxLength={1}
+            maxLength={6}
             selectTextOnFocus
             editable={!isVerifying} // Disable input while verifying
           />

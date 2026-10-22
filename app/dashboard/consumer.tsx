@@ -117,7 +117,8 @@ export default function ConsumerDashboard() {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+              const { authService } = await import("../../services/authService");
+              await authService.signOut();
               router.replace("/");
             } catch (error) {
               console.error("Error signing out:", error);
