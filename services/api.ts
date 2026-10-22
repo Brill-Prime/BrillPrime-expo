@@ -7,7 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey =
+  Constants.expoConfig?.extra?.supabaseAnonKey ||
+  Constants.expoConfig?.extra?.supabasePublishableKey ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  '';
 
 // Default headers for all requests
 const DEFAULT_HEADERS = {
@@ -70,15 +75,11 @@ class ApiClient {
   }
 
   constructor() {
-    if (!supabaseUrl) {
-      console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not set');
-      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co';
-    } else {
-      this.baseURL = supabaseUrl;
-    }
+    this.baseURL = supabaseUrl || '';
 
-    console.log('🔷 Supabase URL:', this.baseURL);
-    console.log('✅ Architecture: Supabase Auth + Supabase serverless backend');
+    if (!this.baseURL) {
+      console.warn('EXPO_PUBLIC_SUPABASE_URL is not configured; Supabase API requests are disabled.');
+    }
   }
 
   setAuthToken(token: string) {
@@ -142,6 +143,13 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      if (!this.baseURL) {
+        return {
+          success: false,
+          error: 'Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL to the project environment.',
+        };
+      }
+
       const controller = new AbortController();
       const timeoutMs = ENV.apiTimeout; // configurable timeout
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

@@ -4,6 +4,7 @@ import { Text, View, StyleSheet, Animated, Image, ActivityIndicator, Platform } 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
+import { getRoleHomeRoute, isUserRole } from '../utils/authRouting';
 
 void SplashScreen.preventAutoHideAsync().catch((error) => {
   console.warn("Failed to keep native splash screen visible:", error);
@@ -66,71 +67,30 @@ export default function SplashScreenComponent() {
           return;
         }
 
-        // Step 2: Check whether the user explicitly chose a role.
-        // We intentionally do not treat the persisted authenticated role as a role selection,
-        // because that can make a previous consumer session look like a fresh default choice.
-        const [selectedRoleValue, userRoleValue] = await AsyncStorage.multiGet(['selectedRole', 'userRole']);
-        const selectedRole = selectedRoleValue[1];
-        const storedUserRole = userRoleValue[1];
-
-        console.log('selectedRole:', selectedRole);
-        console.log('storedUserRole:', storedUserRole);
-
-        if (!selectedRole && !storedUserRole) {
-          // User has seen onboarding but hasn't selected a role yet.
-          console.log('Redirecting to role selection');
+        // Supabase is the source of truth for both the session and the stored role.
+        const { authService } = await import('../services/authService');
+        const sessionResult = await authService.restoreSession();
+        if (sessionResult?.success && sessionResult.data) {
           if (isMounted) {
-            router.replace('/auth/role-selection');
+            router.replace(getRoleHomeRoute(sessionResult.data.user.role) as never);
           }
           return;
         }
 
-        if (!storedUserRole && selectedRole) {
-          await AsyncStorage.setItem('userRole', selectedRole);
-        }
-
-        // Step 3: Check authentication status
-        const [token, tokenExpiry] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
-        const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
-
-        if (!token[1] || isTokenExpired) {
-          // User has selected role but not authenticated - check if they have an account
-          console.log('Token expired or missing, checking for account');
-          const userEmail = await AsyncStorage.getItem('userEmail');
-          
-          if (userEmail) {
-            // User has registered before - go to sign in
-            console.log('Redirecting to sign in');
-            if (isMounted) {
-              router.replace('/auth/signin');
-            }
-          } else {
-            // New user - go to sign up
-            console.log('Redirecting to sign up');
-            if (isMounted) {
-              router.replace('/auth/signup');
-            }
-          }
-          
-          // Clear expired token
-          await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+        const pendingUserData = await AsyncStorage.getItem('pendingUserData');
+        if (pendingUserData) {
+          if (isMounted) router.replace('/auth/otp-verification');
           return;
         }
 
-        // Step 4: User is authenticated - route to appropriate home screen
-        const role = await AsyncStorage.getItem('userRole');
-        console.log('User authenticated with role:', role);
-
-        if (role === 'consumer' && isMounted) {
-          router.replace('/home/consumer');
-        } else if (role === 'merchant' && isMounted) {
-          router.replace('/home/merchant');
-        } else if (role === 'driver' && isMounted) {
-          router.replace('/home/driver');
-        } else if (isMounted) {
-          // Fallback - role missing, go back to role selection
-          router.replace('/auth/role-selection');
+        const selectedRole = await AsyncStorage.getItem('selectedRole');
+        if (!isUserRole(selectedRole)) {
+          if (isMounted) router.replace('/auth/role-selection');
+          return;
         }
+
+        const userEmail = await AsyncStorage.getItem('userEmail');
+        if (isMounted) router.replace(userEmail ? '/auth/signin' : '/auth/signup');
       } catch (error) {
         console.error('Error checking auth state:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');

@@ -3,9 +3,10 @@
 
 import { apiClient } from './api';
 import { API_ENDPOINTS } from './apiEndpoints';
-import { supabase } from '../config/supabase';
+import { isSupabaseConfigured, supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { isUserRole, type UserRole } from '../utils/authRouting';
 import {
   User,
   AuthResponse,
@@ -29,14 +30,154 @@ class AuthService {
     this.authToken = null;
   }
 
+  private ensureConfigured(): void {
+    if (!isSupabaseConfigured) {
+      throw new Error(
+        'Authentication is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to the project environment.'
+      );
+    }
+  }
+
+  private async getProfile(authUserId: string): Promise<{
+    role: string;
+    is_active: boolean | null;
+    full_name: string | null;
+    phone_number: string | null;
+  } | null> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('role,is_active,full_name,phone_number')
+      .eq('firebase_uid', authUserId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Unable to verify your BrillPrime profile: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  private async createProfile(
+    authUser: { id: string; email?: string; user_metadata?: Record<string, any>; email_confirmed_at?: string | null },
+    role: UserRole
+  ): Promise<void> {
+    const metadata = authUser.user_metadata || {};
+    const fullName = metadata.full_name ||
+      [metadata.first_name, metadata.last_name].filter(Boolean).join(' ') ||
+      '';
+    const { error } = await supabase.from('users').insert({
+      firebase_uid: authUser.id,
+      email: authUser.email || '',
+      full_name: fullName,
+      role,
+      phone_number: metadata.phone_number || null,
+      is_verified: Boolean(authUser.email_confirmed_at),
+      is_active: true,
+    });
+
+    if (error) {
+      // Another concurrent restore/sign-in may have created this user's row.
+      if (error.code === '23505') {
+        const existing = await this.getProfile(authUser.id);
+        if (existing) return;
+      }
+      throw new Error(`Your account was authenticated, but profile setup failed: ${error.message}`);
+    }
+  }
+
+  private async completeAuthenticatedSession(
+    authUser: { id: string; email?: string; phone?: string; user_metadata?: Record<string, any>; email_confirmed_at?: string | null },
+    token: string,
+    selectedRole?: string | null,
+    allowSelectedRoleForNewProfile = false
+  ): Promise<AuthResponse> {
+    this.ensureConfigured();
+
+    let profile = await this.getProfile(authUser.id);
+    let role: UserRole | null = profile && isUserRole(profile.role) ? profile.role : null;
+
+    if (profile && !role) {
+      throw new Error('This account has an unsupported BrillPrime role. Please contact support.');
+    }
+
+    if (profile?.is_active === false) {
+      await supabase.auth.signOut();
+      await this.clearAuthData();
+      throw new Error('This account is currently inactive. Please contact support.');
+    }
+
+    if (role && selectedRole && isUserRole(selectedRole) && role !== selectedRole) {
+      await supabase.auth.signOut();
+      await this.clearAuthData();
+      throw new Error(
+        `This account is registered as ${role}. Select ${role} to continue; the ${selectedRole} role belongs to a different account.`
+      );
+    }
+
+    if (!profile) {
+      const metadataRole = authUser.user_metadata?.role;
+      role = isUserRole(metadataRole)
+        ? metadataRole
+        : allowSelectedRoleForNewProfile && isUserRole(selectedRole)
+          ? selectedRole
+          : null;
+
+      if (!role) {
+        throw new Error('Your BrillPrime profile could not be found. Please choose your role and complete registration.');
+      }
+
+      if (selectedRole && isUserRole(selectedRole) && role !== selectedRole) {
+        await supabase.auth.signOut();
+        await this.clearAuthData();
+        throw new Error(`This account is registered as ${role}. Select ${role} to continue.`);
+      }
+
+      await this.createProfile(authUser, role);
+      profile = await this.getProfile(authUser.id);
+      if (!profile || !isUserRole(profile.role)) {
+        throw new Error('Your account is authenticated, but its BrillPrime profile could not be confirmed.');
+      }
+      role = profile.role;
+    }
+
+    const metadata = authUser.user_metadata || {};
+    const fullName = profile?.full_name ||
+      metadata.full_name ||
+      [metadata.first_name, metadata.last_name].filter(Boolean).join(' ') ||
+      '';
+    const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+    const authData: AuthResponse = {
+      token,
+      user: {
+        id: authUser.id,
+        email: authUser.email || '',
+        name: fullName,
+        firstName: metadata.first_name || nameParts[0] || '',
+        lastName: metadata.last_name || nameParts.slice(1).join(' '),
+        role: role as UserRole,
+        phone: profile?.phone_number || metadata.phone_number || authUser.phone || '',
+        isVerified: Boolean(authUser.email_confirmed_at),
+        profileImageUrl: metadata.avatar_url || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    await this.storeAuthData(authData);
+    this.currentUser = authData.user;
+    this.authToken = token;
+    return authData;
+  }
+
   // Sign up new user
   async signUp({ email, password, firstName, lastName, phoneNumber, role }: SignUpRequest): Promise<ApiResponse<AuthResponse>> {
     try {
-      console.log('Starting signup process for:', email);
+      this.ensureConfigured();
 
+      const normalizedEmail = email.trim().toLowerCase();
       const displayName = `${firstName} ${lastName}`.trim();
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -63,51 +204,26 @@ class AuthService {
         };
       }
 
-      const accessToken = session?.access_token || '';
-      const authData: AuthResponse = {
-        token: accessToken,
-        user: {
-          id: supabaseUser.id,
-          email: supabaseUser.email || email,
-          name: displayName,
-          role,
-          phone: phoneNumber || '',
-          isVerified: !!supabaseUser.email_confirmed_at,
-          profileImageUrl: undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-
-      if (accessToken) {
-        await this.storeAuthData(authData);
-      }
-
-      const profileSync = await apiClient.post<Array<{ firebase_uid?: string; role?: string }>>(
-        '/rest/v1/users',
-        {
-          firebase_uid: supabaseUser.id,
-          email: supabaseUser.email,
-          role,
-          phone_number: phoneNumber || null,
-          full_name: displayName,
-        },
-        {
-          Authorization: `Bearer ${accessToken}`,
-          Prefer: 'resolution=merge-duplicates,return=representation',
-        }
-      );
-
-      if (!profileSync.success) {
-        console.error('Supabase profile creation failed after Supabase signup:', profileSync.error);
-        if (accessToken) {
-          await this.clearAuthData();
-        }
-        return {
-          success: false,
-          error: 'Your login account was created, but BrillPrime could not finish setting up your profile. Please contact support before trying again.',
-        };
-      }
+      // With email confirmation enabled Supabase returns no session here.
+      // Profile creation is deferred until the signup OTP yields an authenticated session.
+      const authData = session
+        ? await this.completeAuthenticatedSession(supabaseUser, session.access_token, role)
+        : {
+            token: '',
+            user: {
+              id: supabaseUser.id,
+              email: supabaseUser.email || normalizedEmail,
+              name: displayName,
+              firstName,
+              lastName,
+              role,
+              phone: phoneNumber || '',
+              isVerified: Boolean(supabaseUser.email_confirmed_at),
+              profileImageUrl: undefined,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          };
 
       return {
         success: true,
@@ -116,7 +232,7 @@ class AuthService {
     } catch (error: any) {
       console.error('SignUp error:', error);
 
-      if (error?.status === 422 || error?.message?.includes('already registered')) {
+      if (error?.status === 422 || error?.message?.toLowerCase().includes('already registered')) {
         return { success: false, error: 'That email address is already in use!' };
       }
 
@@ -136,9 +252,16 @@ class AuthService {
   }
 
   // Sign in user
-  async signInWithEmail({ email, password }: SignInRequest): Promise<ApiResponse<AuthResponse>> {
+  async signInWithEmail(
+    { email, password }: SignInRequest,
+    selectedRole?: UserRole
+  ): Promise<ApiResponse<AuthResponse>> {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      this.ensureConfigured();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
       if (error) {
         throw error;
@@ -154,98 +277,11 @@ class AuthService {
         };
       }
 
-      const firebaseToken = session.access_token;
-
-      const profileResponse = await apiClient.get<Array<{ role?: string; is_active?: boolean }>>([
-        `/rest/v1/users`,
-        `?firebase_uid=eq.${encodeURIComponent(supabaseUser.id)}`,
-        `&select=role,is_active`,
-        `&limit=1`,
-      ].join(''), {
-        Authorization: `Bearer ${firebaseToken}`,
-      });
-
-      const supportedRoles = ['consumer', 'merchant', 'driver'] as const;
-      let userRole: 'consumer' | 'merchant' | 'driver';
-
-      if (!profileResponse.success) {
-        console.error('Role verification request failed:', profileResponse.error || 'Unknown Supabase request error');
-        return {
-          success: false,
-          error: 'We could not verify your account with BrillPrime. Please check your connection and try again. If this continues, contact support.',
-        };
-      }
-
-      if (Array.isArray(profileResponse.data) && profileResponse.data.length === 1) {
-        const profile = profileResponse.data[0];
-
-        if (profile.is_active === false) {
-          return {
-            success: false,
-            error: 'This account is currently inactive. Please contact support.',
-          };
-        }
-
-        if (!supportedRoles.includes(profile.role as (typeof supportedRoles)[number])) {
-          return {
-            success: false,
-            error: 'This account does not have a supported BrillPrime role. Please contact support.',
-          };
-        }
-
-        userRole = profile.role as 'consumer' | 'merchant' | 'driver';
-      } else {
-        console.warn('Supabase user profile not found — falling back to locally selected role.', profileResponse.error);
-
-        const storedRole = await AsyncStorage.getItem('selectedRole') as
-          | 'consumer'
-          | 'merchant'
-          | 'driver'
-          | null;
-
-        if (!storedRole || !supportedRoles.includes(storedRole)) {
-          return {
-            success: false,
-            error: 'Your account profile could not be found. Please sign up again or contact support.',
-          };
-        }
-
-        userRole = storedRole;
-
-        apiClient
-          .post(
-            '/rest/v1/users',
-            {
-              firebase_uid: supabaseUser.id,
-              email: supabaseUser.email,
-              role: userRole,
-              full_name: supabaseUser.user_metadata?.full_name || '',
-            },
-            {
-              Authorization: `Bearer ${firebaseToken}`,
-              Prefer: 'resolution=merge-duplicates',
-            },
-          )
-          .then(() => console.log('Supabase profile back-filled successfully.'))
-          .catch((err: any) => console.warn('Supabase profile back-fill failed (non-critical):', err));
-      }
-
-      const authData: AuthResponse = {
-        token: firebaseToken,
-        user: {
-          id: supabaseUser.id,
-          email: supabaseUser.email || '',
-          name: supabaseUser.user_metadata?.full_name || '',
-          role: userRole,
-          phone: supabaseUser.phone || '',
-          isVerified: !!supabaseUser.email_confirmed_at,
-          profileImageUrl: supabaseUser.user_metadata?.avatar_url || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-
-      await this.storeAuthData(authData);
+      const authData = await this.completeAuthenticatedSession(
+        supabaseUser,
+        session.access_token,
+        selectedRole
+      );
 
       return {
         success: true,
@@ -280,13 +316,24 @@ class AuthService {
   }
 
   // Sign in with Google
-  async signInWithGoogle(role?: string): Promise<ApiResponse<AuthResponse>> {
-    const mobileError = this.getMobileSocialSignInError('Google');
+  private async startOAuthSignIn(
+    provider: 'google' | 'apple' | 'facebook',
+    role?: string
+  ): Promise<ApiResponse<AuthResponse>> {
+    const providerLabel = provider[0].toUpperCase() + provider.slice(1);
+    const mobileError = this.getMobileSocialSignInError(providerLabel);
     if (mobileError) return mobileError;
 
     try {
-      const provider = 'google';
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      this.ensureConfigured();
+      if (!isUserRole(role)) {
+        return { success: false, error: 'Select your account role before continuing.' };
+      }
+
+      await AsyncStorage.setItem('selectedRole', role);
+      const redirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/`
+        : undefined;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: redirectTo ? { redirectTo } : undefined,
@@ -301,22 +348,26 @@ class AuthService {
           return {
             success: false,
             requiresRedirect: true,
-            error: 'Redirecting to Google sign-in...',
+            error: `Redirecting to ${providerLabel} sign-in...`,
           } as ApiResponse<AuthResponse>;
         }
       }
 
       return {
         success: false,
-        error: 'Google sign-in was started but no redirect URL was returned.',
+        error: `${providerLabel} sign-in was started but no redirect URL was returned.`,
       };
     } catch (error: any) {
-      console.error('Google sign-in error:', error);
+      console.error(`${providerLabel} sign-in error:`, error);
       return {
         success: false,
-        error: error?.message || 'Failed to sign in with Google',
+        error: error?.message || `Failed to sign in with ${providerLabel}`,
       };
     }
+  }
+
+  async signInWithGoogle(role?: string): Promise<ApiResponse<AuthResponse>> {
+    return this.startOAuthSignIn('google', role);
   }
 
   // Check for redirect result on app load
@@ -325,113 +376,15 @@ class AuthService {
       return null;
     }
 
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      if (error || !data.session) {
-        return null;
-      }
-
-      const user = data.session.user;
-      const role = (await AsyncStorage.getItem('selectedRole')) || 'consumer';
-      const authData: AuthResponse = {
-        token: data.session.access_token,
-        user: {
-          id: user.id,
-          email: user.email || '',
-          name: user.user_metadata?.full_name || '',
-          role: role as 'consumer' | 'merchant' | 'driver',
-          phone: user.phone || '',
-          isVerified: !!user.email_confirmed_at,
-          profileImageUrl: user.user_metadata?.avatar_url || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-
-      await this.storeAuthData(authData);
-      return { success: true, data: authData };
-    } catch (error: any) {
-      console.error('Redirect result error:', error);
-      return null;
-    }
+    return this.restoreSession();
   }
 
-  // Sign in with Apple
   async signInWithApple(role?: string): Promise<ApiResponse<AuthResponse>> {
-    const mobileError = this.getMobileSocialSignInError('Apple');
-    if (mobileError) return mobileError;
-
-    try {
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: redirectTo ? { redirectTo } : undefined,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.url) {
-        if (this.maybeRedirectToOAuthUrl('apple', data.url)) {
-          return {
-            success: false,
-            requiresRedirect: true,
-            error: 'Redirecting to Apple sign-in...',
-          } as ApiResponse<AuthResponse>;
-        }
-      }
-
-      return {
-        success: false,
-        error: 'Apple sign-in was started but no redirect URL was returned.',
-      };
-    } catch (error: any) {
-      console.error('Apple sign-in error:', error);
-      return {
-        success: false,
-        error: error?.message || 'Apple sign-in failed',
-      };
-    }
+    return this.startOAuthSignIn('apple', role);
   }
 
-  // Sign in with Facebook
   async signInWithFacebook(role?: string): Promise<ApiResponse<AuthResponse>> {
-    const mobileError = this.getMobileSocialSignInError('Facebook');
-    if (mobileError) return mobileError;
-
-    try {
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options: redirectTo ? { redirectTo } : undefined,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.url) {
-        if (this.maybeRedirectToOAuthUrl('facebook', data.url)) {
-          return {
-            success: false,
-            requiresRedirect: true,
-            error: 'Redirecting to Facebook sign-in...',
-          } as ApiResponse<AuthResponse>;
-        }
-      }
-
-      return {
-        success: false,
-        error: 'Facebook sign-in was started but no redirect URL was returned.',
-      };
-    } catch (error: any) {
-      console.error('Facebook sign-in error:', error);
-      return {
-        success: false,
-        error: error?.message || 'Failed to sign in with Facebook',
-      };
-    }
+    return this.startOAuthSignIn('facebook', role);
   }
 
   private getMobileSocialSignInError(provider: string): ApiResponse<AuthResponse> | null {
@@ -445,21 +398,59 @@ class AuthService {
     };
   }
 
-  // Verify OTP
+  // Verify the confirmation code sent by Supabase during email signup.
   async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
+    try {
+      this.ensureConfigured();
+      const { data: result, error } = await supabase.auth.verifyOtp({
+        email: data.email.trim().toLowerCase(),
+        token: data.otp.trim(),
+        type: 'signup',
+      });
 
-    if (response.success && response.data) {
-      // Store user data locally
-      await this.storeAuthData(response.data);
+      if (error) throw error;
+      if (!result.user || !result.session) {
+        return { success: false, error: 'Email verification did not create an active session. Please sign in.' };
+      }
+
+      const pendingUser = await AsyncStorage.getItem('pendingUserData');
+      const pendingRole = pendingUser
+        ? (JSON.parse(pendingUser) as { role?: string }).role
+        : await AsyncStorage.getItem('selectedRole');
+      const authData = await this.completeAuthenticatedSession(
+        result.user,
+        result.session.access_token,
+        pendingRole
+      );
+
+      await AsyncStorage.multiRemove(['pendingUserData', 'tempUserEmail', 'tempUserRole']);
+      return { success: true, data: authData };
+    } catch (error: any) {
+      console.error('Signup OTP verification error:', error);
+      return {
+        success: false,
+        error: error?.message || 'Email verification failed. Check the code and try again.',
+      };
     }
-
-    return response;
   }
 
-  // Resend OTP
+  // Resend the Supabase signup confirmation code.
   async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.RESEND_OTP, { email });
+    try {
+      this.ensureConfigured();
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase(),
+      });
+      if (error) throw error;
+      return { success: true, data: { message: 'A new confirmation code has been sent.' } };
+    } catch (error: any) {
+      console.error('Signup OTP resend error:', error);
+      return {
+        success: false,
+        error: error?.message || 'Could not resend the verification code. Please try again.',
+      };
+    }
   }
 
   // Request password reset (backend endpoint)
@@ -542,6 +533,36 @@ class AuthService {
     }
   }
 
+  async restoreSession(): Promise<ApiResponse<AuthResponse> | null> {
+    try {
+      this.ensureConfigured();
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      if (!data.session) {
+        await AsyncStorage.multiRemove([this.TOKEN_KEY, this.USER_KEY, this.ROLE_KEY, 'tokenExpiry']);
+        apiClient.setAuthToken('');
+        return null;
+      }
+
+      const selectedRole = await AsyncStorage.getItem('selectedRole');
+      const authData = await this.completeAuthenticatedSession(
+        data.session.user,
+        data.session.access_token,
+        selectedRole,
+        true
+      );
+
+      return { success: true, data: authData };
+    } catch (error: any) {
+      console.error('Session restoration failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unable to restore your session.',
+      };
+    }
+  }
+
   // Sign out
   async signOut(): Promise<void> {
     try {
@@ -561,20 +582,7 @@ class AuthService {
       this.currentUser = null;
       this.authToken = null;
       // Clear ApiClient token cache
-      try { apiClient.setAuthToken(''); } catch (_) { }
-
-      // Optional: Call your backend to invalidate the token if needed
-      try {
-        const token = await this.getToken();
-        if (token) {
-          await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {}, {
-            Authorization: `Bearer ${token}`,
-          });
-        }
-      } catch (apiError) {
-        console.warn('Failed to invalidate token on server:', apiError);
-        // Continue with logout even if server logout fails
-      }
+      apiClient.setAuthToken('');
     } catch (error: any) {
       console.error('Error during API signout:', error);
     } finally {
@@ -585,23 +593,16 @@ class AuthService {
 
   // Helper methods
   private async storeAuthData(authData: AuthResponse): Promise<void> {
-    try {
-      const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
-
-      await AsyncStorage.multiSet([
-        [this.TOKEN_KEY, authData.token],
-        [this.USER_KEY, JSON.stringify(authData.user)],
-        [this.ROLE_KEY, authData.user.role],
-        ['tokenExpiry', tokenExpiry.toString()],
-        ['userEmail', authData.user.email], // Store email for offline use
-        // A dedicated local UID is not required because the active session is managed by Supabase.
-      ]);
-
-      // Propagate token to ApiClient for centralized acquisition
-      apiClient.setAuthToken(authData.token);
-    } catch (error: any) {
-      console.error('Error storing auth data:', error);
-    }
+    const tokenExpiry = Date.now() + (55 * 60 * 1000);
+    await AsyncStorage.multiSet([
+      [this.TOKEN_KEY, authData.token],
+      [this.USER_KEY, JSON.stringify(authData.user)],
+      [this.ROLE_KEY, authData.user.role],
+      ['tokenExpiry', tokenExpiry.toString()],
+      ['userEmail', authData.user.email],
+    ]);
+    await AsyncStorage.multiRemove(['selectedRole', 'pendingRoleSwitch']);
+    apiClient.setAuthToken(authData.token);
   }
 
   private async storeUserData(user: User): Promise<void> {
@@ -640,27 +641,23 @@ class AuthService {
 
   async getToken(): Promise<string | null> {
     try {
+      this.ensureConfigured();
       const { data } = await supabase.auth.getSession();
       const sessionToken = data.session?.access_token;
 
       if (sessionToken && this.isValidTokenFormat(sessionToken)) {
         this.authToken = sessionToken;
         await AsyncStorage.setItem(this.TOKEN_KEY, sessionToken);
-        const newExpiry = Date.now() + (55 * 60 * 1000);
+        const newExpiry = data.session?.expires_at
+          ? data.session.expires_at * 1000
+          : Date.now() + (55 * 60 * 1000);
         await AsyncStorage.setItem('tokenExpiry', newExpiry.toString());
         return sessionToken;
       }
 
-      const storedToken = await AsyncStorage.getItem(this.TOKEN_KEY);
-      if (storedToken && this.isValidTokenFormat(storedToken)) {
-        return storedToken;
-      }
-
-      if (storedToken) {
-        console.warn('Clearing invalid or stale auth token from local storage.');
-        await AsyncStorage.multiRemove([this.TOKEN_KEY, 'tokenExpiry', 'userEmail', this.ROLE_KEY]);
-      }
-
+      this.authToken = null;
+      await AsyncStorage.multiRemove([this.TOKEN_KEY, 'tokenExpiry']);
+      apiClient.setAuthToken('');
       return null;
     } catch (error) {
       console.error('Error getting token:', error);
@@ -679,17 +676,14 @@ class AuthService {
   }
 
   async isAuthenticated(): Promise<boolean> {
-    const token = await this.getToken();
-    if (!token) return false;
-
-    const expiry = await AsyncStorage.getItem('tokenExpiry');
-    if (!expiry || Date.now() > parseInt(expiry)) {
-      await this.clearAuthData();
+    try {
+      this.ensureConfigured();
+      const { data, error } = await supabase.auth.getSession();
+      if (error) return false;
+      return Boolean(data.session?.user);
+    } catch {
       return false;
     }
-
-    const { data } = await supabase.auth.getSession();
-    return !!data.session;
   }
 
   // Check if token needs refresh (expires in next hour)

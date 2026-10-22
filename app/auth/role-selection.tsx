@@ -58,6 +58,12 @@ export default function RoleSelection() {
 
   const proceedToAuth = async (role: UserRole) => {
     try {
+      const pendingUserData = await AsyncStorage.getItem('pendingUserData');
+      if (pendingUserData) {
+        router.push("/auth/otp-verification");
+        return;
+      }
+
       const storedEmail = await AsyncStorage.getItem("userEmail");
 
       if (storedEmail) {

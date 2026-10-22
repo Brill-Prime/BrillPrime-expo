@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAlert } from "../../components/AlertProvider";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
+import { getRoleHomeRoute, isUserRole } from '../../utils/authRouting';
 
 // Import authService here to ensure it's available for checkRedirectAuth
 import { authService } from '../../services/authService';
@@ -38,39 +39,11 @@ export default function SignIn() {
     return () => subscription?.remove();
   }, []);
 
-  // Placeholder for checkAuthStatus if it exists in the original code,
-  // otherwise, it might be an artifact from the thought process.
-  const checkAuthStatus = async () => {
-    // Placeholder for actual auth status check logic
-    // For now, we'll just assume it's handled by the redirect check or sign-in process
-  };
-
   const checkRedirectAuth = React.useCallback(async () => {
     try {
       const result = await authService.checkRedirectResult();
       if (result?.success && result.data) {
-        // Successfully authenticated via redirect
-        // Store auth data
-        await AsyncStorage.multiSet([
-          ["userToken", result.data.token],
-          ["userEmail", result.data.user.email],
-          ["userRole", result.data.user.role],
-          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
-        ]);
-
-        await AsyncStorage.removeItem('pendingRoleSwitch');
-
-        // Route based on user role
-        if (result.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else if (result.data.user.role === "merchant") {
-          router.replace("/home/merchant");
-        } else if (result.data.user.role === "driver") {
-          router.replace("/home/driver");
-        } else {
-          // Default to consumer home for unknown roles
-          router.replace('/home/consumer');
-        }
+        router.replace(getRoleHomeRoute(result.data.user.role) as never);
       } else if (result?.error) {
         showError('Authentication Error', result.error);
       }
@@ -80,12 +53,8 @@ export default function SignIn() {
   }, [router, showError]);
 
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      await checkAuthStatus();
-      await checkRedirectAuth();
-    };
-    checkAuthAndRedirect();
-  }, [router, checkRedirectAuth]);
+    void checkRedirectAuth();
+  }, [checkRedirectAuth]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -108,8 +77,8 @@ export default function SignIn() {
     }
 
     // Check if user has selected a role first
-    const selectedRole = await AsyncStorage.getItem("selectedRole") as 'consumer' | 'merchant' | 'driver' | null;
-    if (!selectedRole) {
+    const selectedRole = await AsyncStorage.getItem("selectedRole");
+    if (!isUserRole(selectedRole)) {
       showConfirmDialog(
         "Role Required",
         "Please select your role first.",
@@ -123,33 +92,13 @@ export default function SignIn() {
       const authResponse = await authService.signInWithEmail({
         email: formData.email,
         password: formData.password
-      });
+      }, selectedRole);
 
       if (!authResponse.success || !authResponse.data) {
         throw new Error(authResponse.error || 'Authentication failed');
       }
 
-      // Store user data from auth response
-      await AsyncStorage.multiSet([
-        ["userToken", authResponse.data.token],
-        ["userEmail", authResponse.data.user.email],
-        ["userRole", authResponse.data.user.role],
-        ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()] // 24 hours
-      ]);
-
-      await AsyncStorage.removeItem('pendingRoleSwitch');
-
-      // Route based on user role from auth response
-      if (authResponse.data.user.role === "consumer") {
-        router.replace("/home/consumer");
-      } else if (authResponse.data.user.role === "merchant") {
-        router.replace("/home/merchant");
-      } else if (authResponse.data.user.role === "driver") {
-        router.replace("/home/driver");
-      } else {
-        // Default to consumer home for unknown roles
-        router.replace('/home/consumer');
-      }
+      router.replace(getRoleHomeRoute(authResponse.data.user.role) as never);
     } catch (error: any) {
       console.error("Error signing in:", error);
       
@@ -182,7 +131,7 @@ export default function SignIn() {
 
       // Check if user has selected a role first
       const selectedRole = await AsyncStorage.getItem("selectedRole");
-      if (!selectedRole) {
+      if (!isUserRole(selectedRole)) {
         showConfirmDialog(
           "Role Required",
           "Please select your role first.",
@@ -213,40 +162,7 @@ export default function SignIn() {
 
       // Common logic for successful social login
       if (response?.success && response.data) {
-        console.log('Social login successful, storing data and routing...');
-        
-        // Validate that the user's role matches selected role
-        if (response.data.user.role !== selectedRole) {
-          showConfirmDialog(
-            "Role Mismatch",
-            `Your account is registered as ${response.data.user.role}, but you selected ${selectedRole}. Please select the correct role.`,
-            () => router.replace("/auth/role-selection")
-          );
-          setLoading(false);
-          return;
-        }
-
-        // Store user data from API response
-        await AsyncStorage.multiSet([
-          ["userToken", response.data.token],
-          ["userEmail", response.data.user.email],
-          ["userRole", response.data.user.role],
-          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
-        ]);
-
-        await AsyncStorage.removeItem('pendingRoleSwitch');
-
-        // Route based on user role from API
-        if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else if (response.data.user.role === "merchant") {
-          router.replace("/home/merchant");
-        } else if (response.data.user.role === "driver") {
-          router.replace("/home/driver");
-        } else {
-          // Default to consumer home for unknown roles
-          router.replace('/home/consumer');
-        }
+        router.replace(getRoleHomeRoute(response.data.user.role) as never);
       } else if (response?.error && response.error !== 'Sign-in cancelled') {
         console.error(`${provider} sign-in failed:`, response.error);
         showError("Sign In Failed", response.error);

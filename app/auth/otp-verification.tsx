@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getRoleHomeRoute } from "../../utils/authRouting";
 
 export default function OTPVerification() {
   const router = useRouter();
-  const [otp, setOtp] = useState(["", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<TextInput[]>([]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [userEmail, setUserEmail] = useState("");
@@ -27,15 +28,22 @@ export default function OTPVerification() {
   }, []);
 
   const handleOTPChange = (value: string, index: number) => {
-    // Only allow numeric input
     const numericValue = value.replace(/[^0-9]/g, '');
+
+    if (numericValue.length > 1) {
+      const pastedDigits = numericValue.slice(0, 6).split('');
+      const nextOtp = Array.from({ length: 6 }, (_, digitIndex) => pastedDigits[digitIndex] || '');
+      setOtp(nextOtp);
+      inputRefs.current[Math.min(pastedDigits.length, 5)]?.focus();
+      return;
+    }
 
     const newOtp = [...otp];
     newOtp[index] = numericValue;
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (numericValue && index < 4) {
+    if (numericValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
     } else if (!numericValue && index > 0) {
       // Auto-focus previous input on backspace
@@ -56,8 +64,8 @@ export default function OTPVerification() {
   const handleVerifyOTP = async () => {
     const otpString = otp.join("");
 
-    if (otpString.length !== 5) {
-      Alert.alert("Error", "Please enter all 5 digits of the verification code.");
+    if (otpString.length !== 6) {
+      Alert.alert("Error", "Please enter all 6 digits of the verification code.");
       return;
     }
 
@@ -82,21 +90,8 @@ export default function OTPVerification() {
       });
 
       if (response.success && response.data) {
-        // Store authenticated user data
-        await AsyncStorage.setItem("userToken", response.data.token);
-        await AsyncStorage.setItem("userEmail", response.data.user.email);
-        await AsyncStorage.setItem("userRole", response.data.user.role);
-
-        // Clean up temporary data
-        await AsyncStorage.multiRemove(["pendingUserData", "selectedRole"]);
-
         Alert.alert("Success", "Account verified successfully!");
-
-        if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}`);
-        }
+        router.replace(getRoleHomeRoute(response.data.user.role) as never);
       } else {
         Alert.alert("Error", response.error || "Invalid verification code");
       }
@@ -124,7 +119,7 @@ export default function OTPVerification() {
 
       if (response.success) {
         Alert.alert("Code Resent", `A new verification code has been sent to ${userData.email}`);
-        setOtp(["", "", "", "", ""]);
+        setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
       } else {
         Alert.alert("Error", response.error || "Failed to resend code. Please try again.");
@@ -163,7 +158,7 @@ export default function OTPVerification() {
             onChangeText={(value) => handleOTPChange(value, index)}
             onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent, index)}
             keyboardType="numeric"
-            maxLength={1}
+            maxLength={6}
             selectTextOnFocus
             editable={!isVerifying} // Disable input while verifying
           />

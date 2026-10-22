@@ -7,6 +7,7 @@ import { useAlert } from "../../components/AlertProvider";
 import AlertModal from "../../components/AlertModal";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
+import { getRoleHomeRoute, isUserRole } from '../../utils/authRouting';
 
 export default function SignUp() {
   const router = useRouter();
@@ -34,26 +35,7 @@ export default function SignUp() {
       const result = await authService.checkRedirectResult();
       
       if (result?.success && result.data) {
-        // Successfully authenticated via redirect
-        await AsyncStorage.multiSet([
-          ["userToken", result.data.token],
-          ["userEmail", result.data.user.email],
-          ["userRole", result.data.user.role],
-          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
-        ]);
-
-        await AsyncStorage.removeItem('pendingRoleSwitch');
-
-        // Route based on user role
-        if (result.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else if (result.data.user.role === "merchant") {
-          router.replace("/home/merchant");
-        } else if (result.data.user.role === "driver") {
-          router.replace("/home/driver");
-        } else {
-          router.replace(`/dashboard/${result.data.user.role}` as never);
-        }
+        router.replace(getRoleHomeRoute(result.data.user.role) as never);
       } else if (result?.error) {
         showError('Authentication Error', result.error);
       }
@@ -103,7 +85,7 @@ export default function SignUp() {
 
     // Check if user has selected a role first
     const storedRole = await AsyncStorage.getItem("selectedRole");
-    if (!storedRole) {
+    if (!isUserRole(storedRole)) {
       showConfirmDialog(
         "Role Required",
         "Please select your role first.",
@@ -113,7 +95,7 @@ export default function SignUp() {
     }
 
     // Use stored role instead of component state
-    const finalRole = storedRole as 'consumer' | 'merchant' | 'driver';
+    const finalRole = storedRole;
 
     setLoading(true);
 
@@ -135,6 +117,11 @@ export default function SignUp() {
       });
 
       if (response.success && response.data) {
+        if (response.data.token) {
+          router.replace(getRoleHomeRoute(response.data.user.role) as never);
+          return;
+        }
+
         // Store pending user data for OTP verification
         const pendingUserData = {
           email: formData.email,
@@ -194,7 +181,7 @@ export default function SignUp() {
 
       // Check if user has selected a role first
       const selectedRole = await AsyncStorage.getItem("selectedRole");
-      if (!selectedRole) {
+      if (!isUserRole(selectedRole)) {
         showConfirmDialog(
           "Role Required",
           "Please select your role first.",
@@ -217,26 +204,7 @@ export default function SignUp() {
       }
 
       if (response?.success && response.data) {
-        // Store user data from API response
-        await AsyncStorage.multiSet([
-          ["userToken", response.data.token],
-          ["userEmail", response.data.user.email],
-          ["userRole", response.data.user.role],
-          ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
-        ]);
-
-        await AsyncStorage.removeItem('pendingRoleSwitch');
-
-        // Route based on user role from API
-        if (response.data.user.role === "consumer") {
-          router.replace("/home/consumer");
-        } else if (response.data.user.role === "merchant") {
-          router.replace("/home/merchant");
-        } else if (response.data.user.role === "driver") {
-          router.replace("/home/driver");
-        } else {
-          router.replace(`/dashboard/${response.data.user.role}` as never);
-        }
+        router.replace(getRoleHomeRoute(response.data.user.role) as never);
       } else {
         const errorMessage = response?.error || `${provider} sign-up failed`;
         if (errorMessage !== 'Sign-in cancelled') {
