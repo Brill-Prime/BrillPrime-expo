@@ -3,6 +3,7 @@
 
 import { apiClient } from './api';
 import { API_ENDPOINTS } from './apiEndpoints';
+import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { auth } from '../config/firebase';
