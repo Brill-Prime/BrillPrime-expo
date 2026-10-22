@@ -66,13 +66,18 @@ export default function SplashScreenComponent() {
           return;
         }
 
-        // Step 2: Check if user has selected a role
+        // Step 2: Check whether the user explicitly chose a role.
+        // We intentionally do not treat the persisted authenticated role as a role selection,
+        // because that can make a previous consumer session look like a fresh default choice.
         const [selectedRoleValue, userRoleValue] = await AsyncStorage.multiGet(['selectedRole', 'userRole']);
-        const selectedRole = selectedRoleValue[1] || userRoleValue[1];
-        console.log('selectedRole:', selectedRole);
+        const selectedRole = selectedRoleValue[1];
+        const storedUserRole = userRoleValue[1];
 
-        if (!selectedRole) {
-          // User has seen onboarding but hasn't selected role
+        console.log('selectedRole:', selectedRole);
+        console.log('storedUserRole:', storedUserRole);
+
+        if (!selectedRole && !storedUserRole) {
+          // User has seen onboarding but hasn't selected a role yet.
           console.log('Redirecting to role selection');
           if (isMounted) {
             router.replace('/auth/role-selection');
@@ -80,7 +85,7 @@ export default function SplashScreenComponent() {
           return;
         }
 
-        if (!userRoleValue[1]) {
+        if (!storedUserRole && selectedRole) {
           await AsyncStorage.setItem('userRole', selectedRole);
         }
 

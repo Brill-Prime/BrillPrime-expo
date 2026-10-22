@@ -4,7 +4,7 @@
 import { ENV } from '../config/environment';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../config/firebase';
+import { supabase } from '../config/supabase';
 
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -28,17 +28,57 @@ class ApiClient {
   private authToken: string = '';
   private tokenRefreshPromise: Promise<string | null> | null = null;
 
+  private isValidJwt(token: string | null | undefined): boolean {
+    return !!token && typeof token === 'string' && token.split('.').length === 3 && token.length > 20;
+  }
+
+  private decodeJwtPayload(token: string): Record<string, any> | null {
+    if (!this.isValidJwt(token)) return null;
+
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+      const binary = typeof atob === 'function'
+        ? atob(padded)
+        : Buffer.from(padded, 'base64').toString('binary');
+      const json = decodeURIComponent(
+        Array.from(binary).map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`).join('')
+      );
+      return JSON.parse(json);
+    } catch (error) {
+      console.warn('Failed to decode JWT payload for validation:', error);
+      return null;
+    }
+  }
+
+  private isSupabaseAccessToken(token: string | null | undefined): boolean {
+    if (!this.isValidJwt(token)) return false;
+
+    const claims = this.decodeJwtPayload(token as string);
+    if (!claims) return false;
+
+    const issuer = String(claims.iss || '').toLowerCase();
+    const audience = String(claims.aud || '').toLowerCase();
+    const projectHost = (supabaseUrl || '').replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+
+    const isSupabaseIssuer = issuer.includes('supabase.co');
+    const isCurrentProjectIssuer = !!projectHost && issuer.includes(projectHost);
+    const isSupabaseAudience = ['authenticated', 'authenticated-user'].includes(audience);
+
+    return isSupabaseIssuer || isCurrentProjectIssuer || isSupabaseAudience;
+  }
+
   constructor() {
-    // Serverless architecture: Firebase for Auth, Supabase for all backend logic
     if (!supabaseUrl) {
       console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not set');
-      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
+      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co';
     } else {
       this.baseURL = supabaseUrl;
     }
 
     console.log('🔷 Supabase URL:', this.baseURL);
-    console.log('✅ Architecture: Firebase Auth + Supabase Serverless Backend');
+    console.log('✅ Architecture: Supabase Auth + Supabase serverless backend');
   }
 
   setAuthToken(token: string) {
@@ -46,44 +86,48 @@ class ApiClient {
   }
 
   private async getAuthToken(): Promise<string | null> {
-    // Use cached token if available
-    if (this.authToken) return this.authToken;
+    if (this.authToken && this.isSupabaseAccessToken(this.authToken)) return this.authToken;
 
-    // If a refresh is in-flight, await it
     if (this.tokenRefreshPromise) return this.tokenRefreshPromise;
 
-    // Start a token acquisition routine
     this.tokenRefreshPromise = (async () => {
       try {
         const [[, storedToken], [, expiryStr]] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
         const expiry = expiryStr ? parseInt(expiryStr) : 0;
-        const nearExpiry = expiry < (Date.now() + 60 * 60 * 1000); // within 1 hour
+        const nearExpiry = expiry < (Date.now() + 60 * 60 * 1000);
 
         let token = storedToken || '';
 
-        // If token missing or near expiry, try to refresh from Firebase
-        if (!token || nearExpiry) {
-          const currentUser = auth?.currentUser;
-          if (currentUser) {
-            try {
-              const refreshed = await currentUser.getIdToken(true);
-              token = refreshed;
+        if (storedToken && !this.isSupabaseAccessToken(storedToken)) {
+          console.warn('Ignoring stale non-Supabase token stored in AsyncStorage.');
+          await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+          token = '';
+        }
+
+        if (!this.isSupabaseAccessToken(token) || nearExpiry) {
+          try {
+            const { data } = await supabase.auth.getSession();
+            const sessionToken = data.session?.access_token;
+            if (this.isSupabaseAccessToken(sessionToken)) {
+              token = sessionToken;
               const newExpiry = Date.now() + (24 * 60 * 60 * 1000);
               await AsyncStorage.multiSet([
                 ['userToken', token],
                 ['tokenExpiry', newExpiry.toString()],
               ]);
-            } catch (e) {
-              // If refresh fails, keep stored token if present; otherwise null
-              if (!storedToken) {
-                await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
-                token = '';
-              }
+            } else {
+              await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+              token = '';
+            }
+          } catch (e) {
+            if (!storedToken || !this.isSupabaseAccessToken(storedToken)) {
+              await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+              token = '';
             }
           }
         }
 
-        this.authToken = token || '';
+        this.authToken = this.isSupabaseAccessToken(token) ? token : '';
         return this.authToken || null;
       } finally {
         this.tokenRefreshPromise = null;
@@ -111,18 +155,16 @@ class ApiClient {
         ...(options.headers || {}),
       });
 
-      // Add auth headers if not provided explicitly
+      // Add auth headers if not provided explicitly. Never send a stale Firebase-style token
+      // or any non-Supabase JWT to the Supabase function layer.
       if (!headers.has('Authorization')) {
         const token = await this.getAuthToken();
-        const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-        const authHeader = token ? `Bearer ${token}` : (anonKey ? `Bearer ${anonKey}` : undefined);
-        if (authHeader) headers.set('Authorization', authHeader);
-      }
-
-      // Include Firebase UID if available
-      const uid = auth?.currentUser?.uid;
-      if (uid && !headers.has('x-firebase-uid')) {
-        headers.set('x-firebase-uid', uid);
+        if (this.isSupabaseAccessToken(token)) {
+          headers.set('Authorization', `Bearer ${token}`);
+        } else if (token) {
+          console.warn('Dropping invalid auth token before request.', endpoint);
+          await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+        }
       }
 
       // Handle preflight requests

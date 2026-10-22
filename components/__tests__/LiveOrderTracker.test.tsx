@@ -49,9 +49,17 @@ describe('LiveOrderTracker', () => {
   const mockOrderId = 'order-123';
   const mockOnClose = jest.fn();
   
+  const setPlatformOS = (value: 'ios' | 'android' | 'web') => {
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      get: () => value,
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    setPlatformOS('ios');
     
     // Mock location service methods
     (locationService.startLiveTracking as jest.Mock).mockResolvedValue(undefined);
@@ -88,6 +96,7 @@ describe('LiveOrderTracker', () => {
     cleanup();
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
+    setPlatformOS('ios');
   });
 
   describe('Memory Leak Prevention', () => {
@@ -273,7 +282,7 @@ describe('LiveOrderTracker', () => {
   describe('Cross-Platform Compatibility', () => {
     it('should render correctly on web platform', async () => {
       // Mock Platform.OS as web
-      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('web');
+      setPlatformOS('web');
 
       const { UNSAFE_getByType } = render(
         <LiveOrderTracker
@@ -293,7 +302,7 @@ describe('LiveOrderTracker', () => {
 
     it('should render correctly on iOS platform', async () => {
       // Mock Platform.OS as ios
-      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('ios');
+      setPlatformOS('ios');
 
       const { UNSAFE_getByType } = render(
         <LiveOrderTracker
@@ -313,7 +322,7 @@ describe('LiveOrderTracker', () => {
 
     it('should render correctly on Android platform', async () => {
       // Mock Platform.OS as android
-      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('android');
+      setPlatformOS('android');
 
       const { UNSAFE_getByType } = render(
         <LiveOrderTracker

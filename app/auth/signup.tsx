@@ -39,7 +39,6 @@ export default function SignUp() {
           ["userToken", result.data.token],
           ["userEmail", result.data.user.email],
           ["userRole", result.data.user.role],
-          ["selectedRole", result.data.user.role],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
