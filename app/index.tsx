@@ -4,12 +4,6 @@ import { Text, View, StyleSheet, Animated, Image, ActivityIndicator, Platform } 
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from 'expo-splash-screen';
-<<<<<<< HEAD
-import { supabase } from '../config/supabase';
-import { resolveAuthRoute, hasCompletedOnboarding } from '../utils/authFlow';
-=======
-import { getRoleHomeRoute, isUserRole } from '../utils/authRouting';
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
 void SplashScreen.preventAutoHideAsync().catch((error) => {
   console.warn("Failed to keep native splash screen visible:", error);
@@ -56,104 +50,87 @@ export default function SplashScreenComponent() {
       if (!isMounted) return;
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Show splash for 5 seconds
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
-        const hasSeenOnboarding = hasCompletedOnboarding(await AsyncStorage.getItem('hasSeenOnboarding'));
-        const [selectedRoleValue, userRoleValue, userEmailValue, tokenValue, tokenExpiryValue] = await AsyncStorage.multiGet([
-          'selectedRole',
-          'userRole',
-          'userEmail',
-          'userToken',
-          'tokenExpiry',
-        ]);
+        // Step 1: Check if user has seen onboarding
+        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        console.log('hasSeenOnboarding:', hasSeenOnboarding);
 
-        const selectedRole = selectedRoleValue[1];
-        const userRole = userRoleValue[1];
-        const userEmail = userEmailValue[1];
-        const token = tokenValue[1];
-        const tokenExpiry = tokenExpiryValue[1];
-
-        const { data: sessionData } = await supabase.auth.getSession();
-        const decision = resolveAuthRoute({
-          hasSeenOnboarding,
-          selectedRole,
-          userRole,
-          userEmail,
-          token,
-          tokenExpiry,
-          hasSupabaseSession: !!sessionData?.session,
-        });
-
-        if (decision.route === 'onboarding' && isMounted) {
-          router.replace('/onboarding/screen1');
+        if (!hasSeenOnboarding) {
+          // First time user - show onboarding
+          console.log('Redirecting to onboarding');
+          if (isMounted) {
+            router.replace('/onboarding/screen1');
+          }
           return;
         }
 
-<<<<<<< HEAD
-        if (decision.route === 'role-selection' && isMounted) {
-          router.replace('/auth/role-selection');
-          return;
-        }
+        // Step 2: Check if user has selected a role
+        const [selectedRoleValue, userRoleValue] = await AsyncStorage.multiGet(['selectedRole', 'userRole']);
+        const selectedRole = selectedRoleValue[1] || userRoleValue[1];
+        console.log('selectedRole:', selectedRole);
 
-        if (decision.role && !userRole) {
-          await AsyncStorage.setItem('userRole', decision.role);
-        }
-
-        if (decision.route === 'signin' && isMounted) {
-          if (decision.role) await AsyncStorage.setItem('selectedRole', decision.role);
-          router.replace('/auth/signin');
-          return;
-        }
-
-        if (decision.route === 'signup' && isMounted) {
-          if (decision.role) await AsyncStorage.setItem('selectedRole', decision.role);
-          router.replace('/auth/signup');
-          return;
-        }
-
-        if (decision.route === 'home' && decision.role && isMounted) {
-          await AsyncStorage.setItem('userRole', decision.role);
-          await AsyncStorage.setItem('selectedRole', decision.role);
-
-          if (decision.role === 'consumer') {
-            router.replace('/home/consumer');
-          } else if (decision.role === 'merchant') {
-            router.replace('/home/merchant');
-          } else if (decision.role === 'driver') {
-            router.replace('/home/driver');
-          } else {
+        if (!selectedRole) {
+          // User has seen onboarding but hasn't selected role
+          console.log('Redirecting to role selection');
+          if (isMounted) {
             router.replace('/auth/role-selection');
           }
-=======
-        // Supabase is the source of truth for both the session and the stored role.
-        const { authService } = await import('../services/authService');
-        const sessionResult = await authService.restoreSession();
-        if (sessionResult?.success && sessionResult.data) {
-          if (isMounted) {
-            router.replace(getRoleHomeRoute(sessionResult.data.user.role) as never);
+          return;
+        }
+
+        if (!userRoleValue[1]) {
+          await AsyncStorage.setItem('userRole', selectedRole);
+        }
+
+        // Step 3: Check authentication status
+        const [token, tokenExpiry] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
+        const isTokenExpired = tokenExpiry[1] ? Date.now() > parseInt(tokenExpiry[1]) : true;
+
+        if (!token[1] || isTokenExpired) {
+          // User has selected role but not authenticated - check if they have an account
+          console.log('Token expired or missing, checking for account');
+          const userEmail = await AsyncStorage.getItem('userEmail');
+          
+          if (userEmail) {
+            // User has registered before - go to sign in
+            console.log('Redirecting to sign in');
+            if (isMounted) {
+              router.replace('/auth/signin');
+            }
+          } else {
+            // New user - go to sign up
+            console.log('Redirecting to sign up');
+            if (isMounted) {
+              router.replace('/auth/signup');
+            }
           }
+          
+          // Clear expired token
+          await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
           return;
         }
 
-        const pendingUserData = await AsyncStorage.getItem('pendingUserData');
-        if (pendingUserData) {
-          if (isMounted) router.replace('/auth/otp-verification');
-          return;
-        }
+        // Step 4: User is authenticated - route to appropriate home screen
+        const role = await AsyncStorage.getItem('userRole');
+        console.log('User authenticated with role:', role);
 
-        const selectedRole = await AsyncStorage.getItem('selectedRole');
-        if (!isUserRole(selectedRole)) {
-          if (isMounted) router.replace('/auth/role-selection');
-          return;
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
+        if (role === 'consumer' && isMounted) {
+          router.replace('/home/consumer');
+        } else if (role === 'merchant' && isMounted) {
+          router.replace('/home/merchant');
+        } else if (role === 'driver' && isMounted) {
+          router.replace('/home/driver');
+        } else if (isMounted) {
+          // Fallback - role missing, go back to role selection
+          router.replace('/auth/role-selection');
         }
-
-        const userEmail = await AsyncStorage.getItem('userEmail');
-        if (isMounted) router.replace(userEmail ? '/auth/signin' : '/auth/signup');
       } catch (error) {
         console.error('Error checking auth state:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
         if (isMounted) {
+          // On error, start fresh with onboarding
           router.replace('/onboarding/screen1');
         }
       } finally {

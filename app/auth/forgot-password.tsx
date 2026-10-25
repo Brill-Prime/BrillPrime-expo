@@ -2,8 +2,25 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import AlertModal from "../../components/AlertModal";
-import { authService } from "../../services/authService";
+
+// Placeholder for authService and related functions that were in the original code
+// In a real scenario, these would be imported or defined elsewhere.
+// For this example, we'll simulate their behavior based on the original context.
+const authService = {
+  requestPasswordReset: async ({ email }) => {
+    // Simulate a network call with potential timeout
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // Simulate a successful response after a delay
+        // In the original code, this was the part that was timing out and causing issues.
+        // The new logic replaces this with direct Firebase calls.
+        resolve({ success: true, message: "Reset link sent." });
+      }, 35000); // Simulate a timeout longer than 30 seconds
+    });
+  }
+};
 
 // Helper functions to mimic the UI feedback mechanisms
 const showError = (title, message) => {
@@ -48,18 +65,28 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const response = await authService.requestPasswordReset({ email });
+      // Import Firebase auth functions
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      const { auth } = await import('../../config/firebase');
 
-      if (!response.success) {
-        setErrorMessage(response.error || 'Failed to send reset link. Please try again.');
-        setShowErrorModal(true);
-        return;
-      }
+      // Send password reset email via Firebase
+      await sendPasswordResetEmail(auth, email);
 
+      // Show success modal
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Password reset error:', error);
-      setErrorMessage(error?.message || 'Failed to send reset link. Please try again.');
+
+      // Handle Firebase errors
+      if (error.code === 'auth/user-not-found') {
+        setErrorMessage('No account found with this email address');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('Invalid email address');
+      } else if (error.code === 'auth/too-many-requests') {
+        setErrorMessage('Too many requests. Please try again later');
+      } else {
+        setErrorMessage('Failed to send reset link. Please try again.');
+      }
       setShowErrorModal(true);
     } finally {
       setLoading(false);

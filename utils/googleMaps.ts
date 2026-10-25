@@ -120,17 +120,11 @@ export const calculateETA = (
     return Promise.reject(new Error("Invalid coordinates for ETA calculation"));
   }
 
-  // Native builds do not have the browser Distance Matrix API. Estimate ETA
-  // from the native haversine distance instead of failing the tracking screen.
+  // Return a default value for native platforms
   if (Platform.OS !== "web") {
-    return calculateDistance(origin, destination).then((distanceMeters) => {
-      const distanceKm = distanceMeters / 1000;
-      const minutes = Math.max(1, Math.round((distanceKm / 25) * 60));
-      return {
-        duration: `${minutes} min`,
-        distance: `${distanceKm.toFixed(1)} km`,
-      };
-    });
+    return Promise.reject(
+      new Error("ETA calculation not available on native platforms")
+    );
   }
 
   return new Promise((resolve, reject) => {

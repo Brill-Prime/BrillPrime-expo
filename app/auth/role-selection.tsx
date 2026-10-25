@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { normalizeRole } from "../../utils/authFlow";
 
 type UserRole = "consumer" | "merchant" | "driver";
 
@@ -59,12 +58,6 @@ export default function RoleSelection() {
 
   const proceedToAuth = async (role: UserRole) => {
     try {
-      const pendingUserData = await AsyncStorage.getItem('pendingUserData');
-      if (pendingUserData) {
-        router.push("/auth/otp-verification");
-        return;
-      }
-
       const storedEmail = await AsyncStorage.getItem("userEmail");
 
       if (storedEmail) {
@@ -80,10 +73,8 @@ export default function RoleSelection() {
 
   const handleSelect = async (role: UserRole) => {
     try {
-      const normalizedRole = normalizeRole(role) ?? role;
-      await AsyncStorage.setItem("selectedRole", normalizedRole);
-      await AsyncStorage.setItem("userRole", normalizedRole);
-      await proceedToAuth(normalizedRole);
+      await AsyncStorage.setItem("selectedRole", role);
+      await proceedToAuth(role);
     } catch (error) {
       console.error("Error saving role:", error);
       Alert.alert("Error", "Failed to save role selection. Please try again.");

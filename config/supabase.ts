@@ -1,16 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
 // Retrieve Supabase configuration from environment
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey =
-  Constants.expoConfig?.extra?.supabaseAnonKey ||
-  Constants.expoConfig?.extra?.supabasePublishableKey ||
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  '';
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Validation function for Supabase URL
 function validateSupabaseUrl(url: string): { isValid: boolean; error?: string } {
@@ -40,10 +33,12 @@ function validateSupabaseKey(key: string): { isValid: boolean; error?: string } 
     return { isValid: false, error: 'Supabase Anon Key is missing' };
   }
 
-  // Supabase legacy anon keys are JWTs; newer publishable keys use sb_publishable_.
-  const isPublishableKey = key.startsWith('sb_publishable_') && key.length > 20;
-  const isLegacyAnonKey = key.startsWith('eyJ') && key.length >= 100;
-  if (!isPublishableKey && !isLegacyAnonKey) {
+  // Supabase anon keys are typically JWT tokens that start with 'eyJ'
+  if (!key.startsWith('eyJ')) {
+    return { isValid: false, error: 'Supabase Anon Key appears to be invalid (should be a JWT token)' };
+  }
+
+  if (key.length < 100) {
     return { isValid: false, error: 'Supabase Anon Key is too short to be valid' };
   }
 
@@ -80,23 +75,20 @@ if (!urlValidation.isValid || !keyValidation.isValid) {
   }
 }
 
-// Keep the app bootable when deployment configuration is missing, but make
-// auth actions report a clear configuration error instead of crashing imports.
-const clientUrl = urlValidation.isValid ? supabaseUrl : 'https://missing-supabase-config.invalid';
-const clientKey = keyValidation.isValid ? supabaseAnonKey : 'missing-supabase-anon-key';
-
-export const supabase = createClient(clientUrl, clientKey, {
+// Create Supabase client with validated configuration
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: Platform.OS === 'web',
+    detectSessionInUrl: false,
   },
   global: {
     headers: {
       'x-client-info': 'brillprime-app',
       'Accept': 'application/json',
       'Content-Type': 'application/json',
+      'apikey': supabaseAnonKey,
+      'Authorization': `Bearer ${supabaseAnonKey}`,
     },
   },
 });
@@ -107,6 +99,11 @@ export const isSupabaseConfigured = urlValidation.isValid && keyValidation.isVal
 // Log success or provide guidance
 if (isSupabaseConfigured) {
   console.log('✅ Supabase client initialized successfully');
+  console.log(`🔷 URL: ${supabaseUrl}`);
+  console.log(`🔑 Key: ${supabaseAnonKey.substring(0, 20)}...`);
+
+  // Configure error handling for real-time subscriptions
+  supabase.realtime.setAuth(supabaseAnonKey);
 
   // Add global error handler for broadcast errors
   const originalBroadcast = supabase.channel.bind(supabase);

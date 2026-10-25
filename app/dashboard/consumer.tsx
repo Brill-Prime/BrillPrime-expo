@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Image, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,6 @@ import { orderService } from "../../services/orderService";
 import { formatNaira } from "../../utils/currency";
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import * as Location from 'expo-location';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -51,18 +50,16 @@ export default function ConsumerDashboard() {
 
   // Refresh when component becomes visible
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof document === 'undefined') {
-      return;
-    }
-
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         loadDashboardData();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
   }, []);
 
   const loadCartCount = async () => {
@@ -117,8 +114,7 @@ export default function ConsumerDashboard() {
           style: "destructive",
           onPress: async () => {
             try {
-              const { authService } = await import("../../services/authService");
-              await authService.signOut();
+              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
               router.replace("/");
             } catch (error) {
               console.error("Error signing out:", error);
@@ -207,27 +203,18 @@ export default function ConsumerDashboard() {
   }, [user?.id]);
 
   const checkLocationStatus = async () => {
-    if (Platform.OS !== 'web') {
-      try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        setLocationStatus(status === 'granted' ? 'enabled' : 'disabled');
-      } catch (error) {
-        console.warn('Could not check native location permission:', error);
-        setLocationStatus('disabled');
-      }
-      return;
-    }
-
     if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
       try {
         const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
         setLocationStatus(permission.state === 'granted' ? 'enabled' : 'disabled');
+
+        // Listen for permission changes
         permission.onchange = () => {
           setLocationStatus(permission.state === 'granted' ? 'enabled' : 'disabled');
         };
       } catch (error) {
         console.log('Permission API not available');
-        setLocationStatus('enabled');
+        setLocationStatus('enabled'); // Assume enabled if we can't check
       }
     } else {
       setLocationStatus('enabled');

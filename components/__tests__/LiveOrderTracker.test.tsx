@@ -1,29 +1,13 @@
 import React from 'react';
-import { cleanup, render, waitFor, act } from '@testing-library/react-native';
+import { render, waitFor, act } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import LiveOrderTracker from '../LiveOrderTracker';
 import { locationService } from '../../services/locationService';
 import { orderService } from '../../services/orderService';
 
 // Mock dependencies
-jest.mock('../../services/locationService', () => ({
-  locationService: {
-    startLiveTracking: jest.fn(),
-    stopLiveTracking: jest.fn(),
-    onLocationUpdate: jest.fn(),
-    getLiveLocation: jest.fn(),
-    getCurrentLocation: jest.fn(),
-    subscribeToDriverLocation: jest.fn(() => jest.fn()),
-    calculateDistance: jest.fn(),
-  },
-}));
-jest.mock('../../services/orderService', () => ({
-  orderService: {
-    trackOrder: jest.fn(),
-    subscribeToOrderUpdates: jest.fn(() => jest.fn()),
-    updateOrderStatus: jest.fn(),
-  },
-}));
+jest.mock('../../services/locationService');
+jest.mock('../../services/orderService');
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: jest.fn(),
@@ -49,17 +33,9 @@ describe('LiveOrderTracker', () => {
   const mockOrderId = 'order-123';
   const mockOnClose = jest.fn();
   
-  const setPlatformOS = (value: 'ios' | 'android' | 'web') => {
-    Object.defineProperty(Platform, 'OS', {
-      configurable: true,
-      get: () => value,
-    });
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    setPlatformOS('ios');
     
     // Mock location service methods
     (locationService.startLiveTracking as jest.Mock).mockResolvedValue(undefined);
@@ -93,10 +69,8 @@ describe('LiveOrderTracker', () => {
   });
 
   afterEach(() => {
-    cleanup();
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
-    setPlatformOS('ios');
   });
 
   describe('Memory Leak Prevention', () => {
@@ -282,7 +256,7 @@ describe('LiveOrderTracker', () => {
   describe('Cross-Platform Compatibility', () => {
     it('should render correctly on web platform', async () => {
       // Mock Platform.OS as web
-      setPlatformOS('web');
+      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('web');
 
       const { UNSAFE_getByType } = render(
         <LiveOrderTracker
@@ -302,7 +276,7 @@ describe('LiveOrderTracker', () => {
 
     it('should render correctly on iOS platform', async () => {
       // Mock Platform.OS as ios
-      setPlatformOS('ios');
+      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('ios');
 
       const { UNSAFE_getByType } = render(
         <LiveOrderTracker
@@ -322,7 +296,7 @@ describe('LiveOrderTracker', () => {
 
     it('should render correctly on Android platform', async () => {
       // Mock Platform.OS as android
-      setPlatformOS('android');
+      jest.spyOn(Platform, 'OS', 'get').mockReturnValue('android');
 
       const { UNSAFE_getByType } = render(
         <LiveOrderTracker

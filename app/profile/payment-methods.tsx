@@ -12,7 +12,6 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAlert } from '../../components/AlertProvider';
 
 interface PaymentMethod {
   id: string;
@@ -26,7 +25,6 @@ interface PaymentMethod {
 
 export default function PaymentMethodsScreen() {
   const router = useRouter();
-  const { promptText } = useAlert();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
@@ -159,60 +157,72 @@ export default function PaymentMethodsScreen() {
     );
   };
 
-  const addCardMethod = async () => {
-    const cardNumber = await promptText({
-      title: 'Add Card',
-      message: 'Enter card details (Demo)',
-      defaultValue: '1234567890123456',
-      confirmText: 'Add',
-    });
-    if (cardNumber === null) return;
-
-    if (cardNumber.length >= 4) {
-      const newMethod: PaymentMethod = {
-        id: Date.now().toString(),
-        type: 'card',
-        title: 'Credit/Debit Card',
-        subtitle: `•••• •••• •••• ${cardNumber.slice(-4)}`,
-        icon: 'card-outline',
-        isDefault: paymentMethods.length === 0,
-        created: new Date().toISOString()
-      };
-      const updatedMethods = [...paymentMethods, newMethod];
-      await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
-      setPaymentMethods(updatedMethods);
-      Alert.alert('Success', 'Card added successfully');
-    } else {
-      Alert.alert('Error', 'Please enter a valid card number');
-    }
+  const addCardMethod = () => {
+    Alert.prompt(
+      'Add Card',
+      'Enter card details (Demo)',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add', 
+          onPress: (cardNumber) => {
+            if (cardNumber && cardNumber.length >= 4) {
+              const newMethod: PaymentMethod = {
+                id: Date.now().toString(),
+                type: 'card',
+                title: 'Credit/Debit Card',
+                subtitle: `•••• •••• •••• ${cardNumber.slice(-4)}`,
+                icon: 'card-outline',
+                isDefault: paymentMethods.length === 0,
+                created: new Date().toISOString()
+              };
+              const updatedMethods = [...paymentMethods, newMethod];
+              AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+              setPaymentMethods(updatedMethods);
+              Alert.alert('Success', 'Card added successfully');
+            } else {
+              Alert.alert('Error', 'Please enter a valid card number');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '1234567890123456'
+    );
   };
 
-  const addBankMethod = async () => {
-    const accountNumber = await promptText({
-      title: 'Add Bank Account',
-      message: 'Enter bank account details (Demo)',
-      defaultValue: '1234567890',
-      confirmText: 'Add',
-    });
-    if (accountNumber === null) return;
-
-    if (accountNumber.length >= 4) {
-      const newMethod: PaymentMethod = {
-        id: Date.now().toString(),
-        type: 'bank',
-        title: 'Bank Account',
-        subtitle: `Account ending in ${accountNumber.slice(-4)}`,
-        icon: 'business-outline',
-        isDefault: paymentMethods.length === 0,
-        created: new Date().toISOString()
-      };
-      const updatedMethods = [...paymentMethods, newMethod];
-      await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
-      setPaymentMethods(updatedMethods);
-      Alert.alert('Success', 'Bank account added successfully');
-    } else {
-      Alert.alert('Error', 'Please enter a valid account number');
-    }
+  const addBankMethod = () => {
+    Alert.prompt(
+      'Add Bank Account',
+      'Enter bank account details (Demo)',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add', 
+          onPress: (accountNumber) => {
+            if (accountNumber && accountNumber.length >= 4) {
+              const newMethod: PaymentMethod = {
+                id: Date.now().toString(),
+                type: 'bank',
+                title: 'Bank Account',
+                subtitle: `Account ending in ${accountNumber.slice(-4)}`,
+                icon: 'business-outline',
+                isDefault: paymentMethods.length === 0,
+                created: new Date().toISOString()
+              };
+              const updatedMethods = [...paymentMethods, newMethod];
+              AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+              setPaymentMethods(updatedMethods);
+              Alert.alert('Success', 'Bank account added successfully');
+            } else {
+              Alert.alert('Error', 'Please enter a valid account number');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '1234567890'
+    );
   };
 
   const addWalletMethod = () => {

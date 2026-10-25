@@ -16,7 +16,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAlert } from '../../components/AlertProvider';
 
 interface User {
   id: string;
@@ -35,7 +34,6 @@ interface User {
 
 export default function AdminUserManagement() {
   const router = useRouter();
-  const { promptText } = useAlert();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -162,11 +160,7 @@ export default function AdminUserManagement() {
     setRefreshing(false);
   };
 
-  const handleUserAction = async (
-    userId: string,
-    action: 'activate' | 'suspend' | 'ban' | 'delete',
-    reason = suspensionReason,
-  ) => {
+  const handleUserAction = async (userId: string, action: 'activate' | 'suspend' | 'ban' | 'delete') => {
     Alert.alert(
       'Confirm Action',
       `Are you sure you want to ${action} this user?`,
@@ -185,7 +179,7 @@ export default function AdminUserManagement() {
                   'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                  reason
+                  reason: suspensionReason
                 })
               });
 
@@ -434,15 +428,15 @@ export default function AdminUserManagement() {
                   {selectedUser.status === 'ACTIVE' && (
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: '#f59e0b' }]}
-                      onPress={async () => {
-                        const reason = await promptText({
-                          title: 'Suspend User',
-                          message: 'Enter suspension reason:',
-                          confirmText: 'Continue',
-                        });
-                        if (reason === null) return;
-                        setSuspensionReason(reason);
-                        handleUserAction(selectedUser.id, 'suspend', reason);
+                      onPress={() => {
+                        Alert.prompt(
+                          'Suspend User',
+                          'Enter suspension reason:',
+                          (reason) => {
+                            setSuspensionReason(reason || '');
+                            handleUserAction(selectedUser.id, 'suspend');
+                          }
+                        );
                       }}
                     >
                       <Text style={styles.actionButtonText}>Suspend</Text>

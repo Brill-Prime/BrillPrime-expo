@@ -2,9 +2,6 @@
 // Load environment variables from .env file
 import 'dotenv/config';
 
-const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || 'aa9abbbe-13a1-44d5-91b0-b65256603d1b';
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
-
 export default {
   name: "BrillPrime",
   slug: "brillprime",
@@ -19,16 +16,12 @@ export default {
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
-  runtimeVersion: "1.0.0",
-  updates: easProjectId ? {
-    url: `https://u.expo.dev/${easProjectId}`
-  } : undefined,
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.brillprime.app",
     config: {
-      googleMapsApiKey
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
     }
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
@@ -40,7 +33,7 @@ export default {
     package: "com.brillprime.app",
     config: {
       googleMaps: {
-        apiKey: googleMapsApiKey
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
       }
     }
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
@@ -50,43 +43,21 @@ export default {
     favicon: "./assets/images/logo.png",
     config: {
       googleMaps: {
-        apiKey: googleMapsApiKey
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
       }
     }
   },
   plugins: [
     "expo-router",
-    "expo-asset",
     "expo-font",
     "expo-web-browser",
-    [
-      "expo-image-picker",
-      {
-        photosPermission: "Allow BrillPrime to access your photos so you can attach images.",
-        cameraPermission: "Allow BrillPrime to use your camera to capture attachments.",
-        microphonePermission: false
-      }
-    ],
-    [
-      "expo-location",
-      {
-        locationWhenInUsePermission: "Allow BrillPrime to use your location for nearby stores and deliveries."
-      }
-    ],
-    [
-      "expo-local-authentication",
-      {
-        faceIDPermission: "Allow BrillPrime to use Face ID to secure your account."
-      }
-    ],
-    "expo-notifications",
     [
       "expo-build-properties",
       {
         android: {
-          compileSdkVersion: 36,
-          targetSdkVersion: 36,
-          buildToolsVersion: "36.0.0"
+          compileSdkVersion: 34,
+          targetSdkVersion: 34,
+          buildToolsVersion: "34.0.0"
           // Removed newArchEnabled: false to resolve warning
         },
         ios: {
@@ -105,7 +76,7 @@ export default {
       origin: false
     },
     eas: {
-      projectId: easProjectId || ""
+      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || ""
     },
     // Firebase configuration pulled strictly from environment variables
     firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',

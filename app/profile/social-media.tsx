@@ -25,7 +25,7 @@ interface SocialMediaAccount {
 
 export default function SocialMediaScreen() {
   const router = useRouter();
-  const { showSuccess, showError, promptText } = useAlert();
+  const { showSuccess, showError } = useAlert();
   const [socialAccounts, setSocialAccounts] = useState<SocialMediaAccount[]>([
     {
       platform: 'Facebook',
@@ -106,14 +106,23 @@ export default function SocialMediaScreen() {
 
     try {
       // Simulate OAuth flow - in real app, this would redirect to OAuth provider
-      const input = await promptText({
-        title: `Connect ${platform}`,
-        message: `Enter your ${platform} username or profile URL`,
-        confirmText: 'Connect',
-      });
-      if (input?.trim()) {
-        await connectAccount(platform, input.trim());
-      }
+      Alert.prompt(
+        `Connect ${platform}`,
+        `Enter your ${platform} username or profile URL`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Connect',
+            onPress: async (input) => {
+              if (input && input.trim()) {
+                await connectAccount(platform, input.trim());
+              }
+            }
+          }
+        ],
+        'plain-text',
+        ''
+      );
     } catch (error) {
       console.error(`Error connecting to ${platform}:`, error);
       showError('Error', `Failed to connect to ${platform}`);

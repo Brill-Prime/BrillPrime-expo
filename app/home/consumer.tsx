@@ -12,7 +12,6 @@ import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 import { UserMarker, MerchantMarker, DriverMarker } from '../../components/MapMarkers';
-import { useRoleAccess } from '../../hooks/useRoleAccess';
 
 // Define missing types
 interface Driver {
@@ -145,7 +144,6 @@ const theme = {
 };
 
 function ConsumerHomeContent() {
-  const hasRoleAccess = useRoleAccess('consumer');
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [isLocationSet, setIsLocationSet] = useState<boolean | null>(null);
@@ -772,17 +770,17 @@ function ConsumerHomeContent() {
           break;
 
         case "Switch to Merchant":
-          showError(
-            "Role Not Available",
-            "This account is registered as a consumer. Sign in with a merchant account to open the merchant home."
-          );
+          // Update role in storage before switching
+          await AsyncStorage.setItem('userRole', 'merchant');
+          await AsyncStorage.setItem('selectedRole', 'merchant');
+          router.replace("/home/merchant");
           break;
 
         case "Switch to Driver":
-          showError(
-            "Role Not Available",
-            "This account is registered as a consumer. Sign in with a driver account to open the driver home."
-          );
+          // Update role in storage before switching
+          await AsyncStorage.setItem('userRole', 'driver');
+          await AsyncStorage.setItem('selectedRole', 'driver');
+          router.replace("/home/driver");
           break;
 
         default:
@@ -903,9 +901,9 @@ function ConsumerHomeContent() {
       "Are you sure you want to sign out?",
       async () => {
         try {
-          const { authService } = await import("../../services/authService");
-          await authService.signOut();
-          await AsyncStorage.multiRemove(["userName", "userLocation", "userAddress"]);
+          // Clear all user data
+          const keysToRemove = ["userToken", "userEmail", "userRole", "userName", "userLocation", "userAddress"];
+          await AsyncStorage.multiRemove(keysToRemove);
 
           // Stop any ongoing location tracking
           if (locationService) {
@@ -1041,8 +1039,6 @@ function ConsumerHomeContent() {
 
 
 
-
-  if (!hasRoleAccess) return null;
 
   return (
     <ErrorBoundary>

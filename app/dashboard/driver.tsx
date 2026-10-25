@@ -44,8 +44,7 @@ export default function DriverDashboard() {
           style: "destructive",
           onPress: async () => {
             try {
-              const { authService } = await import("../../services/authService");
-              await authService.signOut();
+              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
               router.replace("/");
             } catch (error) {
               console.error("Error signing out:", error);

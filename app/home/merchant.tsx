@@ -19,7 +19,6 @@ import * as Location from 'expo-location';
 import QRScannerIcon from '../../components/QRScannerIcon';
 import SimpleArrowIcon from '../../components/SimpleArrowIcon';
 import { locationService } from '../../services/locationService';
-import { useRoleAccess } from '../../hooks/useRoleAccess';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +39,6 @@ const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
 };
 
 export default function MerchantHome() {
-  const hasRoleAccess = useRoleAccess('merchant');
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
   const [isLoading, setIsLoading] = useState(true);
@@ -247,16 +245,10 @@ export default function MerchantHome() {
           router.push("/support");
           break;
         case "Switch to Consumer":
-          showError(
-            "Role Not Available",
-            "This account is registered as a merchant. Sign in with a consumer account to open the consumer home."
-          );
+          router.push("/home/consumer");
           break;
         case "Switch to Driver":
-          showError(
-            "Role Not Available",
-            "This account is registered as a merchant. Sign in with a driver account to open the driver home."
-          );
+          router.push("/home/driver");
           break;
         default:
           showInfo("Navigation", `Navigating to ${item}`);
@@ -270,8 +262,7 @@ export default function MerchantHome() {
       "Are you sure you want to sign out?",
       async () => {
         try {
-          const { authService } = await import("../../services/authService");
-          await authService.signOut();
+          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
           router.replace("/");
           showSuccess("Signed Out", "You have been successfully signed out.");
         } catch (error) {
@@ -314,8 +305,6 @@ export default function MerchantHome() {
       </View>
     );
   }
-
-  if (!hasRoleAccess) return null;
 
   return (
     <View style={styles.container}>

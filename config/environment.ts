@@ -10,8 +10,7 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Determine API base URL based on environment
-// Architecture: Supabase is the app's auth and backend source of truth.
-// Firebase is kept optional and should not be mixed into the startup auth flow unless a specific feature requires it.
+// Architecture: Firebase for Auth, Supabase for all backend logic
 const getApiBaseUrl = () => {
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) {

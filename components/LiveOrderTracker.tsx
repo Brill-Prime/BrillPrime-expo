@@ -39,26 +39,14 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
   const router = useRouter();
+  const cleanupRef = useRef<Array<() => void>>([]);
   const etaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const driverPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const normalizeCoords = useCallback((loc: any) => {
-    if (!loc) return null;
-
-    const coords = loc.coords ?? loc;
-    if (!coords || typeof coords.latitude !== 'number' || typeof coords.longitude !== 'number') {
-      return null;
-    }
-
-    return {
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-    };
-  }, []);
 
   // Cleanup all subscriptions on unmount
   useEffect(() => {
     return () => {
+      cleanupRef.current.forEach(fn => fn());
+      cleanupRef.current = [];
       locationService.stopLiveTracking();
       if (etaTimerRef.current) clearInterval(etaTimerRef.current);
     };
@@ -78,9 +66,11 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       } else {
         // Consumer gets their own position to calculate ETA
         const loc = await locationService.getCurrentLocation();
-        const coords = normalizeCoords(loc);
-        if (coords && active) {
-          setConsumerLocation(coords);
+        if (loc && active) {
+          setConsumerLocation({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
         }
         if (active) setIsTracking(true);
       }
@@ -93,78 +83,55 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
       if (!active) return;
       setOrder((prev: any) => ({ ...prev, ...updatedOrder }));
     });
+    cleanupRef.current.push(unsubscribeOrder);
 
-    return () => {
-      active = false;
-      unsubscribeOrder();
-    };
-  }, [orderId, userRole]);
-
-  // Consumer keeps an active listener for their own live location while tracking
-  useEffect(() => {
-    if (userRole !== 'consumer') return;
-
-    const unsubscribe = locationService.onLocationUpdate((loc: any) => {
-      const coords = normalizeCoords(loc);
-      if (coords) setConsumerLocation(coords);
-    });
-
-    return unsubscribe;
-  }, [userRole, normalizeCoords]);
+    return () => { active = false; };
+  }, [orderId]);
 
   // Subscribe to driver's real-time location when driver ID is known (consumer view)
   useEffect(() => {
     if (!order?.driver_id || userRole !== 'consumer') return;
 
-    const fetchDriverLocation = async () => {
-      const res = await locationService.getLiveLocation(order.driver_id);
-      const coords = normalizeCoords(res?.data ?? res);
-      if (res?.success && coords) {
-        setDriverLocation(coords);
+    // Initial fetch
+    locationService.getLiveLocation(order.driver_id).then((res) => {
+      if (res.success && res.data) {
+        setDriverLocation({ latitude: res.data.latitude, longitude: res.data.longitude });
       }
-    };
-
-    fetchDriverLocation();
-
-    if (driverPollRef.current) clearInterval(driverPollRef.current);
-    driverPollRef.current = setInterval(() => {
-      fetchDriverLocation();
-    }, 5000);
+    });
 
     // Real-time subscription
     const unsubscribe = locationService.subscribeToDriverLocation(
       order.driver_id,
       (loc) => {
-        const coords = normalizeCoords(loc);
-        if (coords) setDriverLocation(coords);
+        setDriverLocation({ latitude: loc.latitude, longitude: loc.longitude });
       }
     );
+    cleanupRef.current.push(unsubscribe);
 
     return () => {
-      if (driverPollRef.current) {
-        clearInterval(driverPollRef.current);
-        driverPollRef.current = null;
-      }
       unsubscribe();
     };
-  }, [order?.driver_id, userRole, normalizeCoords]);
+  }, [order?.driver_id, userRole]);
 
   // Track driver's own GPS for route calculation
   useEffect(() => {
     if (userRole !== 'driver') return;
 
     const unsubscribe = locationService.onLocationUpdate((loc: any) => {
-      const coords = normalizeCoords(loc);
-      if (coords) setDriverLocation(coords);
+      setDriverLocation({
+        latitude: loc.latitude ?? loc.coords?.latitude,
+        longitude: loc.longitude ?? loc.coords?.longitude,
+      });
     });
 
     // Also get initial position immediately
     locationService.getCurrentLocation().then((loc) => {
-      const coords = normalizeCoords(loc);
-      if (coords) setDriverLocation(coords);
+      if (loc?.coords) {
+        setDriverLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      }
     });
 
-    return unsubscribe;
+    if (unsubscribe) cleanupRef.current.push(unsubscribe);
   }, [userRole]);
 
   const loadOrderDetails = async (active = true) => {
@@ -172,8 +139,7 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
     if (!active) return;
     if (response.success && response.data) {
       const ord = response.data.order;
-      const normalizedOrder = { ...ord, driver_id: ord?.driver_id ?? ord?.driverId };
-      setOrder(normalizedOrder);
+      setOrder(ord);
 
       // Extract pickup (merchant) and delivery coordinates
       if (ord?.merchant?.latitude && ord?.merchant?.longitude) {

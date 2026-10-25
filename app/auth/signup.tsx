@@ -7,16 +7,10 @@ import { useAlert } from "../../components/AlertProvider";
 import AlertModal from "../../components/AlertModal";
 import EmailIcon from '../../components/EmailIcon';
 import LockIcon from '../../components/LockIcon';
-<<<<<<< HEAD
-import { getStoredRole } from '../../utils/authFlow';
-=======
-import { getRoleHomeRoute, isUserRole } from '../../utils/authRouting';
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
 export default function SignUp() {
   const router = useRouter();
   const { showError, showConfirmDialog, showInfo } = useAlert();
-  const signUpRequestLock = React.useRef(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -29,27 +23,10 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
 
+  // Check for redirect auth result on mount
   React.useEffect(() => {
-    const ensureRoleSelected = async () => {
-      const selectedRole = getStoredRole(
-        await AsyncStorage.getItem('selectedRole'),
-        await AsyncStorage.getItem('userRole'),
-      );
-
-      if (!selectedRole) {
-        router.replace('/auth/role-selection');
-        return;
-      }
-
-      const storedRole = await AsyncStorage.getItem('selectedRole');
-      if (!storedRole) {
-        await AsyncStorage.setItem('selectedRole', selectedRole);
-      }
-    };
-
-    ensureRoleSelected();
     checkRedirectAuth();
-  }, [router]);
+  }, []);
 
   const checkRedirectAuth = async () => {
     try {
@@ -57,14 +34,12 @@ export default function SignUp() {
       const result = await authService.checkRedirectResult();
       
       if (result?.success && result.data) {
-<<<<<<< HEAD
         // Successfully authenticated via redirect
-        const finalRole = result.data.user.role || (await AsyncStorage.getItem('selectedRole')) || 'consumer';
         await AsyncStorage.multiSet([
           ["userToken", result.data.token],
           ["userEmail", result.data.user.email],
-          ["userRole", finalRole],
-          ["selectedRole", finalRole],
+          ["userRole", result.data.user.role],
+          ["selectedRole", result.data.user.role],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
@@ -80,9 +55,6 @@ export default function SignUp() {
         } else {
           router.replace(`/dashboard/${result.data.user.role}` as never);
         }
-=======
-        router.replace(getRoleHomeRoute(result.data.user.role) as never);
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else if (result?.error) {
         showError('Authentication Error', result.error);
       }
@@ -128,18 +100,11 @@ export default function SignUp() {
   };
 
   const handleSignUp = async () => {
-    const emailToSubmit = formData.email.trim().toLowerCase();
-
-<<<<<<< HEAD
-    if (signUpRequestLock.current) {
-      return;
-    }
-
     if (!validateForm()) return;
-=======
+
     // Check if user has selected a role first
     const storedRole = await AsyncStorage.getItem("selectedRole");
-    if (!isUserRole(storedRole)) {
+    if (!storedRole) {
       showConfirmDialog(
         "Role Required",
         "Please select your role first.",
@@ -149,47 +114,20 @@ export default function SignUp() {
     }
 
     // Use stored role instead of component state
-    const finalRole = storedRole;
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
-
-    const lastSignUpAttempt = Number(await AsyncStorage.getItem('lastSignUpAttemptAt') || '0');
-    const now = Date.now();
-    const requestCooldownMs = 30000;
-
-    if (lastSignUpAttempt && now - lastSignUpAttempt < requestCooldownMs) {
-      const remainingSeconds = Math.max(1, Math.ceil((requestCooldownMs - (now - lastSignUpAttempt)) / 1000));
-      showError('Too many attempts', `Please wait ${remainingSeconds} seconds before trying again.`);
-      return;
-    }
-
-    const storedRole = getStoredRole(
-      await AsyncStorage.getItem('selectedRole'),
-      await AsyncStorage.getItem('userRole'),
-    );
-    if (!storedRole) {
-      router.replace('/auth/role-selection');
-      return;
-    }
-
-    if (!(await AsyncStorage.getItem('selectedRole'))) {
-      await AsyncStorage.setItem('selectedRole', storedRole);
-    }
-
     const finalRole = storedRole as 'consumer' | 'merchant' | 'driver';
-    signUpRequestLock.current = true;
+
     setLoading(true);
 
     try {
+      // Import authService for real API calls
       const { authService } = await import('../../services/authService');
 
       const nameParts = formData.fullName.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      await AsyncStorage.setItem('lastSignUpAttemptAt', now.toString());
-
       const response = await authService.signUp({
-        email: emailToSubmit,
+        email: formData.email,
         password: formData.password,
         firstName,
         lastName,
@@ -198,17 +136,9 @@ export default function SignUp() {
       });
 
       if (response.success && response.data) {
-<<<<<<< HEAD
-=======
-        if (response.data.token) {
-          router.replace(getRoleHomeRoute(response.data.user.role) as never);
-          return;
-        }
-
         // Store pending user data for OTP verification
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
         const pendingUserData = {
-          email: emailToSubmit,
+          email: formData.email,
           firstName,
           lastName,
           role: finalRole,
@@ -217,12 +147,14 @@ export default function SignUp() {
 
         await AsyncStorage.multiSet([
           ["pendingUserData", JSON.stringify(pendingUserData)],
-          ["tempUserEmail", emailToSubmit],
+          ["tempUserEmail", formData.email],
           ["tempUserRole", finalRole]
         ]);
 
+        // Show OTP sent modal
         setShowOtpModal(true);
       } else {
+        // Handle specific error cases
         const errorMessage = response.error || "Registration failed";
         if (errorMessage.includes("email already exists") || errorMessage.includes("already registered")) {
           showConfirmDialog(
@@ -230,8 +162,6 @@ export default function SignUp() {
             "An account with this email already exists. Would you like to sign in instead?",
             () => router.push("/auth/signin")
           );
-        } else if (errorMessage.includes("rate limit") || errorMessage.includes("Too many signup attempts") || errorMessage.includes("email rate limit exceeded")) {
-          showError("Too many attempts", "This email has been used too many times recently. Please wait a few minutes and try again.");
         } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
           showError("Network Error", "Please check your internet connection and try again.");
         } else if (errorMessage.includes("invalid email")) {
@@ -242,22 +172,20 @@ export default function SignUp() {
           showError("Sign Up Failed", errorMessage);
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error signing up:", error);
 
-      if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      // Handle network errors specifically
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
         showError(
           "Connection Error",
           "Unable to connect to server. Please check your internet connection and try again."
         );
-      } else if (error?.message?.toLowerCase().includes('rate limit') || error?.message?.toLowerCase().includes('email rate limit exceeded')) {
-        showError("Too many attempts", "This email has been used too many times recently. Please wait a few minutes and try again.");
       } else {
         showError("Error", "Sign up failed. Please try again.");
       }
     } finally {
       setLoading(false);
-      signUpRequestLock.current = false;
     }
   };
 
@@ -265,29 +193,16 @@ export default function SignUp() {
     try {
       setLoading(true);
 
-<<<<<<< HEAD
-      const selectedRole = getStoredRole(
-        await AsyncStorage.getItem('selectedRole'),
-        await AsyncStorage.getItem('userRole'),
-      );
-      if (!selectedRole) {
-        router.replace('/auth/role-selection');
-=======
       // Check if user has selected a role first
       const selectedRole = await AsyncStorage.getItem("selectedRole");
-      if (!isUserRole(selectedRole)) {
+      if (!selectedRole) {
         showConfirmDialog(
           "Role Required",
           "Please select your role first.",
           () => router.replace("/auth/role-selection")
         );
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
         setLoading(false);
         return;
-      }
-
-      if (!(await AsyncStorage.getItem('selectedRole'))) {
-        await AsyncStorage.setItem('selectedRole', selectedRole);
       }
 
       // Import authService
@@ -303,14 +218,11 @@ export default function SignUp() {
       }
 
       if (response?.success && response.data) {
-<<<<<<< HEAD
         // Store user data from API response
-        const finalRole = response.data.user.role || selectedRole || 'consumer';
         await AsyncStorage.multiSet([
           ["userToken", response.data.token],
           ["userEmail", response.data.user.email],
-          ["userRole", finalRole],
-          ["selectedRole", finalRole],
+          ["userRole", response.data.user.role],
           ["tokenExpiry", (Date.now() + (24 * 60 * 60 * 1000)).toString()]
         ]);
 
@@ -326,9 +238,6 @@ export default function SignUp() {
         } else {
           router.replace(`/dashboard/${response.data.user.role}` as never);
         }
-=======
-        router.replace(getRoleHomeRoute(response.data.user.role) as never);
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
       } else {
         const errorMessage = response?.error || `${provider} sign-up failed`;
         if (errorMessage !== 'Sign-in cancelled') {

@@ -7,9 +7,13 @@ const args = rawArgs.filter(
   (arg) => arg !== '--offline-validation' && arg !== '--skip-validation'
 );
 
+// Always skip dependency validation on Replit / web builds.
+// Many native-only packages (expo-notifications, expo-local-authentication, etc.)
+// fail the check even when installed because their native modules aren't linked
+// in a web-only environment.  The env var suppresses that check.
 const env = {
   ...process.env,
-  EXPO_NO_DOTENV: '1',
+  EXPO_NO_DEPENDENCY_VALIDATION: '1',
   EXPO_NO_TYPESCRIPT_SETUP: '1',
 };
 

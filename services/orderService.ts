@@ -162,24 +162,6 @@ class OrderService {
     }
   }
 
-  async updateOrderNotes(orderId: string, notes: string): Promise<ApiResponse<any>> {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ notes, updated_at: new Date().toISOString() })
-        .eq('id', orderId);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error updating order notes:', error);
-      return { success: false, error: String(error) };
-    }
-  }
-
   // Cancel order
   async cancelOrder(orderId: string, reason?: string): Promise<ApiResponse<any>> {
     try {

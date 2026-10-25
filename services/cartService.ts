@@ -1,5 +1,6 @@
 import { apiClient, ApiResponse } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../config/firebase';
 import { authService } from './authService';
 
 export interface CartItem {
@@ -30,22 +31,29 @@ class CartService {
   private readonly CART_STORAGE_KEY = 'cartItems';
   private readonly COMMODITIES_CART_KEY = 'commoditiesCart';
 
-  // Get a fresh Supabase session token with automatic refresh
+  // Get a fresh Firebase token with automatic refresh
   private async getFreshToken(): Promise<string | null> {
     try {
-      const token = await authService.getToken();
-      if (!token) {
-        console.log('No Supabase session token found');
+      // Get current Firebase user
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.log('No Firebase user found');
         return null;
       }
 
-      await AsyncStorage.setItem('userToken', token);
-      const tokenExpiry = Date.now() + (55 * 60 * 1000);
+      // Force token refresh to get a fresh token
+      const freshToken = await currentUser.getIdToken(true);
+      console.log('Fresh token obtained from Firebase');
+      
+      // Store the fresh token
+      await AsyncStorage.setItem('userToken', freshToken);
+      const tokenExpiry = Date.now() + (55 * 60 * 1000); // 55 minutes (5 min buffer)
       await AsyncStorage.setItem('tokenExpiry', tokenExpiry.toString());
-
-      return token;
+      
+      return freshToken;
     } catch (error) {
       console.error('Error getting fresh token:', error);
+      // Fallback to stored token
       return await authService.getToken();
     }
   }

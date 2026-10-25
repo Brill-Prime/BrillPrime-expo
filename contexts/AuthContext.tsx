@@ -2,11 +2,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-<<<<<<< HEAD
-import { isLikelySupabaseAccessToken } from '../utils/authFlow';
-=======
-import { supabase } from '../config/supabase';
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
 
 interface User {
   id: string;
@@ -42,12 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUserData = useCallback(async () => {
     try {
       setIsLoading(true);
-<<<<<<< HEAD
-      const entries = await AsyncStorage.multiGet(['userToken', 'userRole', 'tokenExpiry']);
-      const storedToken = entries[0]?.[1] ?? null;
-      const storedRoleFromSession = entries[1]?.[1] ?? null;
-      const storedExpiry = entries[2]?.[1] ?? null;
-      const storedRole = storedRoleFromSession ?? (await AsyncStorage.getItem('selectedRole')) ?? null;
+      const storedToken = await AsyncStorage.getItem('userToken');
+      const storedRole = await AsyncStorage.getItem('userRole');
       let userData = null;
       try {
         userData = await authService.getStoredUser();
@@ -55,30 +46,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Failed to get stored user data:', error);
       }
 
-      const expiryTime = storedExpiry ? Number(storedExpiry) : Number.NaN;
-      const hasValidExpiry = Number.isFinite(expiryTime) && expiryTime > Date.now();
-      const isSupportedRole = storedRole === 'consumer' || storedRole === 'merchant' || storedRole === 'driver';
-      const hasValidSupabaseToken = !!storedToken && isLikelySupabaseAccessToken(storedToken) && hasValidExpiry;
-
-      // Match startup routing: a token without a valid Supabase JWT or supported role
-      // must not be treated as an authenticated session.
-      if (hasValidSupabaseToken && isSupportedRole) {
+      if (storedToken) {
         setToken(storedToken);
-        setRole(storedRole);
-=======
-      const result = await authService.restoreSession();
-      if (result?.success && result.data) {
-        setToken(result.data.token);
-        setRole(result.data.user.role);
->>>>>>> 47a2137b6643748e86a12f8210e7c3009998f06d
-        setIsAuthenticated(true);
-        setUser(result.data.user as User);
+
+        // Only set as authenticated if we have both token and role
+        if (storedRole) {
+          setRole(storedRole);
+          setIsAuthenticated(true);
+
+          if (userData) {
+            setUser(userData as User);
+          }
+        } else {
+          // If we have a token but no role, force role selection
+          setIsAuthenticated(false);
+          setUser(null);
+          setRole(null);
+          // This will trigger the auth flow to show role selection
+        }
       } else {
         setIsAuthenticated(false);
         setUser(null);
         setToken(null);
         setRole(null);
-        await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -98,11 +88,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.success && response.data) {
         const userData = response.data as User;
         setUser(userData);
+
+        // Update AsyncStorage
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
         await AsyncStorage.setItem('userEmail', userData.email);
-        if (userData.firstName) await AsyncStorage.setItem('userFirstName', userData.firstName);
-        if (userData.lastName) await AsyncStorage.setItem('userLastName', userData.lastName);
-        if (userData.phone) await AsyncStorage.setItem('userPhone', userData.phone);
+        if (userData.firstName) {
+          await AsyncStorage.setItem('userFirstName', userData.firstName);
+        }
+        if (userData.lastName) {
+          await AsyncStorage.setItem('userLastName', userData.lastName);
+        }
+        if (userData.phone) {
+          await AsyncStorage.setItem('userPhone', userData.phone);
+        }
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
@@ -122,18 +120,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Register for push notifications once the user is authenticated
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
 
     const registerPush = async () => {
       try {
+        // Resolve the Supabase internal UUID (users.id) from the Firebase UID
         const { supabase } = await import('../config/supabase');
-        const { data } = await supabase.from('users').select('id').eq('firebase_uid', user.id).single();
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('firebase_uid', user.id)
+          .single();
+
         if (data?.id) {
           const { notificationService } = await import('../services/notificationService');
           await notificationService.registerForPushNotificationsAsync(data.id);
         }
       } catch (err) {
+        // Non-fatal — push registration failure must never break the app
         console.warn('[AuthContext] Push token registration failed:', err);
       }
     };
@@ -142,44 +148,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
-    let isMounted = true;
-    let authRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const syncAuthState = async () => {
-      await loadUserData();
-    };
-
-    void syncAuthState();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        setUser(null);
-        setToken(null);
-        setRole(null);
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
-
-      // Defer Supabase calls until after its auth callback releases its lock.
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        setIsLoading(true);
-        if (authRefreshTimer) clearTimeout(authRefreshTimer);
-        authRefreshTimer = setTimeout(() => {
-          if (isMounted) void loadUserData();
-        }, 0);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      if (authRefreshTimer) clearTimeout(authRefreshTimer);
-      authListener.subscription.unsubscribe();
-    };
+    loadUserData();
   }, [loadUserData]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, token, role, setUser, signOut, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoading,
+        token,
+        role,
+        setUser,
+        signOut,
+        refreshUser
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -187,6 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
 };
