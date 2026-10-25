@@ -43,45 +43,26 @@ class ApiClient {
   }
 
   private async getAuthToken(): Promise<string | null> {
-    // Use cached token if available
-    if (this.authToken) return this.authToken;
-
     // If a refresh is in-flight, await it
     if (this.tokenRefreshPromise) return this.tokenRefreshPromise;
 
     // Start a token acquisition routine
     this.tokenRefreshPromise = (async () => {
       try {
-        const [[, storedToken], [, expiryStr]] = await AsyncStorage.multiGet(['userToken', 'tokenExpiry']);
-        const expiry = expiryStr ? parseInt(expiryStr) : 0;
-        const nearExpiry = expiry < (Date.now() + 60 * 60 * 1000); // within 1 hour
-
-        let token = storedToken || '';
-
-        // If token missing or near expiry, try to refresh from Firebase
-        if (!token || nearExpiry) {
-          const currentUser = auth?.currentUser;
-          if (currentUser) {
-            try {
-              const refreshed = await currentUser.getIdToken(true);
-              token = refreshed;
-              const newExpiry = Date.now() + (24 * 60 * 60 * 1000);
-              await AsyncStorage.multiSet([
-                ['userToken', token],
-                ['tokenExpiry', newExpiry.toString()],
-              ]);
-            } catch (e) {
-              // If refresh fails, keep stored token if present; otherwise null
-              if (!storedToken) {
-                await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
-                token = '';
-              }
-            }
-          }
+        const currentUser = auth?.currentUser;
+        if (!currentUser) {
+          this.authToken = '';
+          await AsyncStorage.multiRemove(['userToken', 'tokenExpiry']);
+          return null;
         }
-
-        this.authToken = token || '';
-        return this.authToken || null;
+        const token = await currentUser.getIdToken();
+        this.authToken = token;
+        const expiry = Date.now() + 55 * 60 * 1000;
+        await AsyncStorage.multiSet([
+          ['userToken', token],
+          ['tokenExpiry', expiry.toString()],
+        ]);
+        return token;
       } finally {
         this.tokenRefreshPromise = null;
       }

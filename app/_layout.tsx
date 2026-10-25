@@ -195,7 +195,7 @@ function SessionTimeoutHandler() {
 
 // Component to handle auth state and redirects
 function AuthStateHandler() {
-  const { isAuthenticated, isLoading, role } = useAuth();
+  const { isAuthenticated, isEmailVerificationPending, isLoading, role } = useAuth();
   const router = useRouter();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<
     boolean | null
@@ -218,7 +218,7 @@ function AuthStateHandler() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || hasCompletedOnboarding === null) return;
+    if (isLoading || isEmailVerificationPending || hasCompletedOnboarding === null) return;
 
     if (!hasCompletedOnboarding) {
       // Redirect to first onboarding screen
@@ -265,7 +265,7 @@ function AuthStateHandler() {
     };
 
     checkRoleSelection();
-  }, [isAuthenticated, isLoading, role, hasCompletedOnboarding, router]);
+  }, [isAuthenticated, isEmailVerificationPending, isLoading, role, hasCompletedOnboarding, router]);
 
   // Show loading indicator while checking auth state or onboarding status
   if (isLoading || hasCompletedOnboarding === null) {

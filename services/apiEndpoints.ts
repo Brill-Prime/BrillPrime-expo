@@ -13,21 +13,7 @@ export const API_ENDPOINTS = {
 
   // Authentication
   AUTH: {
-    REGISTER: '/api/auth/register',
-    LOGIN: '/api/auth/login',
-    SOCIAL_LOGIN: '/api/auth/social-login',
     LOGOUT: '/api/auth/logout',
-    REFRESH: '/api/auth/refresh',
-    VERIFY_EMAIL: '/api/auth/verify-email',
-    VERIFY_OTP: '/api/auth/verify-otp',
-    RESEND_OTP: '/api/auth/resend-otp',
-  },
-
-  // Password Reset
-  PASSWORD_RESET: {
-    REQUEST: '/api/auth/forgot-password',
-    VERIFY_CODE: '/api/auth/verify-reset-code',
-    COMPLETE: '/api/auth/reset-password',
   },
 
   // Users

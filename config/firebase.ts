@@ -1,10 +1,11 @@
-// Firebase Configuration - Web Only
-// Simplified Firebase setup for web platform compatibility
+// Firebase configuration and platform-specific Auth persistence.
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, type Auth, type Persistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const getEnvValue = (key: string) => {
@@ -59,7 +60,29 @@ if (isFirebaseConfigured) {
     }
     
     // Initialize services
-    auth = getAuth(app);
+    if (Platform.OS === 'web') {
+      auth = getAuth(app);
+    } else {
+      try {
+        // The React Native conditional export provides this helper; web typings do not.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { getReactNativePersistence } = require('firebase/auth') as {
+          getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence;
+        };
+        auth = initializeAuth(app, {
+          persistence: getReactNativePersistence(AsyncStorage),
+        });
+      } catch (error) {
+        if (error instanceof Error && (
+          ('code' in error && error.code === 'auth/already-initialized') ||
+          error.message.toLowerCase().includes('already initialized')
+        )) {
+          auth = getAuth(app);
+        } else {
+          throw error;
+        }
+      }
+    }
     db = getFirestore(app);
     storage = getStorage(app);
     

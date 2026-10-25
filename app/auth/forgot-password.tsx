@@ -2,36 +2,8 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import AlertModal from "../../components/AlertModal";
-
-// Placeholder for authService and related functions that were in the original code
-// In a real scenario, these would be imported or defined elsewhere.
-// For this example, we'll simulate their behavior based on the original context.
-const authService = {
-  requestPasswordReset: async ({ email }) => {
-    // Simulate a network call with potential timeout
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Simulate a successful response after a delay
-        // In the original code, this was the part that was timing out and causing issues.
-        // The new logic replaces this with direct Firebase calls.
-        resolve({ success: true, message: "Reset link sent." });
-      }, 35000); // Simulate a timeout longer than 30 seconds
-    });
-  }
-};
-
-// Helper functions to mimic the UI feedback mechanisms
-const showError = (title, message) => {
-  console.error(`${title}: ${message}`);
-  // In a real app, this would trigger the UI modal
-};
-
-const showInfo = (title, message) => {
-  console.log(`${title}: ${message}`);
-  // In a real app, this would trigger a success modal or toast
-};
+import { authService } from "../../services/authService";
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -41,13 +13,6 @@ export default function ForgotPassword() {
 
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  // Simulate setLoading and setLoading state
-  const setLoading = (loading) => setIsLoading(loading);
-  const showSuccess = (message) => {
-    // In a real app, this would set `showSuccessModal` to true
-    console.log("Success:", message);
-  };
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
@@ -62,34 +27,22 @@ export default function ForgotPassword() {
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      // Import Firebase auth functions
-      const { sendPasswordResetEmail } = await import('firebase/auth');
-      const { auth } = await import('../../config/firebase');
-
-      // Send password reset email via Firebase
-      await sendPasswordResetEmail(auth, email);
-
-      // Show success modal
-      setShowSuccessModal(true);
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-
-      // Handle Firebase errors
-      if (error.code === 'auth/user-not-found') {
-        setErrorMessage('No account found with this email address');
-      } else if (error.code === 'auth/invalid-email') {
-        setErrorMessage('Invalid email address');
-      } else if (error.code === 'auth/too-many-requests') {
-        setErrorMessage('Too many requests. Please try again later');
-      } else {
-        setErrorMessage('Failed to send reset link. Please try again.');
+      const response = await authService.requestPasswordReset({ email });
+      if (!response.success) {
+        setErrorMessage(response.error || 'Failed to send reset link. Please try again.');
+        setShowErrorModal(true);
+        return;
       }
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to send reset link. Please try again.');
       setShowErrorModal(true);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -109,7 +62,7 @@ export default function ForgotPassword() {
             />
             <Text style={styles.title}>Forgot Password?</Text>
             <Text style={styles.subtitle}>
-              No worries! Enter your email address and we'll send you a link to reset your password.
+              No worries! Enter your email address and we&apos;ll send you a link to reset your password.
             </Text>
           </View>
 
@@ -178,7 +131,6 @@ export default function ForgotPassword() {
 }
 
 const PRIMARY_COLOR = "rgb(11, 26, 81)";
-const GRAY_400 = "#9CA3AF";
 const GRAY_600 = "#6B7280";
 
 const styles = StyleSheet.create({

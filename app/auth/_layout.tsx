@@ -43,9 +43,9 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen
-        name="otp-verification"
+        name="verify-email"
         options={{
-          title: 'Verify OTP',
+          title: 'Verify Email',
           headerShown: false,
         }}
       />
@@ -53,13 +53,6 @@ export default function AuthLayout() {
         name="forgot-password"
         options={{
           title: 'Forgot Password',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name="reset-password"
-        options={{
-          title: 'Reset Password',
           headerBackTitle: 'Back',
         }}
       />

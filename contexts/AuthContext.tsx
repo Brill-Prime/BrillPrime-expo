@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface User {
   id: string;
@@ -17,12 +19,14 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isEmailVerificationPending: boolean;
   isLoading: boolean;
   token: string | null;
   role: string | null;
   setUser: (user: User | null) => void;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  refreshAuthState: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,49 +34,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isEmailVerificationPending, setIsEmailVerificationPending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
 
-  const loadUserData = useCallback(async () => {
+  const refreshAuthState = useCallback(async () => {
     try {
       setIsLoading(true);
-      const storedToken = await AsyncStorage.getItem('userToken');
-      const storedRole = await AsyncStorage.getItem('userRole');
-      let userData = null;
-      try {
-        userData = await authService.getStoredUser();
-      } catch (error) {
-        console.warn('Failed to get stored user data:', error);
-      }
-
-      if (storedToken) {
-        setToken(storedToken);
-
-        // Only set as authenticated if we have both token and role
-        if (storedRole) {
-          setRole(storedRole);
-          setIsAuthenticated(true);
-
-          if (userData) {
-            setUser(userData as User);
-          }
-        } else {
-          // If we have a token but no role, force role selection
-          setIsAuthenticated(false);
-          setUser(null);
-          setRole(null);
-          // This will trigger the auth flow to show role selection
-        }
-      } else {
+      const firebaseUser = auth?.currentUser;
+      if (!firebaseUser) {
+        await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole', 'tokenExpiry']);
         setIsAuthenticated(false);
+        setIsEmailVerificationPending(false);
         setUser(null);
         setToken(null);
         setRole(null);
+        return;
       }
+
+      if (!firebaseUser.emailVerified) {
+        const pendingRole = await AsyncStorage.getItem('selectedRole');
+        setIsAuthenticated(false);
+        setIsEmailVerificationPending(true);
+        setUser(null);
+        setToken(null);
+        setRole(pendingRole);
+        return;
+      }
+
+      const [storedRole, userData] = await Promise.all([
+        AsyncStorage.getItem('userRole'),
+        authService.getStoredUser(),
+      ]);
+      const firebaseToken = await firebaseUser.getIdToken();
+      setToken(firebaseToken);
+      setRole(storedRole);
+      setUser(userData as User | null);
+      setIsAuthenticated(Boolean(storedRole));
+      setIsEmailVerificationPending(false);
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error refreshing Firebase auth state:', error);
       setIsAuthenticated(false);
+      setIsEmailVerificationPending(false);
       setUser(null);
       setToken(null);
       setRole(null);
@@ -114,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(null);
       setRole(null);
       setIsAuthenticated(false);
+      setIsEmailVerificationPending(false);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -148,20 +153,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    if (!auth) {
+      setIsLoading(false);
+      return;
+    }
+    return onAuthStateChanged(auth, () => {
+      void refreshAuthState();
+    });
+  }, [refreshAuthState]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated,
+        isEmailVerificationPending,
         isLoading,
         token,
         role,
         setUser,
         signOut,
-        refreshUser
+        refreshUser,
+        refreshAuthState,
       }}
     >
       {children}

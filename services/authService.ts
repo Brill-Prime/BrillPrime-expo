@@ -5,12 +5,16 @@ import { apiClient } from './api';
 import { API_ENDPOINTS } from './apiEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
-import type { Auth } from 'firebase/auth';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  reload,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
@@ -26,9 +30,7 @@ import {
   AuthResponse,
   SignUpRequest,
   SignInRequest,
-  VerifyOTPRequest,
   ResetPasswordRequest,
-  ConfirmPasswordResetRequest,
   ApiResponse
 } from './types';
 
@@ -36,7 +38,7 @@ class AuthService {
   private readonly TOKEN_KEY = 'userToken';
   private readonly USER_KEY = 'userData';
   private readonly ROLE_KEY = 'userRole';
-  private currentUser: any = null;
+  private currentUser: FirebaseUser | null = null;
   private authToken: string | null = null;
 
   constructor() {
@@ -77,6 +79,7 @@ class AuthService {
       // Update Firebase profile with display name
       const displayName = `${firstName} ${lastName}`.trim();
       await updateProfile(firebaseUser, { displayName });
+      await sendEmailVerification(firebaseUser);
 
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
@@ -97,10 +100,17 @@ class AuthService {
         },
       };
 
-      await this.storeAuthData(authData);
-
-      // Initialize role status for the user
-      // await roleManagementService.initializeRoleStatus(role);
+      await AsyncStorage.multiSet([
+        ['pendingUserData', JSON.stringify({
+          id: firebaseUser.uid,
+          email: firebaseUser.email || email,
+          firstName,
+          lastName,
+          role,
+          phone: phoneNumber || '',
+        })],
+        ['selectedRole', role],
+      ]);
 
       // Sync with Supabase backend asynchronously (non-blocking)
       // This stores additional user data in Supabase
@@ -161,11 +171,19 @@ class AuthService {
       const firebaseUserCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = firebaseUserCredential.user;
 
+      if (!firebaseUser.emailVerified) {
+        await sendEmailVerification(firebaseUser);
+        return {
+          success: false,
+          error: 'Please verify your email using the link we sent before signing in.',
+        };
+      }
+
       // Get Firebase ID token
       const firebaseToken = await firebaseUser.getIdToken();
 
-      // Use role from user data or default to 'consumer'
-      const userRole: 'consumer' | 'merchant' | 'driver' = 'consumer';
+      const selectedRole = await AsyncStorage.getItem('selectedRole');
+      const userRole = await this.resolveUserRole(firebaseUser, selectedRole);
 
       // Create auth response immediately with Firebase data
       const authData: AuthResponse = {
@@ -299,7 +317,7 @@ class AuthService {
       ).catch(err => console.log('Supabase sync error (non-critical):', err));
 
       // Store auth data with Firebase token
-      const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';
+      const userRole = await this.resolveUserRole(user, role);
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -367,6 +385,7 @@ class AuthService {
   // Check for redirect result on app load
   async checkRedirectResult(): Promise<ApiResponse<AuthResponse> | null> {
     try {
+      if (!auth) throw new Error('Firebase Auth is not initialized.');
       const result = await getRedirectResult(auth);
       if (!result) return null;
 
@@ -375,30 +394,24 @@ class AuthService {
         throw new Error('No email associated with account');
       }
 
-      // Determine provider and send to backend
-      const providerId = result.providerId || 'google.com';
-      let provider = 'google';
-
-      if (providerId.includes('apple')) {
-        provider = 'apple';
-      } else if (providerId.includes('facebook')) {
-        provider = 'facebook';
-      }
-
-      const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.SOCIAL_LOGIN, {
-        provider,
-        firebaseUid: user.uid,
-        email: user.email,
-        fullName: user.displayName || '',
-        photoUrl: user.photoURL || '',
-      });
-
-      if (response.success && response.data) {
-        await this.storeAuthData(response.data);
-        return response;
-      }
-
-      throw new Error(response.error || 'Authentication failed');
+      const selectedRole = await AsyncStorage.getItem('selectedRole');
+      const role = await this.resolveUserRole(user, selectedRole);
+      const authData: AuthResponse = {
+        token: await user.getIdToken(),
+        user: {
+          id: user.uid,
+          email: user.email,
+          name: user.displayName || '',
+          role,
+          phone: user.phoneNumber || '',
+          isVerified: user.emailVerified,
+          profileImageUrl: user.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      await this.storeAuthData(authData);
+      return { success: true, data: authData };
     } catch (error: any) {
       console.error('Redirect result error:', error);
       return null;
@@ -445,18 +458,22 @@ class AuthService {
 
       // Notify backend to sync (non-blocking)
       apiClient.post(
-        API_ENDPOINTS.AUTH.SOCIAL_LOGIN,
+        '/rest/v1/users',
         {
-          provider: 'apple',
-          firebaseUid: user.uid,
+          firebase_uid: user.uid,
+          email: user.email,
           role: role || 'consumer',
+          full_name: user.displayName || '',
+          profile_image_url: user.photoURL || null,
+          phone_number: user.phoneNumber || '',
         },
         {
+          'Prefer': 'resolution=merge-duplicates',
           Authorization: `Bearer ${firebaseToken}`,
         }
-      ).catch(err => console.log('Backend sync error (non-critical):', err));
+      ).catch(err => console.log('Supabase profile sync error (non-critical):', err));
 
-      const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';
+      const userRole = await this.resolveUserRole(user, role);
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -529,18 +546,22 @@ class AuthService {
 
       // Notify backend to sync (non-blocking)
       apiClient.post(
-        API_ENDPOINTS.AUTH.SOCIAL_LOGIN,
+        '/rest/v1/users',
         {
-          provider: 'facebook',
-          firebaseUid: user.uid,
+          firebase_uid: user.uid,
+          email: user.email,
           role: role || 'consumer',
+          full_name: user.displayName || '',
+          profile_image_url: user.photoURL || null,
+          phone_number: user.phoneNumber || '',
         },
         {
+          'Prefer': 'resolution=merge-duplicates',
           Authorization: `Bearer ${firebaseToken}`,
         }
-      ).catch(err => console.log('Backend sync error (non-critical):', err));
+      ).catch(err => console.log('Supabase profile sync error (non-critical):', err));
 
-      const userRole: 'consumer' | 'merchant' | 'driver' = (role || 'consumer') as 'consumer' | 'merchant' | 'driver';
+      const userRole = await this.resolveUserRole(user, role);
       const authData: AuthResponse = {
         token: firebaseToken,
         user: {
@@ -604,71 +625,86 @@ class AuthService {
     }
   }
 
-  // Verify OTP
-  async verifyOTP(data: VerifyOTPRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
-
-    if (response.success && response.data) {
-      // Store user data locally
-      await this.storeAuthData(response.data);
+  async verifyEmail(): Promise<ApiResponse<AuthResponse>> {
+    const firebaseUser = auth?.currentUser;
+    if (!firebaseUser) {
+      return { success: false, error: 'Your verification session expired. Please sign up again.' };
     }
 
-    return response;
+    try {
+      await reload(firebaseUser);
+      if (!firebaseUser.emailVerified) {
+        return { success: false, error: 'Your email is not verified yet. Open the link in your email, then try again.' };
+      }
+
+      const pendingData = await AsyncStorage.getItem('pendingUserData');
+      const pendingUser = pendingData ? JSON.parse(pendingData) : null;
+      const selectedRole = await AsyncStorage.getItem('selectedRole');
+      const role = this.isUserRole(pendingUser?.role)
+        ? pendingUser.role
+        : this.isUserRole(selectedRole) ? selectedRole : 'consumer';
+
+      await this.syncUserProfile(firebaseUser, role, {
+        full_name: `${pendingUser?.firstName || ''} ${pendingUser?.lastName || ''}`.trim() || firebaseUser.displayName || '',
+        phone_number: pendingUser?.phone || firebaseUser.phoneNumber || '',
+      });
+
+      const authData: AuthResponse = {
+        token: await firebaseUser.getIdToken(),
+        user: {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: firebaseUser.displayName || '',
+          role,
+          phone: firebaseUser.phoneNumber || pendingUser?.phone || '',
+          isVerified: true,
+          profileImageUrl: firebaseUser.photoURL || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      await this.storeAuthData(authData);
+      await AsyncStorage.multiRemove(['pendingUserData', 'tempUserEmail', 'tempUserRole']);
+      return { success: true, data: authData };
+    } catch (error) {
+      return { success: false, error: this.getFirebaseErrorMessage(error, 'Email verification failed. Please try again.') };
+    }
   }
 
-  // Resend OTP
-  async resendOTP(email: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.RESEND_OTP, { email });
+  async resendVerificationEmail(): Promise<ApiResponse<{ message: string }>> {
+    const firebaseUser = auth?.currentUser;
+    if (!firebaseUser) {
+      return { success: false, error: 'Your verification session expired. Please sign up again.' };
+    }
+
+    try {
+      await sendEmailVerification(firebaseUser);
+      return { success: true, data: { message: 'Verification link sent.' } };
+    } catch (error) {
+      return { success: false, error: this.getFirebaseErrorMessage(error, 'Could not resend the verification link.') };
+    }
   }
 
-  // Request password reset (backend endpoint)
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const firebaseUser = auth?.currentUser;
+    if (!firebaseUser?.email) {
+      throw new Error('You must be signed in to change your password.');
+    }
+    const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+    await reauthenticateWithCredential(firebaseUser, credential);
+    await updatePassword(firebaseUser, newPassword);
+  }
+
+  // Request password reset using Firebase Auth.
   async requestPasswordReset(data: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
     try {
-      const response = await apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.REQUEST, { email: data.email });
-
-      if (response.success) {
-        return response;
-      }
-
-      // Log error via errorService for user feedback
-      const err = new Error(response.error || 'Failed to request password reset');
-      try {
-        const { errorService } = await import('./errorService');
-        errorService.logError(err, { endpoint: API_ENDPOINTS.PASSWORD_RESET.REQUEST, payload: { email: data.email } }, 'medium');
-      } catch (_) {
-        // fail silently if dynamic import fails
-      }
-
-      return {
-        success: false,
-        error: response.error || 'Failed to request password reset',
-      };
-    } catch (error: any) {
-      console.error('Password reset request error:', error);
-
-      // Log error via errorService for user feedback
-      try {
-        const { errorService } = await import('./errorService');
-        errorService.logError(error instanceof Error ? error : new Error(String(error)), { endpoint: API_ENDPOINTS.PASSWORD_RESET.REQUEST, payload: { email: data.email } }, 'medium');
-      } catch (_) {
-        // fail silently if dynamic import fails
-      }
-
-      return {
-        success: false,
-        error: error?.message || 'Network error. Please try again later.',
-      };
+      if (!auth) throw new Error('Firebase Auth is not initialized.');
+      await sendPasswordResetEmail(auth, data.email.trim());
+      return { success: true, data: { message: 'Password reset link sent.' } };
+    } catch (error) {
+      return { success: false, error: this.getFirebaseErrorMessage(error, 'Could not send a password reset link.') };
     }
-  }
-
-  // Verify reset code
-  async verifyResetCode(email: string, code: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.VERIFY_CODE, { email, code });
-  }
-
-  // Confirm password reset
-  async confirmPasswordReset(data: ConfirmPasswordResetRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.PASSWORD_RESET.COMPLETE, data);
   }
 
   // Get current user
@@ -739,6 +775,58 @@ class AuthService {
   }
 
   // Helper methods
+  private isUserRole(role: unknown): role is User['role'] {
+    return role === 'consumer' || role === 'merchant' || role === 'driver';
+  }
+
+  private async resolveUserRole(firebaseUser: FirebaseUser, requestedRole?: string | null): Promise<User['role']> {
+    const response = await apiClient.get<any[]>(
+      `/rest/v1/users?firebase_uid=eq.${encodeURIComponent(firebaseUser.uid)}&select=*`
+    );
+    const profile = response.success ? response.data?.[0] : undefined;
+    const role = this.isUserRole(profile?.role)
+      ? profile.role
+      : this.isUserRole(requestedRole) ? requestedRole : 'consumer';
+
+    if (!profile) {
+      await this.syncUserProfile(firebaseUser, role, {
+        full_name: firebaseUser.displayName || '',
+        phone_number: firebaseUser.phoneNumber || '',
+      });
+    }
+    return role;
+  }
+
+  private async syncUserProfile(
+    firebaseUser: FirebaseUser,
+    role: User['role'],
+    extra: { full_name: string; phone_number: string }
+  ): Promise<void> {
+    const response = await apiClient.post('/rest/v1/users', {
+      firebase_uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      role,
+      ...extra,
+    }, {
+      Prefer: 'resolution=merge-duplicates',
+    });
+    if (!response.success) {
+      throw new Error(response.error || 'Unable to sync your profile.');
+    }
+  }
+
+  private getFirebaseErrorMessage(error: unknown, fallback: string): string {
+    if (error && typeof error === 'object' && 'code' in error) {
+      const code = String(error.code);
+      if (code === 'auth/too-many-requests') return 'Too many attempts. Please try again later.';
+      if (code === 'auth/user-not-found') return 'No account was found for that email address.';
+      if (code === 'auth/invalid-email') return 'Enter a valid email address.';
+      if (code === 'auth/requires-recent-login') return 'Please sign in again before changing your password.';
+      if ('message' in error && typeof error.message === 'string') return error.message;
+    }
+    return error instanceof Error ? error.message : fallback;
+  }
+
   private async storeAuthData(authData: AuthResponse): Promise<void> {
     try {
       const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
@@ -797,6 +885,10 @@ class AuthService {
 
   async getToken(): Promise<string | null> {
     try {
+      const firebaseUser = auth?.currentUser;
+      if (!firebaseUser?.emailVerified) return null;
+      this.currentUser = firebaseUser;
+
       // Check if Firebase user is available and get fresh token
       if (this.currentUser) {
         try {
@@ -818,7 +910,8 @@ class AuthService {
 
           return freshToken;
         } catch (firebaseError) {
-          console.warn('Firebase token refresh failed, using stored token');
+          console.warn('Firebase token refresh failed:', firebaseError);
+          return null;
         }
       }
 

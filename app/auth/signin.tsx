@@ -157,7 +157,9 @@ export default function SignIn() {
       // Handle specific error cases
       const errorMessage = error?.message || "An unknown error occurred";
       
-      if (errorMessage.includes("user-not-found") || errorMessage.includes("wrong-password")) {
+      if (errorMessage.includes("verify your email")) {
+        router.replace("/auth/verify-email");
+      } else if (errorMessage.includes("user-not-found") || errorMessage.includes("wrong-password")) {
         showError("Sign In Failed", "Invalid email or password. Please check your credentials and try again.");
       } else if (errorMessage.includes("network") || errorMessage.includes("connection") || errorMessage.includes("fetch")) {
         showError("Network Error", "Please check your internet connection and try again.");

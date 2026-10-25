@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../../services/authService';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -97,20 +97,7 @@ export default function ChangePasswordScreen() {
     setLoading(true);
 
     try {
-      // In a real app, you would verify current password with API
-      const userEmail = await AsyncStorage.getItem('userEmail');
-      
-      // Simulate API call to change password
-      try {
-        const { userService } = await import('../../services/userService');
-        await userService.changePassword({
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword,
-          confirmPassword: formData.confirmPassword,
-        });
-      } catch (apiError) {
-        console.log('API call failed, simulating success:', apiError);
-      }
+      await authService.changePassword(formData.currentPassword, formData.newPassword);
 
       Alert.alert(
         'Success',
