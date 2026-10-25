@@ -89,7 +89,7 @@ android {
 
     namespace "com.brillprime"
     defaultConfig {
-        applicationId "com.brillprime"
+        applicationId "com.brillprime.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
