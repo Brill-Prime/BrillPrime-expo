@@ -789,10 +789,14 @@ class AuthService {
       : this.isUserRole(requestedRole) ? requestedRole : 'consumer';
 
     if (!profile) {
-      await this.syncUserProfile(firebaseUser, role, {
-        full_name: firebaseUser.displayName || '',
-        phone_number: firebaseUser.phoneNumber || '',
-      });
+      try {
+        await this.syncUserProfile(firebaseUser, role, {
+          full_name: firebaseUser.displayName || '',
+          phone_number: firebaseUser.phoneNumber || '',
+        });
+      } catch (error) {
+        console.warn('Supabase profile sync failed; continuing with Firebase sign-in:', error);
+      }
     }
     return role;
   }

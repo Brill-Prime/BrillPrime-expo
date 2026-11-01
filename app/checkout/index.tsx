@@ -61,14 +61,27 @@ export default function CheckoutScreen() {
         setCartItems(JSON.parse(cartData));
       }
 
-      // Load default address
-      const savedAddress = await AsyncStorage.getItem('userAddress');
-      if (savedAddress) {
+      // Prefer a saved default address; retain support for the legacy address field.
+      const [savedAddress, savedAddressesData] = await AsyncStorage.multiGet([
+        'userAddress',
+        'savedAddresses',
+      ]);
+      const savedAddresses = savedAddressesData[1]
+        ? JSON.parse(savedAddressesData[1]) as Address[]
+        : [];
+      const defaultAddress = savedAddresses.find(address => address.isDefault) || savedAddresses[0];
+
+      if (defaultAddress?.address) {
         setSelectedAddress({
-          id: '1',
+          ...defaultAddress,
+          isDefault: true,
+        });
+      } else if (savedAddress[1]) {
+        setSelectedAddress({
+          id: '',
           label: 'Current Location',
-          address: savedAddress,
-          isDefault: true
+          address: savedAddress[1],
+          isDefault: true,
         });
       }
     } catch (error) {
@@ -95,30 +108,27 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (paymentMethod !== 'cash') {
+      Alert.alert(
+        'Payment Unavailable',
+        'Card and bank transfer payments are not available yet. Please choose cash on delivery.'
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { orderService } = await import('../../services/orderService');
-      const { locationService } = await import('../../services/locationService');
-
-      // Get user location for driver assignment
-      const userLocation = await AsyncStorage.getItem("userLocation");
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const coordinates = userLocation ? JSON.parse(userLocation) : null;
-
       // Prepare order items for backend
-const orderItems = cartItems.map(item => ({
+      const orderItems = cartItems.map(item => ({
         productId: (item as any).commodityId || item.id,
         quantity: item.quantity
       }));
 
-      // Get address ID (you may need to store this when selecting address)
-      const addressId = await AsyncStorage.getItem('selectedAddressId') || '1';
-
       // Create order via backend
       const orderPayload = {
         items: orderItems,
-        deliveryAddressId: addressId,
+        deliveryAddress: selectedAddress.address,
         paymentMethodId: paymentMethod,
         notes: deliveryNotes
       };
@@ -139,7 +149,11 @@ const orderItems = cartItems.map(item => ({
         throw new Error(response.error || 'Failed to create order');
       }
 
-const createdOrder = (response as any).data?.data ?? (response as any).data?.data ?? (response as any).data;
+      const responseData = response.data as any;
+      const createdOrder = responseData?.order ?? responseData?.data?.order ?? responseData;
+      if (!createdOrder?.id) {
+        throw new Error('The server did not return a valid order. Please try again.');
+      }
 
       // Save to local storage for offline access
       const existingOrders = await AsyncStorage.getItem('userOrders');
@@ -175,8 +189,8 @@ const createdOrder = (response as any).data?.data ?? (response as any).data?.dat
       ]);
 
       Alert.alert(
-        'Order Placed Successfully!',
-        `${createdOrders.length} order(s) placed successfully. A driver has been assigned and will pick up your order shortly.`,
+        'Order Placed',
+        `Order ${createdOrder.order_number || createdOrder.id} was created. Payment is due on delivery. You will be notified when a driver is assigned.`,
         [
           { text: 'Track Order', onPress: () => router.replace(`/orders/order-tracking?orderId=${createdOrders[0].id}`) },
           { text: 'View Orders', onPress: () => router.replace('/orders/consumer-orders') }

@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS orders (
   total_amount DECIMAL(10, 2) NOT NULL,
   subtotal DECIMAL(10, 2) NOT NULL,
   delivery_fee DECIMAL(10, 2) DEFAULT 0,
+  service_fee DECIMAL(10, 2) NOT NULL DEFAULT 0,
   delivery_address TEXT NOT NULL,
   delivery_type TEXT CHECK (delivery_type IN ('yourself', 'someone_else')),
   recipient_name TEXT,

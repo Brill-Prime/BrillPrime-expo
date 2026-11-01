@@ -1,0 +1,2 @@
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS service_fee DECIMAL(10, 2) NOT NULL DEFAULT 0;

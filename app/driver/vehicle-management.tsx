@@ -8,15 +8,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   Dimensions,
   SafeAreaView,
-  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../../config/theme';
 import { useAlert } from '../../components/AlertProvider';
 
@@ -42,188 +38,33 @@ interface VehicleDocument {
 
 function VehicleManagement() {
   const router = useRouter();
-  const { showError, showSuccess, showConfirmDialog } = useAlert();
+  const { showError } = useAlert();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [loading, setLoading] = useState(false);
-  const [editMode, setEditMode] = useState(false);
 
-  const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo>({
-    make: 'Toyota',
-    model: 'Camry',
-    year: '2020',
-    color: 'Silver',
-    plateNumber: 'ABC-123-XY',
-    registrationNumber: 'REG-2020-12345',
-    insuranceNumber: 'INS-2024-67890',
-    insuranceExpiry: '2025-12-31',
-    registrationExpiry: '2025-06-30',
-  });
+  const vehicleInfo: VehicleInfo = {
+    make: '',
+    model: '',
+    year: '',
+    color: '',
+    plateNumber: '',
+    registrationNumber: '',
+    insuranceNumber: '',
+    insuranceExpiry: '',
+    registrationExpiry: '',
+  };
 
-  const [documents, setDocuments] = useState<VehicleDocument[]>([
-    {
-      type: 'registration',
-      imageUrl: 'https://example.com/registration.jpg',
-      uploadDate: '2024-01-15',
-      expiryDate: '2025-06-30',
-      status: 'valid',
-    },
-    {
-      type: 'insurance',
-      imageUrl: 'https://example.com/insurance.jpg',
-      uploadDate: '2024-01-15',
-      expiryDate: '2025-12-31',
-      status: 'valid',
-    },
-    {
-      type: 'roadworthiness',
-      imageUrl: 'https://example.com/roadworthy.jpg',
-      uploadDate: '2024-01-15',
-      expiryDate: '2025-03-15',
-      status: 'expiring',
-    },
-  ]);
+  const documents: VehicleDocument[] = [];
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
 
-    loadVehicleData();
-
     return () => subscription?.remove();
   }, []);
 
-  const loadVehicleData = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to fetch vehicle data
-      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/vehicle`, {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-    } catch (error) {
-      console.error('Error loading vehicle data:', error);
-    }
-  };
-
-  const handleInputChange = (field: keyof VehicleInfo, value: string) => {
-    setVehicleInfo(prev => ({ ...prev, [field]: value }));
-  };
-
-  const validateForm = (): boolean => {
-    if (!vehicleInfo.make.trim()) {
-      showError('Error', 'Vehicle make is required');
-      return false;
-    }
-    if (!vehicleInfo.model.trim()) {
-      showError('Error', 'Vehicle model is required');
-      return false;
-    }
-    if (!vehicleInfo.year.trim()) {
-      showError('Error', 'Vehicle year is required');
-      return false;
-    }
-    if (!vehicleInfo.plateNumber.trim()) {
-      showError('Error', 'Plate number is required');
-      return false;
-    }
-    if (!vehicleInfo.registrationNumber.trim()) {
-      showError('Error', 'Registration number is required');
-      return false;
-    }
-
-    const yearNum = parseInt(vehicleInfo.year);
-    const currentYear = new Date().getFullYear();
-    if (isNaN(yearNum) || yearNum < 1900 || yearNum > currentYear + 1) {
-      showError('Error', 'Please enter a valid vehicle year');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to update vehicle info
-      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/vehicle`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(vehicleInfo),
-      // });
-
-      showSuccess('Success', 'Vehicle information updated successfully');
-      setEditMode(false);
-    } catch (error) {
-      console.error('Error updating vehicle info:', error);
-      showError('Error', 'Failed to update vehicle information');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUploadDocument = async (documentType: VehicleDocument['type']) => {
-    Alert.alert(
-      'Upload Document',
-      'Choose how you want to upload the document',
-      [
-        {
-          text: 'Camera',
-          onPress: async () => {
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              aspect: [4, 3],
-              quality: 0.8,
-            });
-
-            if (!result.canceled && result.assets[0]) {
-              await uploadDocumentImage(documentType, result.assets[0].uri);
-            }
-          },
-        },
-        {
-          text: 'Gallery',
-          onPress: async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              aspect: [4, 3],
-              quality: 0.8,
-            });
-
-            if (!result.canceled && result.assets[0]) {
-              await uploadDocumentImage(documentType, result.assets[0].uri);
-            }
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
-  };
-
-  const uploadDocumentImage = async (documentType: VehicleDocument['type'], imageUri: string) => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to upload document
-      // const formData = new FormData();
-      // formData.append('type', documentType);
-      // formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'document.jpg' });
-
-      showSuccess('Success', 'Document uploaded successfully');
-      loadVehicleData();
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      showError('Error', 'Failed to upload document');
-    } finally {
-      setLoading(false);
-    }
+  const showUnavailableMessage = () => {
+    showError('Unavailable', 'Vehicle updates and document uploads are not connected to secure storage yet.');
   };
 
   const getDocumentLabel = (type: string) => {
@@ -270,7 +111,7 @@ function VehicleManagement() {
   }: {
     label: string;
     value: string;
-    onChangeText: (text: string) => void;
+    onChangeText?: (text: string) => void;
     placeholder: string;
     editable?: boolean;
     keyboardType?: 'default' | 'numeric';
@@ -300,20 +141,11 @@ function VehicleManagement() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vehicle Management</Text>
         <TouchableOpacity
-          onPress={() => {
-            if (editMode) {
-              handleSave();
-            } else {
-              setEditMode(true);
-            }
-          }}
+          onPress={showUnavailableMessage}
           style={styles.editButton}
+          accessibilityLabel="Vehicle editing unavailable"
         >
-          <Ionicons
-            name={editMode ? 'checkmark' : 'create-outline'}
-            size={24}
-            color={theme.colors.primary}
-          />
+          <Ionicons name="lock-closed-outline" size={22} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -326,17 +158,15 @@ function VehicleManagement() {
             <InputField
               label="Make *"
               value={vehicleInfo.make}
-              onChangeText={(value) => handleInputChange('make', value)}
               placeholder="e.g., Toyota"
-              editable={editMode}
+              editable={false}
             />
 
             <InputField
               label="Model *"
               value={vehicleInfo.model}
-              onChangeText={(value) => handleInputChange('model', value)}
               placeholder="e.g., Camry"
-              editable={editMode}
+              editable={false}
             />
 
             <View style={styles.row}>
@@ -344,9 +174,8 @@ function VehicleManagement() {
                 <InputField
                   label="Year *"
                   value={vehicleInfo.year}
-                  onChangeText={(value) => handleInputChange('year', value)}
                   placeholder="2020"
-                  editable={editMode}
+                  editable={false}
                   keyboardType="numeric"
                 />
               </View>
@@ -355,9 +184,8 @@ function VehicleManagement() {
                 <InputField
                   label="Color"
                   value={vehicleInfo.color}
-                  onChangeText={(value) => handleInputChange('color', value)}
                   placeholder="Silver"
-                  editable={editMode}
+                  editable={false}
                 />
               </View>
             </View>
@@ -365,25 +193,22 @@ function VehicleManagement() {
             <InputField
               label="Plate Number *"
               value={vehicleInfo.plateNumber}
-              onChangeText={(value) => handleInputChange('plateNumber', value)}
               placeholder="ABC-123-XY"
-              editable={editMode}
+              editable={false}
             />
 
             <InputField
               label="Registration Number *"
               value={vehicleInfo.registrationNumber}
-              onChangeText={(value) => handleInputChange('registrationNumber', value)}
               placeholder="REG-2020-12345"
-              editable={editMode}
+              editable={false}
             />
 
             <InputField
               label="Insurance Number"
               value={vehicleInfo.insuranceNumber}
-              onChangeText={(value) => handleInputChange('insuranceNumber', value)}
               placeholder="INS-2024-67890"
-              editable={editMode}
+              editable={false}
             />
 
             <View style={styles.row}>
@@ -391,9 +216,8 @@ function VehicleManagement() {
                 <InputField
                   label="Insurance Expiry (YYYY-MM-DD)"
                   value={vehicleInfo.insuranceExpiry}
-                  onChangeText={(value) => handleInputChange('insuranceExpiry', value)}
                   placeholder="2025-12-31"
-                  editable={editMode}
+                  editable={false}
                 />
               </View>
 
@@ -401,9 +225,8 @@ function VehicleManagement() {
                 <InputField
                   label="Registration Expiry (YYYY-MM-DD)"
                   value={vehicleInfo.registrationExpiry}
-                  onChangeText={(value) => handleInputChange('registrationExpiry', value)}
                   placeholder="2025-06-30"
-                  editable={editMode}
+                  editable={false}
                 />
               </View>
             </View>
@@ -413,6 +236,10 @@ function VehicleManagement() {
         {/* Documents Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vehicle Documents</Text>
+
+          {documents.length === 0 && (
+            <Text style={styles.emptyDocuments}>No vehicle documents are available.</Text>
+          )}
 
           {documents.map((document, index) => (
             <View key={index} style={styles.documentCard}>
@@ -447,7 +274,7 @@ function VehicleManagement() {
               <View style={styles.documentActions}>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => handleUploadDocument(document.type)}
+                  onPress={showUnavailableMessage}
                 >
                   <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.primary} />
                   <Text style={styles.actionButtonText}>Re-upload</Text>
@@ -462,14 +289,14 @@ function VehicleManagement() {
           ))}
         </View>
 
-        {/* Info Card */}
+        {/* Availability notice */}
         <View style={styles.infoSection}>
           <View style={styles.infoNotice}>
             <Ionicons name="information-circle" size={24} color={theme.colors.primary} />
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>Important Notice</Text>
               <Text style={styles.infoText}>
-                Keep your vehicle documents up to date to avoid delivery restrictions. You'll be notified when documents are expiring.
+                Vehicle details and documents are not connected to secure storage yet. No verification or expiry status is being reported.
               </Text>
             </View>
           </View>
@@ -568,6 +395,12 @@ const getResponsiveStyles = (screenData: any) => {
       marginBottom: 12,
       boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
+    },
+    emptyDocuments: {
+      backgroundColor: '#fff',
+      borderRadius: 8,
+      padding: 16,
+      color: '#666',
     },
     documentHeader: {
       flexDirection: 'row',

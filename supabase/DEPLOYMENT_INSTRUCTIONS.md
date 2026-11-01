@@ -30,6 +30,9 @@ Run these SQL files in your Supabase SQL Editor (in order):
 -- Creates core tables: users, merchants, products, orders, etc.
 ```
 
+### Order Fee Migration
+Run `migrations/20261101000000_add_order_service_fee.sql` after the core schema and before deploying the updated `create-order` function.
+
 ### Missing Tables
 ```sql
 -- 2. Run missing-tables.sql

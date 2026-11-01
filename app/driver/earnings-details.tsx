@@ -8,14 +8,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  RefreshControl,
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { theme } from '../../config/theme';
 
 interface EarningsSummary {
   totalEarnings: number;
@@ -50,10 +47,9 @@ interface Transaction {
 function DriverEarningsDetails() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('week');
 
-  const [summary, setSummary] = useState<EarningsSummary>({
+  const summary: EarningsSummary = {
     totalEarnings: 0.00,
     todayEarnings: 0.00,
     weekEarnings: 0.00,
@@ -63,89 +59,25 @@ function DriverEarningsDetails() {
     pendingPayout: 0.00,
     lastPayoutDate: '',
     lastPayoutAmount: 0.00,
-  });
+  };
 
-  const [breakdown, setBreakdown] = useState<EarningsBreakdown>({
+  const breakdown: EarningsBreakdown = {
     deliveryFees: 0.00,
     tips: 0.00,
     bonuses: 0.00,
     fuelReimbursement: 0.00,
     tollReimbursement: 0.00,
-  });
+  };
 
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      date: '2025-01-28 14:30',
-      type: 'delivery',
-      description: 'Delivery #ORD-1001',
-      amount: 450.00,
-      status: 'completed',
-      orderId: 'ORD-1001',
-    },
-    {
-      id: '2',
-      date: '2025-01-28 12:15',
-      type: 'tip',
-      description: 'Customer tip - ORD-1000',
-      amount: 100.00,
-      status: 'completed',
-      orderId: 'ORD-1000',
-    },
-    {
-      id: '3',
-      date: '2025-01-27 18:45',
-      type: 'bonus',
-      description: 'Weekend delivery bonus',
-      amount: 500.00,
-      status: 'completed',
-    },
-    {
-      id: '4',
-      date: '2025-01-27 16:20',
-      type: 'delivery',
-      description: 'Delivery #ORD-0999',
-      amount: 380.00,
-      status: 'completed',
-      orderId: 'ORD-0999',
-    },
-    {
-      id: '5',
-      date: '2025-01-26 11:00',
-      type: 'reimbursement',
-      description: 'Fuel reimbursement',
-      amount: 250.00,
-      status: 'processing',
-    },
-  ]);
+  const transactions: Transaction[] = [];
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
 
-    loadEarningsData();
-
     return () => subscription?.remove();
   }, []);
-
-  const loadEarningsData = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      // TODO: Implement API call to fetch earnings data
-      // const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/driver/earnings`, {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-    } catch (error) {
-      console.error('Error loading earnings data:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadEarningsData();
-    setTimeout(() => setRefreshing(false), 1000);
-  };
 
   const getCurrentPeriodEarnings = () => {
     switch (selectedPeriod) {
@@ -222,20 +154,12 @@ function DriverEarningsDetails() {
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Earnings Details</Text>
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={onRefresh}
-          >
-            <Ionicons name="refresh" size={24} color="white" />
-          </TouchableOpacity>
+          <View style={styles.headerActionPlaceholder} />
         </View>
 
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
         >
           {/* Earnings Summary Card */}
           <View style={styles.summaryCard}>
@@ -320,11 +244,11 @@ function DriverEarningsDetails() {
               <View style={styles.payoutRow}>
                 <Text style={styles.payoutLabel}>Date</Text>
                 <Text style={styles.payoutValue}>
-                  {new Date(summary.lastPayoutDate).toLocaleDateString('en-US', {
+                  {summary.lastPayoutDate ? new Date(summary.lastPayoutDate).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
-                  })}
+                  }) : 'No payout recorded'}
                 </Text>
               </View>
               <View style={styles.payoutRow}>
@@ -339,6 +263,9 @@ function DriverEarningsDetails() {
           {/* Transaction History */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            {transactions.length === 0 && (
+              <Text style={styles.emptyTransactions}>No earnings records are available.</Text>
+            )}
             {transactions.map((transaction) => (
               <TouchableOpacity
                 key={transaction.id}
@@ -430,7 +357,8 @@ const getResponsiveStyles = (screenData: any) => {
       fontWeight: 'bold',
       color: 'white',
     },
-    refreshButton: {
+    headerActionPlaceholder: {
+      width: 40,
       padding: Math.max(8, width * 0.02),
     },
     content: {
@@ -593,6 +521,11 @@ const getResponsiveStyles = (screenData: any) => {
       marginBottom: 12,
       boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       elevation: 3,
+    },
+    emptyTransactions: {
+      color: '#6b7280',
+      paddingVertical: 16,
+      textAlign: 'center',
     },
     transactionLeft: {
       flexDirection: 'row',
