@@ -3,6 +3,7 @@ package com.brillprime.app
 import android.app.Application
 import android.content.res.Configuration
 
+import com.brillprime.BuildConfig
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
