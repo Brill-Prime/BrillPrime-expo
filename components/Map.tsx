@@ -25,28 +25,23 @@ type MapViewProps = {
   [key: string]: any;
 };
 
-const PROVIDER_GOOGLE = 'google';
-const Marker = ({ 
-  children,
-  coordinate,
-  title,
-  description,
-  onPress,
-  pinColor,
-  rotation,
-  ...props
-}: any) => <>{children}</>;
-
-export { PROVIDER_GOOGLE, Marker };
-
 let MapImplementation: any;
+let Marker: any;
+let PROVIDER_GOOGLE: any;
 
 if (Platform.OS === 'web') {
-  console.warn('[Map.tsx] This file should not be used on web. Map.web.tsx should be loaded instead.');
-  MapImplementation = require('./Map.web.tsx').default;
+  MapImplementation = require('./Map.web').default;
+  const webMap = require('./Map.web');
+  Marker = webMap.Marker || (({ children }: any) => <>{children}</>);
+  PROVIDER_GOOGLE = webMap.PROVIDER_GOOGLE || 'google';
 } else {
-  MapImplementation = require('./Map.native.tsx').default;
+  MapImplementation = require('./Map.native').default;
+  const nativeMap = require('./Map.native');
+  Marker = nativeMap.Marker || (({ children }: any) => <>{children}</>);
+  PROVIDER_GOOGLE = nativeMap.PROVIDER_GOOGLE || 'google';
 }
+
+export { PROVIDER_GOOGLE, Marker };
 
 interface MapProps extends Omit<MapViewProps, 'provider' | 'region' | 'onRegionChange' | 'onRegionChangeComplete'> {
   provider?: typeof PROVIDER_GOOGLE;

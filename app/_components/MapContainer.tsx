@@ -9,6 +9,17 @@ let MapView: any = null;
 let PROVIDER_GOOGLE: any = null;
 let Marker: any = null;
 
+if (Platform.OS !== "web") {
+  try {
+    const maps = require("react-native-maps");
+    MapView = maps.default || maps;
+    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
+    Marker = maps.Marker;
+  } catch (e) {
+    console.warn("[MapContainer] react-native-maps unavailable:", e);
+  }
+}
+
 // Important: avoid requiring `react-native-maps` at module evaluation time.
 // Even conditional requires can still be statically analyzed by Metro for web.
 // Do NOT reference react-native-maps in this file at all for web.
@@ -164,8 +175,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
     onMapReady?.();
   }, [onMapReady, region]);
 
-  // Always render a placeholder on web. This prevents Metro from even evaluating the native map JSX.
-  if (Platform.OS === "web") {
+  // Always render a placeholder on web or when MapView is unavailable.
+  if (Platform.OS === "web" || !MapView) {
     return <View style={styles.mapContainer} />;
   }
 

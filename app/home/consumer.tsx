@@ -831,8 +831,8 @@ function ConsumerHomeContent() {
               // Load nearby merchants
               await loadNearbyMerchants(latitude, longitude);
 
-              // Animate map to location
-              if (mapRef.current) {
+              // Animate map to location safely
+              if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
                 mapRef.current.animateToRegion(newRegion, 1000);
               }
             } else {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { View } from 'react-native';
 
 let MapView: any = null;
@@ -12,6 +12,10 @@ try {
   PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
 } catch (error) {
   console.warn('[Map.native.tsx] react-native-maps unavailable:', error);
+}
+
+if (!Marker) {
+  Marker = ({ children }: any) => <>{children}</>;
 }
 
 // Export for iOS and Android - uses Google Maps
@@ -28,7 +32,7 @@ interface ExtendedMapViewProps {
   [key: string]: any;
 }
 
-const ExtendedMapView: React.FC<ExtendedMapViewProps> = (props) => {
+const ExtendedMapView = forwardRef<any, ExtendedMapViewProps>((props, ref) => {
   const {
     origin,
     destination,
@@ -43,7 +47,9 @@ const ExtendedMapView: React.FC<ExtendedMapViewProps> = (props) => {
     return <View {...mapViewProps} />;
   }
 
-  return <MapView {...mapViewProps} />;
-};
+  return <MapView ref={ref} {...mapViewProps} />;
+});
+
+ExtendedMapView.displayName = 'ExtendedMapView';
 
 export default ExtendedMapView;
