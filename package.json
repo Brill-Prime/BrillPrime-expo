@@ -13,7 +13,9 @@
     "start:web": "expo start --web --port 5000",
     "start:android": "node scripts/start-expo.js --android",
     "start:android:clear": "node scripts/clear-expo-cache.js && node scripts/start-expo.js --android --clear",
-    "start:android:offline": "node scripts/clear-expo-cache.js && node scripts/start-expo.js --android --clear --offline-validation"
+    "start:android:offline": "node scripts/clear-expo-cache.js && node scripts/start-expo.js --android --clear --offline-validation",
+    "start:go": "expo start --go",
+    "start:android:go": "expo start --android --go"
   },
   "jest": {
     "preset": "jest-expo"

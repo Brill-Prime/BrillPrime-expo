@@ -1,0 +1,8 @@
+{
+  "filePath": {
+    "testSuite": "testSuites",
+    "collection": "collections",
+    "variable": "variables",
+    "dataset": "datasets"
+  }
+}

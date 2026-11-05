@@ -4,6 +4,7 @@
 import { apiClient } from './api';
 import { API_ENDPOINTS } from './apiEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { auth } from '../config/firebase';
 import {
   signInWithEmailAndPassword,
@@ -261,6 +262,13 @@ class AuthService {
 
   // Sign in with Google
   async signInWithGoogle(role?: string): Promise<ApiResponse<AuthResponse>> {
+    if (Platform.OS !== 'web' || typeof signInWithPopup !== 'function') {
+      return {
+        success: false,
+        error: 'Google sign-in via web popup is not available on mobile devices. Please sign in with email/password.',
+      };
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
@@ -386,6 +394,9 @@ class AuthService {
   async checkRedirectResult(): Promise<ApiResponse<AuthResponse> | null> {
     try {
       if (!auth) throw new Error('Firebase Auth is not initialized.');
+      if (Platform.OS !== 'web' || typeof getRedirectResult !== 'function') {
+        return null;
+      }
       const result = await getRedirectResult(auth);
       if (!result) return null;
 
@@ -420,6 +431,13 @@ class AuthService {
 
   // Sign in with Apple
   async signInWithApple(role?: string): Promise<ApiResponse<AuthResponse>> {
+    if (Platform.OS !== 'web' || typeof signInWithPopup !== 'function') {
+      return {
+        success: false,
+        error: 'Apple sign-in via web popup is not available on mobile devices. Please sign in with email/password.',
+      };
+    }
+
     try {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
@@ -508,6 +526,13 @@ class AuthService {
 
   // Sign in with Facebook
   async signInWithFacebook(role?: string): Promise<ApiResponse<AuthResponse>> {
+    if (Platform.OS !== 'web' || typeof signInWithPopup !== 'function') {
+      return {
+        success: false,
+        error: 'Facebook sign-in via web popup is not available on mobile devices. Please sign in with email/password.',
+      };
+    }
+
     try {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');

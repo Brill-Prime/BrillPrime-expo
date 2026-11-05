@@ -5,24 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.cursor/rules/after_each_chat.mdc" beforeDir="false" afterPath="$PROJECT_DIR$/.cursor/rules/after_each_chat.mdc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TODO.md" beforeDir="false" afterPath="$PROJECT_DIR$/TODO.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/android/gradle.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/_components/MapContainer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/_components/MapContainer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/auth/signup.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/signup.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/checkout/confirmation.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/checkout/confirmation.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/checkout/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/checkout/index.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/checkout/order-preview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/checkout/order-preview.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/commodity/commodities.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/commodity/commodities.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/merchant.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/merchant.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/driver/earnings-details.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/driver/earnings-details.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/driver/vehicle-management.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/driver/vehicle-management.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/orders/driver-order-preview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/driver-order-preview.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useAuth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useAuth.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metro.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/metro.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/tsconfig.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,6 +35,9 @@
     &quot;accountId&quot;: &quot;dcb8abbd-06a7-4a79-abbe-0fb843d90d7d&quot;
   }
 }</component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="ProjectErrors" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
 }</component>
@@ -57,6 +48,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "CidrDebugProfileConversion": "true",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -66,8 +58,8 @@
     "dart.analysis.tool.window.visible": "false",
     "git-widget-placeholder": "Working-copy",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/USER/Desktop/Brill Prime Limited/brill-prime-mobile",
-    "settings.editor.selected.configurable": "AndroidSdkUpdater",
+    "last_opened_file_path": "C:/Users/USER/AndroidStudioProjects/BrillPrime-expo",
+    "settings.editor.selected.configurable": "templates.modelproviders.configurable",
     "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
