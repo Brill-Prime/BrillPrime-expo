@@ -6,25 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/commodity/commodities.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/commodity/commodities.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/favorites/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/favorites/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/consumer.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/home/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/consumer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/store-locator/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/store-locator/index.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/supabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/config/supabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contexts/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/AuthContext.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/apiEndpoints.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/apiEndpoints.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/commodityService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/commodityService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/favoritesService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/favoritesService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/locationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/locationService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/merchantService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/merchantService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/profileService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/profileService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/userService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/functions/cart-get/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/cart-get/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/functions/merchants-nearby/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/merchants-nearby/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/orderService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/config.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/_shared/firebase-auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/_shared/firebase-auth.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

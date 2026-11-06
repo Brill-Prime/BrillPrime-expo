@@ -67,6 +67,7 @@ supabase/functions/cart-update/
 supabase/functions/cart-delete/
 supabase/functions/create-order/
 supabase/functions/merchants-nearby/
+supabase/functions/user-sync/
 supabase/functions/payment-process/
 ```
 
@@ -80,9 +81,10 @@ Before deploying:
 
 1. Set the `FIREBASE_PROJECT_ID` Supabase Edge Function secret to the Firebase project ID.
 2. Apply `supabase/migrations/20261105180000_create_favorites.sql` to create the favorites table with service-role-only access.
-3. Deploy `cart-get`, `merchants-nearby`, `profile`, and `favorites` using the linked Supabase project; verify the deployed function configuration keeps the gateway JWT setting disabled for these functions.
-4. Test with a valid Firebase ID token, then with missing, malformed, and expired tokens. Only valid tokens should be able to access user-specific profile, cart, and favorites data.
-5. Test direct database access and order Realtime with a Firebase user token after enabling the Firebase third-party auth integration; confirm RLS scopes each user to their own data.
+3. Deploy `cart-get`, `merchants-nearby`, `profile`, `favorites`, and `user-sync` using the linked Supabase project; verify the deployed function configuration keeps the gateway JWT setting disabled for these functions.
+4. Test `user-sync` with a valid Firebase ID token. Confirm that it creates a missing consumer profile, returns an existing profile without changing its role, rejects untrusted merchant/driver role requests, and rejects missing, malformed, and expired tokens. Provision merchant and driver roles through a trusted administrator workflow or signed Firebase custom claims.
+5. Test profile, cart, and favorites with a valid Firebase ID token, then with missing, malformed, and expired tokens. Only valid tokens should be able to access user-specific data.
+6. Test direct database access and order Realtime with a Firebase user token after enabling the Firebase third-party auth integration; confirm RLS scopes each user to their own data.
 
 ### 3. Additional Edge Functions Needed
 

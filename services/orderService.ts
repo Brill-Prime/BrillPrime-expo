@@ -3,28 +3,19 @@
 
 import { supabase } from '../config/supabase';
 import { authService } from './authService';
-import { ApiResponse } from './api';
+import { apiClient, ApiResponse } from './api';
 import { Order } from './types';
 
 type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'rejected';
 
 class OrderService {
   /**
-   * Resolve the internal Supabase user UUID from the stored Firebase UID.
+   * Resolve the internal Supabase user UUID from the authenticated profile function.
    */
-  private async getInternalUserId(): Promise<string | null> {
+  async getInternalUserId(): Promise<string | null> {
     try {
-      const userData = await authService.getStoredUser();
-      if (!userData?.id) return null;
-
-      const { data, error } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', userData.id)
-        .single();
-
-      if (error || !data) return null;
-      return data.id;
+      const response = await apiClient.get<{ id: string }>('/functions/v1/profile');
+      return response.success ? response.data?.id || null : null;
     } catch {
       return null;
     }

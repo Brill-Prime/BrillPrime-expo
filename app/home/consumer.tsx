@@ -1024,8 +1024,8 @@ function ConsumerHomeContent() {
           onRegionChangeComplete={debouncedHandleRegionChange}
           onMapReady={handleMapReady}
           customMapStyle={blueMapStyle}
-          showsUserLocation={isLiveTrackingEnabled}
-          showsMyLocationButton={false}
+          showsUserLocation={isLocationSet === true}
+          showsMyLocationButton={isLocationSet === true}
           zoomEnabled={true}
           scrollEnabled={true}
           rotateEnabled={false}

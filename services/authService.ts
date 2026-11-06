@@ -804,6 +804,10 @@ class AuthService {
     return role === 'consumer' || role === 'merchant' || role === 'driver';
   }
 
+  async ensureUserProfile(firebaseUser: FirebaseUser, requestedRole?: string | null): Promise<User['role']> {
+    return this.resolveUserRole(firebaseUser, requestedRole);
+  }
+
   private async resolveUserRole(firebaseUser: FirebaseUser, requestedRole?: string | null): Promise<User['role']> {
     const response = await apiClient.get<any[]>(
       `/rest/v1/users?firebase_uid=eq.${encodeURIComponent(firebaseUser.uid)}&select=*`
@@ -814,14 +818,10 @@ class AuthService {
       : this.isUserRole(requestedRole) ? requestedRole : 'consumer';
 
     if (!profile) {
-      try {
-        await this.syncUserProfile(firebaseUser, role, {
-          full_name: firebaseUser.displayName || '',
-          phone_number: firebaseUser.phoneNumber || '',
-        });
-      } catch (error) {
-        console.warn('Supabase profile sync failed; continuing with Firebase sign-in:', error);
-      }
+      await this.syncUserProfile(firebaseUser, role, {
+        full_name: firebaseUser.displayName || '',
+        phone_number: firebaseUser.phoneNumber || '',
+      });
     }
     return role;
   }
@@ -831,16 +831,19 @@ class AuthService {
     role: User['role'],
     extra: { full_name: string; phone_number: string }
   ): Promise<void> {
-    const response = await apiClient.post('/rest/v1/users', {
-      firebase_uid: firebaseUser.uid,
-      email: firebaseUser.email,
+    const token = await firebaseUser.getIdToken();
+    const response = await apiClient.callFunctionPost<{ id: string }>('user-sync', {
       role,
-      ...extra,
+      fullName: extra.full_name,
+      phoneNumber: extra.phone_number,
     }, {
-      Prefer: 'resolution=merge-duplicates',
+      Authorization: `Bearer ${token}`,
     });
     if (!response.success) {
       throw new Error(response.error || 'Unable to sync your profile.');
+    }
+    if (!response.data?.id) {
+      throw new Error('Profile sync did not return a database user ID.');
     }
   }
 

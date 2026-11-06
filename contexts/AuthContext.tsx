@@ -68,10 +68,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authService.getStoredUser(),
       ]);
       const firebaseToken = await firebaseUser.getIdToken();
+      const requestedRole = storedRole || (userData as User | null)?.role;
+      let resolvedRole = requestedRole;
+      try {
+        resolvedRole = await authService.ensureUserProfile(firebaseUser, requestedRole);
+      } catch (error) {
+        console.error('Could not synchronize Firebase user with Supabase:', error);
+      }
       setToken(firebaseToken);
-      setRole(storedRole);
+      setRole(resolvedRole);
       setUser(userData as User | null);
-      setIsAuthenticated(Boolean(storedRole));
+      setIsAuthenticated(Boolean(resolvedRole));
       setIsEmailVerificationPending(false);
     } catch (error) {
       console.error('Error refreshing Firebase auth state:', error);

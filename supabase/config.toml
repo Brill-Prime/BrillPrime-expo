@@ -424,3 +424,6 @@ verify_jwt = false
 
 [functions.favorites]
 verify_jwt = false
+
+[functions.user-sync]
+verify_jwt = false

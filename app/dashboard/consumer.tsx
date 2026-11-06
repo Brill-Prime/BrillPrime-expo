@@ -178,27 +178,53 @@ export default function ConsumerDashboard() {
     loadDashboardData();
     checkLocationStatus();
 
-    // Subscribe to real-time order updates
-    const ordersChannel = supabase
-      .channel('orders')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `user_id=eq.${user?.id}`
-        },
-        (payload) => {
-          console.log('Order update:', payload);
-          // Refresh orders when changes occur
-          loadDashboardData();
-        }
-      )
-      .subscribe();
+    if (!user?.id) return;
+
+    let cancelled = false;
+    let ordersChannel: ReturnType<typeof supabase.channel> | undefined;
+    const subscribeToOrders = async () => {
+      const databaseUserId = await orderService.getInternalUserId();
+      if (cancelled) return;
+      if (!databaseUserId) {
+        console.warn('Skipping order realtime subscription: database user profile is unavailable.');
+        return;
+      }
+
+      ordersChannel = supabase
+        .channel(`consumer-orders-${databaseUserId}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${databaseUserId}`
+          },
+          (payload) => {
+            console.log('Order update:', payload);
+            loadDashboardData();
+          }
+        )
+        .subscribe((status, error) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('Order realtime subscription failed:', error || status);
+          }
+        });
+    };
+
+    void subscribeToOrders().catch((error) => {
+      console.error('Could not set up order realtime subscription:', error);
+    });
 
     return () => {
-      supabase.removeChannel(ordersChannel);
+      cancelled = true;
+      if (ordersChannel) {
+        void supabase.removeChannel(ordersChannel).then((status) => {
+          if (status === 'error') {
+            console.warn('Could not remove order realtime subscription.');
+          }
+        });
+      }
     };
   }, [user?.id]);
 

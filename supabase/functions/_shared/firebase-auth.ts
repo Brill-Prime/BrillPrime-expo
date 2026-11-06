@@ -14,7 +14,14 @@ export class FirebaseAuthError extends Error {
   }
 }
 
-export async function requireFirebaseUid(request: Request): Promise<string> {
+export type FirebaseIdentity = {
+  uid: string;
+  email?: string;
+  name?: string;
+  role?: string;
+};
+
+export async function requireFirebaseIdentity(request: Request): Promise<FirebaseIdentity> {
   const projectId = Deno.env.get('FIREBASE_PROJECT_ID');
   if (!projectId) {
     throw new FirebaseAuthError('Firebase authentication is not configured', 500);
@@ -37,8 +44,18 @@ export async function requireFirebaseUid(request: Request): Promise<string> {
       throw new Error('Firebase token has no subject');
     }
 
-    return payload.sub;
+    return {
+      uid: payload.sub,
+      email: typeof payload.email === 'string' ? payload.email : undefined,
+      name: typeof payload.name === 'string' ? payload.name : undefined,
+      role: typeof payload.role === 'string' ? payload.role : undefined,
+    };
   } catch {
     throw new FirebaseAuthError('Invalid or expired Firebase ID token', 401);
   }
+}
+
+export async function requireFirebaseUid(request: Request): Promise<string> {
+  const identity = await requireFirebaseIdentity(request);
+  return identity.uid;
 }
