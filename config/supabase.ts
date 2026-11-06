@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase';
 
 // Retrieve Supabase configuration from environment
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -77,6 +79,10 @@ if (!urlValidation.isValid || !keyValidation.isValid) {
 
 // Create Supabase client with validated configuration
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  accessToken: async () => {
+    const firebaseUser = auth?.currentUser;
+    return firebaseUser ? firebaseUser.getIdToken() : supabaseAnonKey;
+  },
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -88,7 +94,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       'apikey': supabaseAnonKey,
-      'Authorization': `Bearer ${supabaseAnonKey}`,
     },
   },
 });
@@ -102,8 +107,19 @@ if (isSupabaseConfigured) {
   console.log(`🔷 URL: ${supabaseUrl}`);
   console.log(`🔑 Key: ${supabaseAnonKey.substring(0, 20)}...`);
 
-  // Configure error handling for real-time subscriptions
-  supabase.realtime.setAuth(supabaseAnonKey);
+  // Keep RLS and Realtime claims aligned with the signed-in Firebase user.
+  if (auth) {
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        supabase.realtime.setAuth(supabaseAnonKey);
+        return;
+      }
+
+      void user.getIdToken()
+        .then((token) => supabase.realtime.setAuth(token))
+        .catch((error) => console.error('Could not update Supabase Realtime auth:', error));
+    });
+  }
 
   // Add global error handler for broadcast errors
   const originalBroadcast = supabase.channel.bind(supabase);

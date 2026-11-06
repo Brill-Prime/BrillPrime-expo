@@ -1,6 +1,7 @@
 
 import { apiClient } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_ENDPOINTS } from './apiEndpoints';
 
 interface FavoriteItem {
   id: string;
@@ -8,6 +9,12 @@ interface FavoriteItem {
   itemId: string;
   itemType: 'merchant' | 'commodity';
   createdAt: string;
+  name: string;
+  merchant: string;
+  imageUrl?: string;
+  image: { uri: string } | number;
+  price: number;
+  rating: number;
 }
 
 class FavoritesService {
@@ -15,10 +22,21 @@ class FavoritesService {
 
   async getFavorites(): Promise<{ success: boolean; data?: FavoriteItem[]; error?: string }> {
     try {
-      const response = await apiClient.get('/api/favorites');
+      const response = await apiClient.get<FavoriteItem[]>(API_ENDPOINTS.FAVORITES.LIST);
 
       if (response.success && response.data) {
-        const favorites = Array.isArray(response.data) ? response.data : [];
+        const favorites = Array.isArray(response.data)
+          ? response.data.map(item => ({
+              ...item,
+              name: item.name || 'Unavailable item',
+              merchant: item.merchant || '',
+              image: item.imageUrl
+                ? { uri: item.imageUrl }
+                : require('../assets/images/generated-icon.png'),
+              price: Number(item.price) || 0,
+              rating: Number(item.rating) || 0,
+            }))
+          : [];
         await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(favorites));
         return { success: true, data: favorites };
       }
@@ -37,7 +55,7 @@ class FavoritesService {
 
   async addFavorite(itemId: string, itemType: 'merchant' | 'commodity'): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await apiClient.post('/api/favorites', {
+      const response = await apiClient.post(API_ENDPOINTS.FAVORITES.CREATE, {
         itemId,
         itemType,
       });
@@ -57,7 +75,7 @@ class FavoritesService {
 
   async removeFavorite(itemId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await apiClient.delete(`/api/favorites/${itemId}`);
+      const response = await apiClient.delete(API_ENDPOINTS.FAVORITES.REMOVE(itemId));
 
       if (response.success) {
         // Update local cache

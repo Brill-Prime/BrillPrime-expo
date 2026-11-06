@@ -268,16 +268,17 @@ export const getCustomers = async (merchantId: string): Promise<{ success: boole
 // Fetch nearby merchants
 export const getNearbyMerchants = async (latitude: number, longitude: number, radius?: number): Promise<Merchant[]> => {
         try {
-                const queryParams = new URLSearchParams({
+                const response = await apiClient.callFunction<{
+                        success: boolean;
+                        data: Merchant[];
+                }>('merchants-nearby', {
                         lat: latitude.toString(),
                         lng: longitude.toString(),
-                        ...(radius && { radius: radius.toString() })
+                        ...(radius ? { radius: radius.toString() } : {})
                 });
-                
-                const response = await apiClient.get<Merchant[]>(
-                        `/api/merchants/nearby?${queryParams.toString()}`
-                );
-                return response.success && response.data ? response.data : [];
+                return response.success && response.data?.success
+                        ? response.data.data
+                        : [];
         } catch (error) {
                 console.error('API Error fetching nearby merchants:', error);
                 return [];

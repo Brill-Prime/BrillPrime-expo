@@ -27,17 +27,23 @@ export default function StoreLocator() {
         // Assuming authService.getToken() and locationService.getCurrentLocation() are implemented
         const token = await authService.getToken();
         const location = await locationService.getCurrentLocation();
+        if (!location) {
+          Alert.alert('Location unavailable', 'Enable location access to find nearby stores.');
+          return;
+        }
 
         // Assuming apiClient.get is a function that makes HTTP requests
-        const response = await apiClient.get(
-          `/api/merchants/nearby?latitude=${location.coords.latitude}&longitude=${location.coords.longitude}&radius=10`,
+        const response = await apiClient.get<{ success: boolean; data: unknown[] }>(
+          `/functions/v1/merchants-nearby?lat=${location.coords.latitude}&lng=${location.coords.longitude}&radius=10`,
           {
             Authorization: `Bearer ${token}`,
           }
         );
 
-        if (response.success && response.data) {
-          setStores(Array.isArray(response.data) ? response.data : []);
+        if (response.success && response.data?.success) {
+          setStores(Array.isArray(response.data.data) ? response.data.data : []);
+        } else {
+          Alert.alert('Stores unavailable', response.error || 'Could not load nearby stores.');
         }
       } catch (error) {
         console.error('Error loading stores:', error);

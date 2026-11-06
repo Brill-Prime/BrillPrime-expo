@@ -1,6 +1,7 @@
 // app.config.js
 // Load environment variables from .env file
 import 'dotenv/config';
+import { AndroidConfig } from '@expo/config-plugins';
 
 export default {
   name: "BrillPrime",
@@ -26,6 +27,7 @@ export default {
     // Removed googleServicesFile to prevent prebuild failure when file is not present.
   },
   android: {
+    predictiveBackGestureEnabled: true,
     adaptiveIcon: {
       foregroundImage: "./assets/images/logo.png",
       backgroundColor: "#ffffff"
@@ -51,6 +53,7 @@ export default {
     "expo-router",
     "expo-font",
     "expo-web-browser",
+    AndroidConfig.PredictiveBackGesture.withPredictiveBackGesture,
     [
       "expo-build-properties",
       {

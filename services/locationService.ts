@@ -294,11 +294,21 @@ class LocationService {
     type?: string
   ): Promise<ApiResponse<Merchant[]>> {
     try {
-      let endpoint = `/api/merchants/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`;
-      if (type) {
-        endpoint += `&type=${type}`;
+      const response = await apiClient.callFunction<{
+        success: boolean;
+        data: Merchant[];
+      }>('merchants-nearby', {
+        lat: latitude.toString(),
+        lng: longitude.toString(),
+        radius: radius.toString(),
+        ...(type ? { type } : {}),
+      });
+
+      if (!response.success || !response.data?.success) {
+        return { success: false, error: response.error || 'Failed to get nearby merchants' };
       }
-      return apiClient.get<Merchant[]>(endpoint);
+
+      return { success: true, data: response.data.data };
     } catch (error) {
       console.error("Error getting nearby merchants:", error);
       return { success: false, error: "Failed to get nearby merchants" };

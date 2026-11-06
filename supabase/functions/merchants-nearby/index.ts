@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, withCors } from '../_shared/cors.ts';
+import { FirebaseAuthError, requireFirebaseUid } from '../_shared/firebase-auth.ts';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -8,20 +9,47 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
+    await requireFirebaseUid(req);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !anonKey) {
+      throw new Error('Supabase configuration is missing');
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      supabaseUrl,
+      anonKey,
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
     const url = new URL(req.url);
-    const lat = parseFloat(url.searchParams.get('lat') || '0');
-    const lng = parseFloat(url.searchParams.get('lng') || '0');
-    const radius = parseFloat(url.searchParams.get('radius') || '10'); // km
+    const latitude = url.searchParams.get('lat');
+    const longitude = url.searchParams.get('lng');
+    const radius = Number(url.searchParams.get('radius') || '10');
+    if (
+      latitude === null ||
+      latitude.trim() === '' ||
+      longitude === null ||
+      longitude.trim() === ''
+    ) {
+      return withCors(new Response(JSON.stringify({ error: 'Valid latitude and longitude are required' }), { status: 400 }));
+    }
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (
+      !Number.isFinite(lat) ||
+      lat < -90 ||
+      lat > 90 ||
+      !Number.isFinite(lng) ||
+      lng < -180 ||
+      lng > 180 ||
+      !Number.isFinite(radius) ||
+      radius <= 0 ||
+      radius > 100
+    ) {
+      return withCors(new Response(JSON.stringify({ error: 'Valid latitude, longitude, and radius are required' }), { status: 400 }));
+    }
 
     // Fetch all active merchants
     const { data: merchants, error } = await supabaseClient
@@ -45,7 +73,7 @@ serve(async (req) => {
 
     // Filter merchants by distance
     const nearbyMerchants = merchants?.filter(merchant => {       
-      if (!merchant.latitude || !merchant.longitude) return false;
+      if (merchant.latitude == null || merchant.longitude == null) return false;
       const distance = calculateDistance(lat, lng, merchant.latitude, merchant.longitude);
       return distance <= radius;
     }) || [];
@@ -61,12 +89,15 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    if (!(error instanceof FirebaseAuthError)) {
+      console.error('merchants-nearby failed:', error);
+    }
     return withCors(
       new Response(JSON.stringify({ 
-        error: error.message, 
+        error: error instanceof Error ? error.message : 'Internal server error',
         success: false 
       }), {
-        status: 400,
+        status: error instanceof FirebaseAuthError ? error.status : 500,
         headers: { 'Content-Type': 'application/json' },
       })
     );

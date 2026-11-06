@@ -6,12 +6,25 @@
   <component name="ChangeListManager">
     <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/src/main/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/src/main/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/src/main/res/values/strings.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/_components/MapContainer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/_components/MapContainer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/commodity/commodities.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/commodity/commodities.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/favorites/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/favorites/index.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/home/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/consumer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/Map.native.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/Map.native.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/Map.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/Map.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/store-locator/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/store-locator/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/supabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/config/supabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/apiEndpoints.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/apiEndpoints.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/commodityService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/commodityService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/favoritesService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/favoritesService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/locationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/locationService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/merchantService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/merchantService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/profileService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/profileService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/userService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/cart-get/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/cart-get/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/merchants-nearby/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/merchants-nearby/index.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,26 +60,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "CidrDebugProfileConversion": "true",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "com.google.services.firebase.aqiPopupShown": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "Working-copy",
-    "ignore.virus.scanning.warn.message": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/USER/AndroidStudioProjects/BrillPrime-expo",
-    "settings.editor.selected.configurable": "templates.modelproviders.configurable",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;CidrDebugProfileConversion&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;com.google.services.firebase.aqiPopupShown&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;Working-copy&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/USER/AndroidStudioProjects/BrillPrime-expo&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;templates.modelproviders.configurable&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">

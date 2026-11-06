@@ -2,6 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, withCors } from '../_shared/cors.ts';
+import { FirebaseAuthError, requireFirebaseUid } from '../_shared/firebase-auth.ts';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -9,35 +10,35 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
+    const firebaseUid = await requireFirebaseUid(req);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('Supabase service configuration is missing');
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      serviceRoleKey,
       {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
         },
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return withCors(
-        new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401 }
-        )
-      );
-    }
-
-    // Get user from database
-    const { data: userData } = await supabaseClient
+    const { data: userData, error: userError } = await supabaseClient
       .from('users')
       .select('id')
-      .eq('firebase_uid', user.id)
-      .single();
+      .eq('firebase_uid', firebaseUid)
+      .maybeSingle();
 
+    if (userError) {
+      throw userError;
+    }
     if (!userData) {
-      throw new Error('User not found');
+      return withCors(new Response(JSON.stringify({ error: 'User not found' }), { status: 404 }));
     }
 
     // Get cart items
@@ -67,9 +68,13 @@ serve(async (req) => {
       })
     );
   } catch (error) {
+    const status = error instanceof FirebaseAuthError ? error.status : 500;
+    if (!(error instanceof FirebaseAuthError)) {
+      console.error('cart-get failed:', error);
+    }
     return withCors(
-      new Response(JSON.stringify({ error: error.message }), {
-        status: 400,
+      new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }), {
+        status,
       })
     );
   }

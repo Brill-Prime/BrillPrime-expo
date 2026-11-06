@@ -23,6 +23,7 @@ class ApiClient {
   private baseURL: string;
   private authToken: string = '';
   private tokenRefreshPromise: Promise<string | null> | null = null;
+  private readonly inFlightGets = new Map<string, Promise<ApiResponse<any>>>();
 
   constructor() {
     // Serverless architecture: Firebase for Auth, Supabase for all backend logic
@@ -75,21 +76,56 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    try {
-      const controller = new AbortController();
-      const timeoutMs = ENV.apiTimeout; // configurable timeout
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const dedupeKey = this.getGetDedupeKey(endpoint, options);
+    if (dedupeKey) {
+      const inFlight = this.inFlightGets.get(dedupeKey);
+      if (inFlight) return inFlight;
+    }
 
+    const request = this.performRequest<T>(endpoint, options);
+    if (!dedupeKey) return request;
+
+    this.inFlightGets.set(dedupeKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.inFlightGets.get(dedupeKey) === request) {
+        this.inFlightGets.delete(dedupeKey);
+      }
+    }
+  }
+
+  private getGetDedupeKey(endpoint: string, options: RequestInit): string | null {
+    if ((options.method || 'GET').toUpperCase() !== 'GET' || options.signal) {
+      return null;
+    }
+
+    const headers = new Headers(options.headers);
+    const headerEntries = Array.from(headers.entries()).sort(([left], [right]) =>
+      left.localeCompare(right)
+    );
+
+    return JSON.stringify([
+      this.baseURL,
+      endpoint,
+      auth?.currentUser?.uid || null,
+      headerEntries,
+    ]);
+  }
+
+  private async performRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    try {
       console.log(`🌐 API Request: ${this.baseURL}${endpoint}`);
       const startTime = Date.now();
 
-      // Merge default headers with any custom headers
       const headers = new Headers({
         ...DEFAULT_HEADERS,
         ...(options.headers || {}),
       });
 
-      // Add auth headers if not provided explicitly
       if (!headers.has('Authorization')) {
         const token = await this.getAuthToken();
         const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -97,13 +133,11 @@ class ApiClient {
         if (authHeader) headers.set('Authorization', authHeader);
       }
 
-      // Include Firebase UID if available
       const uid = auth?.currentUser?.uid;
       if (uid && !headers.has('x-firebase-uid')) {
         headers.set('x-firebase-uid', uid);
       }
 
-      // Handle preflight requests
       if (options.method === 'OPTIONS') {
         return {
           success: true,
@@ -111,19 +145,50 @@ class ApiClient {
         } as ApiResponse<T>;
       }
 
-      const maxRetries = Math.max(0, ENV.maxRetries);
-      let attempt = 0;
-      let lastError: any = null;
+      const method = (options.method || 'GET').toUpperCase();
+      const canRetry = method === 'GET' || method === 'HEAD';
+      const configuredRetries = Number.isFinite(ENV.maxRetries)
+        ? Math.trunc(ENV.maxRetries)
+        : 0;
+      const maxRetries = Math.min(2, Math.max(0, configuredRetries));
+      const maxBackoffMs = 8000;
       let response: Response | null = null;
+      let lastError: unknown = null;
 
-      const isTransientError = (err: any, resp?: Response | null) => {
-        if (resp && (resp.status === 503 || resp.status === 429)) return true;
-        if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') return true; // timeout
-        if (err instanceof TypeError && err.message === 'Failed to fetch') return true; // network
-        return false;
+      const isTransientStatus = (status: number) =>
+        status === 429 || status === 502 || status === 503 || status === 504;
+      const isTransientNetworkError = (error: unknown) =>
+        error instanceof TypeError ||
+        (error instanceof Error && error.name === 'AbortError');
+      const getRetryDelay = (attempt: number, retryAfter: string | null) => {
+        if (retryAfter) {
+          const seconds = Number(retryAfter);
+          const retryAt = Number.isFinite(seconds)
+            ? seconds * 1000
+            : Date.parse(retryAfter) - Date.now();
+          if (Number.isFinite(retryAt) && retryAt > 0) {
+            return Math.min(retryAt, maxBackoffMs);
+          }
+        }
+
+        const exponentialDelay = Math.min(500 * 2 ** attempt, maxBackoffMs);
+        return Math.min(
+          exponentialDelay + Math.floor(Math.random() * 250),
+          maxBackoffMs
+        );
       };
 
-      while (attempt <= maxRetries) {
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        const controller = new AbortController();
+        const callerSignal = options.signal;
+        const abortFromCaller = () => controller.abort();
+        if (callerSignal?.aborted) {
+          controller.abort();
+        } else {
+          callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+        }
+        const timeoutId = setTimeout(() => controller.abort(), ENV.apiTimeout);
+
         try {
           response = await fetch(`${this.baseURL}${endpoint}`, {
             ...options,
@@ -131,23 +196,52 @@ class ApiClient {
             mode: 'cors',
             signal: controller.signal,
           });
-          lastError = null;
-          break;
         } catch (err) {
           lastError = err;
-          if (attempt < maxRetries && isTransientError(err)) {
-            // exponential backoff with jitter
-            const base = 500; // ms
-            const delay = Math.min(base * Math.pow(2, attempt), 8000) + Math.floor(Math.random() * 250);
-            await new Promise(res => setTimeout(res, delay));
-            attempt++;
-            continue;
-          }
-          throw err;
+        } finally {
+          clearTimeout(timeoutId);
+          callerSignal?.removeEventListener('abort', abortFromCaller);
         }
+
+        if (
+          lastError &&
+          canRetry &&
+          !callerSignal?.aborted &&
+          attempt < maxRetries &&
+          isTransientNetworkError(lastError)
+        ) {
+          await new Promise(resolve =>
+            setTimeout(resolve, getRetryDelay(attempt, null))
+          );
+          lastError = null;
+          continue;
+        }
+
+        if (
+          response &&
+          canRetry &&
+          attempt < maxRetries &&
+          isTransientStatus(response.status)
+        ) {
+          const delay = getRetryDelay(
+            attempt,
+            response.headers.get('Retry-After')
+          );
+          try {
+            await response.arrayBuffer();
+          } catch (error) {
+            console.warn(`Could not drain retry response for ${endpoint}:`, error);
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+          response = null;
+          continue;
+        }
+
+        break;
       }
 
-      clearTimeout(timeoutId);
+      if (lastError) throw lastError;
+
       const duration = Date.now() - startTime;
       if (response) {
         console.log(`✅ API Response: ${endpoint} [${response.status}] (${duration}ms)`);
@@ -157,7 +251,7 @@ class ApiClient {
         let errorText = '';
         try {
           errorText = response ? await response.text() : '';
-        } catch (e) {
+        } catch {
           errorText = response ? response.statusText : '';
         }
         const statusCode = response ? response.status : 'NO_RESPONSE';
@@ -193,7 +287,7 @@ class ApiClient {
 
       if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
         errorMessage = 'Request timeout - The server is taking too long to respond.';
-        userFriendlyMessage = 'The request is taking longer than expected. The server may be waking up from sleep mode. Please wait a moment and try again.';
+        userFriendlyMessage = 'The request timed out. Please check your connection and try again.';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
         errorMessage = 'Network error - Failed to connect to server.';
         userFriendlyMessage = 'Unable to connect to the server. Please check your internet connection and try again.';

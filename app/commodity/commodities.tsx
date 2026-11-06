@@ -3,10 +3,9 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   TextInput,
-  Image,
   Dimensions,
   Alert,
   ActivityIndicator,
@@ -15,8 +14,10 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image as ExpoImage } from 'expo-image';
 import { merchantService } from '../../services/merchantService';
 import { cartService } from '../../services/cartService';
+import { isValidCommodityId } from '../../services/commodityService';
 import { useAppContext } from '../../contexts/AppContext';
 import { FormErrorBoundary } from '../../components/FormErrorBoundary';
 
@@ -101,10 +102,10 @@ const loadCommodities = useCallback(async () => {
       setLoading(true);
       const response = await merchantService.getCommodities();
       if (response.success && response.data && Array.isArray(response.data)) {
-        const processedData = response.data.map((item: any) => ({
+        const processedData = response.data.map((item: any, index: number) => ({
           ...item,
-          id: item.id || item._id || `commodity_${Date.now()}_${Math.random()}`,
-          image: item.image || require('../../assets/images/generated-icon.png'),
+          id: String(item.id ?? item._id ?? `commodity-${index}`),
+          image: item.image || item.image_url || require('../../assets/images/generated-icon.png'),
           price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
           merchantId: item.merchantId || item.merchant?.id || '',
           merchantName: item.merchantName || item.merchant?.name || 'Unknown Merchant',
@@ -122,6 +123,7 @@ const loadCommodities = useCallback(async () => {
             category: 'fuel',
             merchantId: 'merchant_1',
             merchantName: 'Shell Station',
+            isSample: true,
             image: require('../../assets/images/generated-icon.png'),
             description: 'High quality premium petrol',
           },
@@ -133,6 +135,7 @@ const loadCommodities = useCallback(async () => {
             category: 'fuel',
             merchantId: 'merchant_1',
             merchantName: 'Shell Station',
+            isSample: true,
             image: require('../../assets/images/generated-icon.png'),
             description: 'Standard diesel fuel',
           },
@@ -153,6 +156,7 @@ const loadCommodities = useCallback(async () => {
           category: 'groceries',
           merchantId: 'sample_merchant',
           merchantName: 'Sample Store',
+          isSample: true,
           image: require('../../assets/images/generated-icon.png'),
           description: 'Sample product',
         },
@@ -355,6 +359,11 @@ const loadCommodities = useCallback(async () => {
   };
 
   const viewCommodityDetails = (commodity: any) => {
+    if (commodity.isSample || !isValidCommodityId(String(commodity.id))) {
+      Alert.alert('Sample Product', 'This sample item is for display only and cannot be opened.');
+      return;
+    }
+
     router.push(`/commodity/${commodity.id}`);
   };
 
@@ -436,9 +445,49 @@ const loadCommodities = useCallback(async () => {
           </View>
         </View>
 
-        <ScrollView
+        <FlatList
           style={styles.content}
           showsVerticalScrollIndicator={false}
+          data={viewMode === 'products' && !loading ? filteredProducts : []}
+          keyExtractor={(item, index) => String(item.id || `commodity-${index}`)}
+          renderItem={({ item: commodity }) => (
+            <TouchableOpacity
+              style={styles.productCard}
+              onPress={() => viewCommodityDetails(commodity)}
+              activeOpacity={0.8}
+            >
+              <ExpoImage
+                source={commodity.image}
+                style={styles.productImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                recyclingKey={String(commodity.id)}
+              />
+              <View style={styles.productInfo}>
+                <Text style={styles.productName} numberOfLines={2}>{commodity.name}</Text>
+                <Text style={styles.merchantName} numberOfLines={1}>{commodity.merchantName}</Text>
+                <Text style={styles.productPrice}>₦{commodity.price.toLocaleString()}/{commodity.unit}</Text>
+                {commodity.isSample && (
+                  <Text style={styles.sampleLabel}>Sample item</Text>
+                )}
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    addToCart(commodity);
+                  }}
+                >
+                  <Ionicons name="cart-outline" size={16} color="#fff" />
+                  <Text style={styles.addButtonText}>Add to Cart</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
+          ItemSeparatorComponent={() => <View style={styles.productSeparator} />}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -447,11 +496,10 @@ const loadCommodities = useCallback(async () => {
               tintColor="#4682B4"
             />
           }
-        >
-          <View style={{ paddingHorizontal: responsivePadding }}>
-
-            {/* Categories View */}
-            {viewMode === 'categories' && (
+          contentContainerStyle={{ paddingHorizontal: responsivePadding }}
+          ListHeaderComponent={
+            <View>
+              {viewMode === 'categories' && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Browse Categories</Text>
                 <View style={styles.categoriesGrid}>
@@ -470,10 +518,9 @@ const loadCommodities = useCallback(async () => {
                   ))}
                 </View>
               </View>
-            )}
+              )}
 
-            {/* Products View */}
-            {viewMode === 'products' && (
+              {viewMode === 'products' && (
               <View style={styles.section}>
                 <View style={styles.productsHeader}>
                   <TouchableOpacity
@@ -490,61 +537,33 @@ const loadCommodities = useCallback(async () => {
                     {filteredProducts.length} products found
                   </Text>
                 </View>
-
-                {loading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#4682B4" />
-                    <Text style={styles.loadingText}>Loading products...</Text>
-                  </View>
-                ) : filteredProducts.length === 0 ? (
-                  <View style={styles.emptyContainer}>
-                    <Ionicons name="basket-outline" size={64} color="#ccc" />
-                    <Text style={styles.emptyText}>No products found</Text>
-                    <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
-                    <TouchableOpacity
-                      style={styles.refreshButton}
-                      onPress={loadCommodities}
-                    >
-                      <Text style={styles.refreshButtonText}>Refresh</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.productsGrid}>
-                    {filteredProducts.map((commodity) => (
-                      <TouchableOpacity
-                        key={commodity.id}
-                        style={styles.productCard}
-                        onPress={() => viewCommodityDetails(commodity)}
-                        activeOpacity={0.8}
-                      >
-                        <Image
-                          source={commodity.image}
-                          style={styles.productImage}
-                          resizeMode="cover"
-                        />
-                        <View style={styles.productInfo}>
-                          <Text style={styles.productName} numberOfLines={2}>{commodity.name}</Text>
-                          <Text style={styles.merchantName} numberOfLines={1}>{commodity.merchantName}</Text>
-                          <Text style={styles.productPrice}>₦{commodity.price.toLocaleString()}/{commodity.unit}</Text>
-                          <TouchableOpacity
-                            style={styles.addButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              addToCart(commodity);
-                            }}
-                          >
-                            <Ionicons name="cart-outline" size={16} color="#fff" />
-                            <Text style={styles.addButtonText}>Add to Cart</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
               </View>
-            )}
-          </View>
-        </ScrollView>
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            viewMode === 'products' ? (
+              loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#4682B4" />
+                  <Text style={styles.loadingText}>Loading products...</Text>
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="basket-outline" size={64} color="#ccc" />
+                  <Text style={styles.emptyText}>No products found</Text>
+                  <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+                  <TouchableOpacity
+                    style={styles.refreshButton}
+                    onPress={loadCommodities}
+                  >
+                    <Text style={styles.refreshButtonText}>Refresh</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            ) : null
+          }
+        />
       </View>
     </FormErrorBoundary>
   );
@@ -687,6 +706,11 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontFamily: 'Montserrat-SemiBold',
   },
+  sampleLabel: {
+    color: '#777',
+    fontSize: 11,
+    marginTop: 2,
+  },
   productsCount: {
     fontSize: 14,
     color: '#666',
@@ -705,6 +729,9 @@ const styles = StyleSheet.create({
   },
   productsGrid: {
     gap: 15,
+  },
+  productSeparator: {
+    height: 15,
   },
   productCard: {
     backgroundColor: '#fff',

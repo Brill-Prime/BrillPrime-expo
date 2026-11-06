@@ -70,6 +70,20 @@ supabase/functions/merchants-nearby/
 supabase/functions/payment-process/
 ```
 
+### Firebase Authentication and protected Edge Functions
+
+The app's database policies and Realtime subscriptions use Firebase ID tokens. Configure the Supabase project's Firebase third-party auth integration with the same Firebase project ID before relying on direct client queries or Realtime subscriptions.
+
+The `cart-get`, `merchants-nearby`, `profile`, and `favorites` Edge Functions validate Firebase ID tokens themselves. Their `verify_jwt = false` settings in `supabase/config.toml` are required because Supabase's gateway cannot validate Firebase tokens as Supabase Auth tokens; do not remove the in-function Firebase verification. The nearby-merchants function reads only merchant rows permitted by the public RLS policy.
+
+Before deploying:
+
+1. Set the `FIREBASE_PROJECT_ID` Supabase Edge Function secret to the Firebase project ID.
+2. Apply `supabase/migrations/20261105180000_create_favorites.sql` to create the favorites table with service-role-only access.
+3. Deploy `cart-get`, `merchants-nearby`, `profile`, and `favorites` using the linked Supabase project; verify the deployed function configuration keeps the gateway JWT setting disabled for these functions.
+4. Test with a valid Firebase ID token, then with missing, malformed, and expired tokens. Only valid tokens should be able to access user-specific profile, cart, and favorites data.
+5. Test direct database access and order Realtime with a Firebase user token after enabling the Firebase third-party auth integration; confirm RLS scopes each user to their own data.
+
 ### 3. Additional Edge Functions Needed
 
 Create these Edge Functions for full functionality:

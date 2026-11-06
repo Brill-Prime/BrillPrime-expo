@@ -39,7 +39,7 @@ interface PrivacySettings {
 }
 
 interface UserProfile {
-  id: number;
+  id: string;
   email: string;
   fullName: string;
   phone: string;
@@ -60,7 +60,7 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<UserProfile>('/api/profile', {
+    return apiClient.get<UserProfile>('/functions/v1/profile', {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -77,7 +77,7 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<UserProfile>('/api/profile', data, {
+    return apiClient.put<UserProfile>('/functions/v1/profile', data, {
       Authorization: `Bearer ${token}`,
     });
   }

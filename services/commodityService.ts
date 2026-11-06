@@ -1,4 +1,10 @@
 import { supabase } from '../config/supabase';
+
+const COMMODITY_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const isValidCommodityId = (id: string): boolean =>
+  COMMODITY_UUID_PATTERN.test(id);
 import { authService } from './authService';
 import type { CommodityFormData } from '../utils/commodityUtils';
 
@@ -277,6 +283,10 @@ class CommodityService {
    * Get commodity by ID
    */
   async getCommodityById(commodityId: string): Promise<{ success: boolean; commodity?: Commodity; error?: string }> {
+    if (!isValidCommodityId(commodityId)) {
+      return { success: false, error: 'A valid commodity ID is required' };
+    }
+
     try {
       const { data, error } = await supabase
         .from('products')

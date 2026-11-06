@@ -54,65 +54,9 @@ class UserService {
     }
 
     try {
-      // Get current user from auth
-      const user = await authService.getStoredUser();
-      if (!user || !user.id) {
-        return { success: false, error: 'User not found' };
-      }
-
-      // Update in Supabase
-      const { supabase } = await import('../config/supabase');
-      
-      // Build update object with only defined fields
-      const updateData: any = {
-        full_name: `${data.firstName} ${data.lastName}`.trim(),
-        updated_at: new Date().toISOString()
-      };
-      
-      if (data.email) updateData.email = data.email;
-      if (data.phone) updateData.phone_number = data.phone;
-      if (data.profileImageUrl) updateData.profile_image_url = data.profileImageUrl;
-      
-      const { data: updatedUser, error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', user.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase update error:', error);
-        return { success: false, error: error.message || 'Failed to update profile' };
-      }
-
-      // Also update merchant table if user is a merchant
-      if (user.role === 'merchant' && data.address) {
-        const { error: merchantError } = await supabase
-          .from('merchants')
-          .update({
-            business_name: data.firstName, // For merchants, firstName is business name
-            address: data.address,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-
-        if (merchantError) {
-          console.error('Merchant update error:', merchantError);
-        }
-      }
-
-      return { 
-        success: true, 
-        data: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          role: updatedUser.role,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: updatedUser.phone_number,
-          profileImageUrl: updatedUser.profile_image_url
-        } as User
-      };
+      return apiClient.put<User>('/functions/v1/profile', data, {
+        Authorization: 'Bearer ' + token,
+      });
     } catch (error: any) {
       console.error('Profile update error:', error);
       return { success: false, error: error.message || 'Failed to update profile' };
@@ -127,35 +71,9 @@ class UserService {
     }
 
     try {
-      const user = await authService.getStoredUser();
-      if (!user || !user.id) {
-        return { success: false, error: 'User not found' };
-      }
-
-      const { supabase } = await import('../config/supabase');
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Get profile error:', error);
-        return { success: false, error: error.message };
-      }
-
-      return { 
-        success: true, 
-        data: {
-          id: data.id,
-          email: data.email,
-          role: data.role,
-          firstName: data.full_name?.split(' ')[0] || '',
-          lastName: data.full_name?.split(' ').slice(1).join(' ') || '',
-          phone: data.phone_number,
-          profileImageUrl: data.profile_image_url
-        } as User
-      };
+      return apiClient.get<User>('/functions/v1/profile', {
+        Authorization: 'Bearer ' + token,
+      });
     } catch (error: any) {
       console.error('Get profile error:', error);
       return { success: false, error: error.message || 'Failed to get profile' };

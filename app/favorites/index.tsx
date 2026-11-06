@@ -16,46 +16,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FavoriteItem {
   id: string;
+  itemId: string;
+  itemType: 'merchant' | 'commodity';
   name: string;
   price: number;
   image: any;
   merchant: string;
   rating: number;
-  category: string;
+  category?: string;
 }
 
 export default function Favorites() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([
-    {
-      id: '1',
-      name: 'Premium Rice',
-      price: 2500,
-      image: require('../../assets/images/logo.png'),
-      merchant: 'Prime Store',
-      rating: 4.8,
-      category: 'Groceries'
-    },
-    {
-      id: '2',
-      name: 'Cooking Oil',
-      price: 1200,
-      image: require('../../assets/images/logo.png'),
-      merchant: 'Fresh Market',
-      rating: 4.5,
-      category: 'Groceries'
-    },
-    {
-      id: '3',
-      name: 'Organic Beans',
-      price: 800,
-      image: require('../../assets/images/logo.png'),
-      merchant: 'Green Farm',
-      rating: 4.7,
-      category: 'Groceries'
-    }
-  ]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -78,10 +52,11 @@ export default function Favorites() {
         // Map favorites to display format
         setFavorites(result.data);
       } else {
-        // Fallback to AsyncStorage
-        const savedFavorites = await AsyncStorage.getItem('userFavorites');
+        const savedFavorites = await AsyncStorage.getItem('user_favorites');
         if (savedFavorites) {
           setFavorites(JSON.parse(savedFavorites));
+        } else {
+          Alert.alert('Favorites unavailable', result.error || 'Could not load favorites.');
         }
       }
     } catch (error) {
@@ -102,9 +77,13 @@ export default function Favorites() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updatedFavorites = favorites.filter(item => item.id !== itemId);
-              setFavorites(updatedFavorites);
-              await AsyncStorage.setItem('userFavorites', JSON.stringify(updatedFavorites));
+              const { favoritesService } = await import('../../services/favoritesService');
+              const result = await favoritesService.removeFavorite(itemId);
+              if (!result.success) {
+                Alert.alert('Error', result.error || 'Failed to remove item from favorites');
+                return;
+              }
+              setFavorites(current => current.filter(item => item.itemId !== itemId));
             } catch (error) {
               console.error('Error removing favorite:', error);
               Alert.alert('Error', 'Failed to remove item from favorites');
@@ -136,8 +115,12 @@ export default function Favorites() {
     }
   };
 
-  const viewProduct = (itemId: string) => {
-    router.push(`/commodity/${itemId}`);
+  const viewProduct = (item: FavoriteItem) => {
+    if (item.itemType === 'merchant') {
+      router.push(`/merchant/${item.itemId}`);
+      return;
+    }
+    router.push(`/commodity/${item.itemId}`);
   };
 
   const styles = getResponsiveStyles(screenData);
@@ -192,14 +175,14 @@ export default function Favorites() {
               <View key={item.id} style={styles.favoriteCard}>
                 <TouchableOpacity
                   style={styles.removeButton}
-                  onPress={() => removeFromFavorites(item.id)}
+                  onPress={() => removeFromFavorites(item.itemId)}
                 >
                   <Ionicons name="heart" size={20} color="#e74c3c" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.productInfo}
-                  onPress={() => viewProduct(item.id)}
+                  onPress={() => viewProduct(item)}
                 >
                   <Image source={item.image} style={styles.productImage} />
                   <Text style={styles.productName}>{item.name}</Text>

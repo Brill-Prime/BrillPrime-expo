@@ -157,6 +157,7 @@ function ConsumerHomeContent() {
   const [showDriverCard, setShowDriverCard] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
+  const [nearbyMerchantsError, setNearbyMerchantsError] = useState<string | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<StoreLocation | null>(null);
   const [showMerchantDetails, setShowMerchantDetails] = useState(false);
   const [region, setRegion] = useState({
@@ -177,6 +178,11 @@ function ConsumerHomeContent() {
   const mapRef = useRef<any>(null);
   const isMountedRef = useRef(true);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const lastNearbyRequestRef = useRef<{
+    latitude: number;
+    longitude: number;
+    requestedAt: number;
+  } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hasShownNoMerchantsMessage, setHasShownNoMerchantsMessage] = useState(false);
 
@@ -219,9 +225,7 @@ function ConsumerHomeContent() {
     });
   }, [showInfo, hasShownNoMerchantsMessage]);
 
-  const loadAllMerchants = useCallback(async (retryCount = 0) => {
-    const MAX_RETRIES = 2;
-
+  const loadAllMerchants = useCallback(async () => {
     try {
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
@@ -294,16 +298,6 @@ function ConsumerHomeContent() {
         fullError: _error
       });
 
-      // Retry on network errors
-      if (_error instanceof TypeError && _error.message.includes('fetch')) {
-        if (retryCount < MAX_RETRIES) {
-          console.log(`Retrying loadAllMerchants... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          return loadAllMerchants(retryCount + 1);
-        }
-      }
-
-      // Load fallback data after all retries exhausted
       loadFallbackMerchants();
 
       if (_error instanceof TypeError && _error.message.includes('fetch')) {
@@ -314,21 +308,27 @@ function ConsumerHomeContent() {
     }
   }, [isLocationSet, region, loadFallbackMerchants, checkNetworkConnectivity]);
 
-  const loadNearbyMerchants = useCallback(async (latitude: number, longitude: number, retryCount = 0) => {
-    const MAX_RETRIES = 2;
-
-    try {
-      const isConnected = await checkNetworkConnectivity();
-      if (!isConnected) {
-        console.log("No internet connection, falling back to cached data");
-        await loadAllMerchants(); // Fallback to cached/all merchants
+  const loadNearbyMerchants = useCallback(async (
+    latitude: number,
+    longitude: number,
+    force = false
+  ) => {
+    const previousRequest = lastNearbyRequestRef.current;
+    if (previousRequest && !force) {
+      const movedKm = locationService.calculateDistance(
+        previousRequest.latitude,
+        previousRequest.longitude,
+        latitude,
+        longitude
+      );
+      if (Date.now() - previousRequest.requestedAt < 30000 && movedKm < 0.25) {
         return;
       }
+    }
+    lastNearbyRequestRef.current = { latitude, longitude, requestedAt: Date.now() };
 
-      // Log loading status silently (no popup)
-      if (retryCount === 0) {
-        console.log("Loading nearby merchants...");
-      }
+    try {
+      console.log("Loading nearby merchants...");
 
       // Get authentication token
       const { authService } = await import('../../services/authService');
@@ -350,6 +350,7 @@ function ConsumerHomeContent() {
       const data = response.data;
 
       if (data.success && data.data) {
+        setNearbyMerchantsError(null);
         // Transform API response to StoreLocation format with enhanced data
         const stores: StoreLocation[] = data.data.map((merchant: any) => {
           const distance = locationService.calculateDistance(
@@ -392,24 +393,9 @@ function ConsumerHomeContent() {
         fullError: _error
       });
 
-      // Check error type and handle appropriately with retry
-      if (_error instanceof TypeError && _error.message.includes('fetch')) {
-        if (retryCount < MAX_RETRIES) {
-          console.log(`Retrying... attempt ${retryCount + 1} of ${MAX_RETRIES}`);
-          // Wait 3 seconds before retrying (Render cold start can take 50+ seconds)
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          return loadNearbyMerchants(latitude, longitude, retryCount + 1);
-        } else {
-          console.log("Unable to connect to backend server after multiple attempts. Using cached data.");
-        }
-      } else {
-        console.log("Failed to load nearby merchants. Using cached data.");
-      }
-
-      // Fallback to loading all merchants
-      await loadAllMerchants();
+      setNearbyMerchantsError("Nearby merchants could not be loaded. Tap to retry.");
     }
-  }, [loadAllMerchants, checkNetworkConnectivity]);
+  }, []);
 
   const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
     const distance = locationService.calculateDistance(lat1, lon1, lat2, lon2);
@@ -486,10 +472,6 @@ function ConsumerHomeContent() {
               console.log('[LiveTracking] Location set to true (first GPS fix)');
             }
 
-            // Load nearby merchants based on the new location if moving or first time
-            if (location.isMoving || !lastLocation) {
-              loadNearbyMerchants(location.latitude, location.longitude);
-            }
           }
         });
 
@@ -689,10 +671,6 @@ function ConsumerHomeContent() {
         });
         setIsLocationSet(true);
 
-        // Load nearby merchants near the saved location (non-blocking)
-        loadNearbyMerchants(location.latitude, location.longitude).catch(err => {
-          console.log("Merchant loading failed, map will display without merchant data:", err);
-        });
       } else {
         // Explicitly set to false if no saved location
         setIsLocationSet(false);
@@ -828,9 +806,6 @@ function ConsumerHomeContent() {
               // Save location
               await AsyncStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
 
-              // Load nearby merchants
-              await loadNearbyMerchants(latitude, longitude);
-
               // Animate map to location safely
               if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
                 mapRef.current.animateToRegion(newRegion, 1000);
@@ -930,7 +905,7 @@ function ConsumerHomeContent() {
   };
 
   const handleSetLocationLater = () => {
-    setIsLocationSet(true); // Hide the card
+    setIsLocationSet(false);
     setHasShownLocationPrompt(true);
   };
 
@@ -988,9 +963,6 @@ function ConsumerHomeContent() {
         latitude,
         longitude
       }));
-
-      // Load nearby merchants
-      await loadNearbyMerchants(latitude, longitude);
 
       // Animate map to new location
       if (mapRef.current) {
@@ -1177,6 +1149,27 @@ function ConsumerHomeContent() {
                 <Text style={styles.setLaterText}>Set Later</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {isLocationSet === false && hasShownLocationPrompt && (
+          <View style={styles.locationUnavailableBanner}>
+            <Ionicons name="location-outline" size={18} color={theme.colors.primaryDark} />
+            <Text style={styles.locationUnavailableText}>
+              Location is not set. Nearby merchants are unavailable.
+            </Text>
+            <TouchableOpacity onPress={handleSetLocationAutomatically}>
+              <Text style={styles.locationUnavailableAction}>Set location</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {isLocationSet && nearbyMerchantsError && (
+          <View style={styles.locationUnavailableBanner}>
+            <Text style={styles.locationUnavailableText}>{nearbyMerchantsError}</Text>
+            <TouchableOpacity onPress={() => loadNearbyMerchants(region.latitude, region.longitude, true)}>
+              <Text style={styles.locationUnavailableAction}>Retry</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1450,6 +1443,28 @@ const styles = StyleSheet.create({
   globeIcon: {
     width: 25,
     height: 25,
+  },
+  locationUnavailableBanner: {
+    position: 'absolute',
+    top: 110,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: theme.colors.white,
+    ...theme.shadows.small,
+  },
+  locationUnavailableText: {
+    flex: 1,
+    color: theme.colors.text,
+    fontSize: 12,
+  },
+  locationUnavailableAction: {
+    color: theme.colors.primary,
+    fontWeight: '700',
   },
   whereAreYouText: {
     color: theme.colors.primaryDark,

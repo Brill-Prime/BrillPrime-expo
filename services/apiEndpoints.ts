@@ -26,8 +26,8 @@ export const API_ENDPOINTS = {
 
   // Profile
   PROFILE: {
-    GET: '/api/profile',
-    UPDATE: '/api/profile',
+    GET: '/functions/v1/profile',
+    UPDATE: '/functions/v1/profile',
     ADDRESSES: {
       LIST: '/api/profile/addresses',
       CREATE: '/api/profile/addresses',
@@ -45,6 +45,11 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/profile/privacy-settings',
     },
     CHANGE_PASSWORD: '/api/profile/change-password',
+  },
+  FAVORITES: {
+    LIST: '/functions/v1/favorites',
+    CREATE: '/functions/v1/favorites',
+    REMOVE: (itemId: string) => `/functions/v1/favorites?itemId=${encodeURIComponent(itemId)}`,
   },
 
   // Products
