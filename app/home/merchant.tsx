@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from '../../components/AlertProvider';
-import Map, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
+import Map, { MAP_PROVIDER, Marker } from '../../components/Map';
 import * as Location from 'expo-location';
 import QRScannerIcon from '../../components/QRScannerIcon';
 import SimpleArrowIcon from '../../components/SimpleArrowIcon';
@@ -314,7 +314,7 @@ export default function MerchantHome() {
       <View style={styles.mapContainer}>
         <Map
           ref={mapRef}
-          provider={PROVIDER_GOOGLE}
+          provider={MAP_PROVIDER}
           style={styles.map}
           region={region}
           onRegionChangeComplete={setRegion}

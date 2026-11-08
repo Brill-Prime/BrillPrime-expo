@@ -2,32 +2,7 @@ import React, { useRef, useCallback } from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MapErrorBoundary } from "./MapErrorBoundary";
-
-// react-native-maps is native-only. Avoid importing it on web entirely.
-// This file is only used on native; for web we render a lightweight placeholder.
-let MapView: any = null;
-let PROVIDER_GOOGLE: any = null;
-let Marker: any = null;
-
-if (Platform.OS !== "web") {
-  try {
-    const maps = require("react-native-maps");
-    MapView = maps.default || maps;
-    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
-    Marker = maps.Marker;
-  } catch (e) {
-    console.warn("[MapContainer] react-native-maps unavailable:", e);
-  }
-}
-
-// Important: avoid requiring `react-native-maps` at module evaluation time.
-// Even conditional requires can still be statically analyzed by Metro for web.
-// Do NOT reference react-native-maps in this file at all for web.
-// Native can still render via separate entrypoints; this file should be web-safe.
-
-
-
-
+import MapView, { MAP_PROVIDER, Marker } from "../../components/Map";
 
 interface StoreLocation {
   id?: string;
@@ -175,8 +150,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
     onMapReady?.();
   }, [onMapReady, region]);
 
-  // Always render a placeholder on web or when MapView is unavailable.
-  if (Platform.OS === "web" || !MapView) {
+  // Keep the existing web placeholder; native uses the shared Mapbox wrapper.
+  if (Platform.OS === "web") {
     return <View style={styles.mapContainer} />;
   }
 
@@ -186,7 +161,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
         <MapView
           ref={mapRef}
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
+          provider={MAP_PROVIDER}
           customMapStyle={blueMapStyle}
           region={region}
           onRegionChangeComplete={onRegionChange}

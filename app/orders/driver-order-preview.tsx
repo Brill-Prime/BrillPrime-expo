@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
+import Map, { Marker, MAP_PROVIDER } from '../../components/Map';
 
 
 // Assuming responsiveFontSize and responsivePadding are defined elsewhere or you'll define them
@@ -55,7 +55,7 @@ export default function DriverOrderPreview({
     return (
       <View style={styles.mapContainer}>
         <Map
-          provider={PROVIDER_GOOGLE}
+          provider={MAP_PROVIDER}
           style={styles.map}
           region={{
             latitude: (order.pickupCoordinates.latitude + order.deliveryCoordinates.latitude) / 2,

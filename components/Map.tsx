@@ -27,24 +27,30 @@ type MapViewProps = {
 
 let MapImplementation: any;
 let Marker: any;
+let Polyline: any;
+let MAP_PROVIDER: string;
 let PROVIDER_GOOGLE: any;
 
 if (Platform.OS === 'web') {
   MapImplementation = require('./Map.web').default;
   const webMap = require('./Map.web');
   Marker = webMap.Marker || (({ children }: any) => <>{children}</>);
+  Polyline = webMap.Polyline || (() => null);
+  MAP_PROVIDER = webMap.MAP_PROVIDER || 'google';
   PROVIDER_GOOGLE = webMap.PROVIDER_GOOGLE || 'google';
 } else {
   MapImplementation = require('./Map.native').default;
   const nativeMap = require('./Map.native');
   Marker = nativeMap.Marker || (({ children }: any) => <>{children}</>);
+  Polyline = nativeMap.Polyline || (() => null);
+  MAP_PROVIDER = nativeMap.MAP_PROVIDER || 'mapbox';
   PROVIDER_GOOGLE = nativeMap.PROVIDER_GOOGLE || 'google';
 }
 
-export { PROVIDER_GOOGLE, Marker };
+export { MAP_PROVIDER, PROVIDER_GOOGLE, Marker, Polyline };
 
 interface MapProps extends Omit<MapViewProps, 'provider' | 'region' | 'onRegionChange' | 'onRegionChangeComplete'> {
-  provider?: typeof PROVIDER_GOOGLE;
+  provider?: string;
   region?: Region;
   onRegionChange?: (region: Region) => void;
   onRegionChangeComplete?: (region: Region) => void;

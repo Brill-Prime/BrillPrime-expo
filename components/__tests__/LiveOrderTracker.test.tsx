@@ -23,6 +23,7 @@ jest.mock('../Map', () => {
   return {
     __esModule: true,
     default: MockMapView,
+    MAP_PROVIDER: 'mapbox',
     PROVIDER_GOOGLE: 'google',
     Marker: MockMapView.Marker,
   };

@@ -5,15 +5,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/consumer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/android/gradle.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/_components/MapContainer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/_components/MapContainer.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/home/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/consumer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contexts/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/AuthContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/orderService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/config.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/supabase/functions/_shared/firebase-auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/_shared/firebase-auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/home/driver.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/driver.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/home/merchant.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/merchant.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/driver-order-preview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/driver-order-preview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/order-tracking.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/order-tracking.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/store-locator/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/store-locator/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/EnhancedMap.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/EnhancedMap.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/LiveOrderTracker.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/LiveOrderTracker.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/Map.native.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/Map.native.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/Map.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/Map.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/Map.web.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/Map.web.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/__tests__/LiveOrderTracker.test.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/__tests__/LiveOrderTracker.test.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/guides/GOOGLE_MAPS_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/guides/GOOGLE_MAPS_SETUP.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
