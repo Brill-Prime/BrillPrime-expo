@@ -86,19 +86,25 @@ class AuthService {
       const firebaseToken = await firebaseUser.getIdToken();
 
       // Create auth response immediately with Firebase data
+      const normalizedUser: User = {
+        id: firebaseUser.uid,
+        uid: firebaseUser.uid,
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        name: displayName,
+        firstName: firstName || displayName.split(' ')[0] || '',
+        lastName: lastName || displayName.split(' ').slice(1).join(' ') || '',
+        role: role,
+        phone: phoneNumber || '',
+        isVerified: firebaseUser.emailVerified,
+        profileImageUrl: firebaseUser.photoURL || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
       const authData: AuthResponse = {
         token: firebaseToken,
-        user: {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          name: displayName,
-          role: role,
-          phone: phoneNumber || '',
-          isVerified: firebaseUser.emailVerified,
-          profileImageUrl: firebaseUser.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: normalizedUser,
       };
 
       await AsyncStorage.multiSet([
@@ -187,19 +193,10 @@ class AuthService {
       const userRole = await this.resolveUserRole(firebaseUser, selectedRole);
 
       // Create auth response immediately with Firebase data
+      const normalizedUser = await this.normalizeUserFromFirebase(firebaseUser, userRole);
       const authData: AuthResponse = {
         token: firebaseToken,
-        user: {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          name: firebaseUser.displayName || '',
-          role: userRole,
-          phone: firebaseUser.phoneNumber || '',
-          isVerified: firebaseUser.emailVerified,
-          profileImageUrl: firebaseUser.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: normalizedUser,
       };
 
       await this.storeAuthData(authData);
@@ -324,21 +321,11 @@ class AuthService {
         }
       ).catch(err => console.log('Supabase sync error (non-critical):', err));
 
-      // Store auth data with Firebase token
       const userRole = await this.resolveUserRole(user, role);
+      const normalizedUser = await this.normalizeUserFromFirebase(user, userRole);
       const authData: AuthResponse = {
         token: firebaseToken,
-        user: {
-          id: user.uid,
-          email: user.email || '',
-          name: user.displayName || '',
-          role: userRole,
-          phone: user.phoneNumber || '',
-          isVerified: user.emailVerified,
-          profileImageUrl: user.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: normalizedUser,
       };
 
       await this.storeAuthData(authData);
@@ -407,19 +394,10 @@ class AuthService {
 
       const selectedRole = await AsyncStorage.getItem('selectedRole');
       const role = await this.resolveUserRole(user, selectedRole);
+      const normalizedUser = await this.normalizeUserFromFirebase(user, role);
       const authData: AuthResponse = {
         token: await user.getIdToken(),
-        user: {
-          id: user.uid,
-          email: user.email,
-          name: user.displayName || '',
-          role,
-          phone: user.phoneNumber || '',
-          isVerified: user.emailVerified,
-          profileImageUrl: user.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: normalizedUser,
       };
       await this.storeAuthData(authData);
       return { success: true, data: authData };
@@ -587,19 +565,10 @@ class AuthService {
       ).catch(err => console.log('Supabase profile sync error (non-critical):', err));
 
       const userRole = await this.resolveUserRole(user, role);
+      const normalizedUser = await this.normalizeUserFromFirebase(user, userRole);
       const authData: AuthResponse = {
         token: firebaseToken,
-        user: {
-          id: user.uid,
-          email: user.email || '',
-          name: user.displayName || '',
-          role: userRole,
-          phone: user.phoneNumber || '',
-          isVerified: user.emailVerified,
-          profileImageUrl: user.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: normalizedUser,
       };
 
       await this.storeAuthData(authData);
@@ -674,19 +643,21 @@ class AuthService {
         phone_number: pendingUser?.phone || firebaseUser.phoneNumber || '',
       });
 
+      const normalizedUser = await this.normalizeUserFromFirebase(firebaseUser, role, {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        name: firebaseUser.displayName || '',
+        role,
+        phone: firebaseUser.phoneNumber || pendingUser?.phone || '',
+        isVerified: true,
+        profileImageUrl: firebaseUser.photoURL || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
       const authData: AuthResponse = {
         token: await firebaseUser.getIdToken(),
-        user: {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          name: firebaseUser.displayName || '',
-          role,
-          phone: firebaseUser.phoneNumber || pendingUser?.phone || '',
-          isVerified: true,
-          profileImageUrl: firebaseUser.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: normalizedUser,
       };
 
       await this.storeAuthData(authData);
@@ -862,15 +833,20 @@ class AuthService {
   private async storeAuthData(authData: AuthResponse): Promise<void> {
     try {
       const tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+      const userWithIds: User = {
+        ...authData.user,
+        uid: authData.user.uid || authData.user.firebaseUid || authData.user.id,
+        firebaseUid: authData.user.firebaseUid || authData.user.uid || authData.user.id,
+        merchantId: authData.user.merchantId,
+      };
 
       await AsyncStorage.multiSet([
         [this.TOKEN_KEY, authData.token],
-        [this.USER_KEY, JSON.stringify(authData.user)],
+        [this.USER_KEY, JSON.stringify(userWithIds)],
         [this.ROLE_KEY, authData.user.role],
         ['tokenExpiry', tokenExpiry.toString()],
-        ['selectedRole', authData.user.role], // Update selected role to match actual user role
-        ['userEmail', authData.user.email], // Store email for offline use
-        // We don't store firebaseUid here as it's implicitly handled by Firebase auth state
+        ['selectedRole', authData.user.role],
+        ['userEmail', authData.user.email],
       ]);
 
       // Propagate token to ApiClient for centralized acquisition
@@ -912,6 +888,103 @@ class AuthService {
       ]);
     } catch (error: any) {
       console.error('Error clearing auth data:', error);
+    }
+  }
+
+  async normalizeUserFromFirebase(firebaseUser: FirebaseUser, requestedRole?: string | null, storedProfile?: Partial<User>): Promise<User> {
+    const profile = storedProfile || (await this.getUserProfileByFirebaseUid(firebaseUser.uid));
+    const backendRole = this.isUserRole(profile?.role) ? profile.role : undefined;
+    const resolvedRole = backendRole || (this.isUserRole(requestedRole) ? requestedRole : 'consumer');
+    const backendId = typeof profile?.id === 'string' ? profile.id : undefined;
+    const merchantId = typeof profile?.merchantId === 'string' ? profile.merchantId : await this.resolveMerchantIdFromSupabase(firebaseUser.uid || backendId || undefined);
+
+    return {
+      id: backendId || firebaseUser.uid,
+      uid: firebaseUser.uid,
+      firebaseUid: firebaseUser.uid,
+      email: firebaseUser.email || profile?.email || '',
+      firstName: profile?.firstName || firebaseUser.displayName?.split(' ')[0] || undefined,
+      lastName: profile?.lastName || firebaseUser.displayName?.split(' ').slice(1).join(' ') || undefined,
+      name: profile?.name || firebaseUser.displayName || '',
+      phone: firebaseUser.phoneNumber || profile?.phone || '',
+      role: resolvedRole,
+      isVerified: firebaseUser.emailVerified || Boolean(profile?.isVerified),
+      profileImageUrl: firebaseUser.photoURL || profile?.profileImageUrl || undefined,
+      createdAt: profile?.createdAt || new Date().toISOString(),
+      updatedAt: profile?.updatedAt || new Date().toISOString(),
+      merchantId: merchantId || profile?.merchantId || undefined,
+      driverId: profile?.driverId,
+    };
+  }
+
+  async getUserProfileByFirebaseUid(firebaseUid: string): Promise<Partial<User> | null> {
+    try {
+      const { supabase } = await import('../config/supabase');
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('firebase_uid', firebaseUid)
+        .maybeSingle();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.full_name,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        phone: data.phone_number,
+        role: data.role,
+        isVerified: data.is_verified,
+        merchantId: data.merchant_id,
+        driverId: data.driver_id,
+        createdAt: data.created_at || new Date().toISOString(),
+        updatedAt: data.updated_at || new Date().toISOString(),
+      };
+    } catch (error) {
+      console.warn('Unable to resolve user profile from Supabase:', error);
+      return null;
+    }
+  }
+
+  async resolveMerchantIdFromSupabase(firebaseUidOrUserId?: string | null): Promise<string | null> {
+    if (!firebaseUidOrUserId) {
+      return null;
+    }
+
+    try {
+      const { supabase } = await import('../config/supabase');
+      const { data: userRow, error: userError } = await supabase
+        .from('users')
+        .select('id, firebase_uid, merchant_id')
+        .or(`firebase_uid.eq.${firebaseUidOrUserId},id.eq.${firebaseUidOrUserId}`)
+        .maybeSingle();
+
+      if (userError || !userRow) {
+        return null;
+      }
+
+      if (userRow.merchant_id) {
+        return userRow.merchant_id;
+      }
+
+      const { data: merchantRow, error: merchantError } = await supabase
+        .from('merchants')
+        .select('id')
+        .eq('user_id', userRow.id)
+        .maybeSingle();
+
+      if (merchantError || !merchantRow?.id) {
+        return null;
+      }
+
+      return merchantRow.id;
+    } catch (error) {
+      console.warn('Could not resolve merchant ID from Supabase:', error);
+      return null;
     }
   }
 
@@ -963,7 +1036,34 @@ class AuthService {
   async getStoredUser(): Promise<User | null> {
     try {
       const userData = await AsyncStorage.getItem(this.USER_KEY);
-      return userData ? JSON.parse(userData) : null;
+      if (!userData) {
+        return null;
+      }
+
+      const parsed = JSON.parse(userData) as Partial<User> | null;
+      if (!parsed) {
+        return null;
+      }
+
+      const normalized: User = {
+        id: parsed.id || parsed.firebaseUid || parsed.uid || '',
+        uid: parsed.uid || parsed.firebaseUid || parsed.id || '',
+        firebaseUid: parsed.firebaseUid || parsed.uid || parsed.id || '',
+        email: parsed.email || '',
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        name: parsed.name || [parsed.firstName, parsed.lastName].filter(Boolean).join(' ') || '',
+        phone: parsed.phone,
+        profileImageUrl: parsed.profileImageUrl,
+        role: this.isUserRole(parsed.role) ? parsed.role : 'consumer',
+        isVerified: parsed.isVerified,
+        createdAt: parsed.createdAt || new Date().toISOString(),
+        updatedAt: parsed.updatedAt || new Date().toISOString(),
+        merchantId: parsed.merchantId,
+        driverId: parsed.driverId,
+      };
+
+      return normalized;
     } catch (error) {
       console.error('Error getting stored user:', error);
       return null;

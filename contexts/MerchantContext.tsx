@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
@@ -16,20 +15,32 @@ export const MerchantProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const loadMerchantId = useCallback(async () => {
     try {
-      // Try to get from stored user data
-      const userData = await authService.getStoredUser();
-      if (userData && userData.role === 'merchant') {
-        setMerchantIdState(userData.id);
-        return;
-      }
-
-      // Fallback to AsyncStorage
       const storedId = await AsyncStorage.getItem('merchantId');
       if (storedId) {
         setMerchantIdState(storedId);
+        return;
       }
+
+      const userData = await authService.getStoredUser();
+      if (!userData) {
+        setMerchantIdState(null);
+        return;
+      }
+
+      const normalizedMerchantId =
+        userData.merchantId ||
+        (userData.role === 'merchant' ? await authService.resolveMerchantIdFromSupabase(userData.firebaseUid || userData.uid || userData.id) : null);
+
+      if (normalizedMerchantId) {
+        setMerchantIdState(normalizedMerchantId);
+        await AsyncStorage.setItem('merchantId', normalizedMerchantId);
+        return;
+      }
+
+      setMerchantIdState(null);
     } catch (error) {
       console.error('Error loading merchant ID:', error);
+      setMerchantIdState(null);
     }
   }, []);
 

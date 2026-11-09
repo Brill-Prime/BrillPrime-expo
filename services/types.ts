@@ -3,6 +3,7 @@
 export interface User {
   id: string;
   uid?: string; // Firebase UID
+  firebaseUid?: string;
   email: string;
   firstName?: string;
   lastName?: string;
@@ -14,6 +15,8 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   address?: string;
+  merchantId?: string;
+  driverId?: string;
   roles?: UserRoleStatus;
   currentRole?: "consumer" | "merchant" | "driver";
 }

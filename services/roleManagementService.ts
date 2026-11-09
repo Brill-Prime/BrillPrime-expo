@@ -127,21 +127,34 @@ class RoleManagementService {
   }> {
     try {
       const roleStatus = await this.getRoleStatus();
-      
-      if (!roleStatus) {
-        return {
-          hasAccess: role === 'consumer',
-          reason: role !== 'consumer' ? 'Role status not initialized' : undefined,
-        };
-      }
+      const activeRole = await this.getCurrentRole();
 
-      const targetRoleStatus = roleStatus[role];
-      
       if (role === 'consumer') {
         return { hasAccess: true };
       }
 
+      if (!roleStatus) {
+        return {
+          hasAccess: activeRole === role,
+          reason: activeRole === role ? undefined : `Role status not initialized for ${role}`,
+        };
+      }
+
+      const targetRoleStatus = roleStatus[role];
+
+      if (!targetRoleStatus) {
+        return {
+          hasAccess: activeRole === role,
+          reason: activeRole === role ? undefined : `Role status missing for ${role}`,
+        };
+      }
+
       if (!targetRoleStatus.isRegistered) {
+        const storedRole = activeRole === role ? undefined : 'selected role is not active';
+        if (activeRole === role) {
+          return { hasAccess: true };
+        }
+
         return {
           hasAccess: false,
           reason: `You need to register as a ${role} to access this feature`,
@@ -150,6 +163,10 @@ class RoleManagementService {
       }
 
       if (!targetRoleStatus.isVerified) {
+        if (activeRole === role) {
+          return { hasAccess: true };
+        }
+
         return {
           hasAccess: false,
           reason: `Your ${role} account is pending verification`,

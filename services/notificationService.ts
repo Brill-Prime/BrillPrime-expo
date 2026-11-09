@@ -82,7 +82,10 @@ class NotificationService {
     callback: (notification: Notification) => void
   ) {
     try {
-      // Create a channel for real-time notifications
+      if (!supabase || !userId) {
+        return { unsubscribe: () => {} };
+      }
+
       const channel = supabase
         .channel(`notifications:${userId}`)
         .on(
@@ -127,26 +130,24 @@ class NotificationService {
         return { success: true, data: { count: 0 } };
       }
 
-      // Get user data
       const userData = await authService.getStoredUser();
-      if (!userData?.id) {
+      const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
+      if (!firebaseUid) {
         return { success: true, data: { count: 0 } };
       }
 
-      // Get user role if not provided
       let userRole = role;
       if (!userRole) {
         userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
       }
 
-      // Get user ID from Supabase
       const { data: users, error: userError } = await supabase
         .from("users")
         .select("id")
-        .eq("firebase_uid", userData.id)
-        .single();
+        .eq("firebase_uid", firebaseUid)
+        .maybeSingle();
 
-      if (userError || !users) {
+      if (userError || !users?.id) {
         return { success: true, data: { count: 0 } };
       }
 
@@ -206,23 +207,21 @@ class NotificationService {
         return { success: false, error: "Authentication required" };
       }
 
-      // Get user data
       const userData = await authService.getStoredUser();
-      if (!userData?.id) {
+      const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
+      if (!firebaseUid) {
         return { success: false, error: "User not found" };
       }
 
-      // Get user role
       const userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
 
-      // Get user ID from Supabase
       const { data: users, error: userError } = await supabase
         .from("users")
         .select("id")
-        .eq("firebase_uid", userData.id)
-        .single();
+        .eq("firebase_uid", firebaseUid)
+        .maybeSingle();
 
-      if (userError || !users) {
+      if (userError || !users?.id) {
         return { success: false, error: "User not found in database" };
       }
 
@@ -263,26 +262,24 @@ class NotificationService {
         return { success: false, error: "Authentication required" };
       }
 
-      // Get user data
       const userData = await authService.getStoredUser();
-      if (!userData?.id) {
+      const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
+      if (!firebaseUid) {
         return { success: false, error: "User not found" };
       }
 
-      // Get user role if not provided
       let userRole = role;
       if (!userRole) {
         userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
       }
 
-      // Get user ID from Supabase
       const { data: users, error: userError } = await supabase
         .from("users")
         .select("id")
-        .eq("firebase_uid", userData.id)
-        .single();
+        .eq("firebase_uid", firebaseUid)
+        .maybeSingle();
 
-      if (userError || !users) {
+      if (userError || !users?.id) {
         return { success: false, error: "User not found in database" };
       }
 
@@ -369,6 +366,8 @@ class NotificationService {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
         }),

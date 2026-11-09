@@ -48,6 +48,7 @@ function StoreSettings() {
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<StoreSettings>({
     businessHours: {
       monday: { open: '08:00', close: '18:00', isOpen: true },
@@ -85,18 +86,32 @@ function StoreSettings() {
   useEffect(() => {
     if (merchantId) {
       loadStoreSettings();
+    } else {
+      setError('Merchant profile is still loading. Please sign in again or retry.');
+      setLoading(false);
     }
   }, [merchantId]);
 
   const loadStoreSettings = async () => {
     try {
       setLoading(true);
-      const response = await merchantService.getStoreSettings(merchantId!);
+      setError(null);
+
+      if (!merchantId) {
+        setError('Merchant profile is not available yet.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await merchantService.getStoreSettings(merchantId);
       if (response.success && response.data) {
-        setSettings({ ...settings, ...response.data });
+        setSettings(prev => ({ ...prev, ...response.data }));
+      } else {
+        setError((response as any).message || 'Unable to load store settings.');
       }
     } catch (error) {
       console.error('Error loading store settings:', error);
+      setError('Unable to load store settings right now.');
     } finally {
       setLoading(false);
     }
@@ -344,6 +359,17 @@ function StoreSettings() {
     );
   }
 
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.loadingText}>{error}</Text>
+        <TouchableOpacity onPress={() => loadMerchantId()} style={styles.retryButton}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -424,6 +450,18 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666',
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#4682B4',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   section: {
     backgroundColor: '#fff',

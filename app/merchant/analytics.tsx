@@ -13,7 +13,7 @@ import type { SalesMetrics, CategoryBreakdown, TopProduct, CustomerInsight, Time
 
 function MerchantAnalytics() {
   const router = useRouter();
-  const { loadMerchantId } = useMerchant();
+  const { merchantId: merchantContextId, loadMerchantId } = useMerchant();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,7 +26,7 @@ function MerchantAnalytics() {
   const [customerInsights, setCustomerInsights] = useState<CustomerInsight | null>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesData[]>([]);
 
-  const merchantId = user?.id || '';
+  const merchantId = user?.merchantId || merchantContextId || '';
 
   const getDateRange = () => {
     const end = new Date();

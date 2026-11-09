@@ -7,6 +7,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 interface User {
   id: string;
+  uid?: string;
+  firebaseUid?: string;
   email: string;
   role: string;
   firstName?: string;
@@ -23,6 +25,7 @@ interface AuthContextType {
   isLoading: boolean;
   token: string | null;
   role: string | null;
+  merchantId: string | null;
   setUser: (user: User | null) => void;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -38,18 +41,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [merchantId, setMerchantId] = useState<string | null>(null);
 
   const refreshAuthState = useCallback(async () => {
     try {
       setIsLoading(true);
       const firebaseUser = auth?.currentUser;
       if (!firebaseUser) {
-        await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole', 'tokenExpiry']);
+        await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole', 'tokenExpiry', 'merchantId']);
         setIsAuthenticated(false);
         setIsEmailVerificationPending(false);
         setUser(null);
         setToken(null);
         setRole(null);
+        setMerchantId(null);
         return;
       }
 
@@ -70,14 +75,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const firebaseToken = await firebaseUser.getIdToken();
       const requestedRole = storedRole || (userData as User | null)?.role;
       let resolvedRole = requestedRole;
+      let normalizedUser = userData as User | null;
       try {
         resolvedRole = await authService.ensureUserProfile(firebaseUser, requestedRole);
+        normalizedUser = await authService.normalizeUserFromFirebase(firebaseUser, resolvedRole, userData || undefined);
+        await AsyncStorage.setItem('userData', JSON.stringify(normalizedUser));
       } catch (error) {
         console.error('Could not synchronize Firebase user with Supabase:', error);
       }
+
+      const nextMerchantId = normalizedUser?.merchantId || null;
       setToken(firebaseToken);
       setRole(resolvedRole);
-      setUser(userData as User | null);
+      setUser(normalizedUser);
+      setMerchantId(nextMerchantId);
       setIsAuthenticated(Boolean(resolvedRole));
       setIsEmailVerificationPending(false);
     } catch (error) {
@@ -87,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setToken(null);
       setRole(null);
+      setMerchantId(null);
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setToken(null);
       setRole(null);
+      setMerchantId(null);
       setIsAuthenticated(false);
       setIsEmailVerificationPending(false);
     } catch (error) {
@@ -134,17 +147,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Register for push notifications once the user is authenticated
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return;
+    const firebaseUid = user?.firebaseUid || user?.uid || user?.id;
+    if (!isAuthenticated || !firebaseUid) return;
 
     const registerPush = async () => {
       try {
-        // Resolve the Supabase internal UUID (users.id) from the Firebase UID
         const { supabase } = await import('../config/supabase');
         const { data } = await supabase
           .from('users')
           .select('id')
-          .eq('firebase_uid', user.id)
-          .single();
+          .eq('firebase_uid', firebaseUid)
+          .maybeSingle();
 
         if (data?.id) {
           const { notificationService } = await import('../services/notificationService');
@@ -178,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         token,
         role,
+        merchantId,
         setUser,
         signOut,
         refreshUser,

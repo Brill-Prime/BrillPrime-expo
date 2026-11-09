@@ -86,9 +86,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
 
         const userData = await authService.getStoredUser();
-        if (!userData?.id) return;
+        const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
+        if (!firebaseUid) return;
 
-        // Import supabase dynamically to avoid issues during app startup
         let supabase;
         try {
           const supabaseModule = await import('../config/supabase');
@@ -98,14 +98,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return;
         }
 
-        // Get user ID from Supabase
-        const { data: users } = await supabase
+        const { data: users, error: userError } = await supabase
           .from('users')
           .select('id')
-          .eq('firebase_uid', userData.id)
-          .single();
+          .eq('firebase_uid', firebaseUid)
+          .maybeSingle();
 
-        if (!users) return;
+        if (userError || !users?.id) return;
 
         // Subscribe to real-time notifications
         const sub = notificationService.subscribeToNotifications(

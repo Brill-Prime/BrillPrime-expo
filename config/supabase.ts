@@ -1,19 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
+import { SUPABASE_CONFIG } from './environment';
 
-// Retrieve Supabase configuration from environment
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = SUPABASE_CONFIG.url.trim();
+const supabaseAnonKey = SUPABASE_CONFIG.anonKey.trim();
 
-// Validation function for Supabase URL
-function validateSupabaseUrl(url: string): { isValid: boolean; error?: string } {
+const validateSupabaseUrl = (url: string): { isValid: boolean; error?: string } => {
   if (!url) {
     return { isValid: false, error: 'Supabase URL is missing' };
   }
 
-  // Allow localhost for development/testing environments
   if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
     return { isValid: true };
   }
@@ -22,67 +19,33 @@ function validateSupabaseUrl(url: string): { isValid: boolean; error?: string } 
     return { isValid: false, error: 'Supabase URL must use HTTPS (except for localhost)' };
   }
 
-  if (!url.includes('.supabase.co')) {
-    return { isValid: false, error: 'Invalid Supabase URL format (should contain .supabase.co)' };
+  if (!url.includes('.supabase.co') && !url.includes('.supabase.') && !url.includes('localhost')) {
+    return { isValid: false, error: 'Invalid Supabase URL format' };
   }
 
   return { isValid: true };
-}
+};
 
-// Validation function for Supabase Anon Key
-function validateSupabaseKey(key: string): { isValid: boolean; error?: string } {
+const validateSupabaseKey = (key: string): { isValid: boolean; error?: string } => {
   if (!key) {
-    return { isValid: false, error: 'Supabase Anon Key is missing' };
+    return { isValid: false, error: 'Supabase anon key is missing' };
   }
 
-  // Supabase anon keys are typically JWT tokens that start with 'eyJ'
-  if (!key.startsWith('eyJ')) {
-    return { isValid: false, error: 'Supabase Anon Key appears to be invalid (should be a JWT token)' };
-  }
-
-  if (key.length < 100) {
-    return { isValid: false, error: 'Supabase Anon Key is too short to be valid' };
+  if (!key.startsWith('eyJ') && !key.startsWith('sb_')) {
+    return { isValid: false, error: 'Supabase anon key does not look valid' };
   }
 
   return { isValid: true };
-}
+};
 
-// Validate configuration
 const urlValidation = validateSupabaseUrl(supabaseUrl);
 const keyValidation = validateSupabaseKey(supabaseAnonKey);
+export const isSupabaseConfigured = urlValidation.isValid && keyValidation.isValid;
 
-// Log validation results
-if (!urlValidation.isValid || !keyValidation.isValid) {
-  console.error('❌ Supabase Configuration Error:');
+const safeUrl = isSupabaseConfigured ? supabaseUrl : 'https://example.supabase.co';
+const safeAnonKey = isSupabaseConfigured ? supabaseAnonKey : 'placeholder-key';
 
-  if (!urlValidation.isValid) {
-    console.error(`  - URL: ${urlValidation.error}`);
-  }
-
-  if (!keyValidation.isValid) {
-    console.error(`  - Anon Key: ${keyValidation.error}`);
-  }
-
-  // Provide specific guidance for localhost URLs
-  if (supabaseUrl.startsWith('http://localhost') || supabaseUrl.startsWith('http://127.0.0.1')) {
-    console.warn('⚠️  Using localhost Supabase URL - this is typically for local development/testing only');
-    console.warn('   For production, ensure you use a proper Supabase project URL with HTTPS');
-  } else {
-    console.error('\n📋 To fix this:');
-    console.error('  1. Copy .env.example to .env');
-    console.error('  2. Add EXPO_PUBLIC_SUPABASE_URL with your Supabase project URL');
-    console.error('  3. Add EXPO_PUBLIC_SUPABASE_ANON_KEY with your Supabase anon/public key');
-    console.error('  4. Find these values in your Supabase project settings');
-    console.error('\n🔗 Supabase Dashboard: https://supabase.com/dashboard/project/_/settings/api\n');
-  }
-}
-
-// Create Supabase client with validated configuration
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  accessToken: async () => {
-    const firebaseUser = auth?.currentUser;
-    return firebaseUser ? firebaseUser.getIdToken() : supabaseAnonKey;
-  },
+export const supabase = createClient(safeUrl, safeAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -91,27 +54,35 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'x-client-info': 'brillprime-app',
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Content-Type': 'application/json',
-      'apikey': supabaseAnonKey,
+      apikey: safeAnonKey,
     },
+  },
+  accessToken: async () => {
+    const firebaseUser = auth?.currentUser;
+    if (!firebaseUser) {
+      return isSupabaseConfigured ? safeAnonKey : null;
+    }
+
+    try {
+      return await firebaseUser.getIdToken();
+    } catch (error) {
+      console.warn('Could not refresh Firebase token for Supabase:', error);
+      return isSupabaseConfigured ? safeAnonKey : null;
+    }
   },
 });
 
-// Export validation status for use in app
-export const isSupabaseConfigured = urlValidation.isValid && keyValidation.isValid;
-
-// Log success or provide guidance
-if (isSupabaseConfigured) {
+if (!isSupabaseConfigured) {
+  console.warn('⚠️ Supabase is not configured. Backend requests and realtime subscriptions are disabled until EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.');
+} else {
   console.log('✅ Supabase client initialized successfully');
-  console.log(`🔷 URL: ${supabaseUrl}`);
-  console.log(`🔑 Key: ${supabaseAnonKey.substring(0, 20)}...`);
 
-  // Keep RLS and Realtime claims aligned with the signed-in Firebase user.
   if (auth) {
     onAuthStateChanged(auth, (user) => {
       if (!user) {
-        supabase.realtime.setAuth(supabaseAnonKey);
+        supabase.realtime.setAuth(safeAnonKey);
         return;
       }
 
@@ -121,27 +92,22 @@ if (isSupabaseConfigured) {
     });
   }
 
-  // Add global error handler for broadcast errors
   const originalBroadcast = supabase.channel.bind(supabase);
-  supabase.channel = function(...args: any[]) {
+  supabase.channel = function (...args: any[]) {
     const channel = originalBroadcast(...args);
-
-    // Suppress known constraint errors that don't affect functionality
     const originalSubscribe = channel.subscribe;
-    channel.subscribe = function(callback?: any) {
+    channel.subscribe = function (callback?: any) {
       return originalSubscribe.call(this, (status: string, err?: any) => {
         if (err?.message?.includes('no unique or exclusion constraint')) {
-          // Log but don't show to user - this is handled by unique constraints now
           console.debug('Supabase constraint info:', err.message);
         } else if (err) {
-          console.error('Supabase broadcast error:', err.message || err);
+          console.warn('Supabase realtime warning:', err.message || err);
         }
-        if (callback) callback(status, err);
+        if (callback) {
+          callback(status, err);
+        }
       });
     };
-
     return channel;
   };
-} else {
-  console.warn('⚠️ Supabase client created with invalid configuration - features may not work correctly');
 }

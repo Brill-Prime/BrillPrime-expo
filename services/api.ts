@@ -26,13 +26,11 @@ class ApiClient {
   private readonly inFlightGets = new Map<string, Promise<ApiResponse<any>>>();
 
   constructor() {
-    // Serverless architecture: Firebase for Auth, Supabase for all backend logic
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl) {
-      console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not set');
-      this.baseURL = 'https://lkfprjjlqmtpamukoatl.supabase.co'; // Fallback
-    } else {
-      this.baseURL = supabaseUrl;
+    this.baseURL = ENV.apiBaseUrl || '';
+
+    if (!this.baseURL) {
+      console.warn('⚠️ API client has no configured Supabase URL; requests are disabled until EXPO_PUBLIC_SUPABASE_URL is set.');
+      return;
     }
 
     console.log('🔷 Supabase URL:', this.baseURL);
@@ -118,6 +116,14 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      if (!this.baseURL) {
+        return {
+          success: false,
+          error: 'Supabase is not configured. Please configure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.',
+          message: 'Supabase is not configured. Please configure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.',
+        };
+      }
+
       console.log(`🌐 API Request: ${this.baseURL}${endpoint}`);
       const startTime = Date.now();
 
