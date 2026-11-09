@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { AlertProvider, useAlert } from '../../components/AlertProvider';
 import ErrorBoundary from '../../components/ErrorBoundary';
-import Map, { Marker, MAP_PROVIDER } from '../../components/Map';
+import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
 import { UserMarker, MerchantMarker, DriverMarker } from '../../components/MapMarkers';
@@ -1018,7 +1018,7 @@ function ConsumerHomeContent() {
         {/* Map Container */}
         <Map
           ref={mapRef}
-          provider={MAP_PROVIDER}
+          provider={PROVIDER_GOOGLE}
           style={styles.map}
           region={region}
           onRegionChangeComplete={debouncedHandleRegionChange}

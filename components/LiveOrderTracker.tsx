@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import MapView, { MAP_PROVIDER, Marker } from './Map';
+import MapView, { PROVIDER_GOOGLE, Marker } from './Map';
 import CommunicationModal from './CommunicationModal';
 import { locationService } from '../services/locationService';
 import { orderService } from '../services/orderService';
@@ -336,7 +336,7 @@ export default function LiveOrderTracker({ orderId, userRole, onClose }: LiveOrd
 
       {/* Map */}
       <MapView
-        provider={MAP_PROVIDER}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
         showsUserLocation={userRole === 'driver'}

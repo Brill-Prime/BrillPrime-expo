@@ -21,7 +21,7 @@ import { useAlert } from "../../components/AlertProvider";
 import { useAuth } from "../../contexts/AuthContext";
 import { PerformanceOptimizer } from "../../utils/performance";
 import { locationService } from "../../services/locationService";
-import Map, { Marker, MAP_PROVIDER } from "../../components/Map";
+import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
 import { calculateETA as calculateETAGoogle } from "../../utils/googleMaps";
 
 // Real-time Map component
@@ -98,7 +98,7 @@ const RealTimeMapComponent = React.memo(({ region,
     <Map
       ref={mapRef}
       style={styles.map}
-      provider={MAP_PROVIDER}
+      provider={PROVIDER_GOOGLE}
       region={region}
       showsUserLocation={false}
       showsMyLocationButton={false}

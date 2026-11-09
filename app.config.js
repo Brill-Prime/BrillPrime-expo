@@ -53,26 +53,14 @@ export default {
     "expo-router",
     "expo-font",
     "expo-web-browser",
-    [
-      "@rnmapbox/maps",
-      {
-        RNMapboxMapsVersion: "11.33.0"
-      }
-    ],
-    [
-      "expo-location",
-      {
-        locationWhenInUsePermission: "Allow BrillPrime to show your location on the map and find nearby merchants."
-      }
-    ],
     AndroidConfig.PredictiveBackGesture.withPredictiveBackGesture,
     [
       "expo-build-properties",
       {
         android: {
-          compileSdkVersion: 36,
+          compileSdkVersion: 34,
           targetSdkVersion: 34,
-          buildToolsVersion: "36.0.0"
+          buildToolsVersion: "34.0.0"
           // Removed newArchEnabled: false to resolve warning
         },
         ios: {
@@ -109,7 +97,6 @@ export default {
     // API configuration
     apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000', 10),
     // Google Maps configuration
-    googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
-    mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
+    googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
   }
 };

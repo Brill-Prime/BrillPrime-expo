@@ -1,36 +1,93 @@
-# Mobile Mapbox and Google Maps Services
+# Google Maps Setup Guide
 
-BrillPrime uses **Mapbox for Android and iOS maps**. The web map remains Google Maps, and Google Places/directions integrations may still use the Google Maps API key.
+This app now uses **Google Maps for all platforms** (Web, iOS, Android).
 
-## Configure the Mapbox token
+## Required Configuration
 
-1. In your Mapbox account, create a **public** access token beginning with `pk.`.
-2. Add it to your local `.env` file:
+### 1. Get Google Maps API Key
 
-   ```dotenv
-   EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.ey...
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the following APIs:
+   - Maps SDK for Android
+   - Maps SDK for iOS
+   - Maps JavaScript API
+   - Places API (if using place search features)
+   - Directions API (if using routing features)
+4. Go to **Credentials** and create an API key
+5. Restrict the API key (recommended):
+   - For Android: Add your app's package name and SHA-1 certificate fingerprint
+   - For iOS: Add your app's bundle identifier
+   - For Web: Add your domain(s)
+
+### 2. Add API Key to Environment Variables
+
+Add the following to your `.env` file:
+
+```bash
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
+```
+
+**Important:** The API key must be prefixed with `EXPO_PUBLIC_` to be accessible in the app.
+
+### 3. Platform-Specific Configuration
+
+#### Android
+The API key is automatically configured in `AndroidManifest.xml` via the app.config.js.
+
+#### iOS
+The API key is automatically configured in Info.plist via the app.config.js.
+
+#### Web
+The API key is loaded from environment variables and used in the WebView-based Google Maps implementation.
+
+## Verification
+
+After adding your API key:
+
+1. Restart the development server:
+   ```bash
+   npm start
    ```
 
-   Do not use a secret `sk.` token in the app or in an `EXPO_PUBLIC_` variable. The public token is bundled into the mobile app; restrict it in Mapbox to the scopes and application usage your project needs.
-3. Rebuild and reinstall the Android or iOS development app:
+2. Check the console for any Google Maps errors
 
-   ```powershell
-   npx expo run:android
-   # or
-   npx expo run:ios
-   ```
-
-   Start Metro for that build with `npx expo start --dev-client`. Mapbox includes native code and cannot be added to Expo Go or an already-installed development build by hot reload alone.
-
-   If the app is opened in Expo Go or an older development build, native Mapbox is unavailable. The app keeps its routes usable by temporarily rendering the native Google Maps fallback; install a newly built app to use Mapbox.
-
-## Google Maps API key
-
-Keep `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` configured if the app uses the Google Maps web view, Places search, or Google directions services. It is not the native Android/iOS map renderer.
+3. Test on each platform:
+   - Web: Should show Google Maps in browser
+   - Android: Run `npm run android`
+   - iOS: Run `npm run ios`
 
 ## Troubleshooting
 
-- **Mapbox configuration error:** confirm `.env` has the `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN` variable and that its value starts with `pk.`; restart Expo and rebuild the native app.
-- **Mapbox native code not available:** install the newly rebuilt development app, not Expo Go or an older APK. Until then, the app uses the native Google Maps fallback.
-- **Map tiles do not load:** check that the token is active, has the required public scopes, and has not been restricted in a way that blocks the app.
-- **Google Places or web maps fail:** separately check the Google API key and enable the required Google APIs for those features.
+### Map not loading on Web
+- Verify `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is set in `.env`
+- Check browser console for API key errors
+- Ensure JavaScript API is enabled in Google Cloud Console
+
+### Map not loading on Android
+- Verify API key in `.env`
+- Ensure Maps SDK for Android is enabled
+- Check that package name matches in Google Cloud Console restrictions
+
+### Map not loading on iOS
+- Verify API key in `.env`
+- Ensure Maps SDK for iOS is enabled
+- Check that bundle identifier matches in Google Cloud Console restrictions
+
+## Migration from Leaflet
+
+All Leaflet dependencies have been removed:
+- ❌ `leaflet` package removed
+- ❌ `react-leaflet` package removed
+- ❌ `@types/leaflet` package removed
+- ✅ Using `react-native-maps` for native platforms
+- ✅ Using Google Maps JavaScript API for web
+
+## Cost Considerations
+
+Google Maps API has a free tier with monthly credits. Monitor your usage in the Google Cloud Console to avoid unexpected charges.
+
+For development, consider:
+- Setting daily quotas
+- Using API key restrictions
+- Monitoring usage in Google Cloud Console

@@ -22,25 +22,3 @@ allprojects {
 
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
-// @generated begin @rnmapbox/maps-v2-maven - expo prebuild (DO NOT MODIFY) sync-d4ccbfdff48fdba3138b02a8ba41b9722af001d8
-
-allprojects {
-  repositories {
-    maven {
-      url 'https://api.mapbox.com/downloads/v2/releases/maven'
-      // Authentication is no longer required as per Mapbox's removal of download token requirement
-      // See: https://github.com/mapbox/mapbox-maps-flutter/issues/775
-      // Keeping this as optional for backward compatibility
-      def token = project.properties['MAPBOX_DOWNLOADS_TOKEN'] ?: System.getenv('RNMAPBOX_MAPS_DOWNLOAD_TOKEN')
-      if (token) {
-        authentication { basic(BasicAuthentication) }
-        credentials {
-          username = 'mapbox'
-          password = token
-        }
-      }
-    }
-  }
-}
-
-// @generated end @rnmapbox/maps-v2-maven

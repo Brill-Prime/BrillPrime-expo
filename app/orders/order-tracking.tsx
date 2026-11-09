@@ -16,7 +16,7 @@ import { supabase } from '../../config/supabase';
 import { orderService } from '../../services/orderService';
 import { locationService } from '../../services/locationService';
 import { routeService } from '../../services/routeService';
-import Map, { Marker, MAP_PROVIDER } from '../../components/Map';
+import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 
 interface OrderStatus {
   status: string;
@@ -380,7 +380,7 @@ export default function OrderTrackingScreen() {
               {/* Map surface */}
               <View style={styles.mapSurface}>
                 <Map
-                  provider={MAP_PROVIDER}
+                  provider={PROVIDER_GOOGLE}
                   style={styles.inlineMap}
                   region={mapRegion}
                   zoomEnabled={true}

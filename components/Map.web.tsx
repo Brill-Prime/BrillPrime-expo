@@ -591,10 +591,8 @@ const styles = StyleSheet.create({
 
 // Export Marker component for compatibility (handled internally in Google Maps)
 export const Marker: React.FC<any> = () => null;
-export const Polyline: React.FC<any> = () => null;
 
 // Provider constant for web (Google Maps)
 export const PROVIDER_GOOGLE = 'google';
-export const MAP_PROVIDER = 'google';
 
 export default MapWeb;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { MAP_PROVIDER, Marker } from '../../components/Map';
+import MapView, { PROVIDER_GOOGLE, Marker } from '../../components/Map';
 import { apiClient } from '../../services/api';
 import { authService } from '../../services/authService';
 import { locationService } from '../../services/locationService';
@@ -67,7 +67,7 @@ export default function StoreLocator() {
 
       {/* Map */}
       <MapView
-        provider={MAP_PROVIDER}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
         showsUserLocation={true}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import Map, { Marker, Polyline, MAP_PROVIDER } from './Map';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import Map, { Marker, PROVIDER_GOOGLE } from './Map';
 import { Ionicons } from '@expo/vector-icons';
 import { placesService, Place, PlaceCategory } from '../services/placesService';
 import { routeService, Route } from '../services/routeService';
@@ -141,6 +141,11 @@ const EnhancedMap: React.FC<EnhancedMapProps> = ({
   const routePolyline = useMemo(() => {
     if (!route || !route.points || route.points.length === 0) return null;
 
+    if (Platform.OS === 'web') {
+      return null;
+    }
+
+    const Polyline = require('react-native-maps').Polyline;
     return (
       <Polyline
         coordinates={route.points}
@@ -155,7 +160,7 @@ const EnhancedMap: React.FC<EnhancedMapProps> = ({
   return (
     <View style={[styles.container, style]}>
       <Map
-        provider={MAP_PROVIDER}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
         onRegionChangeComplete={onRegionChangeComplete}
