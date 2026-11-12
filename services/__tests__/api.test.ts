@@ -1,9 +1,22 @@
 jest.mock('../../config/environment', () => ({
-  ENV: { apiTimeout: 1000, maxRetries: 1 },
+  ENV: {
+    apiBaseUrl: 'https://test-project.supabase.co',
+    apiTimeout: 1000,
+    maxRetries: 1,
+  },
+  SUPABASE_CONFIG: {
+    url: 'https://test-project.supabase.co',
+    anonKey: 'test-anon-key',
+  },
 }));
 
 jest.mock('../../config/firebase', () => ({
-  auth: { currentUser: null },
+  auth: {
+    currentUser: {
+      uid: 'firebase-user-id',
+      getIdToken: jest.fn().mockResolvedValue('firebase-id-token'),
+    },
+  },
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -40,6 +53,12 @@ describe('ApiClient request reliability', () => {
 
     expect(result.success).toBe(false);
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('https://test-project.supabase.co/missing');
+    const requestHeaders = new Headers(options.headers);
+    expect(requestHeaders.get('apikey')).toBe('test-anon-key');
+    expect(requestHeaders.get('authorization')).toBe('Bearer firebase-id-token');
+    expect(requestHeaders.has('x-firebase-uid')).toBe(false);
   });
 
   it('retries a transient GET with a fresh abort signal and a bounded retry count', async () => {
@@ -69,11 +88,10 @@ describe('ApiClient request reliability', () => {
 
     const first = apiClient.get('/same');
     const second = apiClient.get('/same');
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(resolveFetch).toBeDefined();
     resolveFetch?.(makeResponse(200, '{"value":1}'));
     const [firstResult, secondResult] = await Promise.all([first, second]);
     expect(firstResult).toEqual(secondResult);

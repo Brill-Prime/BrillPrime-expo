@@ -54,7 +54,7 @@ serve(async (req) => {
     // Fetch all active merchants
     const { data: merchants, error } = await supabaseClient
       .from('merchants')
-      .select('*')
+      .select('id, user_id, business_name, business_type, address, city, state, country, location, operating_hours, is_open, rating, total_reviews, is_verified, is_active, created_at, updated_at')
       .eq('is_active', true);
 
     if (error) throw error;
@@ -72,11 +72,36 @@ serve(async (req) => {
     };
 
     // Filter merchants by distance
-    const nearbyMerchants = merchants?.filter(merchant => {       
-      if (merchant.latitude == null || merchant.longitude == null) return false;
-      const distance = calculateDistance(lat, lng, merchant.latitude, merchant.longitude);
-      return distance <= radius;
-    }) || [];
+    const requestedType = url.searchParams.get('type')?.toLowerCase();
+    const nearbyMerchants = (merchants || []).flatMap((merchant) => {
+      let coordinates: unknown;
+      if (merchant.location && typeof merchant.location === 'object') {
+        coordinates = merchant.location.coordinates;
+      } else if (typeof merchant.location === 'string') {
+        try {
+          coordinates = JSON.parse(merchant.location).coordinates;
+        } catch {
+          const point = /^POINT\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)$/i.exec(merchant.location);
+          if (point) coordinates = [Number(point[1]), Number(point[2])];
+        }
+      }
+
+      if (!Array.isArray(coordinates) || coordinates.length < 2) return [];
+      const longitude = Number(coordinates[0]);
+      const latitude = Number(coordinates[1]);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+      if (requestedType && merchant.business_type?.toLowerCase() !== requestedType) return [];
+
+      const distance = calculateDistance(lat, lng, latitude, longitude);
+      if (distance > radius) return [];
+      return [{
+        ...merchant,
+        name: merchant.business_name,
+        latitude,
+        longitude,
+        distance,
+      }];
+    });
 
     return withCors(
       new Response(JSON.stringify({ 

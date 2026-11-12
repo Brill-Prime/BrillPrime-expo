@@ -6,8 +6,8 @@ const config = getDefaultConfig(__dirname);
 config.watchFolders = [__dirname];
 
 config.resolver.blockList = [
-  /\.local\/.*/,
-  /.*\/__tests__\/.*/,
+  ...config.resolver.blockList,
+  /[\\/]\.local[\\/].*/,
   /.*\.test\.[jt]sx?$/,
   /.*\.spec\.[jt]sx?$/,
 ];

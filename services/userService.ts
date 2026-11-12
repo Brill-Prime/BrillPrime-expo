@@ -86,7 +86,11 @@ class UserService {
     locationServices: boolean;
     emailUpdates: boolean;
   }): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.put<{ message: string }>('/api/user/settings', settings);
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
+    return apiClient.put<{ message: string }>('/functions/v1/account/settings', settings, {
+      Authorization: `Bearer ${token}`,
+    });
   }
 
   // Get user settings
@@ -95,12 +99,20 @@ class UserService {
     locationServices: boolean;
     emailUpdates: boolean;
   }>> {
-    return apiClient.get('/api/user/settings');
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
+    return apiClient.get('/functions/v1/account/settings', {
+      Authorization: `Bearer ${token}`,
+    });
   }
 
   // Delete user account
   async deleteAccount(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete<{ message: string }>('/api/user/account');
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
+    return apiClient.delete<{ message: string }>('/functions/v1/account/user/account', {
+      Authorization: `Bearer ${token}`,
+    });
   }
 
   // Change password
@@ -109,7 +121,15 @@ class UserService {
     newPassword: string;
     confirmPassword: string;
   }): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.put<{ message: string }>('/api/user/password', data);
+    if (data.newPassword !== data.confirmPassword) {
+      return { success: false, error: 'Password confirmation does not match.' };
+    }
+    try {
+      await authService.changePassword(data.currentPassword, data.newPassword);
+      return { success: true, data: { message: 'Password changed successfully' } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to change password' };
+    }
   }
 
   // Upload profile photo
@@ -166,14 +186,13 @@ class UserService {
         .getPublicUrl(filePath);
 
       // Update user record with new image URL
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ profile_image_url: publicUrl })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        return { success: false, error: updateError.message };
+      const updateResponse = await apiClient.put<User>(
+        '/functions/v1/profile',
+        { profileImageUrl: publicUrl },
+        { Authorization: `Bearer ${token}` },
+      );
+      if (!updateResponse.success) {
+        return { success: false, error: updateResponse.error || 'Failed to update profile photo URL' };
       }
 
       return { success: true, data: { profileImageUrl: publicUrl } };
@@ -185,7 +204,11 @@ class UserService {
 
   // Update profile with photo URL (for direct URL updates)
   async updateProfilePhoto(profileImageUrl: string): Promise<ApiResponse<User>> {
-    return apiClient.put<User>('/api/auth/profile', { profileImageUrl });
+    const token = await authService.getToken();
+    if (!token) return { success: false, error: 'Authentication required' };
+    return apiClient.put<User>('/functions/v1/profile', { profileImageUrl }, {
+      Authorization: `Bearer ${token}`,
+    });
   }
 
   // Update privacy settings
@@ -196,46 +219,11 @@ class UserService {
     }
 
     try {
-      const user = await authService.getStoredUser();
-      if (!user || !user.id) {
-        return { success: false, error: 'User not found' };
-      }
-
-      const { supabase } = await import('../config/supabase');
-      
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', user.id)
-        .single();
-
-      if (!userData) {
-        return { success: false, error: 'User not found in database' };
-      }
-
-      const { error } = await supabase
-        .from('user_privacy_settings')
-        .upsert({
-          user_id: userData.id,
-          data_collection: settings.dataCollection,
-          analytics: settings.analytics,
-          marketing_emails: settings.marketingEmails,
-          location_tracking: settings.locationTracking,
-          profile_visibility: settings.profileVisibility,
-          activity_status: settings.activityStatus,
-          order_history: settings.orderHistory,
-          share_with_partners: settings.shareWithPartners,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
-
-      if (error) {
-        console.error('Privacy settings update error:', error);
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: { message: 'Privacy settings updated successfully' } };
+      return await apiClient.put<{ message: string }>(
+        '/functions/v1/account/privacy-settings',
+        settings,
+        { Authorization: `Bearer ${token}` },
+      );
     } catch (error: any) {
       console.error('Privacy settings update error:', error);
       return { success: false, error: error.message || 'Failed to update privacy settings' };

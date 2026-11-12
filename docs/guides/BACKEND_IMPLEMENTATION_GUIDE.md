@@ -726,7 +726,7 @@ Response: {
 - ✅ POST /api/auth/register
 - ✅ POST /api/auth/login
 - ✅ POST /api/auth/social-login
-- ✅ POST /api/auth/logout
+- ✅ Firebase client sign-out (no backend logout endpoint required)
 - ✅ POST /api/auth/refresh
 - ✅ POST /api/auth/verify-email
 - ✅ POST /api/auth/resend-otp

@@ -5,7 +5,97 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="645a416c-3704-4cf2-8fc0-70e27b8f7a42" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.firebase/.graphqlrc" beforeDir="false" afterPath="$PROJECT_DIR$/.firebase/.graphqlrc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/chat/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/chat/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/commodity/commodities.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/commodity/commodities.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/consumer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/driver.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/driver.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/merchant.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/merchant.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/driver/earnings-details.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/driver/earnings-details.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/driver/vehicle-management.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/driver/vehicle-management.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/home/consumer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/consumer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/home/driver.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/driver.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/home/merchant.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/home/merchant.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/kyc/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/kyc/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/merchant/analytics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/merchant/analytics.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/merchant/customer-communication.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/merchant/customer-communication.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/merchant/driver-assignment.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/merchant/driver-assignment.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/merchant/inventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/merchant/inventory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/merchant/store-settings.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/merchant/store-settings.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/cancel-order.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/cancel-order.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/change-address.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/change-address.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/order-details.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/order-details.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/orders/report-issue.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/orders/report-issue.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/search/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/search/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/transactions/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/transactions/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/environment.ts" beforeDir="false" afterPath="$PROJECT_DIR$/config/environment.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/supabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/config/supabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contexts/MerchantContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/MerchantContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/implicit.gql" beforeDir="false" afterPath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/implicit.gql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/input.gql" beforeDir="false" afterPath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/input.gql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/mutation.gql" beforeDir="false" afterPath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/mutation.gql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/query.gql" beforeDir="false" afterPath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/query.gql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/relation.gql" beforeDir="false" afterPath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/main/relation.gql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/prelude.gql" beforeDir="false" afterPath="$PROJECT_DIR$/dataconnect/.dataconnect/schema/prelude.gql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/api-integration-complete.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/api-integration-complete.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/guides/BACKEND_IMPLEMENTATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/guides/BACKEND_IMPLEMENTATION_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/migrations/SUPABASE_MIGRATION_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/metro.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/metro.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/__tests__/api.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/__tests__/api.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/adminService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/adminService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/analyticsService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/analyticsService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/apiEndpoints.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/apiEndpoints.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/cartService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/cartService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/commodityService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/commodityService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/kycService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/kycService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/locationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/locationService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/merchantAnalyticsService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/merchantAnalyticsService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/merchantOrderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/merchantOrderService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/merchantService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/merchantService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/notificationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/notificationService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/orderService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/paymentService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/paymentService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/profileService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/profileService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/roleManagementService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/roleManagementService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/typingIndicatorService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/typingIndicatorService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/userService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-admin-generated/esm/index.esm.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-admin-generated/esm/index.esm.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-admin-generated/index.cjs.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-admin-generated/index.cjs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-admin-generated/index.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-admin-generated/index.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-admin-generated/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-admin-generated/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/.guides/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/.guides/config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/.guides/setup.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/.guides/setup.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/.guides/usage.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/.guides/usage.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/esm/index.esm.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/esm/index.esm.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/index.cjs.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/index.cjs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/index.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/index.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/react/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/react/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/react/esm/index.esm.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/react/esm/index.esm.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/react/index.cjs.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/react/index.cjs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/react/index.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/react/index.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataconnect-generated/react/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataconnect-generated/react/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/DEPLOYMENT_INSTRUCTIONS.md" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/DEPLOYMENT_INSTRUCTIONS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/config.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/driver-locations.sql" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/driver-locations.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/cart-add/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/cart-add/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/cart-delete/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/cart-delete/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/cart-get/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/cart-get/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/cart-update/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/cart-update/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/create-order/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/create-order/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/merchants-nearby/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/merchants-nearby/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/profile/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/profile/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/functions/user-sync/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/functions/user-sync/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/realtime.sql" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/realtime.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/schema.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supabase/transactions.sql" beforeDir="false" afterPath="$PROJECT_DIR$/supabase/transactions.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,26 +131,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;CidrDebugProfileConversion&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;com.google.services.firebase.aqiPopupShown&quot;: &quot;true&quot;,
-    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;Working-copy&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/USER/AndroidStudioProjects/BrillPrime-expo&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;templates.modelproviders.configurable&quot;,
-    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CidrDebugProfileConversion": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "com.google.services.firebase.aqiPopupShown": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "Working-copy",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/USER/AndroidStudioProjects/BrillPrime-expo",
+    "settings.editor.selected.configurable": "studioLabs",
+    "show.migrate.to.gradle.popup": "false"
   }
-}</component>
+}]]></component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">

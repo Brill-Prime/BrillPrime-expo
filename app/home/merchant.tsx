@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
-  StatusBar,
-  ScrollView,
-  FlatList
+  StatusBar
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +17,10 @@ import * as Location from 'expo-location';
 import QRScannerIcon from '../../components/QRScannerIcon';
 import SimpleArrowIcon from '../../components/SimpleArrowIcon';
 import { locationService } from '../../services/locationService';
+import { useMerchant } from '../../contexts/MerchantContext';
+import { merchantService } from '../../services/merchantService';
+import { merchantOrderService } from '../../services/merchantOrderService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,21 +43,24 @@ const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
 export default function MerchantHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
+  const { signOut } = useAuth();
+  const { merchantId, isLoading: merchantIdLoading } = useMerchant();
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("Merchant");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [merchantData, setMerchantData] = useState({
-    userId: "MER123456",
-    businessName: "Prime Merchant",
-    category: "General Store",
-    address: "Jahi, Abuja",
-    status: "Open",
-    activeOrders: 24,
-    todaysSales: 45000,
-    rating: 4.8
+    businessName: "",
+    category: "",
+    address: "",
+    status: "",
+    activeOrders: null as number | null,
+    todaysSales: null as number | null,
+    rating: null as number | null,
   });
+  const [merchantDataLoading, setMerchantDataLoading] = useState(true);
+  const [merchantDataError, setMerchantDataError] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(-280)).current;
   const [region, setRegion] = useState({
     latitude: 9.0765, // Abuja, Nigeria
@@ -63,13 +68,6 @@ export default function MerchantHome() {
     latitudeDelta: 5.0, // Start with wider view
     longitudeDelta: 5.0,
   });
-  const [recentOrders] = useState([
-    { id: "ORD1234", customer: "John Doe", items: 2, status: "Processing" },
-    { id: "ORD1233", customer: "Jane Smith", items: 1, status: "Delivered" },
-    { id: "ORD1232", customer: "Alex Johnson", items: 3, status: "Cancelled" },
-    { id: "ORD1231", customer: "Sarah Wilson", items: 1, status: "Processing" },
-    { id: "ORD1230", customer: "Mike Brown", items: 4, status: "Delivered" },
-  ]);
   const isMountedRef = useRef(true);
   const mapRef = useRef<any>(null);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
@@ -89,30 +87,83 @@ export default function MerchantHome() {
     };
   }, []);
 
-  const loadUserData = useCallback(async () => {
+  const loadUserData = async () => {
     try {
       const [email, name] = await Promise.all([
         AsyncStorage.getItem("userEmail"),
         AsyncStorage.getItem("userName")
       ]);
 
-      setUserEmail(email || "merchant@brillprime.com");
-      setUserName(name || "Merchant");
+      if (isMountedRef.current) {
+        setUserEmail(email || "");
+        setUserName(name || "Merchant");
+      }
 
-      // Load notification count
-      await loadNotificationCount();
+      void loadNotificationCount();
     } catch (error) {
       console.error("Error loading user data:", error);
-      setUserEmail("merchant@brillprime.com");
-      setUserName("Merchant");
+      if (isMountedRef.current) {
+        setUserEmail("");
+        setUserName("Merchant");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  };
+
+  const loadMerchantData = useCallback(async () => {
+    if (!merchantId) {
+      setMerchantDataError('Merchant profile is unavailable.');
+      setMerchantDataLoading(false);
+      return;
+    }
+
+    setMerchantDataLoading(true);
+    setMerchantDataError(null);
+    const [profile, settings, stats] = await Promise.all([
+      merchantService.getMerchantById(merchantId),
+      merchantService.getStoreSettings(merchantId),
+      merchantOrderService.getOrderStats(),
+    ]);
+
+    if (!profile || !settings.success || !settings.data || !stats.success || !stats.stats) {
+      setMerchantDataError('Merchant details and sales could not be loaded.');
+      setMerchantDataLoading(false);
+      return;
+    }
+
+    setMerchantData({
+      businessName: profile.name,
+      category: profile.business_type || '',
+      address: profile.address || '',
+      status: settings.data.isOpen ? 'Open' : 'Closed',
+      activeOrders:
+        stats.stats.pending + stats.stats.accepted + stats.stats.preparing +
+        stats.stats.ready + stats.stats.in_transit,
+      todaysSales: stats.stats.total_revenue_today,
+      rating: Number(profile.rating) || 0,
+    });
+    setMerchantDataLoading(false);
+  }, [merchantId]);
+
+  useEffect(() => {
+    if (merchantIdLoading) return;
+    void loadMerchantData();
+    if (!merchantId) return;
+
+    const subscription = merchantOrderService.subscribeToOrders(merchantId, () => {
+      void loadMerchantData();
+    });
+    return () => subscription.unsubscribe();
+  }, [loadMerchantData, merchantId, merchantIdLoading]);
 
   const loadNotificationCount = useCallback(async () => {
     try {
       const { notificationService } = await import("../../services/notificationService");
       const response = await notificationService.getUnreadCount();
-      if (response.success && response.data) {
+      if (isMountedRef.current && response.success && response.data) {
         setUnreadNotifications(response.data.count);
       }
     } catch (error) {
@@ -262,7 +313,7 @@ export default function MerchantHome() {
       "Are you sure you want to sign out?",
       async () => {
         try {
-          await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+          await signOut();
           router.replace("/");
           showSuccess("Signed Out", "You have been successfully signed out.");
         } catch (error) {
@@ -272,31 +323,6 @@ export default function MerchantHome() {
       }
     );
   };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Processing":
-        return "#FFA500";
-      case "Delivered":
-        return "#28A745";
-      case "Cancelled":
-        return "#DC3545";
-      default:
-        return "#666";
-    }
-  };
-
-  const renderOrderItem = ({ item }: { item: any }) => (
-    <View style={styles.orderItem}>
-      <View style={styles.orderInfo}>
-        <Text style={styles.orderId}>#{item.id}</Text>
-        <Text style={styles.orderCustomer}>{item.customer} • {item.items} items</Text>
-      </View>
-      <Text style={[styles.orderStatus, { color: getStatusColor(item.status) }]}>
-        {item.status}
-      </Text>
-    </View>
-  );
 
   if (isLoading) {
     return (
@@ -394,38 +420,48 @@ export default function MerchantHome() {
           <Ionicons name="business" size={20} color="white" />
         </View>
         <View style={styles.merchantInfo}>
-          <Text style={styles.merchantName}>{merchantData.businessName}</Text>
-          <Text style={styles.merchantAddress}>{merchantData.address}</Text>
+          <Text style={styles.merchantName}>
+            {merchantData.businessName || (merchantDataLoading ? 'Loading merchant…' : 'Merchant profile unavailable')}
+          </Text>
+          <Text style={styles.merchantAddress}>
+            {merchantData.address || (merchantDataLoading ? 'Loading address…' : 'Address unavailable')}
+          </Text>
         </View>
       </View>
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{merchantData.activeOrders}</Text>
+          <Text style={styles.statNumber}>
+            {merchantDataLoading ? '…' : merchantData.activeOrders ?? '—'}
+          </Text>
           <Text style={styles.statLabel}>Active Orders</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>₦{(merchantData.todaysSales / 1000).toFixed(0)}K</Text>
+          <Text style={styles.statNumber}>
+            {merchantDataLoading || merchantData.todaysSales === null
+              ? '—'
+              : `₦${(merchantData.todaysSales / 1000).toFixed(0)}K`}
+          </Text>
           <Text style={styles.statLabel}>Today's Sales</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{merchantData.rating}</Text>
+          <Text style={styles.statNumber}>
+            {merchantDataLoading || merchantData.rating === null ? '—' : merchantData.rating.toFixed(1)}
+          </Text>
           <Text style={styles.statLabel}>Rating</Text>
         </View>
       </View>
-
-      {/* Recent Orders List */}
-      <View style={styles.orderListContainer}>
-        <Text style={styles.orderListTitle}>Recent Orders</Text>
-        <FlatList
-          data={recentOrders}
-          renderItem={renderOrderItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          style={styles.orderList}
-        />
-      </View>
+      {merchantDataError && (
+        <TouchableOpacity
+          onPress={() => void loadMerchantData()}
+          style={{ position: 'absolute', top: Math.max(270, height * 0.34), left: 20, right: 20, zIndex: 10 }}
+        >
+          <Text style={{ color: '#b00020', backgroundColor: 'white', padding: 8, borderRadius: 8, textAlign: 'center' }}>
+            {merchantDataError} Tap to retry.
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Floating Action Button */}
       <TouchableOpacity
@@ -444,7 +480,7 @@ export default function MerchantHome() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push('/orders/consumer-orders')}
+          onPress={() => router.push('/merchant/order-management')}
         >
           <Ionicons name="receipt-outline" size={24} color="#666" />
           <Text style={styles.navLabel}>Orders</Text>
@@ -546,7 +582,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: height * 0.4,
+    bottom: 0,
     zIndex: 1,
   },
   map: {
@@ -664,59 +700,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontFamily: 'Montserrat-Regular',
-  },
-  orderListContainer: {
-    position: 'absolute',
-    top: 300,
-    left: 20,
-    right: 20,
-    bottom: 120,
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
-    boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
-    elevation: 3,
-    zIndex: 10,
-  },
-  orderListTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
-    paddingLeft: 5,
-    fontFamily: 'Montserrat-SemiBold',
-  },
-  orderList: {
-    flex: 1,
-  },
-  orderItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  orderInfo: {
-    flex: 1,
-  },
-  orderId: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    fontFamily: 'Montserrat-Medium',
-  },
-  orderCustomer: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 3,
-    fontFamily: 'Montserrat-Regular',
-  },
-  orderStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-SemiBold',
   },
   fab: {
     position: 'absolute',

@@ -52,6 +52,3 @@ CREATE TRIGGER update_driver_location_timestamp
   BEFORE UPDATE ON driver_locations
   FOR EACH ROW
   EXECUTE FUNCTION update_driver_location_timestamp();
-
--- Enable real-time
-ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;

@@ -11,11 +11,6 @@ export const API_ENDPOINTS = {
     DETAILED: '/api/health/detailed',
   },
 
-  // Authentication
-  AUTH: {
-    LOGOUT: '/api/auth/logout',
-  },
-
   // Users
   USERS: {
     LIST: '/api/users',
@@ -29,20 +24,20 @@ export const API_ENDPOINTS = {
     GET: '/functions/v1/profile',
     UPDATE: '/functions/v1/profile',
     ADDRESSES: {
-      LIST: '/api/profile/addresses',
-      CREATE: '/api/profile/addresses',
-      UPDATE: (id: string) => `/api/profile/addresses/${id}`,
-      DELETE: (id: string) => `/api/profile/addresses/${id}`,
+      LIST: '/functions/v1/account/addresses',
+      CREATE: '/functions/v1/account/addresses',
+      UPDATE: (id: string) => `/functions/v1/account/addresses/${encodeURIComponent(id)}`,
+      DELETE: (id: string) => `/functions/v1/account/addresses/${encodeURIComponent(id)}`,
     },
     PAYMENT_METHODS: {
-      LIST: '/api/profile/payment-methods',
-      CREATE: '/api/profile/payment-methods',
-      UPDATE: (id: string) => `/api/profile/payment-methods/${id}`,
-      DELETE: (id: string) => `/api/profile/payment-methods/${id}`,
+      LIST: '/functions/v1/account/payment-methods',
+      CREATE: '/functions/v1/account/payment-methods',
+      UPDATE: (id: string) => `/functions/v1/account/payment-methods/${encodeURIComponent(id)}`,
+      DELETE: (id: string) => `/functions/v1/account/payment-methods/${encodeURIComponent(id)}`,
     },
     PRIVACY_SETTINGS: {
-      GET: '/api/profile/privacy-settings',
-      UPDATE: '/api/profile/privacy-settings',
+      GET: '/functions/v1/account/privacy-settings',
+      UPDATE: '/functions/v1/account/privacy-settings',
     },
     CHANGE_PASSWORD: '/api/profile/change-password',
   },
@@ -59,6 +54,18 @@ export const API_ENDPOINTS = {
     BY_ID: (id: string) => `/api/products/${id}`,
     UPDATE: (id: string) => `/api/products/${id}`,
     DELETE: (id: string) => `/api/products/${id}`,
+  },
+
+  // Merchant catalog and operations
+  MERCHANTS: {
+    LIST: '/functions/v1/catalog/merchants',
+    BY_ID: (id: string) => `/functions/v1/catalog/merchants/${encodeURIComponent(id)}`,
+    COMMODITIES: '/functions/v1/catalog/commodities',
+    BY_ID_COMMODITIES: (id: string) => `/functions/v1/catalog/merchants/${encodeURIComponent(id)}/commodities`,
+    SETTINGS: (id: string) => `/functions/v1/catalog/merchants/${encodeURIComponent(id)}/settings`,
+    ORDERS: (id: string) => `/functions/v1/catalog/merchants/${encodeURIComponent(id)}/orders`,
+    CUSTOMERS: (id: string) => `/functions/v1/catalog/merchants/${encodeURIComponent(id)}/customers`,
+    ANALYTICS: (id: string) => `/functions/v1/catalog/merchants/${encodeURIComponent(id)}/analytics`,
   },
 
   // Categories
@@ -88,10 +95,10 @@ export const API_ENDPOINTS = {
 
   // Payments
   PAYMENTS: {
-    INITIALIZE: '/api/payments/initialize',
-    VERIFY: (reference: string) => `/api/payments/verify/${reference}`,
-    HISTORY: '/api/payments/history',
-    REFUND: '/api/payments/refund',
+    INITIALIZE: '/functions/v1/payment-process',
+    VERIFY: (reference: string) => `/functions/v1/payment-process/verify/${encodeURIComponent(reference)}`,
+    HISTORY: '/functions/v1/transactions',
+    REFUND: '/functions/v1/payment-process/refund',
   },
 
   // Escrow
@@ -119,9 +126,10 @@ export const API_ENDPOINTS = {
 
   // Notifications
   NOTIFICATIONS: {
-    LIST: '/api/notifications',
-    MARK_READ: (id: string) => `/api/notifications/${id}/read`,
-    MARK_ALL_READ: '/api/notifications/read-all',
+    LIST: '/functions/v1/account/notifications',
+    MARK_READ: (id: string) => `/functions/v1/account/notifications/${encodeURIComponent(id)}/read`,
+    MARK_ALL_READ: '/functions/v1/account/notifications/read-all',
+    UNREAD_COUNT: '/functions/v1/account/notifications/unread-count',
   },
 
   // Messages
@@ -133,12 +141,27 @@ export const API_ENDPOINTS = {
 
   // Ratings
   RATINGS: {
-    CREATE: '/api/ratings',
-    BY_USER: (userId: string) => `/api/ratings/user/${userId}`,
+    CREATE: '/functions/v1/catalog/ratings',
+    BY_USER: (userId: string) => `/functions/v1/catalog/ratings/user/${encodeURIComponent(userId)}`,
+  },
+
+  // KYC
+  KYC: {
+    PROFILE: '/functions/v1/kyc/profile',
+    STATUS: '/functions/v1/kyc/status',
+    ROLE_STATUS: '/functions/v1/kyc/role-status',
+    REGISTER_ROLE: '/functions/v1/kyc/register-role',
+    PERSONAL_INFO: '/functions/v1/kyc/personal-info',
+    BUSINESS_INFO: '/functions/v1/kyc/business-info',
+    DRIVER_INFO: '/functions/v1/kyc/driver-info',
+    DOCUMENTS: '/functions/v1/kyc/documents',
+    SUBMIT: '/functions/v1/kyc/submit',
   },
 
   // Admin
   ADMIN: {
+    ANNOUNCEMENTS: '/functions/v1/admin/announcements',
+    MAINTENANCE: '/functions/v1/admin/maintenance',
     USERS: {
       LIST: '/api/admin-users',
       CREATE: '/api/admin-users',

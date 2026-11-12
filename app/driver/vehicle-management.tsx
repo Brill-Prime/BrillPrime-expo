@@ -15,90 +15,88 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../config/theme';
 import { useAlert } from '../../components/AlertProvider';
+import { orderService } from '../../services/orderService';
 
 interface VehicleInfo {
-  make: string;
-  model: string;
-  year: string;
-  color: string;
+  vehicleType: string;
   plateNumber: string;
-  registrationNumber: string;
-  insuranceNumber: string;
-  insuranceExpiry: string;
-  registrationExpiry: string;
-}
-
-interface VehicleDocument {
-  type: 'registration' | 'insurance' | 'roadworthiness';
-  imageUrl: string;
-  uploadDate: string;
-  expiryDate?: string;
-  status: 'valid' | 'expiring' | 'expired';
 }
 
 function VehicleManagement() {
   const router = useRouter();
   const { showError } = useAlert();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
-
-  const vehicleInfo: VehicleInfo = {
-    make: '',
-    model: '',
-    year: '',
-    color: '',
+  const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo>({
+    vehicleType: '',
     plateNumber: '',
-    registrationNumber: '',
-    insuranceNumber: '',
-    insuranceExpiry: '',
-    registrationExpiry: '',
-  };
-
-  const documents: VehicleDocument[] = [];
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
 
-    return () => subscription?.remove();
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    const loadVehicle = async () => {
+      setLoadError(null);
+      const result = await orderService.getDriverProfile();
+      if (!active) return null;
+      if (!result.success || !result.data) {
+        setLoadError(result.error || 'Unable to load vehicle profile.');
+        return null;
+      }
+
+      setVehicleInfo(current => ({
+        ...current,
+        vehicleType: result.data.vehicle_type || '',
+        plateNumber: result.data.vehicle_plate || '',
+      }));
+      return result.data.id;
+    };
+
+    void (async () => {
+      try {
+        const driverId = await loadVehicle();
+        if (active && driverId) {
+          unsubscribe = orderService.subscribeToDriverProfile(driverId, () => {
+            void loadVehicle();
+          });
+        }
+      } catch (error) {
+        console.error('Error loading vehicle profile:', error);
+        if (active) setLoadError('Unable to load vehicle profile.');
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+      subscription?.remove();
+      unsubscribe?.();
+    };
   }, []);
 
   const showUnavailableMessage = () => {
     showError('Unavailable', 'Vehicle updates and document uploads are not connected to secure storage yet.');
   };
 
-  const getDocumentLabel = (type: string) => {
-    switch (type) {
-      case 'registration':
-        return 'Vehicle Registration';
-      case 'insurance':
-        return 'Insurance Certificate';
-      case 'roadworthiness':
-        return 'Roadworthiness Certificate';
-      default:
-        return type;
+  const retryLoadVehicle = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    const result = await orderService.getDriverProfile();
+    if (result.success && result.data) {
+      setVehicleInfo({
+        vehicleType: result.data.vehicle_type || '',
+        plateNumber: result.data.vehicle_plate || '',
+      });
+    } else {
+      setLoadError(result.error || 'Unable to load vehicle profile.');
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'valid':
-        return '#10b981';
-      case 'expiring':
-        return '#f59e0b';
-      case 'expired':
-        return '#ef4444';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    setIsLoading(false);
   };
 
   const InputField = ({
@@ -155,81 +153,31 @@ function VehicleManagement() {
           <Text style={styles.sectionTitle}>Vehicle Information</Text>
 
           <View style={styles.infoCard}>
-            <InputField
-              label="Make *"
-              value={vehicleInfo.make}
-              placeholder="e.g., Toyota"
-              editable={false}
-            />
-
-            <InputField
-              label="Model *"
-              value={vehicleInfo.model}
-              placeholder="e.g., Camry"
-              editable={false}
-            />
-
-            <View style={styles.row}>
-              <View style={styles.halfWidth}>
-                <InputField
-                  label="Year *"
-                  value={vehicleInfo.year}
-                  placeholder="2020"
-                  editable={false}
-                  keyboardType="numeric"
-                />
+            {isLoading ? (
+              <Text style={styles.emptyDocuments}>Loading vehicle profile...</Text>
+            ) : loadError ? (
+              <View>
+                <Text style={styles.emptyDocuments}>{loadError}</Text>
+                <TouchableOpacity onPress={() => void retryLoadVehicle()}>
+                  <Text style={styles.label}>Retry</Text>
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.halfWidth}>
+            ) : (
+              <>
                 <InputField
-                  label="Color"
-                  value={vehicleInfo.color}
-                  placeholder="Silver"
+                  label="Vehicle Type"
+                  value={vehicleInfo.vehicleType}
+                  placeholder="Not provided"
                   editable={false}
                 />
-              </View>
-            </View>
-
-            <InputField
-              label="Plate Number *"
-              value={vehicleInfo.plateNumber}
-              placeholder="ABC-123-XY"
-              editable={false}
-            />
-
-            <InputField
-              label="Registration Number *"
-              value={vehicleInfo.registrationNumber}
-              placeholder="REG-2020-12345"
-              editable={false}
-            />
-
-            <InputField
-              label="Insurance Number"
-              value={vehicleInfo.insuranceNumber}
-              placeholder="INS-2024-67890"
-              editable={false}
-            />
-
-            <View style={styles.row}>
-              <View style={styles.halfWidth}>
                 <InputField
-                  label="Insurance Expiry (YYYY-MM-DD)"
-                  value={vehicleInfo.insuranceExpiry}
-                  placeholder="2025-12-31"
+                  label="Plate Number"
+                  value={vehicleInfo.plateNumber}
+                  placeholder="Not provided"
                   editable={false}
                 />
-              </View>
-
-              <View style={styles.halfWidth}>
-                <InputField
-                  label="Registration Expiry (YYYY-MM-DD)"
-                  value={vehicleInfo.registrationExpiry}
-                  placeholder="2025-06-30"
-                  editable={false}
-                />
-              </View>
-            </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -237,56 +185,9 @@ function VehicleManagement() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vehicle Documents</Text>
 
-          {documents.length === 0 && (
-            <Text style={styles.emptyDocuments}>No vehicle documents are available.</Text>
-          )}
-
-          {documents.map((document, index) => (
-            <View key={index} style={styles.documentCard}>
-              <View style={styles.documentHeader}>
-                <View style={styles.documentLeft}>
-                  <Ionicons name="document-text-outline" size={24} color={theme.colors.primary} />
-                  <View style={styles.documentInfo}>
-                    <Text style={styles.documentTitle}>{getDocumentLabel(document.type)}</Text>
-                    <Text style={styles.documentDate}>
-                      Uploaded: {formatDate(document.uploadDate)}
-                    </Text>
-                    {document.expiryDate && (
-                      <Text style={styles.documentExpiry}>
-                        Expires: {formatDate(document.expiryDate)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(document.status) },
-                  ]}
-                >
-                  <Text style={styles.statusText}>
-                    {document.status.charAt(0).toUpperCase() + document.status.slice(1)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.documentActions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={showUnavailableMessage}
-                >
-                  <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.primary} />
-                  <Text style={styles.actionButtonText}>Re-upload</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionButton}>
-                  <Ionicons name="eye-outline" size={18} color={theme.colors.primary} />
-                  <Text style={styles.actionButtonText}>View</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+          <Text style={styles.emptyDocuments}>
+            Vehicle registration and insurance documents are not stored by the current backend.
+          </Text>
         </View>
 
         {/* Availability notice */}
@@ -296,7 +197,7 @@ function VehicleManagement() {
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>Important Notice</Text>
               <Text style={styles.infoText}>
-                Vehicle details and documents are not connected to secure storage yet. No verification or expiry status is being reported.
+                Vehicle type and plate are read from your driver profile. Registration, insurance, and document verification are unavailable because the backend does not store those records.
               </Text>
             </View>
           </View>

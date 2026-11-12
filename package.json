@@ -79,7 +79,6 @@
     "react-native-get-random-values": "^1.11.0",
     "react-native-maps": "1.20.1",
     "react-native-maps-directions": "^1.9.0",
-    "react-native-otp-verify": "^1.1.8",
     "react-native-paper": "^5.11.2",
     "react-native-paystack-webview": "^5.0.2",
     "react-native-reanimated": "~4.1.1",

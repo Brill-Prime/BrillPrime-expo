@@ -113,56 +113,15 @@ const loadCommodities = useCallback(async () => {
         setCommodities(processedData);
         setFilteredCommodities(processedData);
       } else {
-        // Load mock data if API fails
-        const mockCommodities = [
-          {
-            id: '1',
-            name: 'Premium Petrol',
-            price: 800,
-            unit: 'liter',
-            category: 'fuel',
-            merchantId: 'merchant_1',
-            merchantName: 'Shell Station',
-            isSample: true,
-            image: require('../../assets/images/generated-icon.png'),
-            description: 'High quality premium petrol',
-          },
-          {
-            id: '2',
-            name: 'Diesel',
-            price: 750,
-            unit: 'liter',
-            category: 'fuel',
-            merchantId: 'merchant_1',
-            merchantName: 'Shell Station',
-            isSample: true,
-            image: require('../../assets/images/generated-icon.png'),
-            description: 'Standard diesel fuel',
-          },
-        ];
-        setCommodities(mockCommodities);
-        setFilteredCommodities(mockCommodities);
+        setCommodities([]);
+        setFilteredCommodities([]);
+        Alert.alert('Products Unavailable', 'Products could not be loaded. Pull down to retry.');
       }
     } catch (error) {
       console.error('Error loading commodities:', error);
-      Alert.alert('Error', 'Failed to load commodities. Showing sample data.');
-      // Show sample data on error
-      const sampleData = [
-        {
-          id: 'sample_1',
-          name: 'Sample Product',
-          price: 1000,
-          unit: 'piece',
-          category: 'groceries',
-          merchantId: 'sample_merchant',
-          merchantName: 'Sample Store',
-          isSample: true,
-          image: require('../../assets/images/generated-icon.png'),
-          description: 'Sample product',
-        },
-      ];
-      setCommodities(sampleData);
-      setFilteredCommodities(sampleData);
+      setCommodities([]);
+      setFilteredCommodities([]);
+      Alert.alert('Products Unavailable', 'Products could not be loaded. Pull down to retry.');
     } finally {
       setLoading(false);
     }

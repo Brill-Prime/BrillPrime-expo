@@ -13,16 +13,18 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../../config/theme';
 import { validateAddress } from '../../utils/validation';
+import { profileService } from '../../services/profileService';
+import { orderService } from '../../services/orderService';
 
 interface SavedAddress {
   id: string;
   label: string;
-  address: string;
+  street: string;
   city: string;
   state: string;
+  country: string;
   isDefault: boolean;
 }
 
@@ -48,34 +50,17 @@ export default function ChangeAddressScreen() {
 
   const loadSavedAddresses = async () => {
     try {
-      const addressesData = await AsyncStorage.getItem('savedAddresses');
-      if (addressesData) {
-        setSavedAddresses(JSON.parse(addressesData));
-      } else {
-        // Mock addresses for demonstration
-        const mockAddresses: SavedAddress[] = [
-          {
-            id: '1',
-            label: 'Home',
-            address: '123 Main Street',
-            city: 'Lagos',
-            state: 'Lagos State',
-            isDefault: true,
-          },
-          {
-            id: '2',
-            label: 'Office',
-            address: '456 Business Avenue',
-            city: 'Abuja',
-            state: 'FCT',
-            isDefault: false,
-          },
-        ];
-        setSavedAddresses(mockAddresses);
-        setSelectedAddressId(mockAddresses[0].id);
+      const response = await profileService.getAddresses();
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to load saved addresses');
       }
+      const addresses = response.data || [];
+      setSavedAddresses(addresses);
+      setSelectedAddressId(addresses.find(address => address.isDefault)?.id || addresses[0]?.id || null);
     } catch (error) {
       console.error('Error loading addresses:', error);
+      setSavedAddresses([]);
+      Alert.alert('Addresses Unavailable', 'Saved addresses could not be loaded. Please try again.');
     }
   };
 
@@ -103,11 +88,21 @@ export default function ChangeAddressScreen() {
           onPress: async () => {
             setLoading(true);
             try {
-              // Here you would call the API to update the order address
-              // await orderService.updateOrderAddress(orderId, newAddress);
-              
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 1500));
+              const selectedAddress = savedAddresses.find(address => address.id === selectedAddressId);
+              const deliveryAddress = useCustomAddress
+                ? customAddress.trim()
+                : selectedAddress
+                  ? [selectedAddress.street, selectedAddress.city, selectedAddress.state, selectedAddress.country]
+                    .filter(Boolean)
+                    .join(', ')
+                  : '';
+              const id = Array.isArray(orderId) ? orderId[0] : orderId;
+              if (!id) throw new Error('Order ID is missing');
+
+              const response = await orderService.updateDeliveryAddress(id, deliveryAddress);
+              if (!response.success) {
+                throw new Error(response.error || 'Failed to update delivery address');
+              }
 
               Alert.alert(
                 'Success',
@@ -120,7 +115,11 @@ export default function ChangeAddressScreen() {
                 ]
               );
             } catch (error) {
-              Alert.alert('Error', 'Failed to update delivery address');
+              console.error('Error updating delivery address:', error);
+              Alert.alert(
+                'Error',
+                error instanceof Error ? error.message : 'Failed to update delivery address'
+              );
             } finally {
               setLoading(false);
             }
@@ -190,9 +189,9 @@ export default function ChangeAddressScreen() {
                     <Ionicons name="checkmark-circle" size={24} color={theme.colors.success} />
                   )}
                 </View>
-                <Text style={styles.addressText}>{address.address}</Text>
+                <Text style={styles.addressText}>{address.street}</Text>
                 <Text style={styles.addressSubtext}>
-                  {address.city}, {address.state}
+                  {[address.city, address.state, address.country].filter(Boolean).join(', ')}
                 </Text>
               </TouchableOpacity>
             ))}

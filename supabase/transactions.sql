@@ -116,8 +116,3 @@ CREATE TRIGGER withdrawal_requests_updated_at
   BEFORE UPDATE ON withdrawal_requests
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS transactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS wallet_balances;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS withdrawal_requests;

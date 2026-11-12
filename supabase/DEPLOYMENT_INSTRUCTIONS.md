@@ -128,9 +128,9 @@ In Supabase Dashboard → Storage:
 
 ## Step 5: Enable Real-time
 
-In Supabase Dashboard → Database → Replication:
+After all tables are created, run `supabase/realtime.sql` in the SQL Editor. The script adds required tables to `supabase_realtime` idempotently and fails explicitly if a required table is missing.
 
-Enable real-time for these tables:
+Then verify in Supabase Dashboard → Database → Replication that these tables are enabled:
 - ✅ messages
 - ✅ notifications
 - ✅ driver_locations
@@ -141,7 +141,9 @@ Enable real-time for these tables:
 
 ## Step 6: Configure Authentication
 
-In Supabase Dashboard → Authentication → Providers:
+In Supabase Dashboard → Authentication → Providers, configure Firebase as a third-party auth provider using the same Firebase project ID used by the app and Edge Functions. This is required because direct database queries and Realtime use Firebase ID tokens.
+
+Also configure any Supabase Auth providers the application actually uses:
 
 1. **Email** - Enable
 2. **Google** - Configure (optional)

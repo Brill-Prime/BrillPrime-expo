@@ -43,12 +43,12 @@ const CATEGORIES = [
 
 function StoreSettings() {
   const router = useRouter();
-  const { merchantId, loadMerchantId } = useMerchant();
+  const { merchantId, isLoading: merchantIdLoading, loadMerchantId } = useMerchant();
   const { showSuccess, showError } = useAlert();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [settings, setSettings] = useState<StoreSettings>({
     businessHours: {
       monday: { open: '08:00', close: '18:00', isOpen: true },
@@ -73,10 +73,6 @@ function StoreSettings() {
   });
 
   useEffect(() => {
-    loadMerchantId();
-  }, [loadMerchantId]);
-
-  useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
@@ -85,42 +81,41 @@ function StoreSettings() {
 
   useEffect(() => {
     if (merchantId) {
-      loadStoreSettings();
-    } else {
-      setError('Merchant profile is still loading. Please sign in again or retry.');
+      setLoadError(null);
+      void loadStoreSettings();
+    } else if (!merchantIdLoading) {
+      setLoadError('Merchant store profile could not be found.');
       setLoading(false);
     }
-  }, [merchantId]);
+  }, [merchantId, merchantIdLoading]);
 
   const loadStoreSettings = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      if (!merchantId) {
-        setError('Merchant profile is not available yet.');
-        setLoading(false);
-        return;
-      }
-
-      const response = await merchantService.getStoreSettings(merchantId);
+      setLoadError(null);
+      const response = await merchantService.getStoreSettings(merchantId!);
       if (response.success && response.data) {
-        setSettings(prev => ({ ...prev, ...response.data }));
+        setSettings(previous => ({ ...previous, ...response.data }));
       } else {
-        setError((response as any).message || 'Unable to load store settings.');
+        setLoadError('Unable to load store settings.');
       }
     } catch (error) {
       console.error('Error loading store settings:', error);
-      setError('Unable to load store settings right now.');
+      setLoadError('Unable to load store settings right now.');
     } finally {
       setLoading(false);
     }
   };
 
   const saveSettings = async () => {
+    if (!merchantId) {
+      showError('Merchant profile unavailable', 'Your store profile is not available yet.');
+      return;
+    }
+
     try {
       setSaving(true);
-      const response = await merchantService.updateStoreSettings(merchantId!, settings);
+      const response = await merchantService.updateStoreSettings(merchantId, settings);
       if (response.success) {
         showSuccess('Success', 'Store settings updated successfully');
       } else {
@@ -351,7 +346,7 @@ function StoreSettings() {
     </View>
   );
 
-  if (loading) {
+  if (loading || merchantIdLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
         <Text style={styles.loadingText}>Loading store settings...</Text>
@@ -359,12 +354,21 @@ function StoreSettings() {
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <Text style={styles.loadingText}>{error}</Text>
-        <TouchableOpacity onPress={() => loadMerchantId()} style={styles.retryButton}>
-          <Text style={styles.retryText}>Retry</Text>
+        <Text style={styles.loadingText}>{loadError}</Text>
+        <TouchableOpacity
+          onPress={() => {
+            if (merchantId) {
+              void loadStoreSettings();
+            } else {
+              void loadMerchantId();
+            }
+          }}
+          style={{ marginTop: 16, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: '#4682B4' }}
+        >
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -450,18 +454,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666',
-  },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: '#4682B4',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   section: {
     backgroundColor: '#fff',

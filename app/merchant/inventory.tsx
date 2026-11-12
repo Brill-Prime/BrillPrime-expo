@@ -9,128 +9,113 @@ import {
   TouchableOpacity,
   TextInput,
   Dimensions,
-  Alert,
   Modal,
-  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
+import { commodityService, type Commodity } from '../../services/commodityService';
 
 interface InventoryItem {
   id: string;
   name: string;
   category: string;
   currentStock: number;
-  minStock: number;
-  maxStock: number;
   unit: string;
   price: number;
-  costPrice: number;
-  supplier: string;
-  lastRestocked: string;
-  expiryDate?: string;
-  location: string;
-  status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'expired';
+  isAvailable: boolean;
+  status: 'in_stock' | 'out_of_stock' | 'unavailable';
 }
 
 function InventoryManagement() {
   const router = useRouter();
-  const { showSuccess, showError, showConfirmDialog } = useAlert();
+  const { showSuccess, showError } = useAlert();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [restockQuantity, setRestockQuantity] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'stock' | 'lastRestocked'>('name');
-  const [showLowStockAlert, setShowLowStockAlert] = useState(true);
+  const [sortBy, setSortBy] = useState<'name' | 'stock'>('name');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [stockAction, setStockAction] = useState<'restock' | 'adjust'>('restock');
 
-  const categories = ['all', 'fuel', 'lubricants', 'accessories', 'food', 'beverages'];
-  const statuses = ['all', 'in_stock', 'low_stock', 'out_of_stock', 'expired'];
+  const categories = ['all', ...new Set(inventory.map(item => item.category).filter(Boolean))];
+  const statuses = ['all', 'in_stock', 'out_of_stock', 'unavailable'];
 
   useEffect(() => {
-    loadInventory();
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    const load = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      const result = await commodityService.getMerchantCommodities();
+      if (!active) return;
+      if (!result.success || !result.commodities) {
+        setLoadError(result.error || 'Failed to load inventory');
+        setInventory([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setInventory(result.commodities.map(toInventoryItem));
+      setIsLoading(false);
+      const merchant = await commodityService.getMerchantId();
+      if (!active) return;
+      if (!merchant.success || !merchant.merchantId) {
+        setLoadError(merchant.error || 'Unable to subscribe to inventory updates');
+        return;
+      }
+      unsubscribe = await commodityService.subscribeToMerchantCommodities(merchant.merchantId, () => {
+        void load();
+      });
+    };
+
+    void load();
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
-    return () => subscription?.remove();
+    return () => {
+      active = false;
+      unsubscribe?.();
+      subscription?.remove();
+    };
   }, []);
 
   useEffect(() => {
     filterInventory();
   }, [inventory, searchQuery, selectedCategory, selectedStatus, sortBy]);
 
-  useEffect(() => {
-    checkLowStockItems();
-  }, [inventory]);
+  const toInventoryItem = (commodity: Commodity): InventoryItem => ({
+    id: commodity.id,
+    name: commodity.name,
+    category: commodity.category || 'Uncategorized',
+    currentStock: Number(commodity.stock_quantity) || 0,
+    unit: commodity.unit || '',
+    price: Number(commodity.price) || 0,
+    isAvailable: commodity.is_available,
+    status: !commodity.is_available
+      ? 'unavailable'
+      : Number(commodity.stock_quantity) <= 0
+        ? 'out_of_stock'
+        : 'in_stock',
+  });
 
-  const loadInventory = async () => {
-    try {
-      const savedInventory = await AsyncStorage.getItem('merchantInventory');
-      if (savedInventory) {
-        setInventory(JSON.parse(savedInventory));
-      } else {
-        // Sample data
-        const sampleInventory: InventoryItem[] = [
-          {
-            id: '1',
-            name: 'Premium Petrol',
-            category: 'fuel',
-            currentStock: 15000,
-            minStock: 5000,
-            maxStock: 50000,
-            unit: 'Litres',
-            price: 650,
-            costPrice: 580,
-            supplier: 'NNPC',
-            lastRestocked: new Date(Date.now() - 86400000 * 3).toISOString(),
-            location: 'Tank A1',
-            status: 'in_stock'
-          },
-          {
-            id: '2',
-            name: 'Diesel',
-            category: 'fuel',
-            currentStock: 2000,
-            minStock: 3000,
-            maxStock: 30000,
-            unit: 'Litres',
-            price: 580,
-            costPrice: 520,
-            supplier: 'NNPC',
-            lastRestocked: new Date(Date.now() - 86400000 * 5).toISOString(),
-            location: 'Tank B1',
-            status: 'low_stock'
-          },
-          {
-            id: '3',
-            name: 'Engine Oil 5W-30',
-            category: 'lubricants',
-            currentStock: 0,
-            minStock: 20,
-            maxStock: 200,
-            unit: 'Bottles',
-            price: 8500,
-            costPrice: 7200,
-            supplier: 'Mobil',
-            lastRestocked: new Date(Date.now() - 86400000 * 10).toISOString(),
-            location: 'Shelf C2',
-            status: 'out_of_stock'
-          }
-        ];
-        setInventory(sampleInventory);
-        await AsyncStorage.setItem('merchantInventory', JSON.stringify(sampleInventory));
-      }
-    } catch (error) {
-      console.error('Error loading inventory:', error);
-      showError('Error', 'Failed to load inventory');
+  const refreshInventory = async () => {
+    setLoadError(null);
+    setIsLoading(true);
+    const result = await commodityService.getMerchantCommodities();
+    if (!result.success || !result.commodities) {
+      setLoadError(result.error || 'Failed to load inventory');
+    } else {
+      setInventory(result.commodities.map(toInventoryItem));
     }
+    setIsLoading(false);
   };
 
   const filterInventory = () => {
@@ -139,8 +124,7 @@ function InventoryManagement() {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.supplier.toLowerCase().includes(searchQuery.toLowerCase())
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -161,8 +145,6 @@ function InventoryManagement() {
           return a.name.localeCompare(b.name);
         case 'stock':
           return b.currentStock - a.currentStock;
-        case 'lastRestocked':
-          return new Date(b.lastRestocked).getTime() - new Date(a.lastRestocked).getTime();
         default:
           return 0;
       }
@@ -171,90 +153,37 @@ function InventoryManagement() {
     setFilteredInventory(filtered);
   };
 
-  const checkLowStockItems = () => {
-    const lowStockItems = inventory.filter(item => 
-      item.currentStock <= item.minStock && item.status !== 'out_of_stock'
-    );
-    
-    if (lowStockItems.length > 0 && showLowStockAlert) {
-      Alert.alert(
-        'Low Stock Alert',
-        `${lowStockItems.length} item(s) are running low on stock.`,
-        [
-          { text: 'View Items', onPress: () => setSelectedStatus('low_stock') },
-          { text: 'Dismiss', style: 'cancel' }
-        ]
-      );
-    }
-  };
-
   const handleRestock = async () => {
     if (!selectedItem || !restockQuantity) return;
 
-    try {
-      const quantity = parseInt(restockQuantity);
-      if (isNaN(quantity) || quantity <= 0) {
-        showError('Invalid Quantity', 'Please enter a valid quantity');
-        return;
-      }
-
-      const updatedInventory = inventory.map(item => {
-        if (item.id === selectedItem.id) {
-          const newStock = item.currentStock + quantity;
-          return {
-            ...item,
-            currentStock: newStock,
-            lastRestocked: new Date().toISOString(),
-            status: (newStock <= item.minStock ? 'low_stock' : newStock === 0 ? 'out_of_stock' : 'in_stock') as InventoryItem['status']
-          };
-        }
-        return item;
-      });
-
-      setInventory(updatedInventory);
-      await AsyncStorage.setItem('merchantInventory', JSON.stringify(updatedInventory));
-      
-      showSuccess('Success', `${quantity} ${selectedItem.unit} added to ${selectedItem.name}`);
-      setShowRestockModal(false);
-      setRestockQuantity('');
-      setSelectedItem(null);
-    } catch (error) {
-      showError('Error', 'Failed to restock item');
+    const quantity = Number(restockQuantity);
+    if (!Number.isInteger(quantity) || quantity < 0 || (stockAction === 'restock' && quantity === 0)) {
+      showError('Invalid Quantity', 'Enter a valid non-negative whole number.');
+      return;
     }
-  };
 
-  const updateItemStock = async (itemId: string, newStock: number, reason: 'sale' | 'damage' | 'adjustment') => {
-    try {
-      const updatedInventory = inventory.map(item => {
-        if (item.id === itemId) {
-          return {
-            ...item,
-            currentStock: Math.max(0, newStock),
-            status: (newStock <= item.minStock ? 'low_stock' : newStock === 0 ? 'out_of_stock' : 'in_stock') as InventoryItem['status']
-          };
-        }
-        return item;
-      });
-
-      setInventory(updatedInventory);
-      await AsyncStorage.setItem('merchantInventory', JSON.stringify(updatedInventory));
-    } catch (error) {
-      showError('Error', 'Failed to update stock');
+    const stockQuantity = stockAction === 'restock'
+      ? selectedItem.currentStock + quantity
+      : quantity;
+    const result = await commodityService.updateStock(selectedItem.id, stockQuantity);
+    if (!result.success) {
+      showError('Error', result.error || 'Failed to update stock');
+      return;
     }
+    showSuccess('Success', `Stock for ${selectedItem.name} updated.`);
+    setShowRestockModal(false);
+    setRestockQuantity('');
+    setSelectedItem(null);
+    await refreshInventory();
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'in_stock': return '#28a745';
-      case 'low_stock': return '#ffc107';
       case 'out_of_stock': return '#dc3545';
-      case 'expired': return '#6c757d';
+      case 'unavailable': return '#6c757d';
       default: return '#6c757d';
     }
-  };
-
-  const getStockPercentage = (item: InventoryItem) => {
-    return (item.currentStock / item.maxStock) * 100;
   };
 
   const renderInventoryItem = (item: InventoryItem) => (
@@ -266,30 +195,11 @@ function InventoryManagement() {
         </View>
       </View>
 
-      <View style={styles.stockInfo}>
-        <View style={styles.stockBar}>
-          <View 
-            style={[
-              styles.stockFill, 
-              { 
-                width: `${Math.max(5, getStockPercentage(item))}%`,
-                backgroundColor: getStatusColor(item.status)
-              }
-            ]} 
-          />
-        </View>
-        <Text style={styles.stockText}>
-          {item.currentStock} / {item.maxStock} {item.unit}
-        </Text>
-      </View>
+      <Text style={styles.stockText}>Stock: {item.currentStock} {item.unit}</Text>
 
       <View style={styles.itemDetails}>
         <Text style={styles.detailText}>Price: ₦{item.price.toLocaleString()}</Text>
-        <Text style={styles.detailText}>Location: {item.location}</Text>
-        <Text style={styles.detailText}>Supplier: {item.supplier}</Text>
-        <Text style={styles.detailText}>
-          Last Restocked: {new Date(item.lastRestocked).toLocaleDateString()}
-        </Text>
+        <Text style={styles.detailText}>Category: {item.category}</Text>
       </View>
 
       <View style={styles.cardActions}>
@@ -297,6 +207,8 @@ function InventoryManagement() {
           style={styles.actionButton}
           onPress={() => {
             setSelectedItem(item);
+            setStockAction('restock');
+            setRestockQuantity('');
             setShowRestockModal(true);
           }}
         >
@@ -307,24 +219,10 @@ function InventoryManagement() {
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={() => {
-            Alert.prompt(
-              'Adjust Stock',
-              `Current stock: ${item.currentStock} ${item.unit}`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { 
-                  text: 'Update', 
-                  onPress: (value) => {
-                    const newStock = parseInt(value || '0');
-                    if (!isNaN(newStock)) {
-                      updateItemStock(item.id, newStock, 'adjustment');
-                    }
-                  }
-                }
-              ],
-              'plain-text',
-              item.currentStock.toString()
-            );
+            setSelectedItem(item);
+            setStockAction('adjust');
+            setRestockQuantity(item.currentStock.toString());
+            setShowRestockModal(true);
           }}
         >
           <Ionicons name="create-outline" size={20} color="#28a745" />
@@ -350,13 +248,7 @@ function InventoryManagement() {
           <Ionicons name="chevron-back" size={24} color="#1C1B1F" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Inventory Management</Text>
-        <TouchableOpacity onPress={() => setShowLowStockAlert(!showLowStockAlert)}>
-          <Ionicons 
-            name={showLowStockAlert ? "notifications" : "notifications-off"} 
-            size={24} 
-            color="#1C1B1F" 
-          />
-        </TouchableOpacity>
+        <View style={{ width: 24 }} />
       </View>
 
       {/* Search and Filters */}
@@ -422,22 +314,22 @@ function InventoryManagement() {
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryNumber}>
-            {inventory.filter(item => item.status === 'low_stock').length}
-          </Text>
-          <Text style={styles.summaryLabel}>Low Stock</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryNumber}>
             {inventory.filter(item => item.status === 'out_of_stock').length}
           </Text>
           <Text style={styles.summaryLabel}>Out of Stock</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryNumber}>
+            {inventory.filter(item => !item.isAvailable).length}
+          </Text>
+          <Text style={styles.summaryLabel}>Unavailable</Text>
         </View>
       </View>
 
       {/* Sort Options */}
       <View style={styles.sortContainer}>
         <Text style={styles.sortLabel}>Sort by:</Text>
-        {['name', 'stock', 'lastRestocked'].map(option => (
+        {(['name', 'stock'] as const).map(option => (
           <TouchableOpacity
             key={option}
             style={[
@@ -450,7 +342,7 @@ function InventoryManagement() {
               styles.sortButtonText,
               sortBy === option && styles.activeSortButtonText
             ]}>
-              {option.charAt(0).toUpperCase() + option.slice(1).replace(/([A-Z])/g, ' $1')}
+              {option.charAt(0).toUpperCase() + option.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -458,10 +350,24 @@ function InventoryManagement() {
 
       {/* Inventory List */}
       <ScrollView style={styles.inventoryList} showsVerticalScrollIndicator={false}>
-        {filteredInventory.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color="#4682B4" />
+            <Text style={styles.emptyText}>Loading inventory...</Text>
+          </View>
+        ) : loadError ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>{loadError}</Text>
+            <TouchableOpacity onPress={refreshInventory}>
+              <Text style={styles.actionButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredInventory.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="cube-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>No inventory items found</Text>
+            <Text style={styles.emptyText}>
+              {inventory.length === 0 ? 'No products in your inventory yet.' : 'No products match these filters.'}
+            </Text>
           </View>
         ) : (
           filteredInventory.map(renderInventoryItem)
@@ -477,7 +383,7 @@ function InventoryManagement() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Restock Item</Text>
+            <Text style={styles.modalTitle}>{stockAction === 'restock' ? 'Restock Item' : 'Adjust Stock'}</Text>
             {selectedItem && (
               <>
                 <Text style={styles.modalSubtitle}>{selectedItem.name}</Text>
@@ -486,7 +392,7 @@ function InventoryManagement() {
                 </Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder={`Quantity to add (${selectedItem.unit})`}
+                  placeholder={stockAction === 'restock' ? `Quantity to add (${selectedItem.unit})` : `New stock quantity (${selectedItem.unit})`}
                   value={restockQuantity}
                   onChangeText={setRestockQuantity}
                   keyboardType="numeric"
@@ -502,7 +408,7 @@ function InventoryManagement() {
                     style={styles.modalConfirmButton}
                     onPress={handleRestock}
                   >
-                    <Text style={styles.modalConfirmText}>Restock</Text>
+                    <Text style={styles.modalConfirmText}>{stockAction === 'restock' ? 'Restock' : 'Save Stock'}</Text>
                   </TouchableOpacity>
                 </View>
               </>

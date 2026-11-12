@@ -427,3 +427,36 @@ verify_jwt = false
 
 [functions.user-sync]
 verify_jwt = false
+
+[functions.cart-add]
+verify_jwt = false
+
+[functions.cart-update]
+verify_jwt = false
+
+[functions.cart-delete]
+verify_jwt = false
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.catalog]
+verify_jwt = false
+
+[functions.account]
+verify_jwt = false
+
+[functions.transactions]
+verify_jwt = false
+
+[functions.payment-process]
+verify_jwt = false
+
+[functions.analytics]
+verify_jwt = false
+
+[functions.kyc]
+verify_jwt = false
+
+[functions.admin]
+verify_jwt = false

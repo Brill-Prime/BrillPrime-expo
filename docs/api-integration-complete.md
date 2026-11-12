@@ -1,6 +1,39 @@
 
 # Complete API Integration Guide
 
+## Current Supabase serverless routing status
+
+The app's API base URL is the Supabase project URL. Calls to legacy `/api/...` paths do not resolve to application endpoints on Supabase and must not be considered integrated until routed to an Edge Function or an authenticated Supabase SDK operation.
+
+The API client no longer sends the unsupported `x-firebase-uid` request header. Edge Functions should derive the user ID from the verified Firebase ID token instead.
+
+The public merchant and commodity reads now use the `catalog` Edge Function:
+- `GET /functions/v1/catalog/merchants`
+- `GET /functions/v1/catalog/merchants/:id`
+- `GET /functions/v1/catalog/commodities`
+- `GET /functions/v1/catalog/merchants/:id/commodities`
+
+Merchant management, products, store settings, merchant orders/customers/analytics, and ratings also route through `catalog`. Writes and merchant-private reads require a verified Firebase ID token and merchant ownership.
+
+Addresses, payment methods, account settings, privacy settings, notification preferences, and account deletion requests use `account`. Transaction history and per-transaction reads use the authenticated `transactions` function. Payment execution is routed to `payment-process`, which intentionally returns HTTP 503 until a payment provider is configured; toll-payment history is not available because no toll transaction schema exists.
+
+Notification history/read operations use authenticated `account` routes, and queued analytics events are persisted through the authenticated `analytics` function.
+
+KYC profile/status endpoints use `kyc`; document files are stored in a private Supabase Storage bucket and accessed through short-lived signed URLs. The user submits files for review only after the required profile details and documents are present.
+
+Admin announcements and maintenance-mode updates use Firebase-authenticated `admin` function routes with an explicit database admin-role check.
+
+Nearby merchant reads use `merchants-nearby` and the existing PostGIS `location` column. Deploy the changed functions and apply migrations before using these routes in a hosted Supabase project. Other legacy `/api/...` service routes still need an Edge Function implementation and migration; the endpoint list below records historical integration intent, not proof that those routes currently exist.
+
+## Current runtime investigation
+
+- The checked-in `account` function handles `GET /notifications/unread-count`; a hosted `404 NOT_FOUND` means the target project does not currently serve that function/route. The Supabase CLI session used for this investigation does not have access to the configured app project, so hosted function deployment, migration status, and live verification could not be completed.
+- The checked-in `user-sync` handler allows both GET and POST. App startup now reads an existing profile through `GET /functions/v1/profile` and uses `POST /functions/v1/user-sync` only to create/sync a missing profile, avoiding a GET against older POST-only deployments.
+- Sign-out is a Firebase client operation. It no longer calls the legacy `/api/auth/logout` after clearing the Firebase token; Firebase sign-out failures are surfaced rather than reported as a successful logout.
+- Active admin screens still make direct requests to legacy `/api/admin/...` paths: users, moderation, KYC verification, escrow management, analytics, and control center. The Supabase `admin` function currently covers only announcements and maintenance. These screen routes have not been verified against the separate API host or migrated to Supabase admin handlers.
+- The database has no escrow or moderation-report tables in its checked-in schema/migrations. Those admin flows need explicit data-model decisions before they can be implemented safely; metrics and user/KYC routes can be assessed against existing tables.
+- `productService`, `trackingService`, and `escrowService` still contain legacy `/api/...` routes. No direct screen/service call sites for those services were found in this audit; confirm before deleting or migrating them.
+
 ## Overview
 This document tracks the integration status of all backend API endpoints with the frontend application.
 
@@ -12,7 +45,7 @@ This document tracks the integration status of all backend API endpoints with th
 - [x] POST `/api/auth/register` - User registration
 - [x] POST `/api/auth/login` - User login  
 - [x] POST `/api/auth/social-login` - Social authentication
-- [x] POST `/api/auth/logout` - User logout
+- [x] Firebase client sign-out - Ends the local Firebase session without requiring a backend logout route
 - [x] POST `/api/auth/verify-email` - Email verification
 - [x] POST `/api/auth/resend-otp` - Resend OTP
 - [x] GET `/api/profile` - Get user profile
@@ -40,24 +73,17 @@ This document tracks the integration status of all backend API endpoints with th
 - [ ] GET `/api/orders/:id/eta` - Get ETA (needs implementation)
 
 #### 5. Payment Service (`services/paymentService.ts`)
-- [x] POST `/api/payments/initialize` - Initialize payment
-- [x] GET `/api/payments/verify/:reference` - Verify payment
-- [x] GET `/api/payments/history` - Payment history
-- [x] POST `/api/payments/refund` - Request refund
+- [x] GET `/functions/v1/transactions` - Authenticated transaction history
+- [x] GET `/functions/v1/transactions/:id` - Authenticated transaction detail
+- [ ] POST `/functions/v1/payment-process` - Payment execution (provider not configured; returns 503)
+- [ ] Toll payment history (no backing schema)
 
 ### ⚠️ Needs Implementation
 
-#### 6. Profile Extensions (New Service Needed)
-- [ ] GET `/api/profile/addresses` - List addresses
-- [ ] POST `/api/profile/addresses` - Add address
-- [ ] PUT `/api/profile/addresses/:id` - Update address
-- [ ] DELETE `/api/profile/addresses/:id` - Delete address
-- [ ] GET `/api/profile/payment-methods` - List payment methods
-- [ ] POST `/api/profile/payment-methods` - Add payment method
-- [ ] PUT `/api/profile/payment-methods/:id` - Update payment method
-- [ ] DELETE `/api/profile/payment-methods/:id` - Delete payment method
-- [ ] GET `/api/profile/privacy-settings` - Get privacy settings
-- [ ] PUT `/api/profile/privacy-settings` - Update privacy settings
+#### 6. Profile Extensions
+- [x] Address CRUD via `/functions/v1/account/addresses`
+- [x] Payment method CRUD via `/functions/v1/account/payment-methods` (card creation requires a configured tokenization provider)
+- [x] Privacy and account settings via `/functions/v1/account`
 
 #### 7. Products & Categories (New Service Needed)
 - [ ] GET `/api/products` - List products
@@ -110,14 +136,10 @@ This document tracks the integration status of all backend API endpoints with th
 
 ## Next Steps
 
-1. **Fix Firebase Configuration** (CRITICAL) - Environment variables being read incorrectly
-2. **Create Profile Extension Service** - Handle addresses, payment methods, privacy settings
-3. **Create Products Service** - Product and category management
-4. **Create Escrow Service** - Escrow transaction handling
-5. **Extend Driver Service** - Complete driver functionality
-6. **Create Tracking Service** - Real-time order tracking
-7. **Create Ratings Service** - Rating and review system
-8. **Complete Admin Service** - All admin panel features
+1. Migrate or explicitly retain the active direct `/api/admin/...` screen calls after confirming their intended backend and route contracts.
+2. Resolve remaining legacy service routes after confirming whether those exported services are used at runtime.
+3. Configure a supported payment provider before enabling electronic payments, card tokenization, refunds, or toll payment processing.
+4. Link to the correct Supabase project, apply migrations, deploy Edge Functions, and verify hosted behavior with Firebase ID tokens and production-like data.
 
 ## Testing Checklist
 

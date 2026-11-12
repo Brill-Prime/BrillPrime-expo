@@ -33,9 +33,33 @@ class TypingIndicatorService {
         },
       });
 
-      await this.channel.subscribe();
+      const channel = this.channel;
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+
+        channel.subscribe((status, error) => {
+          if (settled) return;
+
+          if (status === 'SUBSCRIBED') {
+            settled = true;
+            resolve();
+            return;
+          }
+
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            settled = true;
+            reject(new Error(
+              `Typing channel failed to join (${status})${error?.message ? `: ${error.message}` : ''}`
+            ));
+          }
+        });
+      });
     } catch (error) {
       console.error('Error initializing typing indicator:', error);
+      if (this.channel) {
+        await supabase.removeChannel(this.channel);
+        this.channel = null;
+      }
       throw error;
     }
   }

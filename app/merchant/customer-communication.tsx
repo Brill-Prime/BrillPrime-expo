@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAlert } from '../../components/AlertProvider';
 import { communicationService } from '../../services/communicationService';
 import { merchantService } from '../../services/merchantService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useMerchant } from '../../contexts/MerchantContext';
 
 interface Customer {
   id: string;
@@ -41,8 +41,7 @@ interface CommunicationTemplate {
 export default function CustomerCommunication() {
   const router = useRouter();
   const { showSuccess, showError } = useAlert();
-  const { user } = useAuth();
-  const merchantId = user?.merchantId;
+  const { merchantId } = useMerchant();
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);

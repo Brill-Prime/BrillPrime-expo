@@ -75,7 +75,7 @@ supabase/functions/payment-process/
 
 The app's database policies and Realtime subscriptions use Firebase ID tokens. Configure the Supabase project's Firebase third-party auth integration with the same Firebase project ID before relying on direct client queries or Realtime subscriptions.
 
-The `cart-get`, `merchants-nearby`, `profile`, and `favorites` Edge Functions validate Firebase ID tokens themselves. Their `verify_jwt = false` settings in `supabase/config.toml` are required because Supabase's gateway cannot validate Firebase tokens as Supabase Auth tokens; do not remove the in-function Firebase verification. The nearby-merchants function reads only merchant rows permitted by the public RLS policy.
+The `cart-add`, `cart-get`, `cart-update`, `cart-delete`, `create-order`, `merchants-nearby`, `profile`, `favorites`, and `user-sync` Edge Functions validate Firebase ID tokens themselves. Each must have `verify_jwt = false` in `supabase/config.toml` because Supabase's gateway cannot validate Firebase tokens as Supabase Auth tokens; do not remove the in-function Firebase verification. The nearby-merchants function reads only merchant rows permitted by the public RLS policy.
 
 Before deploying:
 

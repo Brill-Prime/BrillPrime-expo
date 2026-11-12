@@ -100,8 +100,8 @@ if (!isSupabaseConfigured) {
       return originalSubscribe.call(this, (status: string, err?: any) => {
         if (err?.message?.includes('no unique or exclusion constraint')) {
           console.debug('Supabase constraint info:', err.message);
-        } else if (err) {
-          console.warn('Supabase realtime warning:', err.message || err);
+        } else if (err || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`Supabase realtime status: ${status}`, err?.message || err || '');
         }
         if (callback) {
           callback(status, err);

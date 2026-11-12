@@ -69,9 +69,13 @@ class CartService {
 
       // Try to sync with backend
       for (const item of items) {
-        await apiClient.post('/api/cart', item).catch(err => {
-          console.log('Backend sync failed (non-critical):', err);
+        const response = await apiClient.post('/functions/v1/cart-add', {
+          productId: item.commodityId,
+          quantity: item.quantity,
         });
+        if (!response.success) {
+          console.warn('Cart backend sync failed:', response.error);
+        }
       }
     } catch (error) {
       console.log('Cart sync error (non-critical):', error);
@@ -106,6 +110,7 @@ class CartService {
           await AsyncStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(cartItems));
           return { success: true, data: cartItems };
         }
+        console.warn('Cart backend read failed; using local cart:', response.error);
       }
 
       // Fallback to local storage
@@ -139,6 +144,7 @@ class CartService {
           await this.getCartItems();
           return { success: true, data: { message: 'Item added to cart' } };
         }
+        console.warn('Cart backend add failed; saving locally:', response.error);
       }
 
       // Fallback to local storage
@@ -176,9 +182,13 @@ class CartService {
       // Try to sync with backend using fresh token
       const token = await this.getFreshToken();
       if (token) {
-        apiClient.put(`/api/cart/${itemId}`, { quantity: newQuantity }).catch(err => {
-          console.log('Backend sync failed (updated locally):', err);
-        });
+        const response = await apiClient.put(
+          `/functions/v1/cart-update/${encodeURIComponent(itemId)}`,
+          { quantity: newQuantity }
+        );
+        if (!response.success) {
+          console.warn('Cart backend update failed; quantity was updated locally:', response.error);
+        }
       }
 
       return { success: true, data: { message: 'Quantity updated' } };
@@ -201,9 +211,12 @@ class CartService {
       // Try to sync with backend using fresh token
       const token = await this.getFreshToken();
       if (token) {
-        apiClient.delete(`/api/cart/${itemId}`).catch(err => {
-          console.log('Backend sync failed (removed locally):', err);
-        });
+        const response = await apiClient.delete(
+          `/functions/v1/cart-delete/${encodeURIComponent(itemId)}`
+        );
+        if (!response.success) {
+          console.warn('Cart backend delete failed; item was removed locally:', response.error);
+        }
       }
 
       return { success: true, data: { message: 'Item removed from cart' } };
@@ -226,9 +239,10 @@ class CartService {
       // Try to sync with backend using fresh token
       const token = await this.getFreshToken();
       if (token) {
-        apiClient.delete('/api/cart').catch(err => {
-          console.log('Backend sync failed (cleared locally):', err);
-        });
+        const response = await apiClient.delete('/functions/v1/cart-delete');
+        if (!response.success) {
+          console.warn('Cart backend clear failed; cart was cleared locally:', response.error);
+        }
       }
 
       return { success: true, data: { message: 'Cart cleared' } };

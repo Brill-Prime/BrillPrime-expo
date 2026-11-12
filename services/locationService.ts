@@ -923,20 +923,18 @@ class LocationService {
     ApiResponse<(Merchant & { liveLocation?: LocationDataFormat })[]>
   > {
     try {
-      const token = await authService.getToken();
-
-      let endpoint = `/api/merchants/nearby/live?lat=${latitude}&lng=${longitude}&radius=${radius}`;
-
-      return apiClient.get<
-        (Merchant & { liveLocation?: LocationDataFormat })[]
-      >(
-        endpoint,
-        token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : undefined
-      );
+      const response = await apiClient.callFunction<{
+        success: boolean;
+        data: (Merchant & { liveLocation?: LocationDataFormat })[];
+      }>('merchants-nearby', {
+        lat: String(latitude),
+        lng: String(longitude),
+        radius: String(radius),
+      });
+      if (!response.success || !response.data?.success) {
+        return { success: false, error: response.error || 'Failed to get nearby merchants' };
+      }
+      return { success: true, data: response.data.data };
     } catch (error) {
       console.error(
         "Error getting nearby merchants with live locations:",

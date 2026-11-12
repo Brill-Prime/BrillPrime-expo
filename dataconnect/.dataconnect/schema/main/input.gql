@@ -33,7 +33,7 @@ input Movie_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `Movie`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Movie`.`genre` of type `String`
   """
@@ -41,7 +41,7 @@ input Movie_Data {
   """
   ✨ `_expr` server value variant of `genre` (✨ Generated from Field `Movie`.`genre` of type `String`)
   """
-  genre_expr: String_Expr
+  genre_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Movie`.`imageUrl` of type `String!`
   """
@@ -49,7 +49,7 @@ input Movie_Data {
   """
   ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `Movie`.`imageUrl` of type `String!`)
   """
-  imageUrl_expr: String_Expr
+  imageUrl_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Movie`.`title` of type `String!`
   """
@@ -57,7 +57,15 @@ input Movie_Data {
   """
   ✨ `_expr` server value variant of `title` (✨ Generated from Field `Movie`.`title` of type `String!`)
   """
-  title_expr: String_Expr
+  title_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Movie`.`reviews_on_movie` of type `[Review!]!`
+  """
+  reviews_on_movie: [Review_Data!]
+  """
+  ✨ Generated from Field `Movie`.`movieMetadata_on_movie` of type `MovieMetadata`
+  """
+  movieMetadata_on_movie: MovieMetadata_Data
 }
 """
 ✨ Generated filter input type for table 'Movie'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -169,7 +177,7 @@ input Movie_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `Movie`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'Movie'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -236,7 +244,7 @@ input MovieMetadata_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `MovieMetadata`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `MovieMetadata`.`movieId` of type `UUID!`
   """
@@ -244,11 +252,11 @@ input MovieMetadata_Data {
   """
   ✨ `_expr` server value variant of `movieId` (✨ Generated from Field `MovieMetadata`.`movieId` of type `UUID!`)
   """
-  movieId_expr: UUID_Expr
+  movieId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `MovieMetadata`.`movie` of type `Movie!`
   """
-  movie: Movie_Key
+  movie: Movie_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `MovieMetadata`.`description` of type `String`
   """
@@ -256,7 +264,7 @@ input MovieMetadata_Data {
   """
   ✨ `_expr` server value variant of `description` (✨ Generated from Field `MovieMetadata`.`description` of type `String`)
   """
-  description_expr: String_Expr
+  description_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `MovieMetadata`.`rating` of type `Float`
   """
@@ -264,11 +272,11 @@ input MovieMetadata_Data {
   """
   ✨ `_expr` server value variant of `rating` (✨ Generated from Field `MovieMetadata`.`rating` of type `Float`)
   """
-  rating_expr: Float_Expr
+  rating_expr: Float_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `rating` (✨ Generated from Field `MovieMetadata`.`rating` of type `Float`)
   """
-  rating_update: [Float_Update!]
+  rating_update: [Float_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `MovieMetadata`.`releaseYear` of type `Int`
   """
@@ -276,11 +284,11 @@ input MovieMetadata_Data {
   """
   ✨ `_expr` server value variant of `releaseYear` (✨ Generated from Field `MovieMetadata`.`releaseYear` of type `Int`)
   """
-  releaseYear_expr: Int_Expr
+  releaseYear_expr: Int_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `releaseYear` (✨ Generated from Field `MovieMetadata`.`releaseYear` of type `Int`)
   """
-  releaseYear_update: [Int_Update!]
+  releaseYear_update: [Int_Update!] @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'MovieMetadata'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -424,7 +432,7 @@ input MovieMetadata_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `MovieMetadata`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'MovieMetadata'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -535,7 +543,7 @@ input Review_Data {
   """
   ✨ `_expr` server value variant of `movieId` (✨ Generated from Field `Review`.`movieId` of type `UUID!`)
   """
-  movieId_expr: UUID_Expr
+  movieId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`userId` of type `String!`
   """
@@ -543,15 +551,15 @@ input Review_Data {
   """
   ✨ `_expr` server value variant of `userId` (✨ Generated from Field `Review`.`userId` of type `String!`)
   """
-  userId_expr: String_Expr
+  userId_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`movie` of type `Movie!`
   """
-  movie: Movie_Key
+  movie: Movie_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`user` of type `User!`
   """
-  user: User_Key
+  user: User_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`rating` of type `Int`
   """
@@ -559,11 +567,11 @@ input Review_Data {
   """
   ✨ `_expr` server value variant of `rating` (✨ Generated from Field `Review`.`rating` of type `Int`)
   """
-  rating_expr: Int_Expr
+  rating_expr: Int_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `rating` (✨ Generated from Field `Review`.`rating` of type `Int`)
   """
-  rating_update: [Int_Update!]
+  rating_update: [Int_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`reviewDate` of type `Date!`
   """
@@ -571,15 +579,15 @@ input Review_Data {
   """
   ✨ `_date` server value variant of `reviewDate` (✨ Generated from Field `Review`.`reviewDate` of type `Date!`)
   """
-  reviewDate_date: Date_Relative
+  reviewDate_date: Date_Relative @fdc_forbiddenInVariables
   """
   ✨ `_expr` server value variant of `reviewDate` (✨ Generated from Field `Review`.`reviewDate` of type `Date!`)
   """
-  reviewDate_expr: Date_Expr
+  reviewDate_expr: Date_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `reviewDate` (✨ Generated from Field `Review`.`reviewDate` of type `Date!`)
   """
-  reviewDate_update: [Date_Update!]
+  reviewDate_update: [Date_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`reviewText` of type `String`
   """
@@ -587,7 +595,7 @@ input Review_Data {
   """
   ✨ `_expr` server value variant of `reviewText` (✨ Generated from Field `Review`.`reviewText` of type `String`)
   """
-  reviewText_expr: String_Expr
+  reviewText_expr: String_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'Review'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -727,7 +735,7 @@ input Review_Key {
   """
   ✨ `_expr` server value variant of `movieId` (✨ Generated from Field `Review`.`movieId` of type `UUID!`)
   """
-  movieId_expr: UUID_Expr
+  movieId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Review`.`userId` of type `String!`
   """
@@ -735,7 +743,7 @@ input Review_Key {
   """
   ✨ `_expr` server value variant of `userId` (✨ Generated from Field `Review`.`userId` of type `String!`)
   """
-  userId_expr: String_Expr
+  userId_expr: String_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'Review'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -842,7 +850,7 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `String!`)
   """
-  id_expr: String_Expr
+  id_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `User`.`username` of type `String!`
   """
@@ -850,7 +858,11 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `username` (✨ Generated from Field `User`.`username` of type `String!`)
   """
-  username_expr: String_Expr
+  username_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `User`.`reviews_on_user` of type `[Review!]!`
+  """
+  reviews_on_user: [Review_Data!]
 }
 """
 ✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -942,7 +954,7 @@ input User_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `String!`)
   """
-  id_expr: String_Expr
+  id_expr: String_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.

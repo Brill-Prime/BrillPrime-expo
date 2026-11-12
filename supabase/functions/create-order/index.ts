@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, withCors } from '../_shared/cors.ts';
+import { FirebaseAuthError, requireFirebaseUid } from '../_shared/firebase-auth.ts';
+import { createAdminClient } from '../_shared/supabase-admin.ts';
 
 serve(async (req) => {
   const corsResponse = handleCors(req);
@@ -14,38 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    const authorization = req.headers.get('Authorization');
-    if (!authorization) {
-      return withCors(new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }));
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authorization },
-        },
-      }
-    );
-
-    // Get the user from the JWT token
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
-      return withCors(
-        new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401 }
-        )
-      );
-    }
+    const firebaseUid = await requireFirebaseUid(req);
+    const supabaseClient = createAdminClient();
 
     const body = await req.json();
     const { items, deliveryAddress, paymentMethodId, notes } = body;
@@ -79,7 +50,7 @@ serve(async (req) => {
     const { data: userData, error: userDataError } = await supabaseClient
       .from('users')
       .select('id')
-      .eq('firebase_uid', user.id)
+      .eq('firebase_uid', firebaseUid)
       .single();
 
     if (userDataError || !userData) {
@@ -199,9 +170,10 @@ serve(async (req) => {
       })
     );
   } catch (error) {
+    const status = error instanceof FirebaseAuthError ? error.status : 400;
     return withCors(
       new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unable to create order.' }), {
-        status: 400,
+        status,
         headers: { 'Content-Type': 'application/json' },
       })
     );

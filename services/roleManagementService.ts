@@ -74,7 +74,7 @@ class RoleManagementService {
   async switchRole(role: 'consumer' | 'merchant' | 'driver'): Promise<ApiResponse<{ success: boolean }>> {
     try {
       const roleStatus = await this.getRoleStatus();
-      
+
       if (!roleStatus) {
         return {
           success: false,
@@ -83,7 +83,7 @@ class RoleManagementService {
       }
 
       const targetRoleStatus = roleStatus[role];
-      
+
       if (!targetRoleStatus.isRegistered) {
         return {
           success: false,
@@ -127,34 +127,21 @@ class RoleManagementService {
   }> {
     try {
       const roleStatus = await this.getRoleStatus();
-      const activeRole = await this.getCurrentRole();
-
-      if (role === 'consumer') {
-        return { hasAccess: true };
-      }
 
       if (!roleStatus) {
         return {
-          hasAccess: activeRole === role,
-          reason: activeRole === role ? undefined : `Role status not initialized for ${role}`,
+          hasAccess: role === 'consumer',
+          reason: role !== 'consumer' ? 'Role status not initialized' : undefined,
         };
       }
 
       const targetRoleStatus = roleStatus[role];
 
-      if (!targetRoleStatus) {
-        return {
-          hasAccess: activeRole === role,
-          reason: activeRole === role ? undefined : `Role status missing for ${role}`,
-        };
+      if (role === 'consumer') {
+        return { hasAccess: true };
       }
 
       if (!targetRoleStatus.isRegistered) {
-        const storedRole = activeRole === role ? undefined : 'selected role is not active';
-        if (activeRole === role) {
-          return { hasAccess: true };
-        }
-
         return {
           hasAccess: false,
           reason: `You need to register as a ${role} to access this feature`,
@@ -163,10 +150,6 @@ class RoleManagementService {
       }
 
       if (!targetRoleStatus.isVerified) {
-        if (activeRole === role) {
-          return { hasAccess: true };
-        }
-
         return {
           hasAccess: false,
           reason: `Your ${role} account is pending verification`,
@@ -187,7 +170,7 @@ class RoleManagementService {
   async registerForRole(request: RoleRegistrationRequest): Promise<ApiResponse<RoleVerification>> {
     try {
       const response = await apiClient.post<RoleVerification>(
-        '/api/profile/register-role',
+        API_ENDPOINTS.KYC.REGISTER_ROLE,
         request
       );
 
@@ -215,7 +198,7 @@ class RoleManagementService {
   async syncRoleStatusFromBackend(): Promise<ApiResponse<UserRoleStatus>> {
     try {
       const response = await apiClient.get<{ roleStatus: UserRoleStatus }>(
-        '/api/profile/role-status'
+        API_ENDPOINTS.KYC.ROLE_STATUS
       );
 
       if (response.success && response.data?.roleStatus) {

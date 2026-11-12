@@ -382,15 +382,15 @@ export interface GetMovieByIdData {
       releaseYear?: number | null;
       description?: string | null;
     };
-      reviews: ({
-        reviewText?: string | null;
-        reviewDate: DateString;
-        rating?: number | null;
-        user: {
-          id: string;
-          username: string;
-        } & User_Key;
-      })[];
+    reviews: ({
+      reviewText?: string | null;
+      reviewDate: DateString;
+      rating?: number | null;
+      user: {
+        id: string;
+        username: string;
+      } & User_Key;
+    })[];
   } & Movie_Key;
 }
 ```

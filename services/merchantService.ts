@@ -7,6 +7,9 @@ export interface Merchant {
         name: string;
         description?: string;
         logoUrl?: string;
+        address?: string;
+        rating?: number;
+        business_type?: string;
 }
 
 export interface Commodity {
@@ -23,7 +26,7 @@ export interface Commodity {
 // Fetch all merchants
 export const getMerchants = async (): Promise<Merchant[]> => {
         try {
-                const response = await apiClient.get<Merchant[]>('/api/merchants');
+                const response = await apiClient.get<Merchant[]>('/functions/v1/catalog/merchants');
                 return response.success && response.data ? response.data : [];
         } catch (error) {
                 console.error('API Error:', error);
@@ -34,7 +37,7 @@ export const getMerchants = async (): Promise<Merchant[]> => {
 // Fetch a merchant by ID
 export const getMerchantById = async (id: string): Promise<Merchant | null> => {
         try {
-                const response = await apiClient.get<Merchant>(`/api/merchants/${id}`);
+                const response = await apiClient.get<Merchant>(`/functions/v1/catalog/merchants/${encodeURIComponent(id)}`);
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -45,7 +48,7 @@ export const getMerchantById = async (id: string): Promise<Merchant | null> => {
 // Create a new merchant
 export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Merchant | null> => {
         try {
-                const response = await apiClient.post<Merchant>('/api/merchants', merchant);
+                const response = await apiClient.post<Merchant>('/functions/v1/catalog/merchants', merchant);
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -56,7 +59,7 @@ export const createMerchant = async (merchant: Omit<Merchant, 'id'>): Promise<Me
 // Update an existing merchant
 export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant, 'id'>>): Promise<Merchant | null> => {
         try {
-                const response = await apiClient.put<Merchant>(`/api/merchants/${id}`, merchant);
+                const response = await apiClient.put<Merchant>(`/functions/v1/catalog/merchants/${encodeURIComponent(id)}`, merchant);
                 return response.success && response.data ? response.data : null;
         } catch (error) {
                 console.error('API Error:', error);
@@ -67,7 +70,7 @@ export const updateMerchant = async (id: string, merchant: Partial<Omit<Merchant
 // Delete a merchant
 export const deleteMerchant = async (id: string): Promise<boolean> => {
         try {
-                const response = await apiClient.delete(`/api/merchants/${id}`);
+                const response = await apiClient.delete(`/functions/v1/catalog/merchants/${encodeURIComponent(id)}`);
                 return response.success;
         } catch (error) {
                 console.error('API Error:', error);
@@ -78,7 +81,7 @@ export const deleteMerchant = async (id: string): Promise<boolean> => {
 // Fetch all commodities
 export const getCommodities = async (): Promise<{ success: boolean; data?: Commodity[] }> => {
         try {
-                const response = await apiClient.get<Commodity[]>('/api/commodities');
+                const response = await apiClient.get<Commodity[]>('/functions/v1/catalog/commodities');
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -89,7 +92,7 @@ export const getCommodities = async (): Promise<{ success: boolean; data?: Commo
 // Fetch commodities for a specific merchant
 export const getMerchantCommodities = async (merchantId: string): Promise<{ success: boolean; data?: Commodity[] }> => {
         try {
-                const response = await apiClient.get<Commodity[]>(`/api/merchants/${merchantId}/commodities`);
+                const response = await apiClient.get<Commodity[]>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/commodities`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -100,7 +103,7 @@ export const getMerchantCommodities = async (merchantId: string): Promise<{ succ
 // Add commodity for merchant
 export const addCommodity = async (merchantId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
         try {
-                const response = await apiClient.post<Commodity>(`/api/merchants/${merchantId}/commodities`, commodity);
+                const response = await apiClient.post<Commodity>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/commodities`, commodity);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -111,7 +114,7 @@ export const addCommodity = async (merchantId: string, commodity: any): Promise<
 // Update commodity
 export const updateCommodity = async (merchantId: string, commodityId: string, commodity: any): Promise<{ success: boolean; data?: Commodity }> => {
         try {
-                const response = await apiClient.put<Commodity>(`/api/merchants/${merchantId}/commodities/${commodityId}`, commodity);
+                const response = await apiClient.put<Commodity>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/commodities/${encodeURIComponent(commodityId)}`, commodity);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -122,7 +125,7 @@ export const updateCommodity = async (merchantId: string, commodityId: string, c
 // Delete commodity
 export const deleteCommodity = async (merchantId: string, commodityId: string): Promise<boolean> => {
         try {
-                const response = await apiClient.delete(`/api/merchants/${merchantId}/commodities/${commodityId}`);
+                const response = await apiClient.delete(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/commodities/${encodeURIComponent(commodityId)}`);
                 return response.success;
         } catch (error) {
                 console.error('API Error:', error);
@@ -133,7 +136,7 @@ export const deleteCommodity = async (merchantId: string, commodityId: string): 
 // Get merchant analytics
 export const getAnalytics = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/analytics`);
+                const response = await apiClient.get<any>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/analytics`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -148,7 +151,7 @@ export const getMerchantOrders = async (merchantId: string, filters?: {
         offset?: number;
 }): Promise<{ success: boolean; data?: any[] }> => {
         try {
-                let endpoint = `/api/merchants/${merchantId}/orders`;
+                let endpoint = `/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/orders`;
                 const queryParams = new URLSearchParams();
 
                 if (filters) {
@@ -179,7 +182,7 @@ export const updateStoreSettings = async (merchantId: string, settings: {
         acceptsOrders?: boolean;
 }): Promise<{ success: boolean; data?: any }> => {
         try {
-                const response = await apiClient.put<any>(`/api/merchants/${merchantId}/settings`, settings);
+                const response = await apiClient.put<any>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/settings`, settings);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -190,7 +193,7 @@ export const updateStoreSettings = async (merchantId: string, settings: {
 // Get merchant store settings
 export const getStoreSettings = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                const response = await apiClient.get<any>(`/api/merchants/${merchantId}/settings`);
+                const response = await apiClient.get<any>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/settings`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);
@@ -201,9 +204,7 @@ export const getStoreSettings = async (merchantId: string): Promise<{ success: b
 // Get merchant reviews (using ratings endpoint from backend)
 export const getMerchantReviews = async (merchantId: string): Promise<{ success: boolean; data?: any }> => {
         try {
-                // Backend has /api/ratings/user/:userId endpoint
-                // We need to adapt this to get merchant reviews
-                const response = await apiClient.get<any>(`/api/ratings/user/${merchantId}`);
+                const response = await apiClient.get<any>(`/functions/v1/catalog/ratings/user/${encodeURIComponent(merchantId)}`);
 
                 if (response.success && response.data) {
                         // Transform the ratings data to reviews format
@@ -238,7 +239,7 @@ const calculateAverageRating = (ratings: any[]): number => {
 // Submit merchant review
 export const submitMerchantReview = async (merchantId: string, review: { rating: number; comment: string }): Promise<{ success: boolean; error?: string; data?: any }> => {
         try {
-                const response = await apiClient.post<any>('/api/ratings', {
+                const response = await apiClient.post<any>('/functions/v1/catalog/ratings', {
                         merchantId,
                         rating: review.rating,
                         comment: review.comment
@@ -257,7 +258,7 @@ export const submitMerchantReview = async (merchantId: string, review: { rating:
 // Get merchant customers
 export const getCustomers = async (merchantId: string): Promise<{ success: boolean; data?: any[] }> => {
         try {
-                const response = await apiClient.get<any[]>(`/api/merchants/${merchantId}/customers`);
+                const response = await apiClient.get<any[]>(`/functions/v1/catalog/merchants/${encodeURIComponent(merchantId)}/customers`);
                 return { success: response.success, data: response.data };
         } catch (error) {
                 console.error('API Error:', error);

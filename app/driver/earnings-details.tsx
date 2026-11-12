@@ -1,6 +1,6 @@
 import { withRoleAccess } from '../../components/withRoleAccess';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   TouchableOpacity,
   Dimensions,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { transactionService } from '../../services/transactionService';
+import { orderService } from '../../services/orderService';
 
 interface EarningsSummary {
   totalEarnings: number;
@@ -26,21 +29,13 @@ interface EarningsSummary {
   lastPayoutAmount: number;
 }
 
-interface EarningsBreakdown {
-  deliveryFees: number;
-  tips: number;
-  bonuses: number;
-  fuelReimbursement: number;
-  tollReimbursement: number;
-}
-
 interface Transaction {
   id: string;
   date: string;
-  type: 'delivery' | 'tip' | 'bonus' | 'payout' | 'reimbursement';
+  type: string;
   description: string;
   amount: number;
-  status: 'completed' | 'pending' | 'processing';
+  status: string;
   orderId?: string;
 }
 
@@ -48,28 +43,47 @@ function DriverEarningsDetails() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('week');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [completedDeliveries, setCompletedDeliveries] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
 
-  const summary: EarningsSummary = {
-    totalEarnings: 0.00,
-    todayEarnings: 0.00,
-    weekEarnings: 0.00,
-    monthEarnings: 0.00,
-    completedDeliveries: 0,
-    averagePerDelivery: 0.00,
-    pendingPayout: 0.00,
-    lastPayoutDate: '',
-    lastPayoutAmount: 0.00,
-  };
+  const loadEarnings = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [transactionsResult, ordersResult] = await Promise.all([
+        transactionService.getMyTransactions(),
+        orderService.getDriverOrders(),
+      ]);
 
-  const breakdown: EarningsBreakdown = {
-    deliveryFees: 0.00,
-    tips: 0.00,
-    bonuses: 0.00,
-    fuelReimbursement: 0.00,
-    tollReimbursement: 0.00,
-  };
+      if (!transactionsResult.success || !transactionsResult.transactions) {
+        setLoadError(transactionsResult.error || 'Unable to load earnings transactions.');
+        return;
+      }
+      if (!ordersResult.success || !ordersResult.data) {
+        setLoadError(ordersResult.error || 'Unable to load completed deliveries.');
+        return;
+      }
 
-  const transactions: Transaction[] = [];
+      setTransactions(transactionsResult.transactions.map(transaction => ({
+        id: transaction.id,
+        date: transaction.date,
+        type: transaction.type,
+        description: transaction.description,
+        amount: Number(transaction.amount) || 0,
+        status: transaction.status,
+        orderId: transaction.orderId,
+      })));
+      setCompletedDeliveries(
+        ordersResult.data.orders.filter(order => order.status?.toLowerCase() === 'delivered').length
+      );
+    } catch (error) {
+      console.error('Error fetching driver earnings:', error);
+      setLoadError('Unable to load earnings. Retry to try again.');
+    }
+  }, []);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -78,6 +92,84 @@ function DriverEarningsDetails() {
 
     return () => subscription?.remove();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+
+    const initialize = async () => {
+      try {
+        await loadEarnings();
+        const subscription = await transactionService.subscribeToMyTransactions(() => {
+          if (active) void loadEarnings();
+        });
+        if (!active) {
+          subscription.unsubscribe();
+          return;
+        }
+        unsubscribe = subscription.unsubscribe;
+        if (subscription.error) setRealtimeError(subscription.error);
+      } catch (error) {
+        console.error('Error loading driver earnings:', error);
+        if (active) setLoadError('Unable to load earnings. Retry to try again.');
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    void initialize();
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [loadEarnings]);
+
+  const earnings = transactions.filter(
+    transaction => transaction.type === 'commission' && transaction.status === 'completed'
+  );
+  const totalEarnings = earnings.reduce((total, transaction) => total + transaction.amount, 0);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(todayStart.getDate() - todayStart.getDay());
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const earningsSince = (start: Date) => earnings
+    .filter(transaction => new Date(transaction.date) >= start)
+    .reduce((total, transaction) => total + transaction.amount, 0);
+  const lastPayout = transactions
+    .filter(transaction => transaction.type === 'withdrawal' && transaction.status === 'completed')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const summary: EarningsSummary = {
+    totalEarnings,
+    todayEarnings: earningsSince(todayStart),
+    weekEarnings: earningsSince(weekStart),
+    monthEarnings: earningsSince(monthStart),
+    completedDeliveries,
+    averagePerDelivery: earnings.length > 0 ? totalEarnings / earnings.length : 0,
+    pendingPayout: transactions
+      .filter(transaction => transaction.type === 'withdrawal' && transaction.status === 'pending')
+      .reduce((total, transaction) => total + transaction.amount, 0),
+    lastPayoutDate: lastPayout?.date || '',
+    lastPayoutAmount: lastPayout?.amount || 0,
+  };
+
+  const refreshEarnings = async () => {
+    setRefreshing(true);
+    try {
+      await loadEarnings();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const retryLoading = async () => {
+    setIsLoading(true);
+    try {
+      await loadEarnings();
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getCurrentPeriodEarnings = () => {
     switch (selectedPeriod) {
@@ -110,12 +202,14 @@ function DriverEarningsDetails() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'delivery':
+      case 'commission':
         return 'car-outline';
       case 'tip':
         return 'heart-outline';
       case 'bonus':
         return 'gift-outline';
       case 'payout':
+      case 'withdrawal':
         return 'card-outline';
       case 'reimbursement':
         return 'repeat-outline';
@@ -160,10 +254,31 @@ function DriverEarningsDetails() {
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refreshEarnings} />
+          }
         >
+          {realtimeError && (
+            <Text style={styles.emptyTransactions}>
+              Live updates are unavailable. Pull down to refresh.
+            </Text>
+          )}
+          {isLoading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTransactions}>Loading earnings...</Text>
+            </View>
+          ) : loadError ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTransactions}>{loadError}</Text>
+              <TouchableOpacity onPress={() => void retryLoading()}>
+                <Text style={styles.sectionTitle}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+          <>
           {/* Earnings Summary Card */}
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Current Balance</Text>
+            <Text style={styles.summaryLabel}>Earnings in selected period</Text>
             <Text style={styles.summaryAmount}>
               {formatCurrency(getCurrentPeriodEarnings())}
             </Text>
@@ -185,7 +300,7 @@ function DriverEarningsDetails() {
                       selectedPeriod === period && styles.periodButtonTextActive,
                     ]}
                   >
-                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                    {period === 'all' ? 'Loaded' : period.charAt(0).toUpperCase() + period.slice(1)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -209,31 +324,7 @@ function DriverEarningsDetails() {
             <View style={styles.statCard}>
               <Ionicons name="time" size={24} color="#f59e0b" />
               <Text style={styles.statValue}>{formatCurrency(summary.pendingPayout)}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-          </View>
-
-          {/* Earnings Breakdown */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Earnings Breakdown</Text>
-            <View style={styles.breakdownCard}>
-              {[
-                { label: 'Delivery Fees', amount: breakdown.deliveryFees, icon: 'car-outline', color: '#4682B4' },
-                { label: 'Tips', amount: breakdown.tips, icon: 'heart-outline', color: '#ef4444' },
-                { label: 'Bonuses', amount: breakdown.bonuses, icon: 'gift-outline', color: '#8b5cf6' },
-                { label: 'Fuel Reimbursement', amount: breakdown.fuelReimbursement, icon: 'water-outline', color: '#f59e0b' },
-                { label: 'Toll Reimbursement', amount: breakdown.tollReimbursement, icon: 'card-outline', color: '#10b981' },
-              ].map((item, index) => (
-                <View key={index} style={styles.breakdownItem}>
-                  <View style={styles.breakdownLeft}>
-                    <View style={[styles.breakdownIcon, { backgroundColor: item.color + '20' }]}>
-                      <Ionicons name={item.icon as any} size={20} color={item.color} />
-                    </View>
-                    <Text style={styles.breakdownLabel}>{item.label}</Text>
-                  </View>
-                  <Text style={styles.breakdownAmount}>{formatCurrency(item.amount)}</Text>
-                </View>
-              ))}
+              <Text style={styles.statLabel}>Pending Withdrawals</Text>
             </View>
           </View>
 
@@ -254,7 +345,7 @@ function DriverEarningsDetails() {
               <View style={styles.payoutRow}>
                 <Text style={styles.payoutLabel}>Amount</Text>
                 <Text style={[styles.payoutValue, styles.payoutAmount]}>
-                  {formatCurrency(summary.lastPayoutAmount)}
+                  {lastPayout ? formatCurrency(summary.lastPayoutAmount) : '—'}
                 </Text>
               </View>
             </View>
@@ -262,9 +353,12 @@ function DriverEarningsDetails() {
 
           {/* Transaction History */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <Text style={styles.sectionTitle}>Recent Transaction Records</Text>
+            <Text style={styles.emptyTransactions}>
+              Showing the latest {transactions.length} records returned by the transactions service.
+            </Text>
             {transactions.length === 0 && (
-              <Text style={styles.emptyTransactions}>No earnings records are available.</Text>
+              <Text style={styles.emptyTransactions}>No transaction records are available.</Text>
             )}
             {transactions.map((transaction) => (
               <TouchableOpacity
@@ -295,7 +389,8 @@ function DriverEarningsDetails() {
                 </View>
                 <View style={styles.transactionRight}>
                   <Text style={styles.transactionAmount}>
-                    +{formatCurrency(transaction.amount)}
+                    {transaction.type === 'commission' || transaction.type === 'deposit' ? '+' : '-'}
+                    {formatCurrency(transaction.amount)}
                   </Text>
                   <View
                     style={[
@@ -312,18 +407,13 @@ function DriverEarningsDetails() {
             ))}
           </View>
 
-          {/* Request Payout Button */}
           <View style={styles.actionSection}>
-            <TouchableOpacity
-              style={styles.payoutButton}
-              onPress={() => {
-                router.push('/payment/index' as never);
-              }}
-            >
-              <Ionicons name="wallet-outline" size={20} color="white" />
-              <Text style={styles.payoutButtonText}>Request Payout</Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyTransactions}>
+              Payout requests are unavailable because no payout request endpoint is configured.
+            </Text>
           </View>
+          </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -526,6 +616,11 @@ const getResponsiveStyles = (screenData: any) => {
       color: '#6b7280',
       paddingVertical: 16,
       textAlign: 'center',
+    },
+    emptyState: {
+      paddingHorizontal: Math.max(16, width * 0.05),
+      paddingVertical: 32,
+      alignItems: 'center',
     },
     transactionLeft: {
       flexDirection: 'row',

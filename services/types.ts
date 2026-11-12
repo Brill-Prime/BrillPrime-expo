@@ -157,7 +157,7 @@ export interface Transaction {
   id: string;
   userId: string;
   orderId?: string;
-  type: "purchase" | "refund" | "payment" | "reward";
+  type: "purchase" | "refund" | "payment" | "reward" | "withdrawal" | "deposit" | "fee" | "commission";
   amount: number;
   description: string;
   status: "pending" | "completed" | "failed" | "cancelled";

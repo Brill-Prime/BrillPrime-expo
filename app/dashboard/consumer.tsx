@@ -18,7 +18,7 @@ export default function ConsumerDashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [cartItemCount, setCartItemCount] = useState(0);
-  const { user } = useAuth(); // Get user object from AuthContext
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -29,10 +29,12 @@ export default function ConsumerDashboard() {
   }, []);
 
   const [userStats, setUserStats] = useState({
-    totalOrders: 0,
-    totalSpent: 0,
-    favoriteCount: 0
+    totalOrders: null as number | null,
+    totalSpent: null as number | null,
+    favoriteCount: null as number | null
   });
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const loadDashboardData = async () => {
     await loadCartCount();
@@ -70,27 +72,35 @@ export default function ConsumerDashboard() {
   const loadUserData = async () => {
     try {
       const email = await AsyncStorage.getItem("userEmail");
-      setUserEmail(email || "user@brillprime.com");
+      setUserEmail(email || "");
     } catch (error) {
       console.error("Error loading user data:", error);
     }
   };
 
   const loadUserStats = async () => {
+    setStatsLoading(true);
+    setStatsError(null);
     try {
       // Load user orders
       const ordersResponse = await orderService.getUserOrders();
-      const orders = ordersResponse.success && ordersResponse.data ? ordersResponse.data.orders : [];
+      if (!ordersResponse.success || !ordersResponse.data) {
+        throw new Error(ordersResponse.error || 'Failed to load orders');
+      }
+      const orders = ordersResponse.data.orders;
       const totalOrders = orders.length;
 
       // Calculate total spent from completed orders
       const totalSpent = orders
-        .filter((order: any) => order.status === 'delivered' || order.status === 'completed')
-        .reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
+        .filter((order: any) => ['delivered', 'completed'].includes(String(order.status).toLowerCase()))
+        .reduce((sum: number, order: any) => sum + Number(order.total_amount ?? order.totalAmount ?? 0), 0);
 
       // Load favorites count
       const favoritesResponse = await favoritesService.getFavorites();
-      const favoriteCount = favoritesResponse.success && favoritesResponse.data ? favoritesResponse.data.length : 0;
+      if (!favoritesResponse.success || !favoritesResponse.data) {
+        throw new Error(favoritesResponse.error || 'Failed to load favorites');
+      }
+      const favoriteCount = favoritesResponse.data.length;
 
       setUserStats({
         totalOrders,
@@ -99,7 +109,9 @@ export default function ConsumerDashboard() {
       });
     } catch (error) {
       console.error("Error loading user stats:", error);
-      // Keep default values on error
+      setStatsError(error instanceof Error ? error.message : 'Failed to load dashboard data');
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -114,7 +126,7 @@ export default function ConsumerDashboard() {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+              await signOut();
               router.replace("/");
             } catch (error) {
               console.error("Error signing out:", error);
@@ -330,18 +342,29 @@ export default function ConsumerDashboard() {
           <Text style={styles.sectionTitle}>Your Stats</Text>
           <View style={styles.statsRow}>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>{userStats.totalOrders}</Text>
+              <Text style={styles.statNumber}>{statsLoading ? '…' : userStats.totalOrders ?? '—'}</Text>
               <Text style={styles.statLabel}>Orders</Text>
             </View>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>{formatNaira(userStats.totalSpent, { includeDecimals: false })}</Text>
+              <Text style={styles.statNumber}>
+                {statsLoading || userStats.totalSpent === null
+                  ? '—'
+                  : formatNaira(userStats.totalSpent, { includeDecimals: false })}
+              </Text>
               <Text style={styles.statLabel}>Total Spent</Text>
             </View>
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
-              <Text style={styles.statNumber}>{userStats.favoriteCount}</Text>
+              <Text style={styles.statNumber}>{statsLoading ? '…' : userStats.favoriteCount ?? '—'}</Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
           </View>
+          {statsError && (
+            <TouchableOpacity onPress={loadDashboardData}>
+              <Text style={{ color: '#b00020', textAlign: 'center', marginTop: 8 }}>
+                {statsError} Tap to retry.
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.quickActionsContainer}>

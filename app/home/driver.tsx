@@ -16,10 +16,9 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAlert } from "../../components/AlertProvider";
 import { useAuth } from "../../contexts/AuthContext";
-import { PerformanceOptimizer } from "../../utils/performance";
+import { orderService } from "../../services/orderService";
 import { locationService } from "../../services/locationService";
 import Map, { Marker, PROVIDER_GOOGLE } from "../../components/Map";
 import { calculateETA as calculateETAGoogle } from "../../utils/googleMaps";
@@ -168,23 +167,6 @@ const getResponsiveFontSize = (size: 'small' | 'medium' | 'large') => {
   return sizes[size];
 };
 
-// Default data to prevent dependency issues
-const defaultDriverData = {
-  userId: "DR456789",
-  name: "John Doe",
-  vehicle: "Honda Civic - ABC 123",
-  rating: 4.8,
-  status: "Online",
-};
-
-const defaultStats = {
-  totalTrips: 234,
-  activeOrders: 3,
-  todaysEarnings: 45000,
-  weeklyRating: 4.8,
-  pendingNotifications: 1,
-};
-
 // Function to format currency to Naira
 const formatNaira = (amount: number): string => {
   return `N${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
@@ -193,16 +175,16 @@ const formatNaira = (amount: number): string => {
 export default function DriverHome() {
   const router = useRouter();
   const { showConfirmDialog, showError, showSuccess, showInfo } = useAlert();
-  const { isAuthenticated, isLoading: authLoading, role, refreshUser, signOut } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, user, refreshUser, signOut } = useAuth();
 
   // State management
   const [isLoading, setIsLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
   const [activeTab, setActiveTab] = useState("Available");
-  const [driverData, setDriverData] = useState(defaultDriverData);
-  const [stats, setStats] = useState(defaultStats);
+  const [driverData, setDriverData] = useState({ name: "" });
+  const [driverOrders, setDriverOrders] = useState<any[]>([]);
+  const [driverOrdersLoading, setDriverOrdersLoading] = useState(true);
+  const [driverOrdersError, setDriverOrdersError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [energyLevel, setEnergyLevel] = useState(75);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [currentLocation, setCurrentLocation] = useState<any>(null);
   const [driverMovement, setDriverMovement] = useState<{ heading?: number; isMoving?: boolean; speed?: number }>({});
@@ -228,7 +210,7 @@ export default function DriverHome() {
   const slideAnim = useRef(new Animated.Value(-sidebarWidth)).current;
   const progressAnim = useState(new Animated.Value(0))[0];
 
-  // Animated progress rings and energy calculation
+  // Animated progress rings
   useEffect(() => {
     Animated.loop(
       Animated.timing(progressAnim, {
@@ -238,100 +220,44 @@ export default function DriverHome() {
       })
     ).start();
 
-    // Calculate energy based on activity and time
-    const interval = setInterval(() => {
-      setEnergyLevel((prev) => {
-        // Energy decreases when on delivery, increases when off duty
-        let change = 0;
-        if (activeTab === "On delivery") {
-          change = -0.5; // Decreases during delivery
-        } else if (activeTab === "Off duty") {
-          change = 1; // Increases when resting
-        } else if (activeTab === "Available") {
-          change = 0.2; // Slight increase when waiting
-        }
-
-        // Add small random variation
-        change += (Math.random() * 0.4 - 0.2);
-
-        return Math.max(0, Math.min(100, prev + change));
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [activeTab]);
+    return () => progressAnim.stopAnimation();
+  }, [progressAnim]);
 
   const rotateAnimation = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  // Load data with error handling
-  const loadUserData = useCallback(async () => {
+  const loadDriverData = useCallback(async () => {
+    setDriverOrdersLoading(true);
+    setDriverOrdersError(null);
     try {
-      const cachedData = PerformanceOptimizer.getCache("driverData");
-      if (cachedData) {
-        setUserEmail(cachedData.email || "driver@brillprime.com");
-        setDriverData(cachedData.driver || defaultDriverData);
-        setStats(cachedData.stats || defaultStats);
-        return;
-      }
-
-      const [email, driverName, savedStats] = await Promise.all([
-        AsyncStorage.getItem("userEmail"),
-        AsyncStorage.getItem("userName"),
-        AsyncStorage.getItem("driverStats")
+      const [profileResponse, ordersResponse] = await Promise.all([
+        orderService.getDriverProfile(),
+        orderService.getDriverOrders(),
       ]);
 
-      const emailValue = email || "driver@brillprime.com";
-      const driverInfo = driverName ? { ...defaultDriverData, name: driverName } : defaultDriverData;
-      const statsInfo = savedStats ? JSON.parse(savedStats) : defaultStats;
-
-      setUserEmail(emailValue);
-      setDriverData(driverInfo);
-      setStats(statsInfo);
-
-      PerformanceOptimizer.setCache("driverData", {
-        email: emailValue,
-        driver: driverInfo,
-        stats: statsInfo,
-      });
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      setUserEmail("driver@brillprime.com");
-      setDriverData(defaultDriverData);
-      setStats(defaultStats);
-    }
-  }, []);
-
-  const loadDriverStats = useCallback(async () => {
-    try {
-      const cachedStats = PerformanceOptimizer.getCache("driverStats");
-      if (cachedStats) {
-        setStats(cachedStats);
+      if (!profileResponse.success || !profileResponse.data) {
+        setDriverOrdersError(profileResponse.error || 'Driver profile is unavailable.');
+        return;
+      }
+      if (!ordersResponse.success || !ordersResponse.data) {
+        setDriverOrdersError(ordersResponse.error || 'Driver orders could not be loaded.');
         return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const newStats = {
-        totalTrips: 234,
-        activeOrders: 3,
-        todaysEarnings: 45000,
-        weeklyRating: 4.8,
-        pendingNotifications: 1,
-      };
-
-      setStats(newStats);
-      PerformanceOptimizer.setCache("driverStats", newStats);
-
-      // Load notification count
-      await loadNotificationCount();
+      setDriverData({
+        name: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Driver',
+      });
+      setDriverOrders(ordersResponse.data.orders);
+      setActiveTab(profileResponse.data.is_available ? 'Available' : 'Off duty');
     } catch (error) {
-      console.error("Error loading driver stats:", error);
-      setStats(defaultStats);
+      console.error('Error loading driver data:', error);
+      setDriverOrdersError('Driver orders could not be loaded. Tap to retry.');
+    } finally {
+      setDriverOrdersLoading(false);
     }
-  }, []);
+  }, [user?.firstName, user?.lastName]);
 
   const loadNotificationCount = useCallback(async () => {
     try {
@@ -397,45 +323,27 @@ export default function DriverHome() {
   }, []);
 
   // Resolve the driver's Supabase UUID from Firebase UID
-  const getSupabaseUserId = useCallback(async (): Promise<string | null> => {
-    try {
-      const { authService } = await import("../../services/authService");
-      const userData = await authService.getStoredUser();
-      if (!userData?.id) return null;
-
-      const { supabase } = await import("../../config/supabase");
-      const { data, error } = await supabase
-        .from("users")
-        .select("id")
-        .eq("firebase_uid", userData.id)
-        .single();
-
-      if (error || !data) return null;
-      return data.id as string;
-    } catch {
-      return null;
-    }
-  }, []);
+  const getSupabaseDriverId = useCallback(() => orderService.getInternalDriverId(), []);
 
   // Subscribe to order assignment notifications via Supabase realtime
   const subscribeToOrderAssignments = useCallback(async () => {
-    const supabaseUserId = await getSupabaseUserId();
-    if (!supabaseUserId) {
-      console.log("[DriverHome] Could not resolve Supabase user ID — skipping order subscription");
+    const supabaseDriverId = await getSupabaseDriverId();
+    if (!supabaseDriverId) {
+      console.log("[DriverHome] Could not resolve driver profile ID — skipping order subscription");
       return;
     }
 
     const { supabase } = await import("../../config/supabase");
 
     const channel = supabase
-      .channel(`driver_order_assignments:${supabaseUserId}`)
+      .channel(`driver_order_assignments:${supabaseDriverId}`)
       .on(
         "postgres_changes" as any,
         {
           event: "UPDATE",
           schema: "public",
           table: "orders",
-          filter: `driver_id=eq.${supabaseUserId}`,
+          filter: `driver_id=eq.${supabaseDriverId}`,
         },
         (payload: any) => {
           const order = payload.new;
@@ -483,7 +391,7 @@ export default function DriverHome() {
     orderSubscriptionRef.current = () => {
       supabase.removeChannel(channel);
     };
-  }, [getSupabaseUserId, showConfirmDialog, router]);
+  }, [getSupabaseDriverId, showConfirmDialog, router]);
 
   // Mount order-assignment listener and tear it down on unmount
   useEffect(() => {
@@ -506,7 +414,7 @@ export default function DriverHome() {
         return;
       }
 
-      await Promise.all([loadUserData(), loadDriverStats(), refreshUser()]);
+      await Promise.all([loadDriverData(), loadNotificationCount(), refreshUser()]);
       // Start location tracking after data loads
       await startLocationTracking();
     } catch (error) {
@@ -514,7 +422,7 @@ export default function DriverHome() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserData, loadDriverStats, refreshUser, startLocationTracking]);
+  }, [loadDriverData, loadNotificationCount, refreshUser, startLocationTracking]);
 
   useEffect(() => {
     initializeData();
@@ -577,12 +485,7 @@ export default function DriverHome() {
       "Are you sure you want to sign out?",
       async () => {
         try {
-          await AsyncStorage.multiRemove([
-            "userToken",
-            "userEmail",
-            "userRole",
-          ]);
-          PerformanceOptimizer.clearCache();
+          await signOut();
           router.replace("/");
           showSuccess("Signed Out", "You have been successfully signed out.");
         } catch (error) {
@@ -594,12 +497,17 @@ export default function DriverHome() {
         }
       },
     );
-  }, [showConfirmDialog, showSuccess, showError, router]);
+  }, [showConfirmDialog, showSuccess, showError, router, signOut]);
 
-  const handleTabPress = useCallback((tab) => {
+  const handleTabPress = useCallback(async (tab: string) => {
+    const result = await orderService.setDriverAvailability(tab === 'Available');
+    if (!result.success) {
+      showError("Status Update Failed", result.error || "Could not update driver availability.");
+      return;
+    }
     setActiveTab(tab);
     showInfo("Status Update", `Switched to ${tab} mode`);
-  }, [showInfo]);
+  }, [showInfo, showError]);
 
   // Calculate ETA based on current location and destination
   const calculateETA = useCallback(async (origin: { latitude: number; longitude: number }, destination: { latitude: number; longitude: number }) => {
@@ -703,34 +611,6 @@ export default function DriverHome() {
     }
   }, [currentLocation, calculateETA]);
 
-  // Simulate getting a delivery assignment
-  const simulateDeliveryAssignment = useCallback(() => {
-    if (!currentLocation) return;
-
-    // For demo purposes, create a destination 2km away from current location
-    const destination = {
-      latitude: currentLocation.latitude + 0.01, // ~1km north
-      longitude: currentLocation.longitude + 0.01, // ~1km east
-    };
-
-    // Set route data
-    setRouteOrigin({
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
-    });
-    setRouteDestination(destination);
-    setRouteWaypoints([]); // No waypoints for simple route
-    setShowRoute(true);
-
-    // Calculate ETA
-    calculateETA(currentLocation, destination);
-
-    // Switch to "On delivery" tab
-    setActiveTab("On delivery");
-
-    console.log('[DriverHome] Delivery assignment simulated');
-  }, [currentLocation, calculateETA]);
-
   // Update ETA periodically when on delivery route
   useEffect(() => {
     let etaInterval: NodeJS.Timeout | null = null;
@@ -753,6 +633,10 @@ export default function DriverHome() {
       }
     };
   }, [activeTab, showRoute, routeOrigin, routeDestination, currentLocation, calculateETA]);
+
+  const activeOrdersCount = driverOrders.filter(order =>
+    !['delivered', 'cancelled', 'rejected'].includes(String(order.status).toLowerCase())
+  ).length;
 
   if (authLoading || isLoading) {
     return (
@@ -798,6 +682,11 @@ export default function DriverHome() {
 
       {/* Overlay for UI elements */}
       <View style={styles.overlay}>
+        {driverOrdersError && (
+          <TouchableOpacity style={styles.driverDataError} onPress={() => void loadDriverData()}>
+            <Text style={styles.driverDataErrorText}>{driverOrdersError} Tap to retry.</Text>
+          </TouchableOpacity>
+        )}
         {/* Navigation Buttons */}
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={20} color="#4682B4" />
@@ -872,9 +761,9 @@ export default function DriverHome() {
           />
         </View>
 
-        {/* Energy Percentage */}
+        {/* Active orders */}
         <Text style={styles.energyPercentage}>
-          {Math.round(energyLevel)}%
+          {driverOrdersLoading ? '…' : activeOrdersCount}
         </Text>
 
         {/* Truck Icon Container */}
@@ -882,20 +771,19 @@ export default function DriverHome() {
           <Ionicons name="car-sport" size={width * 0.08} color="#4682B4" />
         </View>
 
-        {/* Total Energy Text */}
-        <Text style={styles.totalEnergy}>Total energy</Text>
+        <Text style={styles.totalEnergy}>Active orders</Text>
 
         {/* Divider */}
         <View style={styles.divider} />
 
-        {/* Bottom Button - Simulate Delivery Assignment when Available */}
+        {/* Available orders */}
         {activeTab === "Available" && (
           <TouchableOpacity
             style={styles.bottomButton}
-            onPress={simulateDeliveryAssignment}
+            onPress={handleManageTrips}
           >
             <Ionicons name="cube" size={20} color="white" style={styles.packageIcon} />
-            <Text style={styles.bottomButtonText}>Simulate Delivery</Text>
+            <Text style={styles.bottomButtonText}>View Orders</Text>
           </TouchableOpacity>
         )}
 
@@ -922,7 +810,7 @@ export default function DriverHome() {
                 <Ionicons name="person-circle" size={60} color="#4682B4" />
               </View>
               <Text style={styles.userName}>{driverData.name}</Text>
-              <Text style={styles.userEmail}>{userEmail}</Text>
+              <Text style={styles.userEmail}>{user?.email || ''}</Text>
             </View>
           </View>
 
@@ -1013,6 +901,8 @@ interface Styles {
   trackingPulse: ViewStyle;
   trackingText: TextStyle;
   overlay: ViewStyle;
+  driverDataError: ViewStyle;
+  driverDataErrorText: TextStyle;
   backButton: ViewStyle;
   menuButton: ViewStyle;
   tabs: ViewStyle;
@@ -1202,6 +1092,20 @@ const styles = StyleSheet.create<Styles>({
     width: "100%",
     height: "100%",
     zIndex: 1,
+  },
+  driverDataError: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    zIndex: 20,
+    backgroundColor: '#fff3f3',
+    padding: 10,
+    borderRadius: 8,
+  },
+  driverDataErrorText: {
+    color: '#b00020',
+    textAlign: 'center',
   },
   backButton: {
     position: "absolute",

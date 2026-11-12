@@ -11,8 +11,8 @@ const getExtraValue = (key: string, fallback = ''): string => {
   return typeof envValue === 'string' ? envValue : fallback;
 };
 
-const supabaseUrl = getExtraValue('EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL || '');
-const supabaseAnonKey = getExtraValue('EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '');
+const supabaseUrl = getExtraValue('supabaseUrl', process.env.EXPO_PUBLIC_SUPABASE_URL || '').trim();
+const supabaseAnonKey = getExtraValue('supabaseAnonKey', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
 export const ENV = {
   isDevelopment: process.env.NODE_ENV === 'development',

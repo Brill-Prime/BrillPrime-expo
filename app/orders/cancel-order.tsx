@@ -14,6 +14,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../config/theme';
+import { orderService } from '../../services/orderService';
 
 interface CancellationReason {
   id: string;
@@ -24,7 +25,7 @@ interface CancellationReason {
 
 export default function CancelOrderScreen() {
   const router = useRouter();
-  const { orderId, orderTotal } = useLocalSearchParams();
+  const { orderId, orderTotal } = useLocalSearchParams<{ orderId?: string; orderTotal?: string }>();
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -106,15 +107,19 @@ export default function CancelOrderScreen() {
           onPress: async () => {
             setLoading(true);
             try {
-              // Here you would call the API to cancel the order
-              // await orderService.cancelOrder(orderId, selectedReason.title, additionalNotes);
-              
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 1500));
+              const normalizedOrderId = Array.isArray(orderId) ? orderId[0] : orderId;
+              if (!normalizedOrderId) throw new Error('Order ID is missing');
+
+              const reason = (selectedReason?.title || 'Other reason') +
+                (additionalNotes.trim() ? `: ${additionalNotes.trim()}` : '');
+              const result = await orderService.cancelOrder(normalizedOrderId, reason);
+              if (!result.success) {
+                throw new Error(result.error || 'Failed to cancel order');
+              }
 
               Alert.alert(
                 'Order Cancelled',
-                'Your order has been cancelled successfully. Refund will be processed within 3-5 business days.',
+                'Your order has been cancelled successfully.',
                 [
                   {
                     text: 'OK',
@@ -125,7 +130,10 @@ export default function CancelOrderScreen() {
                 ]
               );
             } catch (error) {
-              Alert.alert('Error', 'Failed to cancel order. Please try again.');
+              Alert.alert(
+                'Unable to Cancel Order',
+                error instanceof Error ? error.message : 'Failed to cancel order. Please try again.'
+              );
             } finally {
               setLoading(false);
             }
@@ -156,7 +164,7 @@ export default function CancelOrderScreen() {
             <View style={styles.orderInfoHeader}>
               <Ionicons name="receipt-outline" size={24} color={theme.colors.primary} />
               <View style={styles.orderInfoText}>
-                <Text style={styles.orderIdText}>Order #{orderId}</Text>
+                <Text style={styles.orderIdText}>Order #{Array.isArray(orderId) ? orderId[0] : orderId}</Text>
                 <Text style={styles.orderTotalText}>
                   Total: ₦{parseInt(orderTotal as string || '0').toLocaleString()}
                 </Text>

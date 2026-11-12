@@ -34,7 +34,7 @@ interface Order {
   totalAmount: number;
   subtotal: number;
   deliveryFee: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'out_for_delivery';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'rejected' | 'out_for_delivery';
   orderDate: string;
   estimatedDelivery?: string;
   deliveryAddress: string;
@@ -69,13 +69,20 @@ export default function OrderDetails() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenDimensions(window);
     });
+    const orderId = Array.isArray(id) ? id[0] : id;
+    const unsubscribeOrder = orderId
+      ? orderService.subscribeToOrderUpdates(orderId, () => {
+          void loadOrderDetails();
+        })
+      : undefined;
 
-    return () => subscription?.remove();
+    return () => {
+      subscription?.remove();
+      unsubscribeOrder?.();
+    };
   }, [id]);
 
   useEffect(() => {
-    // Load order details based on ID
-    console.log('Loading order details for ID:', id);
     loadUserRole();
   }, [id]);
 
@@ -100,38 +107,60 @@ export default function OrderDetails() {
 
   const loadOrderDetails = async () => {
     try {
-      // Mock data - replace with actual API call
-      const mockOrder: Order = {
-        id: id as string,
-        merchantName: 'Lagos Fuel Station',
-        merchantContact: '+234 803 123 4567',
-        items: [{ name: 'Petrol', quantity: 1, price: 30000 }],
-        totalAmount: 30500,
-        subtotal: 30000,
-        deliveryFee: 500,
-        status: id === '1002' ? 'cancelled' : id === '1004' ? 'pending' : 'delivered',
-        orderDate: '2024-01-15T17:00:00',
-        deliveryAddress: 'Rayfield, Jos',
-        paymentMethod: 'Card Payment',
-        location: 'Rayfield, Jos',
-        quantity: '1 litre',
-        itemType: 'petrol',
-        timeTaken: '15 mins',
-        deliveryTime: '05:00pm',
-        driverName: 'Mike',
-        date: 'January 15, 2024', // Added for receipt generation
-        createdAt: '2024-01-15T17:00:00', // Added for receipt generation
-        total: 30500, // Added for receipt generation
-      };
-      // Simulate a status change for demonstration purposes
-      if (id === '1001') { // Example ID for an order that is out for delivery
-        mockOrder.status = 'out_for_delivery';
-        mockOrder.driverName = 'John Doe';
+      const orderId = Array.isArray(id) ? id[0] : id;
+      if (!orderId) throw new Error('Order ID is missing');
+
+      const response = await orderService.getOrder(orderId);
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Order could not be found');
       }
-      setOrder(mockOrder);
+
+      const data = response.data;
+      const items = (data.items || []).map((item: any) => ({
+        name: item.product?.name || 'Item',
+        quantity: Number(item.quantity) || 0,
+        price: Number(item.unit_price) || 0,
+      }));
+      const status = data.status === 'accepted'
+        ? 'confirmed'
+        : data.status === 'in_transit'
+          ? 'out_for_delivery'
+          : data.status;
+      const merchant = Array.isArray(data.merchant) ? data.merchant[0] : data.merchant;
+      const firstItem = data.items?.[0];
+      const firstItemProduct = firstItem?.product;
+
+      setOrder({
+        id: data.id,
+        merchantName: merchant?.business_name || 'Merchant',
+        merchantContact: merchant?.phone_number || '',
+        items: items.length ? items : [{ name: 'Item', quantity: 0, price: 0 }],
+        totalAmount: Number(data.total_amount) || 0,
+        subtotal: Number(data.subtotal) || 0,
+        deliveryFee: Number(data.delivery_fee) || 0,
+        status,
+        orderDate: data.created_at,
+        estimatedDelivery: data.estimated_delivery || undefined,
+        deliveryAddress: data.delivery_address || '',
+        paymentMethod: data.payment_method || 'Not specified',
+        orderNotes: data.notes || '',
+        location: data.delivery_address || '',
+        quantity: firstItem
+          ? `${Number(firstItem.quantity) || 0} ${firstItemProduct?.unit || ''}`.trim()
+          : '—',
+        itemType: firstItemProduct?.category || '',
+        driverName: data.driver?.full_name || undefined,
+        date: data.created_at,
+        createdAt: data.created_at,
+        total: Number(data.total_amount) || 0,
+      });
     } catch (error) {
       console.error('Error loading order details:', error);
-      Alert.alert('Error', 'Failed to load order details');
+      setOrder(null);
+      showError(
+        'Order Unavailable',
+        error instanceof Error ? error.message : 'Order details could not be loaded'
+      );
     }
   };
 
@@ -253,6 +282,7 @@ export default function OrderDetails() {
     switch (status) {
       case 'delivered': return { bg: 'transparent', text: '#2ecc71', border: '#2ecc71' };
       case 'cancelled': return { bg: 'transparent', text: '#e74c3c', border: '#e74c3c' };
+      case 'rejected': return { bg: 'transparent', text: '#e74c3c', border: '#e74c3c' };
       case 'pending': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
       case 'preparing': return { bg: 'transparent', text: '#f39c12', border: '#f39c12' };
       case 'confirmed': return { bg: 'transparent', text: '#3498db', border: '#3498db' };
@@ -265,6 +295,7 @@ export default function OrderDetails() {
     switch (status) {
       case 'delivered': return 'Completed';
       case 'cancelled': return 'Cancelled';
+      case 'rejected': return 'Rejected';
       case 'pending': return 'Pending';
       case 'preparing': return 'Preparing';
       case 'confirmed': return 'Confirmed';
@@ -285,10 +316,10 @@ export default function OrderDetails() {
     const statusOrder = ['pending', 'confirmed', 'preparing', 'ready', 'delivered'];
     const currentIndex = statusOrder.indexOf(order.status);
 
-    if (order.status === 'cancelled') {
+    if (order.status === 'cancelled' || order.status === 'rejected') {
       return [{
-        status: 'cancelled',
-        title: 'Order Cancelled',
+        status: order.status,
+        title: order.status === 'rejected' ? 'Order Rejected' : 'Order Cancelled',
         time: formatDate(order.orderDate),
         completed: false,
         current: true
@@ -498,7 +529,7 @@ export default function OrderDetails() {
               </Text>
             </View>
             <Text style={[styles.driverName, { fontSize: responsiveFontSize.small }]}>
-              {order.driverName || 'Mike'}
+              {order.driverName || 'Not assigned'}
             </Text>
           </View>
           <View style={styles.driverActions}>

@@ -29,13 +29,12 @@ const ISSUE_CATEGORIES = [
 export default function ReportIssue() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams();
-  const { showSuccess, showError, showWarning } = useAlert();
+  const { showError, showWarning } = useAlert();
   
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -64,33 +63,10 @@ export default function ReportIssue() {
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Here you would call the API to submit the issue
-      // await orderService.reportIssue(orderId, {
-      //   category: selectedCategory,
-      //   description: description.trim(),
-      //   attachments: attachments.map(a => a.uri),
-      // });
-
-      showSuccess(
-        'Issue Reported',
-        'Your issue has been submitted. Our support team will contact you soon.'
-      );
-
-      setTimeout(() => {
-        router.back();
-      }, 1500);
-    } catch (error) {
-      console.error('Error reporting issue:', error);
-      showError('Submission Failed', 'Failed to report issue. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    showError(
+      'Issue Reporting Unavailable',
+      'This app does not currently have an issue-reporting service. Your report was not submitted.'
+    );
   };
 
   const styles = getResponsiveStyles(screenData);
@@ -196,9 +172,9 @@ export default function ReportIssue() {
         <View style={styles.infoBox}>
           <Ionicons name="information-circle" size={24} color="#2f75c2" />
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>What happens next?</Text>
+            <Text style={styles.infoTitle}>Issue reporting unavailable</Text>
             <Text style={styles.infoText}>
-              Our support team will review your issue within 24 hours. You'll receive updates via email and in-app notifications.
+              This app does not currently have an issue-reporting service. Submitting this form will not send your report.
             </Text>
           </View>
         </View>
@@ -209,18 +185,11 @@ export default function ReportIssue() {
       {/* Submit Button */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+          style={styles.submitButton}
           onPress={handleSubmit}
-          disabled={isSubmitting}
         >
-          {isSubmitting ? (
-            <Text style={styles.submitButtonText}>Submitting...</Text>
-          ) : (
-            <>
-              <Ionicons name="send" size={20} color="#fff" />
-              <Text style={styles.submitButtonText}>Submit Issue Report</Text>
-            </>
-          )}
+          <Ionicons name="information-circle-outline" size={20} color="#fff" />
+          <Text style={styles.submitButtonText}>Reporting Unavailable</Text>
         </TouchableOpacity>
       </View>
     </View>

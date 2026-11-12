@@ -3,7 +3,7 @@ import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
 
 interface Address {
-  id: number;
+  id: string;
   label: string;
   street: string;
   city: string;
@@ -18,7 +18,7 @@ interface Address {
 }
 
 interface PaymentMethod {
-  id: number;
+  id: string;
   type: 'CARD' | 'BANK_TRANSFER';
   accountNumber?: string;
   bankCode?: string;
@@ -92,9 +92,15 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<{ message: string }>('/api/profile/change-password', data, {
-      Authorization: `Bearer ${token}`,
-    });
+    if (data.newPassword.length < 6) {
+      return { success: false, error: 'Password should be at least 6 characters long.' };
+    }
+    try {
+      await authService.changePassword(data.currentPassword, data.newPassword);
+      return { success: true, data: { message: 'Password changed successfully' } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to change password' };
+    }
   }
 
   // Address Management
@@ -104,7 +110,7 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<Address[]>('/api/profile/addresses', {
+    return apiClient.get<Address[]>('/functions/v1/account/addresses', {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -125,12 +131,12 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<Address>('/api/profile/addresses', data, {
+    return apiClient.post<Address>('/functions/v1/account/addresses', data, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  async updateAddress(addressId: number, data: {
+  async updateAddress(addressId: string, data: {
     label?: string;
     street?: string;
     city?: string;
@@ -146,18 +152,18 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<Address>(`/api/profile/addresses/${addressId}`, data, {
+    return apiClient.put<Address>(`/functions/v1/account/addresses/${encodeURIComponent(String(addressId))}`, data, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  async deleteAddress(addressId: number): Promise<ApiResponse<{ message: string }>> {
+  async deleteAddress(addressId: string): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete<{ message: string }>(`/api/profile/addresses/${addressId}`, {
+    return apiClient.delete<{ message: string }>(`/functions/v1/account/addresses/${encodeURIComponent(String(addressId))}`, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -169,7 +175,7 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<PaymentMethod[]>('/api/profile/payment-methods', {
+    return apiClient.get<PaymentMethod[]>('/functions/v1/account/payment-methods', {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -186,12 +192,12 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.post<PaymentMethod>('/api/profile/payment-methods', data, {
+    return apiClient.post<PaymentMethod>('/functions/v1/account/payment-methods', data, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  async updatePaymentMethod(paymentMethodId: number, data: {
+  async updatePaymentMethod(paymentMethodId: string, data: {
     accountNumber?: string;
     bankCode?: string;
     accountName?: string;
@@ -202,18 +208,18 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<PaymentMethod>(`/api/profile/payment-methods/${paymentMethodId}`, data, {
+    return apiClient.put<PaymentMethod>(`/functions/v1/account/payment-methods/${encodeURIComponent(String(paymentMethodId))}`, data, {
       Authorization: `Bearer ${token}`,
     });
   }
 
-  async deletePaymentMethod(paymentMethodId: number): Promise<ApiResponse<{ message: string }>> {
+  async deletePaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
     const token = await authService.getToken();
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.delete<{ message: string }>(`/api/profile/payment-methods/${paymentMethodId}`, {
+    return apiClient.delete<{ message: string }>(`/functions/v1/account/payment-methods/${encodeURIComponent(String(paymentMethodId))}`, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -225,7 +231,7 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.get<PrivacySettings>('/api/profile/privacy-settings', {
+    return apiClient.get<PrivacySettings>('/functions/v1/account/privacy-settings', {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -240,7 +246,7 @@ class ProfileService {
       return { success: false, error: 'Authentication required' };
     }
 
-    return apiClient.put<PrivacySettings>('/api/profile/privacy-settings', data, {
+    return apiClient.put<PrivacySettings>('/functions/v1/account/privacy-settings', data, {
       Authorization: `Bearer ${token}`,
     });
   }

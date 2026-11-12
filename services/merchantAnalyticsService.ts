@@ -1,5 +1,8 @@
 import { supabase } from '../config/supabase';
 
+const isCompletedOrder = (status: string) =>
+  ['delivered', 'completed'].includes(status.toLowerCase());
+
 export interface SalesMetrics {
   totalRevenue: number;
   totalOrders: number;
@@ -65,8 +68,8 @@ export class MerchantAnalyticsService {
 
       if (error) throw error;
 
-      const completedOrders = orders?.filter(o => o.status === 'completed') || [];
-      const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total_amount, 0);
+      const completedOrders = orders?.filter(o => isCompletedOrder(o.status)) || [];
+      const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
       const totalOrders = completedOrders.length;
       const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       const completionRate = orders && orders.length > 0
@@ -78,16 +81,17 @@ export class MerchantAnalyticsService {
       const prevStartDate = new Date(startDate.getTime() - periodLength);
       const prevEndDate = new Date(startDate.getTime());
 
-      const { data: prevOrders } = await supabase
+      const { data: prevOrders, error: previousError } = await supabase
         .from('orders')
         .select('total_amount, status')
         .eq('merchant_id', merchantId)
         .gte('created_at', prevStartDate.toISOString())
-        .lte('created_at', prevEndDate.toISOString())
-        .eq('status', 'completed');
+        .lte('created_at', prevEndDate.toISOString());
+      if (previousError) throw previousError;
 
-      const prevRevenue = prevOrders?.reduce((sum, o) => sum + o.total_amount, 0) || 0;
-      const prevOrdersCount = prevOrders?.length || 0;
+      const completedPreviousOrders = prevOrders?.filter(o => isCompletedOrder(o.status)) || [];
+      const prevRevenue = completedPreviousOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+      const prevOrdersCount = completedPreviousOrders.length;
 
       const revenueChange = prevRevenue > 0
         ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
@@ -125,20 +129,22 @@ export class MerchantAnalyticsService {
         .from('order_items')
         .select(`
           quantity,
-          price,
-          commodities (
+          unit_price,
+          total_price,
+          product:products (
             category
           ),
-          orders!inner (
+          order:orders!inner (
+            id,
             merchant_id,
             status,
             created_at
           )
         `)
-        .eq('orders.merchant_id', merchantId)
-        .eq('orders.status', 'completed')
-        .gte('orders.created_at', startDate.toISOString())
-        .lte('orders.created_at', endDate.toISOString());
+        .eq('order.merchant_id', merchantId)
+        .in('order.status', ['DELIVERED', 'delivered', 'completed', 'COMPLETED'])
+        .gte('order.created_at', startDate.toISOString())
+        .lte('order.created_at', endDate.toISOString());
 
       if (error) throw error;
 
@@ -146,8 +152,8 @@ export class MerchantAnalyticsService {
       let totalRevenue = 0;
 
       data?.forEach((item: any) => {
-        const category = item.commodities?.category || 'Uncategorized';
-        const revenue = item.quantity * item.price;
+        const category = item.product?.category || 'Uncategorized';
+        const revenue = Number(item.total_price) || Number(item.quantity) * Number(item.unit_price);
         totalRevenue += revenue;
 
         if (!categoryMap.has(category)) {
@@ -156,7 +162,7 @@ export class MerchantAnalyticsService {
 
         const categoryData = categoryMap.get(category)!;
         categoryData.revenue += revenue;
-        categoryData.orders.add(item.orders.id);
+        categoryData.orders.add(item.order.id);
       });
 
       return Array.from(categoryMap.entries()).map(([category, data]) => ({
@@ -184,45 +190,46 @@ export class MerchantAnalyticsService {
       const { data, error } = await supabase
         .from('order_items')
         .select(`
-          commodity_id,
+          product_id,
           quantity,
-          price,
-          commodities (
+          unit_price,
+          total_price,
+          product:products (
             id,
             name,
             image_url
           ),
-          orders!inner (
+          order:orders!inner (
             merchant_id,
             status,
             created_at
           )
         `)
-        .eq('orders.merchant_id', merchantId)
-        .eq('orders.status', 'completed')
-        .gte('orders.created_at', startDate.toISOString())
-        .lte('orders.created_at', endDate.toISOString());
+        .eq('order.merchant_id', merchantId)
+        .in('order.status', ['DELIVERED', 'delivered', 'completed', 'COMPLETED'])
+        .gte('order.created_at', startDate.toISOString())
+        .lte('order.created_at', endDate.toISOString());
 
       if (error) throw error;
 
       const productMap = new Map<string, { name: string; sales: number; revenue: number; image_url?: string }>();
 
       data?.forEach((item: any) => {
-        const commodity = item.commodities;
-        if (!commodity) return;
+        const product = item.product;
+        if (!product) return;
 
-        if (!productMap.has(commodity.id)) {
-          productMap.set(commodity.id, {
-            name: commodity.name,
+        if (!productMap.has(product.id)) {
+          productMap.set(product.id, {
+            name: product.name,
             sales: 0,
             revenue: 0,
-            image_url: commodity.image_url
+            image_url: product.image_url
           });
         }
 
-        const product = productMap.get(commodity.id)!;
-        product.sales += item.quantity;
-        product.revenue += item.quantity * item.price;
+        const productStats = productMap.get(product.id)!;
+        productStats.sales += Number(item.quantity) || 0;
+        productStats.revenue += Number(item.total_price) || Number(item.quantity) * Number(item.unit_price);
       });
 
       return Array.from(productMap.entries())
@@ -248,7 +255,6 @@ export class MerchantAnalyticsService {
         .from('orders')
         .select('user_id, total_amount, status')
         .eq('merchant_id', merchantId)
-        .eq('status', 'completed')
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
 
@@ -256,7 +262,7 @@ export class MerchantAnalyticsService {
 
       const customerMap = new Map<string, { orders: number; totalSpent: number }>();
 
-      orders?.forEach(order => {
+      orders?.filter(order => isCompletedOrder(order.status)).forEach(order => {
         if (!customerMap.has(order.user_id)) {
           customerMap.set(order.user_id, { orders: 0, totalSpent: 0 });
         }
@@ -297,7 +303,6 @@ export class MerchantAnalyticsService {
         .from('orders')
         .select('total_amount, created_at, status')
         .eq('merchant_id', merchantId)
-        .eq('status', 'completed')
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: true });
@@ -306,7 +311,7 @@ export class MerchantAnalyticsService {
 
       const dateMap = new Map<string, { revenue: number; orders: number }>();
 
-      orders?.forEach(order => {
+      orders?.filter(order => isCompletedOrder(order.status)).forEach(order => {
         const date = new Date(order.created_at);
         let key: string;
 

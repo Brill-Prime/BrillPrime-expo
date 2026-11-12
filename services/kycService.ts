@@ -3,6 +3,7 @@
 
 import { apiClient, ApiResponse } from './api';
 import { authService } from './authService';
+import { supabase } from '../config/supabase';
 
 export interface KYCDocument {
   id: string;
@@ -122,7 +123,7 @@ class KYCService {
       return { success: false, error: 'Authentication required' };
     }
     try {
-      return await apiClient.get<KYCProfile>('/api/kyc/profile', {
+      return await apiClient.get<KYCProfile>('/functions/v1/kyc/profile', {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
@@ -177,7 +178,7 @@ class KYCService {
       return { success: false, error: validation.error };
     }
     try {
-      return await apiClient.put<{ message: string }>('/api/kyc/personal-info', data, {
+      return await apiClient.put<{ message: string }>('/functions/v1/kyc/personal-info', data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
@@ -230,7 +231,7 @@ class KYCService {
       return { success: false, error: validation.error };
     }
     try {
-      return await apiClient.put<{ message: string }>('/api/kyc/business-info', data, {
+      return await apiClient.put<{ message: string }>('/functions/v1/kyc/business-info', data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
@@ -296,7 +297,7 @@ class KYCService {
       return { success: false, error: validation.error };
     }
     try {
-      return await apiClient.put<{ message: string }>('/api/kyc/driver-info', data, {
+      return await apiClient.put<{ message: string }>('/functions/v1/kyc/driver-info', data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
@@ -311,14 +312,69 @@ class KYCService {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
+    const uploadedPaths: string[] = [];
+    const cleanupUploads = async () => {
+      if (!uploadedPaths.length) return;
+      try {
+        const cleanup = await apiClient.post('/functions/v1/kyc/documents/discard', {
+          paths: uploadedPaths,
+        }, {
+          Authorization: `Bearer ${token}`,
+        });
+        if (!cleanup.success) console.error('Failed to remove incomplete private KYC uploads:', cleanup.error);
+      } catch (cleanupError) {
+        console.error('Failed to remove incomplete private KYC uploads:', cleanupError);
+      }
+    };
     try {
-      return await apiClient.post<KYCDocument>('/api/kyc/documents', data, {
+      const uploadImage = async (uri: string): Promise<string> => {
+        const fileResponse = await fetch(uri);
+        if (!fileResponse.ok) throw new Error('Unable to read the selected document');
+        const blob = await fileResponse.blob();
+        if (!blob.size || blob.size > 5 * 1024 * 1024) {
+          throw new Error('Document must be smaller than 5 MB');
+        }
+        const extensionMimeType = /\.pdf(?:$|[?#])/i.test(uri)
+          ? 'application/pdf'
+          : /\.png(?:$|[?#])/i.test(uri)
+            ? 'image/png'
+            : 'image/jpeg';
+        const mimeType = blob.type && ['image/jpeg', 'image/png', 'application/pdf'].includes(blob.type)
+          ? blob.type
+          : extensionMimeType;
+        const signedUpload = await apiClient.post<{ path: string; token: string }>(
+          '/functions/v1/kyc/documents/upload-url',
+          { mimeType },
+          { Authorization: `Bearer ${token}` },
+        );
+        if (!signedUpload.success || !signedUpload.data) {
+          throw new Error(signedUpload.error || 'Unable to prepare private document upload');
+        }
+        const { path, token: uploadToken } = signedUpload.data;
+        const { error } = await supabase.storage.from('kyc-documents')
+          .uploadToSignedUrl(path, uploadToken, blob, { contentType: mimeType });
+        if (error) throw new Error(error.message);
+        uploadedPaths.push(path);
+        return path;
+      };
+
+      const frontPath = await uploadImage(data.frontImage);
+      const backPath = data.backImage ? await uploadImage(data.backImage) : undefined;
+      const response = await apiClient.post<KYCDocument>('/functions/v1/kyc/documents', {
+        type: data.type,
+        frontPath,
+        backPath,
+        documentNumber: data.documentNumber,
+        expiryDate: data.expiryDate,
+      }, {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
       });
+      if (!response.success) await cleanupUploads();
+      return response;
     } catch (error) {
       console.error('Upload document error:', error);
-      return { success: false, error: 'Failed to upload document' };
+      await cleanupUploads();
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to upload document' };
     }
   }
 
@@ -373,7 +429,7 @@ class KYCService {
       return { success: false, error: 'Authentication required' };
     }
     try {
-      return await apiClient.post<{ message: string }>('/api/kyc/submit', {}, {
+      return await apiClient.post<{ message: string }>('/functions/v1/kyc/submit', {}, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
@@ -394,7 +450,7 @@ class KYCService {
       return { success: false, error: 'Authentication required' };
     }
     try {
-      return await apiClient.get('/api/kyc/status', {
+      return await apiClient.get('/functions/v1/kyc/status', {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {

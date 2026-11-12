@@ -2,7 +2,8 @@
 // Handles admin-specific operations and analytics
 
 import { apiClient, ApiResponse } from './api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from './authService';
+import { API_ENDPOINTS } from './apiEndpoints';
 
 export interface SystemMetrics {
   platform: {
@@ -53,7 +54,7 @@ export interface AdminAnalytics {
 
 class AdminService {
   private async getAdminToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('adminToken');
+    return authService.getToken();
   }
 
   // Get system metrics
@@ -103,7 +104,7 @@ class AdminService {
     }
 
     try {
-      return await apiClient.post<{ sent: number }>('/api/admin/announcements', data, {
+      return await apiClient.post<{ sent: number }>(API_ENDPOINTS.ADMIN.ANNOUNCEMENTS, data, {
         Authorization: `Bearer ${token}`,
       });
     } catch (error) {
@@ -120,7 +121,7 @@ class AdminService {
     }
 
     try {
-      return await apiClient.post<{ status: string }>('/api/admin/maintenance', {
+      return await apiClient.post<{ status: string }>(API_ENDPOINTS.ADMIN.MAINTENANCE, {
         enabled,
         message
       }, {

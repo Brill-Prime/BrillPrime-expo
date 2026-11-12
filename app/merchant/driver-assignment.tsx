@@ -8,13 +8,12 @@ import {
   Dimensions,
   Modal,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAlert } from '../../components/AlertProvider';
+import { merchantOrderService } from '../../services/merchantOrderService';
 
 interface Driver {
   id: string;
@@ -23,18 +22,7 @@ interface Driver {
   vehicleType: string;
   rating: number;
   completedDeliveries: number;
-  currentLocation: {
-    latitude: number;
-    longitude: number;
-  };
-  distance: string;
-  eta: string;
   status: 'available' | 'busy' | 'offline';
-  earnings: number;
-  completionRate?: number; // Added for performance metrics
-  avgDeliveryTime?: number; // Added for performance metrics
-  totalDeliveries?: number; // Added for performance metrics
-  available?: boolean; // Assuming 'available' status can be represented by this boolean for simplicity in the change snippet
 }
 
 interface Order {
@@ -66,6 +54,7 @@ export default function DriverAssignment() {
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const [showDriverDetails, setShowDriverDetails] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -81,74 +70,38 @@ export default function DriverAssignment() {
   const loadOrderAndDrivers = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockOrder: Order = {
-        id: orderId as string,
-        customerName: 'John Doe',
-        items: ['Premium Petrol - 50L', 'Engine Oil - 2 Bottles'],
-        totalAmount: 49500,
-        deliveryAddress: 'Victoria Island, Lagos',
-        status: 'pending',
-      };
+      setLoadError(null);
+      if (typeof orderId !== 'string' || !orderId) {
+        setLoadError('An order ID is required to assign a driver.');
+        return;
+      }
 
-      const mockDrivers: Driver[] = [
-        {
-          id: 'DRV001',
-          name: 'Michael Johnson',
-          phone: '+2348012345678',
-          vehicleType: 'Motorcycle',
-          rating: 4.8,
-          completedDeliveries: 245,
-          currentLocation: { latitude: 6.4281, longitude: 3.4219 },
-          distance: '0.8 km',
-          eta: '5 mins',
-          status: 'available',
-          earnings: 125000,
-          completionRate: 95, // Added performance metrics
-          avgDeliveryTime: 15, // Added performance metrics
-          totalDeliveries: 245, // Added performance metrics
-          available: true, // Added for change snippet compatibility
-        },
-        {
-          id: 'DRV002',
-          name: 'Sarah Williams',
-          phone: '+2348098765432',
-          vehicleType: 'Van',
-          rating: 4.9,
-          completedDeliveries: 312,
-          currentLocation: { latitude: 6.4281, longitude: 3.4219 },
-          distance: '1.2 km',
-          eta: '8 mins',
-          status: 'available',
-          earnings: 185000,
-          completionRate: 98, // Added performance metrics
-          avgDeliveryTime: 18, // Added performance metrics
-          totalDeliveries: 312, // Added performance metrics
-          available: true, // Added for change snippet compatibility
-        },
-        {
-          id: 'DRV003',
-          name: 'David Brown',
-          phone: '+2347012345678',
-          vehicleType: 'Car',
-          rating: 4.6,
-          completedDeliveries: 189,
-          currentLocation: { latitude: 6.4281, longitude: 3.4219 },
-          distance: '2.5 km',
-          eta: '12 mins',
-          status: 'available',
-          earnings: 98000,
-          completionRate: 92, // Added performance metrics
-          avgDeliveryTime: 20, // Added performance metrics
-          totalDeliveries: 189, // Added performance metrics
-          available: true, // Added for change snippet compatibility
-        },
-      ];
+      const [orderResult, driversResult] = await Promise.all([
+        merchantOrderService.getOrderDetails(orderId),
+        merchantOrderService.getAvailableDrivers(),
+      ]);
+      if (!orderResult.success || !orderResult.order) {
+        setLoadError(orderResult.error || 'Failed to load order details');
+        return;
+      }
+      if (!driversResult.success || !driversResult.drivers) {
+        setLoadError(driversResult.error || 'Failed to load available drivers');
+        return;
+      }
 
-      setOrder(mockOrder);
-      setDrivers(mockDrivers);
+      const fetchedOrder = orderResult.order;
+      setOrder({
+        id: fetchedOrder.id,
+        customerName: [fetchedOrder.consumer?.first_name, fetchedOrder.consumer?.last_name].filter(Boolean).join(' ') || 'Customer name unavailable',
+        items: (fetchedOrder.items || []).map(item => `${item.product?.name || 'Product'} - ${item.quantity} ${item.product?.unit || ''}`.trim()),
+        totalAmount: Number(fetchedOrder.total_amount) || 0,
+        deliveryAddress: fetchedOrder.delivery_address || 'Delivery address unavailable',
+        status: fetchedOrder.status,
+      });
+      setDrivers(driversResult.drivers);
     } catch (error) {
-      showError('Error', 'Failed to load drivers');
+      console.error('Error loading order and available drivers:', error);
+      setLoadError('Unable to load order and driver data. Retry to try again.');
     } finally {
       setLoading(false);
     }
@@ -157,35 +110,17 @@ export default function DriverAssignment() {
   const handleAutoAssign = async () => {
     setIsAutoAssigning(true);
     try {
-      // Simulate auto-assignment logic - finds best driver based on distance, rating, and availability
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       const availableDrivers = drivers.filter(d => d.status === 'available');
       if (availableDrivers.length === 0) {
         showError('No Drivers Available', 'There are no available drivers at the moment');
-        setIsAutoAssigning(false);
         return;
       }
 
-      // Auto-select best driver (closest with good rating)
       const bestDriver = availableDrivers.reduce((best, current) => {
-        const currentDistance = parseFloat(current.distance);
-        const bestDistance = parseFloat(best.distance);
-        if (currentDistance < bestDistance && current.rating >= 4.5) {
-          return current;
-        }
-        return best;
+        if (current.rating !== best.rating) return current.rating > best.rating ? current : best;
+        return current.completedDeliveries > best.completedDeliveries ? current : best;
       });
-
-      setSelectedDriver(bestDriver);
-      showSuccess('Driver Found', `${bestDriver.name} has been automatically assigned to this order`);
-
-      // Save assignment
-      await AsyncStorage.setItem(`order_${orderId}_driver`, JSON.stringify(bestDriver));
-
-      setTimeout(() => {
-        router.back();
-      }, 1500);
+      await assignDriver(bestDriver);
     } catch (error) {
       showError('Error', 'Auto-assignment failed');
     } finally {
@@ -193,22 +128,24 @@ export default function DriverAssignment() {
     }
   };
 
+  const assignDriver = async (driver: Driver) => {
+    if (typeof orderId !== 'string' || !orderId) return;
+    const result = await merchantOrderService.assignDriver(orderId, driver.id);
+    if (!result.success) {
+      showError('Error', result.error || 'Failed to assign driver');
+      return;
+    }
+
+    setSelectedDriver(driver);
+    showSuccess('Success', `${driver.name} has been assigned to this order`);
+    router.back();
+  };
+
   const handleManualAssign = (driver: Driver) => {
     showConfirmDialog(
       'Assign Driver',
       `Assign ${driver.name} to this delivery?`,
-      async () => {
-        try {
-          setSelectedDriver(driver);
-          await AsyncStorage.setItem(`order_${orderId}_driver`, JSON.stringify(driver));
-          showSuccess('Success', `${driver.name} has been assigned to this order`);
-          setTimeout(() => {
-            router.back();
-          }, 1500);
-        } catch (error) {
-          showError('Error', 'Failed to assign driver');
-        }
-      }
+      () => void assignDriver(driver)
     );
   };
 
@@ -257,8 +194,17 @@ export default function DriverAssignment() {
           </View>
         )}
 
+        {loadError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>{loadError}</Text>
+            <TouchableOpacity onPress={loadOrderAndDrivers}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+        <>
         {/* Auto-Assign Button */}
-        <TouchableOpacity
+          <TouchableOpacity
           style={[styles.autoAssignButton, isAutoAssigning && styles.autoAssignButtonDisabled]}
           onPress={handleAutoAssign}
           disabled={isAutoAssigning}
@@ -271,10 +217,13 @@ export default function DriverAssignment() {
           ) : (
             <>
               <Ionicons name="flash" size={20} color="white" />
-              <Text style={styles.autoAssignText}>Auto-Assign Driver</Text>
+              <Text style={styles.autoAssignText}>Assign Highest-Rated Driver</Text>
             </>
           )}
         </TouchableOpacity>
+        <Text style={styles.autoAssignHint}>
+          Selects the available driver with the highest rating; delivery count breaks ties.
+        </Text>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
@@ -286,7 +235,9 @@ export default function DriverAssignment() {
         <Text style={styles.sectionTitle}>Available Drivers ({drivers.filter(d => d.status === 'available').length})</Text>
 
         <ScrollView style={styles.driversList} showsVerticalScrollIndicator={false}>
-          {drivers.map((driver) => (
+          {drivers.length === 0 ? (
+            <Text style={styles.emptyStateText}>No verified drivers are currently available.</Text>
+          ) : drivers.map((driver) => (
             <TouchableOpacity
               key={driver.id}
               style={[
@@ -307,23 +258,12 @@ export default function DriverAssignment() {
                   <View style={styles.driverMeta}>
                     <Ionicons name="star" size={14} color="#ffc107" />
                     <Text style={styles.driverRating}>{driver.rating}</Text>
-                    {driver.completionRate !== undefined && ( // Conditional rendering for completionRate
-                      <Text style={styles.completionRate}>• {driver.completionRate}% completed</Text>
-                    )}
                   </View>
                   <View style={styles.metricsRow}>
-                    {driver.avgDeliveryTime !== undefined && ( // Conditional rendering for avgDeliveryTime
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="flash" size={14} color="#ffc107" />
-                        <Text style={[styles.metricText, { marginLeft: 3 }]}>Avg: {driver.avgDeliveryTime} min</Text>
-                      </View>
-                    )}
-                    {driver.totalDeliveries !== undefined && ( // Conditional rendering for totalDeliveries
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
-                        <Ionicons name="cube" size={14} color="#4682B4" />
-                        <Text style={[styles.metricText, { marginLeft: 3 }]}>{driver.totalDeliveries} deliveries</Text>
-                      </View>
-                    )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="cube" size={14} color="#4682B4" />
+                      <Text style={[styles.metricText, { marginLeft: 3 }]}>{driver.completedDeliveries} deliveries</Text>
+                    </View>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Ionicons name={getVehicleIcon(driver.vehicleType)} size={14} color="#666" />
@@ -336,8 +276,6 @@ export default function DriverAssignment() {
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(driver.status) }]}>
                   <Text style={styles.statusText}>{driver.status}</Text>
                 </View>
-                <Text style={styles.driverDistance}>{driver.distance}</Text>
-                <Text style={styles.driverEta}>ETA: {driver.eta}</Text>
                 {driver.status === 'available' && (
                   <TouchableOpacity
                     style={styles.assignButton}
@@ -350,6 +288,8 @@ export default function DriverAssignment() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </>
+      )}
       </View>
 
       {/* Driver Details Modal */}
@@ -386,10 +326,6 @@ export default function DriverAssignment() {
                       <Text style={styles.modalStatValue}>{selectedDriver.completedDeliveries}</Text>
                       <Text style={styles.modalStatLabel}>Deliveries</Text>
                     </View>
-                    <View style={styles.modalStatItem}>
-                      <Text style={styles.modalStatValue}>{selectedDriver.distance}</Text>
-                      <Text style={styles.modalStatLabel}>Distance</Text>
-                    </View>
                   </View>
 
                   <View style={styles.modalInfo}>
@@ -400,10 +336,6 @@ export default function DriverAssignment() {
                     <View style={styles.modalInfoRow}>
                       <Ionicons name="car" size={20} color="#666" />
                       <Text style={styles.modalInfoText}>{selectedDriver.vehicleType}</Text>
-                    </View>
-                    <View style={styles.modalInfoRow}>
-                      <Ionicons name="time" size={20} color="#666" />
-                      <Text style={styles.modalInfoText}>ETA: {selectedDriver.eta}</Text>
                     </View>
                   </View>
 
@@ -470,6 +402,21 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingHorizontal: 20,
   },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  emptyStateText: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: 8,
+  },
+  retryText: {
+    color: '#4682B4',
+    fontWeight: '700',
+    marginTop: 8,
+  },
   orderSummary: {
     backgroundColor: '#f8f9fa',
     borderRadius: 15,
@@ -516,6 +463,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  autoAssignHint: {
+    color: '#666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 12,
   },
   divider: {
     flexDirection: 'row',

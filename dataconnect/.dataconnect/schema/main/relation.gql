@@ -118,7 +118,7 @@ extend type Movie {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Movie.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Movie.id", purpose: ENTITY_ID)
 }
 extend type MovieMetadata {
   """
@@ -229,7 +229,7 @@ extend type MovieMetadata {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "MovieMetadata.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "MovieMetadata.id", purpose: ENTITY_ID)
 }
 extend type Review {
   """
@@ -322,7 +322,7 @@ extend type Review {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Review.movieId,userId", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Review.movieId,userId", purpose: ENTITY_ID)
 }
 extend type User {
   """
@@ -422,5 +422,5 @@ extend type User {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "User.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "User.id", purpose: ENTITY_ID)
 }

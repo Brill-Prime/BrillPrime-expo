@@ -1,8 +1,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, withCors } from '../_shared/cors.ts';
 import { FirebaseAuthError, requireFirebaseUid } from '../_shared/firebase-auth.ts';
+import { createAdminClient } from '../_shared/supabase-admin.ts';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -11,22 +11,7 @@ serve(async (req) => {
 
   try {
     const firebaseUid = await requireFirebaseUid(req);
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Supabase service configuration is missing');
-    }
-
-    const supabaseClient = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const supabaseClient = createAdminClient();
 
     const { data: userData, error: userError } = await supabaseClient
       .from('users')

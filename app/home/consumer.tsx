@@ -11,6 +11,7 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import Map, { Marker, PROVIDER_GOOGLE } from '../../components/Map';
 import MerchantDetailsModal from '../_components/MerchantDetailsModal';
 import { locationService } from '../../services/locationService';
+import { orderService } from '../../services/orderService';
 import { UserMarker, MerchantMarker, DriverMarker } from '../../components/MapMarkers';
 
 // Define missing types
@@ -47,10 +48,11 @@ interface StoreLocation {
 }
 
 interface ActiveDelivery {
+  orderId: string;
   driverId: string;
-  merchantLocation: { latitude: number; longitude: number };
-  status: 'picking_up' | 'delivering';
-  driverLocation: { latitude: number; longitude: number };
+  driverName: string;
+  status: string;
+  driverLocation?: { latitude: number; longitude: number };
 }
 
 const { width, height } = Dimensions.get('window');
@@ -154,10 +156,10 @@ function ConsumerHomeContent() {
   const [isLiveTrackingEnabled, setIsLiveTrackingEnabled] = useState(false);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
   const [activeDelivery, setActiveDelivery] = useState<ActiveDelivery | null>(null);
-  const [showDriverCard, setShowDriverCard] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
   const [nearbyMerchantsError, setNearbyMerchantsError] = useState<string | null>(null);
+  const [nearbyMerchantsLoading, setNearbyMerchantsLoading] = useState(false);
   const [selectedMerchant, setSelectedMerchant] = useState<StoreLocation | null>(null);
   const [showMerchantDetails, setShowMerchantDetails] = useState(false);
   const [region, setRegion] = useState({
@@ -184,12 +186,6 @@ function ConsumerHomeContent() {
     requestedAt: number;
   } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [hasShownNoMerchantsMessage, setHasShownNoMerchantsMessage] = useState(false);
-
-  // Error handling utilities
-  const checkNetworkConnectivity = useCallback(async (): Promise<boolean> => {
-    return true; // Assume network is available for now
-  }, []);
 
   // Calculate delta based on screen dimensions
   const calculateDelta = useCallback((latitude: number) => {
@@ -212,102 +208,6 @@ function ConsumerHomeContent() {
 
   const debouncedHandleRegionChange = useMemo(() => debounce(handleRegionChange, 500), [handleRegionChange]);
 
-  // Define loadFallbackMerchants before loadAllMerchants to avoid hoisting issues
-  const loadFallbackMerchants = useCallback(() => {
-    console.log("No registered merchants available in the system yet.");
-    setStoreLocations(prevLocations => {
-      // Only show message if we don't have any locations and haven't shown the message yet
-      if (isMountedRef.current && prevLocations.length === 0 && !hasShownNoMerchantsMessage) {
-        showInfo("No Merchants Found", "No merchants are currently registered in your area. Please check back later.");
-        setHasShownNoMerchantsMessage(true);
-      }
-      return [];
-    });
-  }, [showInfo, hasShownNoMerchantsMessage]);
-
-  const loadAllMerchants = useCallback(async () => {
-    try {
-      const isConnected = await checkNetworkConnectivity();
-      if (!isConnected) {
-        console.log("No internet connection. Using cached merchant data.");
-        loadFallbackMerchants();
-        return;
-      }
-
-      // Get authentication token
-      const { authService } = await import('../../services/authService');
-      const token = await authService.getToken();
-
-      // Make API call to get all merchants using Supabase function
-      const { apiClient } = await import('../../services/api');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await apiClient.callFunction<any>('merchants-list', {}, headers);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || 'Failed to load merchants');
-      }
-
-      const data = response.data;
-
-      if (data.success && data.data) {
-        // Transform API response to StoreLocation format with enhanced data
-        const stores: StoreLocation[] = data.data.map((merchant: any) => {
-          // Calculate distance from current user location if available
-          let distance: number | undefined;
-          if (isLocationSet && region) {
-            distance = locationService.calculateDistance(
-              region.latitude,
-              region.longitude,
-              merchant.latitude || merchant.coords?.lat,
-              merchant.longitude || merchant.coords?.lng
-            );
-          }
-
-          return {
-            id: merchant.id,
-            title: merchant.name || merchant.title,
-            address: merchant.address,
-            coords: {
-              lat: merchant.latitude || merchant.coords?.lat,
-              lng: merchant.longitude || merchant.coords?.lng
-            },
-            distance: distance,
-            rating: merchant.rating || 0,
-            isOpen: merchant.isOpen !== undefined ? merchant.isOpen : true,
-            category: merchant.category || 'General',
-            phone: merchant.phone,
-            description: merchant.description
-          };
-        });
-
-        // Sort by distance if available (closest first)
-        if (isLocationSet) {
-          stores.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-        }
-
-        setStoreLocations(stores);
-      } else {
-        throw new Error(data.message || 'Failed to load merchants');
-      }
-    } catch (_error) {
-      console.error('Error loading all merchants:', {
-        errorName: _error?.name,
-        errorMessage: _error?.message,
-        errorStack: _error?.stack,
-        errorType: typeof _error,
-        fullError: _error
-      });
-
-      loadFallbackMerchants();
-
-      if (_error instanceof TypeError && _error.message.includes('fetch')) {
-        console.log("Cannot reach the backend server. Using cached data.");
-      } else {
-        console.log("Failed to load merchants. Using cached data.");
-      }
-    }
-  }, [isLocationSet, region, loadFallbackMerchants, checkNetworkConnectivity]);
-
   const loadNearbyMerchants = useCallback(async (
     latitude: number,
     longitude: number,
@@ -328,6 +228,7 @@ function ConsumerHomeContent() {
     lastNearbyRequestRef.current = { latitude, longitude, requestedAt: Date.now() };
 
     try {
+      setNearbyMerchantsLoading(true);
       console.log("Loading nearby merchants...");
 
       // Get authentication token
@@ -370,8 +271,8 @@ function ConsumerHomeContent() {
             },
             distance: distance,
             rating: merchant.rating || 0,
-            isOpen: merchant.isOpen !== undefined ? merchant.isOpen : true,
-            category: merchant.category || 'General',
+            isOpen: typeof merchant.is_open === 'boolean' ? merchant.is_open : undefined,
+            category: merchant.business_type || undefined,
             phone: merchant.phone,
             description: merchant.description
           };
@@ -384,6 +285,7 @@ function ConsumerHomeContent() {
       } else {
         throw new Error(data.message || 'Failed to load merchants');
       }
+      setNearbyMerchantsLoading(false);
     } catch (_error: any) {
       console.error('Error loading nearby merchants:', {
         errorName: _error?.name,
@@ -394,6 +296,7 @@ function ConsumerHomeContent() {
       });
 
       setNearbyMerchantsError("Nearby merchants could not be loaded. Tap to retry.");
+      setNearbyMerchantsLoading(false);
     }
   }, []);
 
@@ -488,144 +391,115 @@ function ConsumerHomeContent() {
     initializeLiveTracking();
   }, [loadNearbyMerchants, calculateDelta, setRegion, setIsLocationSet, setUserMovement]);
 
-  const fitMapToActiveDelivery = useCallback(() => {
-    if (!mapRef.current || !activeDelivery) return;
-
-    const driver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
-    if (!driver) return;
-
-    const locationsToFit = [
-      { latitude: driver.latitude, longitude: driver.longitude },
-      { latitude: region.latitude, longitude: region.longitude },
-    ];
-
-    if (activeDelivery.status === 'picking_up') {
-      locationsToFit.push(activeDelivery.merchantLocation);
+  const refreshActiveDelivery = useCallback(async () => {
+    const response = await orderService.getUserOrders({ limit: 20 });
+    if (!response.success || !response.data) {
+      console.error('Unable to load active consumer order:', response.error);
+      return;
     }
 
-    mapRef.current.fitToCoordinates(locationsToFit, {
-      edgePadding: { top: 100, right: 50, bottom: showDriverCard ? 250 : 150, left: 50 },
-      animated: true
-    });
-  }, [activeDelivery, nearbyDrivers, region, showDriverCard, mapRef]);
+    const activeOrder = response.data.orders.find(order =>
+      Boolean(order.driver_id) &&
+      ['accepted', 'preparing', 'ready', 'in_transit'].includes(String(order.status).toLowerCase())
+    );
+    if (!activeOrder) {
+      setActiveDelivery(null);
+      setNearbyDrivers([]);
+      return;
+    }
 
-  // Real-time driver tracking
+    const trackingResponse = await orderService.trackOrder(activeOrder.id);
+    if (!trackingResponse.success || !trackingResponse.data) {
+      console.error('Unable to load active order tracking:', trackingResponse.error);
+      return;
+    }
+
+    const driver = trackingResponse.data.tracking.driverInfo;
+    if (!driver) {
+      setActiveDelivery(null);
+      setNearbyDrivers([]);
+      return;
+    }
+
+    const driverLocation = driver.location;
+    setActiveDelivery({
+      orderId: activeOrder.id,
+      driverId: driver.id,
+      driverName: driver.name,
+      status: trackingResponse.data.tracking.status,
+      driverLocation,
+    });
+    setNearbyDrivers(driverLocation ? [{
+      id: driver.id,
+      name: driver.name,
+      latitude: driverLocation.latitude,
+      longitude: driverLocation.longitude,
+      location: driverLocation,
+      eta: calculateETA(
+        driverLocation.latitude,
+        driverLocation.longitude,
+        region.latitude,
+        region.longitude
+      ),
+      status: 'busy',
+      distanceToConsumer: locationService.calculateDistance(
+        driverLocation.latitude,
+        driverLocation.longitude,
+        region.latitude,
+        region.longitude
+      ),
+    }] : []);
+  }, [region.latitude, region.longitude]);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe = () => {};
+
+    void refreshActiveDelivery();
+    void orderService.subscribeToUserOrders(() => {
+      if (active) void refreshActiveDelivery();
+    }).then(unsubscribeOrders => {
+      if (active) unsubscribe = unsubscribeOrders;
+      else unsubscribeOrders();
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [refreshActiveDelivery]);
+
   useEffect(() => {
     if (!activeDelivery) return;
+    if (activeDelivery.driverLocation && mapRef.current) {
+      mapRef.current.fitToCoordinates(
+        [activeDelivery.driverLocation, { latitude: region.latitude, longitude: region.longitude }],
+        { edgePadding: { top: 100, right: 50, bottom: 220, left: 50 }, animated: true }
+      );
+    }
 
-    const trackingInterval = setInterval(() => {
-      // Wrap async operations in an IIFE to avoid async setInterval issues
-      (async () => {
-        try {
-          // In real app, fetch from backend: const driverData = await orderService.getDriverLocation(activeDelivery.driverId);
-          // Simulate driver movement
-          const currentDriver = nearbyDrivers.find(d => d.id === activeDelivery.driverId);
-          if (!currentDriver) return;
-
-          let newLat = currentDriver.latitude;
-          let newLng = currentDriver.longitude;
-
-          if (activeDelivery.status === 'picking_up') {
-            // Move towards merchant
-            const latDiff = activeDelivery.merchantLocation.latitude - currentDriver.latitude;
-            const lngDiff = activeDelivery.merchantLocation.longitude - currentDriver.longitude;
-            newLat += latDiff * 0.1;
-            newLng += lngDiff * 0.1;
-
-            const distanceToMerchant = locationService.calculateDistance(
-              newLat, newLng,
-              activeDelivery.merchantLocation.latitude,
-              activeDelivery.merchantLocation.longitude
-            );
-
-            // Check if driver arrived at merchant
-            if (distanceToMerchant < 0.05) {
-              setNotificationMessage('🎉 Driver has arrived at the merchant!');
-              setTimeout(() => setNotificationMessage(null), 3000);
-              setActiveDelivery({ ...activeDelivery, status: 'delivering' });
-            }
-          } else if (activeDelivery.status === 'delivering') {
-            // Move towards consumer
-            const latDiff = region.latitude - currentDriver.latitude;
-            const lngDiff = region.longitude - currentDriver.longitude;
-            newLat += latDiff * 0.1;
-            newLng += lngDiff * 0.1;
-
-            const distanceToConsumer = locationService.calculateDistance(
-              newLat, newLng,
-              region.latitude,
-              region.longitude
-            );
-
-            // Check if driver arrived at consumer
-            if (distanceToConsumer < 0.05) {
-              setNotificationMessage('🎊 Driver has arrived at your location!');
-              setTimeout(() => {
-                setNotificationMessage(null);
-                setActiveDelivery(null);
-                setShowDriverCard(false);
-              }, 3000);
-            }
-          }
-
-          // Update driver location
-          setNearbyDrivers(prev => prev.map(d =>
-            d.id === activeDelivery.driverId
-              ? {
-                ...d,
-                latitude: newLat,
-                longitude: newLng,
-                distanceToMerchant: activeDelivery.status === 'picking_up'
-                  ? locationService.calculateDistance(newLat, newLng, activeDelivery.merchantLocation.latitude, activeDelivery.merchantLocation.longitude)
-                  : 0,
-                distanceToConsumer: activeDelivery.status === 'delivering'
-                  ? locationService.calculateDistance(newLat, newLng, region.latitude, region.longitude)
-                  : 0,
-                eta: calculateETA(newLat, newLng, region.latitude, region.longitude),
-              }
-              : d
-          ));
-
-          setActiveDelivery(prev => prev ? { ...prev, driverLocation: { latitude: newLat, longitude: newLng } } : null);
-
-          // Auto-zoom to include all locations
-          fitMapToActiveDelivery();
-        } catch (error) {
-          console.error('Error tracking driver:', error);
-        }
-      })();
-    }, 5000);
-
-    return () => clearInterval(trackingInterval);
-  }, [activeDelivery, nearbyDrivers, region, fitMapToActiveDelivery]);
-
-  // Simulate starting a delivery
-  const simulateDelivery = () => {
-    if (storeLocations.length === 0) return;
-
-    const merchant = storeLocations[0];
-    const driver: Driver = {
-      id: 'driver-1',
-      latitude: merchant.coords.lat - 0.01,
-      longitude: merchant.coords.lng - 0.01,
-      name: 'John Doe',
-      eta: '15 mins',
-      status: 'picking_up',
-      location: {
-        latitude: merchant.coords.lat - 0.01,
-        longitude: merchant.coords.lng - 0.01,
-      },
-    };
-
-    setNearbyDrivers(prev => [...prev.filter(d => d.id !== driver.id), driver]);
-    setActiveDelivery({
-      driverId: driver.id,
-      merchantLocation: { latitude: merchant.coords.lat, longitude: merchant.coords.lng },
-      status: 'picking_up',
-      driverLocation: { latitude: driver.latitude, longitude: driver.longitude },
+    return locationService.subscribeToDriverLocation(activeDelivery.driverId, location => {
+      const driverLocation = { latitude: location.latitude, longitude: location.longitude };
+      setActiveDelivery(current => current?.driverId === activeDelivery.driverId
+        ? { ...current, driverLocation }
+        : current);
+      setNearbyDrivers([{
+        id: activeDelivery.driverId,
+        name: activeDelivery.driverName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        location: driverLocation,
+        eta: calculateETA(location.latitude, location.longitude, region.latitude, region.longitude),
+        status: 'busy',
+        distanceToConsumer: locationService.calculateDistance(
+          location.latitude,
+          location.longitude,
+          region.latitude,
+          region.longitude
+        ),
+      }]);
     });
-    setShowDriverCard(true);
-  };
+  }, [activeDelivery?.driverId, region.latitude, region.longitude]);
 
   const loadNotificationCount = useCallback(async () => {
     try {
@@ -1172,46 +1046,57 @@ function ConsumerHomeContent() {
             </TouchableOpacity>
           </View>
         )}
+        {isLocationSet && !nearbyMerchantsError && (nearbyMerchantsLoading || storeLocations.length === 0) && (
+          <View style={styles.locationUnavailableBanner}>
+            <Text style={styles.locationUnavailableText}>
+              {nearbyMerchantsLoading ? 'Loading nearby merchants…' : 'No merchants found nearby.'}
+            </Text>
+          </View>
+        )}
 
         {/* Active Delivery Card */}
-        {activeDelivery && showDriverCard && (
+        {activeDelivery && (
           <View style={styles.floatingCard}>
             <View style={styles.driverCardHeader}>
               <View style={styles.driverAvatar}>
-                {/* Add driver avatar */}
+                <Ionicons name="bicycle-outline" size={24} color={theme.colors.primary} />
               </View>
               <View style={styles.driverInfo}>
                 <Text style={styles.driverName}>
-                  {nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.name || 'Driver'}
+                  {activeDelivery.driverName}
                 </Text>
                 <Text style={styles.driverStatus}>
-                  {activeDelivery.status === 'picking_up' ? 'Picking up your order' : 'Delivering to you'}
+                  {activeDelivery.status.replace(/_/g, ' ')}
                 </Text>
               </View>
             </View>
             <View style={styles.driverCardBody}>
               <View style={styles.distanceRow}>
                 <Text style={styles.distanceText}>
-                  {activeDelivery.status === 'picking_up'
-                    ? `Distance to merchant: ${nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.distanceToMerchant?.toFixed(1)} km`
-                    : `Distance to you: ${nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.distanceToConsumer?.toFixed(1)} km`
-                  }
+                  {activeDelivery.driverLocation
+                    ? `Distance to you: ${locationService.calculateDistance(
+                        activeDelivery.driverLocation.latitude,
+                        activeDelivery.driverLocation.longitude,
+                        region.latitude,
+                        region.longitude
+                      ).toFixed(1)} km`
+                    : 'Waiting for driver location'}
                 </Text>
               </View>
               <View style={styles.distanceRow}>
                 <Text style={styles.distanceText}>
-                  ETA: {nearbyDrivers.find(d => d.id === activeDelivery.driverId)?.eta || 'Calculating...'}
+                  ETA: {activeDelivery.driverLocation
+                    ? calculateETA(
+                        activeDelivery.driverLocation.latitude,
+                        activeDelivery.driverLocation.longitude,
+                        region.latitude,
+                        region.longitude
+                      )
+                    : 'Calculating...'}
                 </Text>
               </View>
             </View>
           </View>
-        )}
-
-        {/* Test Delivery Button */}
-        {isLocationSet && storeLocations.length > 0 && (
-          <TouchableOpacity style={styles.testDeliveryButton} onPress={simulateDelivery}>
-            <Text style={styles.testDeliveryText}>Test Delivery</Text>
-          </TouchableOpacity>
         )}
 
         {/* Notification */}

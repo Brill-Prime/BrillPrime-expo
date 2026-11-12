@@ -1,6 +1,7 @@
 
 import { supabase } from '../config/supabase';
 import { authService } from './authService';
+import { apiClient } from './api';
 
 export interface Order {
   id: string;
@@ -58,6 +59,17 @@ export interface OrderStats {
   total_revenue_today: number;
 }
 
+export interface AvailableDriver {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  vehicleType: string;
+  rating: number;
+  completedDeliveries: number;
+  status: 'available';
+}
+
 class MerchantOrderService {
   /**
    * Get merchant ID for the current user
@@ -111,28 +123,15 @@ class MerchantOrderService {
         return { success: false, error: merchantResult.error };
       }
 
-      let query = supabase
-        .from('orders')
-        .select(`
-          *,
-          consumer:users!orders_consumer_id_fkey(id, first_name, last_name, phone_number),
-          driver:users!orders_driver_id_fkey(id, first_name, last_name, phone_number)
-        `)
-        .eq('merchant_id', merchantResult.merchantId)
-        .order('created_at', { ascending: false });
-
-      if (status) {
-        query = query.eq('status', status);
+      const query = status ? `?status=${encodeURIComponent(status)}` : '';
+      const response = await apiClient.get<Order[]>(
+        `/functions/v1/catalog/merchants/${encodeURIComponent(merchantResult.merchantId)}/orders${query}`
+      );
+      if (!response.success || !response.data) {
+        return { success: false, error: response.error || 'Unable to fetch orders' };
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching orders:', error);
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, orders: data as Order[] };
+      return { success: true, orders: response.data };
     } catch (error) {
       console.error('Error getting orders:', error);
       return { success: false, error: String(error) };
@@ -144,38 +143,19 @@ class MerchantOrderService {
    */
   async getOrderDetails(orderId: string): Promise<{ success: boolean; order?: Order; error?: string }> {
     try {
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          consumer:users!orders_consumer_id_fkey(id, first_name, last_name, phone_number),
-          driver:users!orders_driver_id_fkey(id, first_name, last_name, phone_number)
-        `)
-        .eq('id', orderId)
-        .single();
-
-      if (orderError) {
-        return { success: false, error: orderError.message };
+      const merchantResult = await this.getMerchantId();
+      if (!merchantResult.success || !merchantResult.merchantId) {
+        return { success: false, error: merchantResult.error };
       }
 
-      const { data: items, error: itemsError } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          product:products(id, name, image_url, unit)
-        `)
-        .eq('order_id', orderId);
-
-      if (itemsError) {
-        return { success: false, error: itemsError.message };
+      const response = await apiClient.get<Order>(
+        `/functions/v1/catalog/merchants/${encodeURIComponent(merchantResult.merchantId)}/orders/${encodeURIComponent(orderId)}`
+      );
+      if (!response.success || !response.data) {
+        return { success: false, error: response.error || 'Unable to fetch order details' };
       }
 
-      const orderWithItems = {
-        ...order,
-        items: items as OrderItem[],
-      } as Order;
-
-      return { success: true, order: orderWithItems };
+      return { success: true, order: response.data };
     } catch (error) {
       console.error('Error getting order details:', error);
       return { success: false, error: String(error) };
@@ -187,8 +167,13 @@ class MerchantOrderService {
    */
   async updateOrderStatus(orderId: string, status: Order['status'], notes?: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const merchantResult = await this.getMerchantId();
+      if (!merchantResult.success || !merchantResult.merchantId) {
+        return { success: false, error: merchantResult.error || 'Merchant profile not found' };
+      }
+
       const updateData: any = {
-        status,
+        status: status === 'accepted' ? 'CONFIRMED' : status.toUpperCase(),
         updated_at: new Date().toISOString(),
       };
 
@@ -196,15 +181,19 @@ class MerchantOrderService {
         updateData.notes = notes;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .update(updateData)
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('merchant_id', merchantResult.merchantId)
+        .select('id')
+        .maybeSingle();
 
       if (error) {
         console.error('Error updating order status:', error);
         return { success: false, error: error.message };
       }
+      if (!data) return { success: false, error: 'Order not found for this merchant' };
 
       // Send notifications to consumer and driver
       await this.sendOrderStatusNotification(orderId, status, notes);
@@ -224,12 +213,13 @@ class MerchantOrderService {
       // Get order details
       const { data: order } = await supabase
         .from('orders')
-        .select('consumer_id, driver_id, order_number')
+        .select('user_id, driver_id')
         .eq('id', orderId)
         .single();
 
       if (!order) return;
 
+      const normalizedStatus = status.toLowerCase();
       const statusMessages: Record<string, string> = {
         accepted: 'Your order has been accepted and is being prepared',
         rejected: notes ? `Your order was rejected: ${notes}` : 'Your order was rejected',
@@ -239,28 +229,35 @@ class MerchantOrderService {
         delivered: 'Your order has been delivered',
       };
 
-      const message = statusMessages[status] || `Order status updated to ${status}`;
+      const message = statusMessages[normalizedStatus] || `Order status updated to ${normalizedStatus}`;
+      const orderLabel = orderId.slice(-8).toUpperCase();
 
       // Notify consumer
-      if (order.consumer_id) {
+      if (order.user_id) {
         await supabase.from('notifications').insert({
-          user_id: order.consumer_id,
-          title: `Order #${order.order_number}`,
+          user_id: order.user_id,
+          title: `Order #${orderLabel}`,
           message,
           type: 'order',
-          data: { order_id: orderId, status },
+          data: { order_id: orderId, status: normalizedStatus },
           read: false,
         });
       }
 
       // Notify driver if assigned and status is relevant
-      if (order.driver_id && ['ready', 'in_transit'].includes(status)) {
+      if (order.driver_id && ['ready', 'in_transit'].includes(normalizedStatus)) {
+        const { data: driver } = await supabase
+          .from('drivers')
+          .select('user_id')
+          .eq('id', order.driver_id)
+          .maybeSingle();
+        if (!driver?.user_id) return;
         await supabase.from('notifications').insert({
-          user_id: order.driver_id,
-          title: `Order #${order.order_number}`,
-          message: status === 'ready' ? 'Order ready for pickup' : 'Delivery in progress',
+          user_id: driver.user_id,
+          title: `Order #${orderLabel}`,
+          message: normalizedStatus === 'ready' ? 'Order ready for pickup' : 'Delivery in progress',
           type: 'delivery',
-          data: { order_id: orderId, status },
+          data: { order_id: orderId, status: normalizedStatus },
           read: false,
         });
       }
@@ -331,19 +328,28 @@ class MerchantOrderService {
    */
   async assignDriver(orderId: string, driverId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      const merchantResult = await this.getMerchantId();
+      if (!merchantResult.success || !merchantResult.merchantId) {
+        return { success: false, error: merchantResult.error || 'Merchant profile not found' };
+      }
+
+      const { data, error } = await supabase
         .from('orders')
         .update({
           driver_id: driverId,
-          status: 'ready',
+          status: 'READY',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('merchant_id', merchantResult.merchantId)
+        .select('id')
+        .maybeSingle();
 
       if (error) {
         console.error('Error assigning driver:', error);
         return { success: false, error: error.message };
       }
+      if (!data) return { success: false, error: 'Order not found for this merchant' };
 
       return { success: true };
     } catch (error) {
@@ -355,15 +361,18 @@ class MerchantOrderService {
   /**
    * Get available drivers
    */
-  async getAvailableDrivers(): Promise<{ success: boolean; drivers?: any[]; error?: string }> {
+  async getAvailableDrivers(): Promise<{ success: boolean; drivers?: AvailableDriver[]; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('drivers')
         .select(`
           id,
-          user:users(id, first_name, last_name, phone_number),
+          user_id,
+          rating,
+          total_deliveries,
+          user:users(id, full_name, phone_number),
           vehicle_type,
-          vehicle_number,
+          vehicle_plate,
           is_available
         `)
         .eq('is_available', true)
@@ -374,7 +383,19 @@ class MerchantOrderService {
         return { success: false, error: error.message };
       }
 
-      return { success: true, drivers: data };
+      return {
+        success: true,
+        drivers: (data || []).map((driver: any) => ({
+          id: driver.id,
+          userId: driver.user_id,
+          name: driver.user?.full_name || 'Driver',
+          phone: driver.user?.phone_number || '',
+          vehicleType: [driver.vehicle_type, driver.vehicle_plate].filter(Boolean).join(' · ') || 'Vehicle not provided',
+          rating: Number(driver.rating) || 0,
+          completedDeliveries: Number(driver.total_deliveries) || 0,
+          status: 'available' as const,
+        })),
+      };
     } catch (error) {
       console.error('Error getting available drivers:', error);
       return { success: false, error: String(error) };
@@ -444,14 +465,14 @@ class MerchantOrderService {
       orders.forEach(order => {
         const orderDate = new Date(order.created_at);
         const isToday = orderDate >= today;
+        const status = order.status.toLowerCase();
 
-        if (order.status === 'pending') stats.pending++;
-        if (order.status === 'accepted') stats.accepted++;
-        if (order.status === 'preparing') stats.preparing++;
-        if (order.status === 'ready') stats.ready++;
-        if (order.status === 'in_transit') stats.in_transit++;
-        
-        if (order.status === 'delivered' && isToday) {
+        if (status === 'pending') stats.pending++;
+        if (status === 'accepted' || status === 'confirmed') stats.accepted++;
+        if (status === 'preparing') stats.preparing++;
+        if (status === 'ready') stats.ready++;
+        if (status === 'in_transit') stats.in_transit++;
+        if (status === 'delivered' && isToday) {
           stats.delivered_today++;
           stats.total_revenue_today += order.total_amount;
         }

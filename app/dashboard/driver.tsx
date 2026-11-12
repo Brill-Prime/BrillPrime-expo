@@ -1,36 +1,98 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { formatNaira } from "../../utils/currency";
-
+import { useAuth } from "../../contexts/AuthContext";
+import { orderService } from "../../services/orderService";
 
 export default function DriverDashboard() {
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState("");
-  const [isOnline, setIsOnline] = useState(false);
+  const { user, signOut } = useAuth();
+  const [driverProfile, setDriverProfile] = useState<{
+    id: string;
+    is_available: boolean;
+    rating: number;
+    total_deliveries: number;
+  } | null>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadUserData();
+  const loadDashboardData = useCallback(async () => {
+    setLoadError(null);
+    const [profileResult, ordersResult] = await Promise.all([
+      orderService.getDriverProfile(),
+      orderService.getDriverOrders(),
+    ]);
+
+    if (!profileResult.success || !profileResult.data) {
+      setLoadError(profileResult.error || 'Unable to load driver profile.');
+      return;
+    }
+    if (!ordersResult.success || !ordersResult.data) {
+      setLoadError(ordersResult.error || 'Unable to load driver orders.');
+      return;
+    }
+    setDriverProfile(profileResult.data);
+    setOrders(ordersResult.data.orders);
   }, []);
 
-  const loadUserData = async () => {
-    try {
-      const email = await AsyncStorage.getItem("userEmail");
-      setUserEmail(email || "driver@brillprime.com");
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    }
-  };
+  useEffect(() => {
+    let active = true;
+    let unsubscribeOrders: (() => void) | undefined;
+    let unsubscribeProfile: (() => void) | undefined;
 
-  const toggleOnlineStatus = () => {
-    setIsOnline(!isOnline);
-    Alert.alert(
-      isOnline ? "Going Offline" : "Going Online",
-      isOnline ? "You're now offline and won't receive new delivery requests." : "You're now online and ready to receive delivery requests!"
-    );
+    const initialize = async () => {
+      setIsLoading(true);
+      try {
+        await loadDashboardData();
+        const driverId = await orderService.getInternalDriverId();
+        if (!active || !driverId) return;
+        const refresh = () => {
+          if (active) void loadDashboardData();
+        };
+        unsubscribeOrders = orderService.subscribeToDriverOrders(driverId, refresh);
+        unsubscribeProfile = orderService.subscribeToDriverProfile(driverId, refresh);
+      } catch (error) {
+        console.error('Error initializing driver dashboard:', error);
+        if (active) setLoadError('Unable to load driver dashboard. Retry to try again.');
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    void initialize();
+    return () => {
+      active = false;
+      unsubscribeOrders?.();
+      unsubscribeProfile?.();
+    };
+  }, [loadDashboardData]);
+
+  const toggleOnlineStatus = async () => {
+    if (!driverProfile || isUpdatingAvailability) return;
+    setIsUpdatingAvailability(true);
+    try {
+      const result = await orderService.setDriverAvailability(!driverProfile.is_available);
+      if (!result.success) {
+        Alert.alert('Status Update Failed', result.error || 'Could not update driver availability.');
+        return;
+      }
+      await loadDashboardData();
+      Alert.alert(
+        driverProfile.is_available ? 'Going Offline' : 'Going Online',
+        driverProfile.is_available
+          ? "You're now offline and won't receive new delivery requests."
+          : "You're now online and ready to receive delivery requests!"
+      );
+    } catch (error) {
+      console.error('Error updating driver availability:', error);
+      Alert.alert('Status Update Failed', 'Could not update driver availability.');
+    } finally {
+      setIsUpdatingAvailability(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -44,7 +106,7 @@ export default function DriverDashboard() {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+              await signOut();
               router.replace("/");
             } catch (error) {
               console.error("Error signing out:", error);
@@ -90,6 +152,17 @@ export default function DriverDashboard() {
     }
   };
 
+  const today = new Date().toDateString();
+  const completedToday = orders.filter(order =>
+    order.status?.toLowerCase() === 'delivered' &&
+    order.delivered_at &&
+    new Date(order.delivered_at).toDateString() === today
+  ).length;
+  const activeOrders = orders.filter(order =>
+    !['delivered', 'cancelled', 'rejected'].includes(order.status?.toLowerCase())
+  ).length;
+  const recentOrders = orders.slice(0, 3);
+
   return (
     <LinearGradient
       colors={['#0B1A51', '#1e3a8a']}
@@ -107,7 +180,7 @@ export default function DriverDashboard() {
             <Text style={styles.greeting}>Ready to Drive! </Text>
             <Ionicons name="car-sport" size={24} color="white" />
           </View>
-          <Text style={styles.email}>{userEmail}</Text>
+          <Text style={styles.email}>{user?.email || ''}</Text>
         </View>
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -119,16 +192,26 @@ export default function DriverDashboard() {
           <View style={styles.statusCard}>
             <Text style={styles.statusTitle}>Driver Status</Text>
             <TouchableOpacity
-              style={[styles.statusToggle, isOnline && styles.onlineToggle]}
+              style={[styles.statusToggle, driverProfile?.is_available && styles.onlineToggle]}
               onPress={toggleOnlineStatus}
+              disabled={!driverProfile || isUpdatingAvailability}
             >
-              <View style={[styles.toggleCircle, isOnline && styles.onlineCircle]} />
+              <View style={[styles.toggleCircle, driverProfile?.is_available && styles.onlineCircle]} />
             </TouchableOpacity>
-            <Text style={[styles.statusText, isOnline && styles.onlineText]}>
-              {isOnline ? "ONLINE" : "OFFLINE"}
+            <Text style={[styles.statusText, driverProfile?.is_available && styles.onlineText]}>
+              {isLoading ? 'LOADING' : driverProfile?.is_available ? "ONLINE" : "OFFLINE"}
             </Text>
           </View>
         </View>
+
+        {loadError && (
+          <View style={styles.loadError}>
+            <Text style={styles.errorText}>{loadError}</Text>
+            <TouchableOpacity onPress={() => void loadDashboardData()}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Your Dashboard</Text>
 
@@ -152,16 +235,18 @@ export default function DriverDashboard() {
           <Text style={styles.sectionTitle}>Today's Summary</Text>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Deliveries</Text>
+              <Text style={styles.statNumber}>{isLoading || loadError ? '—' : completedToday}</Text>
+              <Text style={styles.statLabel}>Completed Today</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statNumber}>₦0.00</Text>
-              <Text style={styles.statLabel}>Earnings</Text>
+              <Text style={styles.statNumber}>{isLoading || loadError ? '—' : activeOrders}</Text>
+              <Text style={styles.statLabel}>Active Orders</Text>
             </View>
             <View style={styles.statCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.statNumber}>0.0 </Text>
+                <Text style={styles.statNumber}>
+                  {isLoading || loadError || !driverProfile ? '—' : Number(driverProfile.rating).toFixed(1)}
+                </Text>
                 <Ionicons name="star" size={20} color="#FFD700" />
               </View>
               <Text style={styles.statLabel}>Rating</Text>
@@ -169,19 +254,19 @@ export default function DriverDashboard() {
           </View>
 
           <View style={styles.recentDeliveries}>
-            <Text style={styles.sectionSubTitle}>Recent Deliveries</Text>
-            <View style={styles.deliveryItem}>
-              <Text style={styles.deliveryText}>Order #5678 - 2.5 km</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.deliveryStatusText}>Delivered</Text>
+            <Text style={styles.sectionSubTitle}>Recent Orders</Text>
+            {isLoading ? (
+              <Text style={styles.deliveryText}>Loading orders…</Text>
+            ) : recentOrders.length === 0 ? (
+              <Text style={styles.deliveryText}>No assigned orders yet.</Text>
+            ) : recentOrders.map(order => (
+              <View key={order.id} style={styles.deliveryItem}>
+                <Text style={styles.deliveryText}>Order #{String(order.id).slice(-8).toUpperCase()}</Text>
+                <View style={[styles.statusBadge, order.status?.toLowerCase() === 'in_transit' && styles.inTransitBadge]}>
+                  <Text style={styles.deliveryStatusText}>{String(order.status || 'unknown').replace('_', ' ')}</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.deliveryItem}>
-              <Text style={styles.deliveryText}>Order #5677 - 1.8 km</Text>
-              <View style={[styles.statusBadge, styles.inTransitBadge]}>
-                <Text style={styles.deliveryStatusText}>In Transit</Text>
-              </View>
-            </View>
+            ))}
           </View>
         </View>
       </ScrollView>
@@ -240,6 +325,22 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 35,
     paddingHorizontal: 20,
     paddingTop: 30,
+  },
+  loadError: {
+    backgroundColor: '#fff3f3',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#b00020',
+    textAlign: 'center',
+  },
+  retryText: {
+    color: '#4682B4',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
   },
   statusContainer: {
     marginBottom: 30,

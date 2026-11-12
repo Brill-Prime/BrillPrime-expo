@@ -11,14 +11,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { transactionService, type TransactionRecord } from '../../services/transactionService';
 
 interface Transaction {
   id: string;
-  type: 'purchase' | 'refund' | 'payment' | 'reward';
+  type: string;
   amount: number;
   description: string;
   date: string;
-  status: 'completed' | 'pending' | 'failed';
+  status: string;
   orderId?: string;
 }
 
@@ -26,73 +27,65 @@ export default function TransactionHistory() {
   const router = useRouter();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'purchase' | 'refund' | 'payment' | 'reward'>('all');
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      type: 'purchase',
-      amount: 150.00,
-      description: 'Electronics Purchase - Order #12345',
-      date: '2024-01-15',
-      status: 'completed',
-      orderId: '12345'
-    },
-    {
-      id: '2',
-      type: 'payment',
-      amount: 25.00,
-      description: 'Payment Processing Fee',
-      date: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: '3',
-      type: 'refund',
-      amount: 75.00,
-      description: 'Refund for Order #12340',
-      date: '2024-01-10',
-      status: 'completed',
-      orderId: '12340'
-    },
-    {
-      id: '4',
-      type: 'purchase',
-      amount: 320.50,
-      description: 'Grocery Purchase - Order #12338',
-      date: '2024-01-08',
-      status: 'completed',
-      orderId: '12338'
-    },
-    {
-      id: '5',
-      type: 'reward',
-      amount: 10.00,
-      description: 'Cashback Reward',
-      date: '2024-01-05',
-      status: 'completed'
-    },
-    {
-      id: '6',
-      type: 'purchase',
-      amount: 89.99,
-      description: 'Fashion Purchase - Order #12335',
-      date: '2024-01-03',
-      status: 'pending',
-      orderId: '12335'
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadTransactions = async (showLoading = false) => {
+    if (showLoading) setIsLoading(true);
+    setLoadError(null);
+    const result = await transactionService.getMyTransactions();
+    if (!result.success || !result.transactions) {
+      setLoadError(result.error || 'Unable to load transactions');
+      setIsLoading(false);
+      setRefreshing(false);
+      return;
     }
-  ]);
+
+    setTransactions(result.transactions.map((transaction: TransactionRecord) => ({
+      id: transaction.id,
+      type: transaction.type,
+      amount: Number(transaction.amount) || 0,
+      description: transaction.description,
+      date: transaction.date,
+      status: transaction.status,
+      orderId: transaction.orderId,
+    })));
+    setIsLoading(false);
+    setRefreshing(false);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadTransactions();
+  };
 
   useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    const initialize = async () => {
+      await loadTransactions(true);
+      const subscription = await transactionService.subscribeToMyTransactions(() => {
+        if (active) void loadTransactions();
+      });
+      if (!active) {
+        subscription.unsubscribe();
+        return;
+      }
+      unsubscribe = subscription.unsubscribe;
+      if (subscription.error) setLoadError(subscription.error);
+    };
+    void initialize();
+    const dimensionsSubscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
     });
-    return () => subscription?.remove();
+    return () => {
+      active = false;
+      unsubscribe?.();
+      dimensionsSubscription?.remove();
+    };
   }, []);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
 
   const getFilteredTransactions = () => {
     if (selectedFilter === 'all') return transactions;
@@ -121,9 +114,12 @@ export default function TransactionHistory() {
     switch (type) {
       case 'purchase':
       case 'payment':
+      case 'fee':
+      case 'commission':
+      case 'withdrawal':
         return '#ff6b6b';
       case 'refund':
-      case 'reward':
+      case 'deposit':
         return '#4ade80';
       default:
         return '#667eea';
@@ -131,8 +127,8 @@ export default function TransactionHistory() {
   };
 
   const formatAmount = (amount: number, type: string) => {
-    const sign = (type === 'refund' || type === 'reward') ? '+' : '-';
-    return `${sign}₹${amount.toFixed(2)}`;
+    const sign = (type === 'refund' || type === 'deposit') ? '+' : '-';
+    return `${sign}₦${amount.toFixed(2)}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -150,18 +146,19 @@ export default function TransactionHistory() {
 
   const filteredTransactions = getFilteredTransactions();
   const totalSpent = transactions
-    .filter(t => (t.type === 'purchase' || t.type === 'payment') && t.status === 'completed')
+    .filter(t => ['purchase', 'payment', 'fee'].includes(t.type) && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
   const totalRefunds = transactions
-    .filter(t => (t.type === 'refund' || t.type === 'reward') && t.status === 'completed')
+    .filter(t => t.type === 'refund' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const filters = [
     { key: 'all', label: 'All' },
-    { key: 'purchase', label: 'Purchases' },
-    { key: 'refund', label: 'Refunds' },
     { key: 'payment', label: 'Payments' },
-    { key: 'reward', label: 'Rewards' }
+    { key: 'refund', label: 'Refunds' },
+    { key: 'withdrawal', label: 'Withdrawals' },
+    { key: 'deposit', label: 'Deposits' },
+    { key: 'commission', label: 'Commissions' }
   ];
 
   const styles = getResponsiveStyles(screenData);
@@ -180,12 +177,16 @@ export default function TransactionHistory() {
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryAmount}>₹{totalSpent.toFixed(2)}</Text>
-          <Text style={styles.summaryLabel}>Total Spent</Text>
+          <Text style={styles.summaryAmount}>
+            {isLoading || loadError ? '—' : `₦${totalSpent.toFixed(2)}`}
+          </Text>
+          <Text style={styles.summaryLabel}>Recent Spent</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryAmount, { color: '#4ade80' }]}>₹{totalRefunds.toFixed(2)}</Text>
-          <Text style={styles.summaryLabel}>Total Refunds</Text>
+          <Text style={[styles.summaryAmount, { color: '#4ade80' }]}>
+            {isLoading || loadError ? '—' : `₦${totalRefunds.toFixed(2)}`}
+          </Text>
+          <Text style={styles.summaryLabel}>Recent Refunds</Text>
         </View>
       </View>
 
@@ -223,7 +224,18 @@ export default function TransactionHistory() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {filteredTransactions.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyMessage}>Loading transactions...</Text>
+          </View>
+        ) : loadError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyMessage}>{loadError}</Text>
+            <TouchableOpacity onPress={() => void loadTransactions(true)}>
+              <Text style={styles.emptyTitle}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredTransactions.length > 0 ? (
           filteredTransactions.map((transaction) => (
             <TouchableOpacity
               key={transaction.id}
@@ -278,7 +290,7 @@ export default function TransactionHistory() {
             <Ionicons name="receipt-outline" size={64} color="#ccc" />
             <Text style={styles.emptyTitle}>No transactions found</Text>
             <Text style={styles.emptyMessage}>
-              No transactions match your current filter. Try selecting a different filter.
+              No transaction records are available for this filter.
             </Text>
           </View>
         )}

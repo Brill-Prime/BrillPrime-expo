@@ -12,12 +12,25 @@ function jsonResponse(body: unknown, status = 200): Response {
 serve(async (request) => {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
-  if (request.method !== 'POST') {
+  if (request.method !== 'GET' && request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
   try {
     const identity = await requireFirebaseIdentity(request);
+    const supabase = createAdminClient();
+    const { data: existingUser, error: lookupError } = await supabase
+      .from('users')
+      .select('id, firebase_uid, email, role')
+      .eq('firebase_uid', identity.uid)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (request.method === 'GET') {
+      return existingUser
+        ? jsonResponse(existingUser)
+        : jsonResponse({ error: 'User not found' }, 404);
+    }
+
     if (!identity.email) {
       return jsonResponse({ error: 'A Firebase account email is required' }, 400);
     }
@@ -35,20 +48,15 @@ serve(async (request) => {
     if (body.role !== undefined && (typeof body.role !== 'string' || !allowedRoles.has(body.role))) {
       return jsonResponse({ error: 'Role must be consumer, merchant, or driver' }, 400);
     }
+    const fullName = body.fullName ?? body.full_name;
+    const phoneNumber = body.phoneNumber ?? body.phone_number;
     if (
-      (body.fullName !== undefined && typeof body.fullName !== 'string') ||
-      (body.phoneNumber !== undefined && typeof body.phoneNumber !== 'string')
+      (fullName !== undefined && typeof fullName !== 'string') ||
+      (phoneNumber !== undefined && typeof phoneNumber !== 'string')
     ) {
       return jsonResponse({ error: 'Profile name and phone number must be strings' }, 400);
     }
 
-    const supabase = createAdminClient();
-    const { data: existingUser, error: lookupError } = await supabase
-      .from('users')
-      .select('id, firebase_uid, email, role')
-      .eq('firebase_uid', identity.uid)
-      .maybeSingle();
-    if (lookupError) throw lookupError;
     if (existingUser) return jsonResponse(existingUser);
 
     const role = allowedRoles.has(identity.role || '')
@@ -68,10 +76,10 @@ serve(async (request) => {
         firebase_uid: identity.uid,
         email: identity.email,
         role,
-        full_name: typeof body.fullName === 'string' && body.fullName.trim()
-          ? body.fullName.trim()
+        full_name: typeof fullName === 'string' && fullName.trim()
+          ? fullName.trim()
           : identity.name || '',
-        phone_number: typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : '',
+        phone_number: typeof phoneNumber === 'string' ? phoneNumber.trim() : '',
       })
       .select('id, firebase_uid, email, role')
       .single();

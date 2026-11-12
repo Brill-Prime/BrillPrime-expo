@@ -122,7 +122,7 @@ class AuthService {
       // Sync with Supabase backend asynchronously (non-blocking)
       // This stores additional user data in Supabase
       apiClient.post<AuthResponse>(
-        '/rest/v1/users',
+        '/functions/v1/user-sync',
         {
           firebase_uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -206,14 +206,14 @@ class AuthService {
 
       // Fetch user data from Supabase asynchronously (non-blocking)
       apiClient.get<any>(
-        `/rest/v1/users?firebase_uid=eq.${firebaseUser.uid}&select=*`,
+        '/functions/v1/user-sync',
         {
           Authorization: `Bearer ${firebaseToken}`,
         }
       ).then(userDataResponse => {
         // Update role if Supabase returns different role
-        if (userDataResponse.success && userDataResponse.data && userDataResponse.data.length > 0) {
-          const supabaseUser = userDataResponse.data[0];
+        if (userDataResponse.success && userDataResponse.data) {
+          const supabaseUser = userDataResponse.data;
           if (supabaseUser.role && supabaseUser.role !== userRole) {
             console.log('Updating role from Supabase:', supabaseUser.role);
             authData.user.role = supabaseUser.role;
@@ -307,7 +307,7 @@ class AuthService {
 
       // Sync user to Supabase (non-blocking)
       apiClient.post(
-        '/rest/v1/users',
+        '/functions/v1/user-sync',
         {
           firebase_uid: user.uid,
           email: user.email,
@@ -454,7 +454,7 @@ class AuthService {
 
       // Notify backend to sync (non-blocking)
       apiClient.post(
-        '/rest/v1/users',
+        '/functions/v1/user-sync',
         {
           firebase_uid: user.uid,
           email: user.email,
@@ -549,7 +549,7 @@ class AuthService {
 
       // Notify backend to sync (non-blocking)
       apiClient.post(
-        '/rest/v1/users',
+        '/functions/v1/user-sync',
         {
           firebase_uid: user.uid,
           email: user.email,
@@ -735,39 +735,14 @@ class AuthService {
 
   // Sign out
   async signOut(): Promise<void> {
-    try {
-      // Sign out from Firebase first
-      if (auth) {
-        await firebaseSignOut(auth);
-      }
-
-      // Clear all local storage
-      await this.clearAuthData();
-
-      // Reset current user state
-      this.currentUser = null;
-      this.authToken = null;
-      // Clear ApiClient token cache
-      try { apiClient.setAuthToken(''); } catch (_) { }
-
-      // Optional: Call your backend to invalidate the token if needed
-      try {
-        const token = await this.getToken();
-        if (token) {
-          await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {}, {
-            Authorization: `Bearer ${token}`,
-          });
-        }
-      } catch (apiError) {
-        console.warn('Failed to invalidate token on server:', apiError);
-        // Continue with logout even if server logout fails
-      }
-    } catch (error: any) {
-      console.error('Error during API signout:', error);
-    } finally {
-      // Clear local storage regardless of API call result
-      await this.clearAuthData();
+    if (auth) {
+      await firebaseSignOut(auth);
     }
+
+    this.currentUser = null;
+    this.authToken = null;
+    apiClient.setAuthToken('');
+    await this.clearAuthData();
   }
 
   // Helper methods
@@ -780,10 +755,8 @@ class AuthService {
   }
 
   private async resolveUserRole(firebaseUser: FirebaseUser, requestedRole?: string | null): Promise<User['role']> {
-    const response = await apiClient.get<any[]>(
-      `/rest/v1/users?firebase_uid=eq.${encodeURIComponent(firebaseUser.uid)}&select=*`
-    );
-    const profile = response.success ? response.data?.[0] : undefined;
+    const response = await apiClient.get<{ id: string; role: string }>(API_ENDPOINTS.PROFILE.GET);
+    const profile = response.success ? response.data : undefined;
     const role = this.isUserRole(profile?.role)
       ? profile.role
       : this.isUserRole(requestedRole) ? requestedRole : 'consumer';
@@ -892,10 +865,14 @@ class AuthService {
   }
 
   async normalizeUserFromFirebase(firebaseUser: FirebaseUser, requestedRole?: string | null, storedProfile?: Partial<User>): Promise<User> {
-    const profile = storedProfile || (await this.getUserProfileByFirebaseUid(firebaseUser.uid));
+    const backendProfile = await this.getUserProfileByFirebaseUid(firebaseUser.uid);
+    const storedProfileUid = storedProfile?.firebaseUid || storedProfile?.uid || storedProfile?.id;
+    const matchingStoredProfile = storedProfileUid === firebaseUser.uid ? storedProfile : undefined;
+    const profile = backendProfile || matchingStoredProfile;
     const backendRole = this.isUserRole(profile?.role) ? profile.role : undefined;
     const resolvedRole = backendRole || (this.isUserRole(requestedRole) ? requestedRole : 'consumer');
-    const backendId = typeof profile?.id === 'string' ? profile.id : undefined;
+    const backendId = backendProfile?.id ||
+      (matchingStoredProfile?.id && matchingStoredProfile.id !== firebaseUser.uid ? matchingStoredProfile.id : undefined);
     const merchantId = typeof profile?.merchantId === 'string' ? profile.merchantId : await this.resolveMerchantIdFromSupabase(firebaseUser.uid || backendId || undefined);
 
     return {

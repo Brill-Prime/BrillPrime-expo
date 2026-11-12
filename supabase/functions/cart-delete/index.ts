@@ -1,7 +1,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, withCors } from '../_shared/cors.ts';
+import { FirebaseAuthError, requireFirebaseUid } from '../_shared/firebase-auth.ts';
+import { createAdminClient } from '../_shared/supabase-admin.ts';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -9,46 +10,34 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return withCors(
-        new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401 }
-        )
-      );
-    }
+    const firebaseUid = await requireFirebaseUid(req);
+    const supabaseClient = createAdminClient();
 
     const url = new URL(req.url);
-    const itemId = url.pathname.split('/').pop();
+    const pathSegments = url.pathname.split('/').filter(Boolean);
+    const functionIndex = pathSegments.lastIndexOf('cart-delete');
+    const itemId = functionIndex >= 0 ? pathSegments[functionIndex + 1] : undefined;
 
     // Get user from database
-    const { data: userData } = await supabaseClient
+    const { data: userData, error: userError } = await supabaseClient
       .from('users')
       .select('id')
-      .eq('firebase_uid', user.id)
-      .single();
+      .eq('firebase_uid', firebaseUid)
+      .maybeSingle();
 
+    if (userError) throw userError;
     if (!userData) {
-      throw new Error('User not found');
+      return withCors(new Response(JSON.stringify({ error: 'User not found' }), { status: 404 }));
     }
 
-    // Delete cart item
-    const { error } = await supabaseClient
+    let deleteQuery = supabaseClient
       .from('cart_items')
       .delete()
-      .eq('id', itemId)
       .eq('user_id', userData.id);
+    if (itemId) {
+      deleteQuery = deleteQuery.eq('id', itemId);
+    }
+    const { error } = await deleteQuery;
 
     if (error) throw error;
 
@@ -58,9 +47,10 @@ serve(async (req) => {
       })
     );
   } catch (error) {
+    const status = error instanceof FirebaseAuthError ? error.status : 400;
     return withCors(
-      new Response(JSON.stringify({ error: error.message }), {
-        status: 400,
+      new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to delete cart item' }), {
+        status,
       })
     );
   }

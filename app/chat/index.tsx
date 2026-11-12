@@ -29,125 +29,62 @@ export default function ConversationsScreen() {
   }, []);
 
   useEffect(() => {
-    loadConversations();
-    initializeCommunication();
-
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    const setup = async () => {
+      await loadConversations();
+      try {
+        await communicationService.initializeConnection();
+        if (!active) return;
+        unsubscribe = communicationService.onMessage((message) => {
+          setConversations(prev =>
+            prev.map(conv => {
+              if (conv.id !== message.conversationId) return conv;
+              const currentUserId = conv.participants.find(participant => participant.name === 'You')?.userId;
+              return {
+                ...conv,
+                lastMessage: message,
+                unreadCount: message.senderId === currentUserId ? conv.unreadCount : conv.unreadCount + 1,
+                updatedAt: message.timestamp,
+              };
+            })
+          );
+        });
+      } catch (error) {
+        console.error('Error initializing communication:', error);
+        if (active) Alert.alert('Chat Unavailable', 'Live chat could not be connected.');
+      }
+    };
+    void setup();
     return () => {
-      communicationService.disconnect();
+      active = false;
+      unsubscribe?.();
     };
   }, []);
 
   const loadConversations = async () => {
     try {
-      // Mock conversations - replace with actual API call
-      const mockConversations: Conversation[] = [
-        {
-          id: 'conv1',
-          orderId: 'ORDER-123',
-          participants: [
-            {
-              userId: 'user1',
-              name: 'You',
-              role: 'consumer',
-              online: true,
-            },
-            {
-              userId: 'merchant1',
-              name: 'Lagos Fuel Station',
-              role: 'merchant',
-              phone: '+234-803-123-4567',
-              online: true,
-            }
-          ],
-          lastMessage: {
-            id: 'msg1',
-            conversationId: 'conv1',
-            senderId: 'merchant1',
-            senderName: 'Lagos Fuel Station',
-            senderRole: 'merchant',
-            message: 'Your fuel order is ready for pickup!',
-            messageType: 'text',
-            timestamp: new Date(Date.now() - 300000).toISOString(),
-            read: false,
-          },
-          unreadCount: 1,
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          updatedAt: new Date(Date.now() - 300000).toISOString(),
-        },
-        {
-          id: 'conv2',
-          orderId: 'ORDER-124',
-          participants: [
-            {
-              userId: 'user1',
-              name: 'You',
-              role: 'consumer',
-              online: true,
-            },
-            {
-              userId: 'driver1',
-              name: 'Mike (Driver)',
-              role: 'driver',
-              phone: '+234-801-987-6543',
-              online: false,
-            }
-          ],
-          lastMessage: {
-            id: 'msg2',
-            conversationId: 'conv2',
-            senderId: 'user1',
-            senderName: 'You',
-            senderRole: 'consumer',
-            message: 'Thanks for the delivery!',
-            messageType: 'text',
-            timestamp: new Date(Date.now() - 1800000).toISOString(),
-            read: true,
-          },
-          unreadCount: 0,
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          updatedAt: new Date(Date.now() - 1800000).toISOString(),
-        }
-      ];
-      setConversations(mockConversations);
+      const response = await communicationService.getConversations();
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to load conversations');
+      }
+      setConversations(response.data || []);
     } catch (error) {
       console.error('Error loading conversations:', error);
-      Alert.alert('Error', 'Failed to load conversations');
+      setConversations([]);
+      Alert.alert('Chat Unavailable', 'Conversations could not be loaded. Pull down to retry.');
     } finally {
       setLoading(false);
     }
   };
 
-  const initializeCommunication = async () => {
-    try {
-      await communicationService.initializeConnection();
-      
-      // Subscribe to new messages to update conversation list
-      const unsubscribe = communicationService.onMessage((message) => {
-        setConversations(prev => 
-          prev.map(conv => {
-            if (conv.id === message.conversationId) {
-              return {
-                ...conv,
-                lastMessage: message,
-                unreadCount: conv.unreadCount + 1,
-                updatedAt: message.timestamp,
-              };
-            }
-            return conv;
-          })
-        );
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error('Error initializing communication:', error);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadConversations();
-    setRefreshing(false);
+    try {
+      await loadConversations();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const formatTime = (timestamp: string) => {

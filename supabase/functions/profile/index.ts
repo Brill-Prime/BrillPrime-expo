@@ -22,6 +22,7 @@ function formatProfile(user: Record<string, any>) {
     phone: user.phone_number || '',
     profilePicture: user.profile_image_url || undefined,
     profileImageUrl: user.profile_image_url || undefined,
+    bio: user.bio || undefined,
     role: user.role,
     address: user.address || undefined,
     isEmailVerified: Boolean(user.is_verified),
@@ -44,7 +45,7 @@ serve(async (request) => {
     const supabase = createAdminClient();
     const { data: currentUser, error: lookupError } = await supabase
       .from('users')
-      .select('id, firebase_uid, email, full_name, phone_number, profile_image_url, role, is_verified, created_at, updated_at')
+      .select('id, firebase_uid, email, full_name, phone_number, profile_image_url, bio, role, is_verified, created_at, updated_at')
       .eq('firebase_uid', firebaseUid)
       .maybeSingle();
 
@@ -78,12 +79,8 @@ serve(async (request) => {
     ) {
       return jsonResponse({ error: 'Email changes must be completed through Firebase Authentication' }, 400);
     }
-    if (body.bio !== undefined) {
-      return jsonResponse({ error: 'The profile schema does not support a bio field' }, 400);
-    }
-
     if (
-      ['fullName', 'firstName', 'lastName', 'phone', 'profilePicture', 'profileImageUrl', 'address']
+      ['fullName', 'firstName', 'lastName', 'phone', 'profilePicture', 'profileImageUrl', 'address', 'bio']
         .some((field) => body[field] !== undefined && typeof body[field] !== 'string')
     ) {
       return jsonResponse({ error: 'Profile fields must be strings' }, 400);
@@ -95,6 +92,7 @@ serve(async (request) => {
 
     if (fullName) updates.full_name = fullName;
     if (typeof body.phone === 'string') updates.phone_number = body.phone.trim();
+    if (typeof body.bio === 'string') updates.bio = body.bio.trim();
     const profileImage = body.profilePicture ?? body.profileImageUrl;
     if (typeof profileImage === 'string') updates.profile_image_url = profileImage;
 
@@ -102,7 +100,7 @@ serve(async (request) => {
       .from('users')
       .update(updates)
       .eq('firebase_uid', firebaseUid)
-      .select('id, firebase_uid, email, full_name, phone_number, profile_image_url, role, is_verified, created_at, updated_at')
+      .select('id, firebase_uid, email, full_name, phone_number, profile_image_url, bio, role, is_verified, created_at, updated_at')
       .single();
 
     if (updateError) throw updateError;

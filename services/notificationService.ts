@@ -130,43 +130,20 @@ class NotificationService {
         return { success: true, data: { count: 0 } };
       }
 
-      const userData = await authService.getStoredUser();
-      const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
-      if (!firebaseUid) {
-        return { success: true, data: { count: 0 } };
-      }
-
       let userRole = role;
       if (!userRole) {
         userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
       }
-
-      const { data: users, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("firebase_uid", firebaseUid)
-        .maybeSingle();
-
-      if (userError || !users?.id) {
-        return { success: true, data: { count: 0 } };
-      }
-
-      // Count unread notifications
-      const { count, error } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", users.id)
-        .eq("read", false)
-        .eq("role", userRole);
-
-      if (error) {
-        return { success: true, data: { count: 0 } };
-      }
-
-      return { success: true, data: { count: count || 0 } };
+      return apiClient.get<{ count: number }>(
+        `/functions/v1/account/notifications/unread-count?role=${encodeURIComponent(userRole)}`,
+        { Authorization: `Bearer ${token}` },
+      );
     } catch (error) {
       console.error("Error getting unread count:", error);
-      return { success: true, data: { count: 0 } };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get unread notification count",
+      };
     }
   }
 
@@ -180,19 +157,11 @@ class NotificationService {
         return { success: false, error: "Authentication required" };
       }
 
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("id", notificationId);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return {
-        success: true,
-        data: { message: "Notification marked as read" },
-      };
+      return apiClient.post<{ message: string }>(
+        `/functions/v1/account/notifications/${encodeURIComponent(notificationId)}/read`,
+        {},
+        { Authorization: `Bearer ${token}` },
+      );
     } catch (error) {
       console.error("Error marking notification as read:", error);
       return { success: false, error: "Failed to mark notification as read" };
@@ -207,40 +176,12 @@ class NotificationService {
         return { success: false, error: "Authentication required" };
       }
 
-      const userData = await authService.getStoredUser();
-      const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
-      if (!firebaseUid) {
-        return { success: false, error: "User not found" };
-      }
-
       const userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
-
-      const { data: users, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("firebase_uid", firebaseUid)
-        .maybeSingle();
-
-      if (userError || !users?.id) {
-        return { success: false, error: "User not found in database" };
-      }
-
-      // Mark all notifications as read
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", users.id)
-        .eq("role", userRole)
-        .eq("read", false);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return {
-        success: true,
-        data: { message: "All notifications marked as read" },
-      };
+      return apiClient.post<{ message: string }>(
+        "/functions/v1/account/notifications/read-all",
+        { role: userRole },
+        { Authorization: `Bearer ${token}` },
+      );
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       return {
@@ -262,41 +203,19 @@ class NotificationService {
         return { success: false, error: "Authentication required" };
       }
 
-      const userData = await authService.getStoredUser();
-      const firebaseUid = userData?.firebaseUid || userData?.uid || userData?.id;
-      if (!firebaseUid) {
-        return { success: false, error: "User not found" };
-      }
-
       let userRole = role;
       if (!userRole) {
         userRole = (await AsyncStorage.getItem("userRole")) || "consumer";
       }
-
-      const { data: users, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("firebase_uid", firebaseUid)
-        .maybeSingle();
-
-      if (userError || !users?.id) {
-        return { success: false, error: "User not found in database" };
-      }
-
-      // Get notifications
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", users.id)
-        .eq("role", userRole)
-        .order("created_at", { ascending: false })
-        .range((page - 1) * limit, page * limit - 1);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: data || [] };
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        role: userRole,
+      });
+      return apiClient.get<Notification[]>(
+        `/functions/v1/account/notifications?${query.toString()}`,
+        { Authorization: `Bearer ${token}` },
+      );
     } catch (error) {
       console.error("Error getting notifications:", error);
       return { success: false, error: "Failed to get notifications" };
@@ -478,7 +397,7 @@ class NotificationService {
       return { success: false, error: "Authentication required" };
     }
 
-    return apiClient.put("/api/notifications/preferences", preferences, {
+    return apiClient.put("/functions/v1/account/notifications/preferences", preferences, {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -490,7 +409,7 @@ class NotificationService {
       return { success: false, error: "Authentication required" };
     }
 
-    return apiClient.get("/api/notifications/preferences", {
+    return apiClient.get("/functions/v1/account/notifications/preferences", {
       Authorization: `Bearer ${token}`,
     });
   }
@@ -502,7 +421,7 @@ class NotificationService {
       return { success: false, error: "Authentication required" };
     }
 
-    let endpoint = "/api/notifications/history";
+    let endpoint = "/functions/v1/account/notifications";
     const queryParams = new URLSearchParams();
 
     if (filters) {

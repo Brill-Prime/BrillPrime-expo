@@ -103,7 +103,7 @@ class AnalyticsService {
 
     try {
       // Send events to backend
-      await apiClient.post('/api/analytics/events', {
+      await apiClient.post('/functions/v1/analytics', {
         events: this.eventQueue,
       });
 

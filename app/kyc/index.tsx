@@ -93,14 +93,14 @@ export default function KYCScreen() {
         id: 'identity',
         title: 'Identity Verification',
         description: 'Upload government-issued ID',
-        completed: kycProfile?.documents.some(doc => doc.type === 'identity' && doc.status === 'approved'),
+        completed: kycProfile?.documents.some(doc => doc.type === 'identity' && ['pending', 'approved'].includes(doc.status)),
         route: '/kyc/documents?type=identity'
       },
       {
         id: 'address',
         title: 'Address Verification',
         description: 'Upload proof of address',
-        completed: kycProfile?.documents.some(doc => doc.type === 'address' && doc.status === 'approved'),
+        completed: kycProfile?.documents.some(doc => doc.type === 'address' && ['pending', 'approved'].includes(doc.status)),
         route: '/kyc/documents?type=address'
       }
     ];
@@ -111,7 +111,7 @@ export default function KYCScreen() {
         id: 'business',
         title: 'Business Verification',
         description: 'Upload business registration documents',
-        completed: kycProfile?.documents.some(doc => doc.type === 'business' && doc.status === 'approved'),
+        completed: kycProfile?.documents.some(doc => doc.type === 'business' && ['pending', 'approved'].includes(doc.status)),
         route: '/kyc/documents?type=business'
       });
     }
@@ -122,14 +122,14 @@ export default function KYCScreen() {
           id: 'license',
           title: 'Driver\'s License',
           description: 'Upload valid driver\'s license',
-          completed: kycProfile?.documents.some(doc => doc.type === 'driver_license' && doc.status === 'approved'),
+          completed: kycProfile?.documents.some(doc => doc.type === 'driver_license' && ['pending', 'approved'].includes(doc.status)),
           route: '/kyc/documents?type=driver_license'
         },
         {
           id: 'vehicle',
           title: 'Vehicle Registration',
           description: 'Upload vehicle registration documents',
-          completed: kycProfile?.documents.some(doc => doc.type === 'vehicle_registration' && doc.status === 'approved'),
+          completed: kycProfile?.documents.some(doc => doc.type === 'vehicle_registration' && ['pending', 'approved'].includes(doc.status)),
           route: '/kyc/documents?type=vehicle_registration'
         }
       );

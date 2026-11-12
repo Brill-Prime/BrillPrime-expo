@@ -7,14 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { merchantService } from '../../services/merchantService';
 import { paymentService } from '../../services/paymentService';
 import { useMerchant } from '../../contexts/MerchantContext';
-import { useAuth } from '../../contexts/AuthContext';
 import { MerchantAnalyticsService } from '../../services/merchantAnalyticsService';
 import type { SalesMetrics, CategoryBreakdown, TopProduct, CustomerInsight, TimeSeriesData } from '../../services/merchantAnalyticsService';
+import { supabase } from '../../config/supabase';
 
 function MerchantAnalytics() {
   const router = useRouter();
-  const { merchantId: merchantContextId, loadMerchantId } = useMerchant();
-  const { user } = useAuth();
+  const { merchantId, isLoading: merchantIdLoading, loadMerchantId } = useMerchant();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +24,6 @@ function MerchantAnalytics() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [customerInsights, setCustomerInsights] = useState<CustomerInsight | null>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesData[]>([]);
-
-  const merchantId = user?.merchantId || merchantContextId || '';
 
   const getDateRange = () => {
     const end = new Date();
@@ -88,14 +85,38 @@ function MerchantAnalytics() {
   };
 
   useEffect(() => {
+    if (merchantIdLoading) {
+      return;
+    }
     loadAnalytics();
-  }, [selectedPeriod, merchantId]);
+  }, [selectedPeriod, merchantId, merchantIdLoading]);
+
+  useEffect(() => {
+    if (!merchantId) return;
+
+    const channel = supabase
+      .channel(`merchant-analytics:${merchantId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `merchant_id=eq.${merchantId}` },
+        () => { void loadAnalytics(); }
+      )
+      .subscribe((status, subscriptionError) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Merchant analytics realtime subscription failed:', subscriptionError || status);
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [merchantId, selectedPeriod]);
 
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
 
   useEffect(() => {
-    loadMerchantId();
-  }, []);
+    void loadMerchantId();
+  }, [loadMerchantId]);
 
   // Removed the duplicate useEffect for fetching analytics
 
@@ -232,7 +253,7 @@ function MerchantAnalytics() {
             categories.map((category, index) => (
               <View key={index} style={styles.categoryCard}>
                 <View style={styles.categoryHeader}>
-                  <Text style={styles.categoryName}>{category.categoryName}</Text>
+                  <Text style={styles.categoryName}>{category.category}</Text>
                   <Text style={styles.categoryPercentage}>{category.percentage.toFixed(1)}%</Text>
                 </View>
                 <View style={styles.categoryBar}>
@@ -261,11 +282,11 @@ function MerchantAnalytics() {
                   <Text style={styles.rankNumber}>{index + 1}</Text>
                 </View>
                 <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.productName}</Text>
-                  <Text style={styles.productSales}>{product.unitsSold} units sold</Text>
+                  <Text style={styles.productName}>{product.name}</Text>
+                  <Text style={styles.productSales}>{product.sales} units sold</Text>
                 </View>
                 <View style={styles.productRevenue}>
-                  <Text style={styles.revenueAmount}>₦{(product.totalRevenue / 1000).toFixed(1)}K</Text>
+                  <Text style={styles.revenueAmount}>₦{(product.revenue / 1000).toFixed(1)}K</Text>
                 </View>
               </View>
             ))
@@ -273,19 +294,26 @@ function MerchantAnalytics() {
         </View>
 
         {/* Sales Chart */}
-        <Text style={styles.sectionTitle}>Sales Trend (Last 7 Days)</Text>
+        <Text style={styles.sectionTitle}>Sales Trend ({selectedPeriod.replace('days', ' days')})</Text>
         <View style={styles.chartContainer}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Daily Sales</Text>
-            <Text style={styles.chartSubtitle}>Total: ₦{timeSeries.reduce((sum, day) => sum + day.sales, 0).toLocaleString()}</Text>
+            <Text style={styles.chartSubtitle}>Total: ₦{timeSeries.reduce((sum, day) => sum + day.revenue, 0).toLocaleString()}</Text>
           </View>
           <View style={styles.chart}>
+            {timeSeries.length === 0 && (
+              <Text style={styles.emptyText}>No sales data is available for this period.</Text>
+            )}
             {timeSeries.map((day, index) => (
               <View key={index} style={styles.chartBar}>
                 <View
                   style={[
                     styles.chartBarFill,
-                    { height: `${(day.sales / (metrics?.maxSalesThisPeriod || 25000)) * 100}%` }
+                    {
+                      height: `${timeSeries.reduce((max, entry) => Math.max(max, entry.revenue), 0) > 0
+                        ? (day.revenue / timeSeries.reduce((max, entry) => Math.max(max, entry.revenue), 0)) * 100
+                        : 0}%`,
+                    }
                   ]}
                 />
                 <Text style={styles.chartBarLabel}>{new Date(day.date).getDate()}</Text>

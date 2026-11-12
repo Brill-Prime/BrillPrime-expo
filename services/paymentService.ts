@@ -10,7 +10,7 @@ class PaymentService {
     clientSecret: string;
     paymentIntentId: string;
   }>> {
-    return apiClient.post('/api/payments/create-intent', { amount, currency });
+    return apiClient.post('/functions/v1/payment-process', { action: 'create-intent', amount, currency });
   }
 
   // Validate payment data
@@ -58,7 +58,7 @@ class PaymentService {
       return { success: false, error: 'Invalid payment method. Use CARD or BANK_TRANSFER only.' };
     }
 
-    return apiClient.post('/api/payments/initialize', data);
+    return apiClient.post('/functions/v1/payment-process', { action: 'initialize', ...data });
   }
 
   // Get payment history (updated to match backend endpoint)
@@ -75,7 +75,7 @@ class PaymentService {
       totalPages: number;
     };
   }>> {
-    let endpoint = '/api/payments/history';
+    let endpoint = '/functions/v1/transactions';
     const queryParams = new URLSearchParams();
 
     if (filters) {
@@ -92,12 +92,12 @@ class PaymentService {
 
   // Get transaction by ID
   async getTransaction(transactionId: string): Promise<ApiResponse<Transaction>> {
-    return apiClient.get<Transaction>(`/api/transactions/${transactionId}`);
+    return apiClient.get<Transaction>(`/functions/v1/transactions/${encodeURIComponent(transactionId)}`);
   }
 
   // Confirm transaction
   async confirmTransaction(transactionId: string): Promise<ApiResponse<Transaction>> {
-    return apiClient.post<Transaction>(`/api/transactions/${transactionId}/confirm`, {});
+    return apiClient.post<Transaction>(`/functions/v1/payment-process/transactions/${encodeURIComponent(transactionId)}/confirm`, {});
   }
 
   // Request refund
@@ -106,12 +106,12 @@ class PaymentService {
     status: string;
     message: string;
   }>> {
-    return apiClient.post(`/api/transactions/${transactionId}/refund`, { reason });
+    return apiClient.post(`/functions/v1/payment-process/transactions/${encodeURIComponent(transactionId)}/refund`, { reason });
   }
 
   // Get payment methods (using profile endpoint from backend)
   async getPaymentMethods(): Promise<ApiResponse<Array<{
-    id: number;
+    id: string;
     type: 'CARD' | 'BANK_TRANSFER';
     accountNumber?: string;
     bankCode?: string;
@@ -122,8 +122,7 @@ class PaymentService {
     expiryYear?: number;
     isDefault: boolean;
   }>>> {
-    // Backend endpoint is /api/profile/payment-methods
-    return apiClient.get('/api/profile/payment-methods');
+    return apiClient.get('/functions/v1/account/payment-methods');
   }
 
   // Add payment method (using profile endpoint from backend)
@@ -134,20 +133,17 @@ class PaymentService {
     accountName?: string;
     isDefault?: boolean;
   }): Promise<ApiResponse<{ message: string }>> {
-    // Backend endpoint is /api/profile/payment-methods
-    return apiClient.post('/api/profile/payment-methods', data);
+    return apiClient.post('/functions/v1/account/payment-methods', data);
   }
 
   // Remove payment method (using profile endpoint from backend)
   async removePaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
-    // Backend endpoint is /api/profile/payment-methods/:id
-    return apiClient.delete(`/api/profile/payment-methods/${paymentMethodId}`);
+    return apiClient.delete(`/functions/v1/account/payment-methods/${encodeURIComponent(paymentMethodId)}`);
   }
 
   // Set default payment method (using profile endpoint from backend)
   async setDefaultPaymentMethod(paymentMethodId: string): Promise<ApiResponse<{ message: string }>> {
-    // Backend endpoint is /api/profile/payment-methods/:id with isDefault: true
-    return apiClient.put(`/api/profile/payment-methods/${paymentMethodId}`, { isDefault: true });
+    return apiClient.put(`/functions/v1/account/payment-methods/${encodeURIComponent(paymentMethodId)}`, { isDefault: true });
   }
 
   // Process toll payment
@@ -157,7 +153,7 @@ class PaymentService {
     amount: number;
     paymentMethodId: string;
   }): Promise<ApiResponse<Transaction>> {
-    return apiClient.post<Transaction>('/api/toll-payments', tollData);
+    return apiClient.post<Transaction>('/functions/v1/payment-process', { action: 'toll-payment', ...tollData });
   }
 
   // Get toll payment history
@@ -170,21 +166,11 @@ class PaymentService {
     payments: Transaction[];
     total: number;
   }>> {
-    let endpoint = '/api/toll-payments';
-    const queryParams = new URLSearchParams();
-
-    if (filters) {
-      if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
-      if (filters.toDate) queryParams.append('toDate', filters.toDate);
-      if (filters.limit) queryParams.append('limit', filters.limit.toString());
-      if (filters.offset) queryParams.append('offset', filters.offset.toString());
-    }
-
-    if (queryParams.toString()) {
-      endpoint += `?${queryParams.toString()}`;
-    }
-
-    return apiClient.get(endpoint);
+    void filters;
+    return Promise.resolve({
+      success: false,
+      error: 'Toll payment history is unavailable because toll payment storage is not configured.',
+    });
   }
 }
 

@@ -342,6 +342,62 @@ class CommodityService {
     }
   }
 
+  async updateStock(commodityId: string, stockQuantity: number): Promise<{ success: boolean; error?: string }> {
+    if (!Number.isInteger(stockQuantity) || stockQuantity < 0) {
+      return { success: false, error: 'Stock quantity must be a non-negative whole number' };
+    }
+
+    try {
+      const merchantResult = await this.getMerchantId();
+      if (!merchantResult.success || !merchantResult.merchantId) {
+        return { success: false, error: merchantResult.error || 'Failed to get merchant ID' };
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .update({ stock_quantity: stockQuantity })
+        .eq('id', commodityId)
+        .eq('merchant_id', merchantResult.merchantId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Database stock update error:', error);
+        return { success: false, error: error.message };
+      }
+      if (!data) {
+        return { success: false, error: 'Product not found for this merchant' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating product stock:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  async subscribeToMerchantCommodities(
+    merchantId: string,
+    callback: () => void
+  ): Promise<() => void> {
+    const channel = supabase
+      .channel(`merchant-inventory:${merchantId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products', filter: `merchant_id=eq.${merchantId}` },
+        callback
+      )
+      .subscribe((status, error) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Merchant inventory realtime subscription failed:', error || status);
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }
+
   /**
    * Delete commodity
    */

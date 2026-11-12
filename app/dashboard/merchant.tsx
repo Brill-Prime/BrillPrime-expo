@@ -3,11 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function MerchantDashboard() {
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState("");
+  const { user, signOut } = useAuth();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
 
   useEffect(() => {
@@ -17,19 +17,6 @@ export default function MerchantDashboard() {
 
     return () => subscription?.remove();
   }, []);
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
-    try {
-      const email = await AsyncStorage.getItem("userEmail");
-      setUserEmail(email || "merchant@brillprime.com");
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    }
-  };
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -42,7 +29,7 @@ export default function MerchantDashboard() {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(["userToken", "userEmail", "userRole"]);
+              await signOut();
               router.replace("/");
             } catch (error) {
               console.error("Error signing out:", error);
@@ -153,7 +140,7 @@ export default function MerchantDashboard() {
             <Text style={styles.greeting}>Welcome, Merchant! </Text>
             <Ionicons name="storefront" size={24} color="white" />
           </View>
-          <Text style={styles.email}>{userEmail}</Text>
+          <Text style={styles.email}>{user?.email || ''}</Text>
         </View>
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -195,7 +182,7 @@ export default function MerchantDashboard() {
 
           <TouchableOpacity
             style={styles.serviceCard}
-            onPress={() => router.push('/orders/consumer-orders')}
+            onPress={() => router.push('/merchant/order-management')}
           >
             <View style={[styles.serviceIconContainer, {backgroundColor: "#4682B4"}]}>
               <Ionicons name="receipt-outline" size={30} color="white" />
@@ -255,22 +242,6 @@ export default function MerchantDashboard() {
             <View style={[styles.statCard, {backgroundColor: "#0B1A51"}]}>
               <Text style={styles.statNumber}>23</Text>
               <Text style={styles.statLabel}>Orders</Text>
-            </View>
-          </View>
-
-          <View style={styles.recentOrders}>
-            <Text style={styles.sectionSubTitle}>Recent Orders</Text>
-            <View style={styles.orderItem}>
-              <Text style={styles.orderText}>Order #1234 - ₦850</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>Processing</Text>
-              </View>
-            </View>
-            <View style={styles.orderItem}>
-              <Text style={styles.orderText}>Order #1233 - ₦1,200</Text>
-              <View style={[styles.statusBadge, styles.completedBadge]}>
-                <Text style={styles.statusText}>Completed</Text>
-              </View>
             </View>
           </View>
         </View>
@@ -336,12 +307,6 @@ const getResponsiveStyles = (screenData: any) => {
       fontWeight: "bold",
       color: "#2c3e50",
       marginBottom: Math.max(16, height * 0.025),
-    },
-    sectionSubTitle: {
-      fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
-      fontWeight: "600",
-      color: "#2c3e50",
-      marginBottom: Math.max(12, height * 0.02),
     },
     featuresGrid: {
       flexDirection: "row",
@@ -458,7 +423,6 @@ const getResponsiveStyles = (screenData: any) => {
     statsRow: {
       flexDirection: "row",
       gap: Math.max(8, width * 0.02),
-      marginBottom: Math.max(24, height * 0.04),
     },
     statCard: {
       flex: 1,
@@ -478,38 +442,6 @@ const getResponsiveStyles = (screenData: any) => {
       fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
       color: "rgba(255, 255, 255, 0.8)",
       marginTop: 2,
-    },
-    recentOrders: {
-      backgroundColor: "#f8f9fa",
-      padding: Math.max(16, width * 0.04),
-      borderRadius: 15,
-    },
-    orderItem: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: Math.max(8, height * 0.015),
-      borderBottomWidth: 1,
-      borderBottomColor: "#e9ecef",
-    },
-    orderText: {
-      fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
-      color: "#2c3e50",
-      fontWeight: "500",
-    },
-    statusBadge: {
-      backgroundColor: "#ffd93d",
-      paddingHorizontal: Math.max(8, width * 0.02),
-      paddingVertical: Math.max(3, height * 0.005),
-      borderRadius: 10,
-    },
-    completedBadge: {
-      backgroundColor: "#a8e6cf",
-    },
-    statusText: {
-      fontSize: isTablet ? 14 : isSmallScreen ? 10 : 12,
-      fontWeight: "600",
-      color: "#2c3e50",
     },
   });
 };

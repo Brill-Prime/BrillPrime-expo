@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient } from '../../services/api';
 
 interface SearchResult {
   id: string;
@@ -24,11 +25,22 @@ interface SearchResult {
   price?: number;
 }
 
-interface Filter {
+interface CatalogCommodity {
   id: string;
-  label: string;
-  type: 'category' | 'price' | 'rating';
-  value: any;
+  name: string;
+  price: number;
+  category?: string;
+  merchantName?: string;
+  merchant?: { rating?: number };
+}
+
+interface CatalogMerchant {
+  id: string;
+  name?: string;
+  business_name?: string;
+  address?: string;
+  city?: string;
+  rating?: number;
 }
 
 export default function SearchScreen() {
@@ -36,12 +48,13 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [selectedFilters, setSelectedFilters] = useState<Filter[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const searchRequest = useRef(0);
 
   const categories = [
     'All',
@@ -53,23 +66,21 @@ export default function SearchScreen() {
     'Home & Garden',
   ];
 
-  const suggestions = [
-    'Premium Rice',
-    'Fresh Vegetables',
-    'Cooking Oil',
-    'Electronics',
-    'Fashion Items',
-  ];
-
   useEffect(() => {
     loadRecentSearches();
   }, []);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
-      performSearch();
+      const timeout = setTimeout(() => {
+        void performSearch();
+      }, 300);
+      return () => clearTimeout(timeout);
     } else {
+      searchRequest.current += 1;
       setSearchResults([]);
+      setSearchError(null);
+      setIsSearching(false);
     }
   }, [searchQuery]);
 
@@ -104,36 +115,52 @@ export default function SearchScreen() {
   };
 
   const performSearch = async () => {
+    const requestId = ++searchRequest.current;
     setIsSearching(true);
-    // Simulate API call
-    setTimeout(() => {
-      const mockResults: SearchResult[] = [
-        {
-          id: '1',
-          type: 'commodity',
-          name: 'Premium Rice',
-          subtitle: 'From Fresh Market',
-          rating: 4.5,
-          price: 2500,
-        },
-        {
-          id: '2',
-          type: 'merchant',
-          name: 'Green Farm Store',
-          subtitle: '2.5 km away',
-          rating: 4.8,
-        },
-        {
-          id: '3',
-          type: 'commodity',
-          name: 'Organic Vegetables',
-          subtitle: 'From Green Farm',
-          rating: 4.7,
-          price: 1200,
-        },
-      ];
-      // Apply filters to mock results for demonstration
-      const filteredResults = mockResults.filter(result => {
+    setSearchError(null);
+    try {
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const [commoditiesResponse, merchantsResponse] = await Promise.all([
+        apiClient.get<CatalogCommodity[]>(`/functions/v1/catalog/commodities?search=${encodedQuery}`),
+        apiClient.get<CatalogMerchant[]>('/functions/v1/catalog/merchants'),
+      ]);
+      if (requestId !== searchRequest.current) return;
+
+      const results: SearchResult[] = [];
+      if (commoditiesResponse.success) {
+        (commoditiesResponse.data || []).forEach(commodity => {
+          results.push({
+            id: commodity.id,
+            type: 'commodity',
+            name: commodity.name,
+            subtitle: commodity.merchantName ? `From ${commodity.merchantName}` : undefined,
+            rating: commodity.merchant?.rating,
+            price: Number(commodity.price),
+          });
+        });
+      }
+
+      if (merchantsResponse.success) {
+        (merchantsResponse.data || [])
+          .filter(merchant => (merchant.name || merchant.business_name || '')
+            .toLowerCase()
+            .includes(searchQuery.trim().toLowerCase()))
+          .forEach(merchant => {
+            results.push({
+              id: merchant.id,
+              type: 'merchant',
+              name: merchant.name || merchant.business_name || 'Merchant',
+              subtitle: merchant.address || merchant.city,
+              rating: merchant.rating,
+            });
+          });
+      }
+
+      if (!commoditiesResponse.success && !merchantsResponse.success) {
+        throw new Error(commoditiesResponse.error || merchantsResponse.error || 'Search is unavailable');
+      }
+
+      const filteredResults = results.filter(result => {
         let matches = true;
         if (minPrice && result.price !== undefined && result.price < parseFloat(minPrice)) {
           matches = false;
@@ -144,12 +171,17 @@ export default function SearchScreen() {
         if (selectedRating !== null && result.rating !== undefined && result.rating < selectedRating) {
           matches = false;
         }
-        // Add category filter logic here if needed
         return matches;
       });
       setSearchResults(filteredResults);
-      setIsSearching(false);
-    }, 500);
+    } catch (error) {
+      if (requestId !== searchRequest.current) return;
+      console.error('Error searching catalog:', error);
+      setSearchResults([]);
+      setSearchError(error instanceof Error ? error.message : 'Search could not be completed');
+    } finally {
+      if (requestId === searchRequest.current) setIsSearching(false);
+    }
   };
 
   const handleSearch = (query: string) => {
@@ -259,23 +291,6 @@ export default function SearchScreen() {
               </View>
             )}
 
-            {/* Suggestions */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Popular Searches</Text>
-              <View style={styles.suggestionsGrid}>
-                {suggestions.map((suggestion, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionChip}
-                    onPress={() => handleSearch(suggestion)}
-                  >
-                    <Ionicons name="trending-up" size={16} color="#4682B4" />
-                    <Text style={styles.suggestionText}>{suggestion}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             {/* Categories */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Browse Categories</Text>
@@ -330,8 +345,8 @@ export default function SearchScreen() {
             ) : !isSearching ? (
               <View style={styles.emptyState}>
                 <Ionicons name="search-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>No results found</Text>
-                <Text style={styles.emptySubtext}>Try different keywords</Text>
+                <Text style={styles.emptyText}>{searchError ? 'Search unavailable' : 'No results found'}</Text>
+                <Text style={styles.emptySubtext}>{searchError || 'Try different keywords'}</Text>
               </View>
             ) : null}
           </View>
